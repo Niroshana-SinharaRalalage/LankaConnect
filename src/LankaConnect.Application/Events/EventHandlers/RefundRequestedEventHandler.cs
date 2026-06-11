@@ -40,7 +40,7 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
     private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RefundRequestedEventHandler> _logger;
 
@@ -48,7 +48,7 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
         ITypedEmailService typedEmailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<RefundRequestedEventHandler> logger)
     {
@@ -149,7 +149,7 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
 
                 // Phase 6A.112: Check if event has active signup forms
                 var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+                var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
 
                 if (hasActiveForms)
                 {

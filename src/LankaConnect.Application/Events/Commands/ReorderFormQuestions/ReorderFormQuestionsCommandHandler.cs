@@ -14,12 +14,12 @@ namespace LankaConnect.Application.Events.Commands.ReorderFormQuestions;
 
 public class ReorderFormQuestionsCommandHandler : ICommandHandler<ReorderFormQuestionsCommand>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ReorderFormQuestionsCommandHandler> _logger;
 
     public ReorderFormQuestionsCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IUnitOfWork unitOfWork,
         ILogger<ReorderFormQuestionsCommandHandler> logger)
     {

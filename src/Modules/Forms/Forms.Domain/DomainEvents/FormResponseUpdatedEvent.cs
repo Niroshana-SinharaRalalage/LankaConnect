@@ -13,5 +13,5 @@ public record FormResponseUpdatedEvent(
     Guid FormId,
     Guid ResponseId,
     DateTime OccurredAt,
-    EventForm Form,
+    Form Form,
     Event Event) : IDomainEvent;

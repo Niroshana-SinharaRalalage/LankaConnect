@@ -24,7 +24,7 @@ namespace LankaConnect.Domain.Tests.Common;
 /// TicketScanLog, and TierAssignment in
 /// <c>tests/LankaConnect.Application.Tests</c>. These tests cover the 5
 /// remaining aggregates that didn't have CreatedAt-specific tests:
-/// User, EmailGroup, Notification, PhotoAlbum, EventForm.
+/// User, EmailGroup, Notification, PhotoAlbum, Form.
 ///
 /// Event aggregate is intentionally NOT in this file — its factory takes
 /// 9 parameters (EventTitle, EventDescription, etc.) and dedicated coverage
@@ -115,7 +115,7 @@ public sealed class IAuditableAggregateRoundTripTests
     {
         var before = DateTime.UtcNow;
 
-        var result = EventForm.Create(
+        var result = Form.Create(
             eventId: Guid.NewGuid(),
             title: "Test Form",
             description: "G1.b smoke test form");

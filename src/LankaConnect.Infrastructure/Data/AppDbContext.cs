@@ -152,7 +152,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<LankaConnect.Domain.Tax.StateTaxRate> StateTaxRates => Set<LankaConnect.Domain.Tax.StateTaxRate>(); // Phase 6A.X: US State Sales Tax Rates
 
     // Custom Form Entity Sets (Custom Form/Survey Sign-Up Feature)
-    // W4.3 (2026-06-06): EventForm + FormQuestion + FormResponse + FormAnswer DbSets +
+    // W4.3 (2026-06-06): Form + FormQuestion + FormResponse + FormAnswer DbSets +
     // EF configs moved to FormsDbContext owned by Modules.Forms.Infrastructure. Tables
     // physically remain on events.event_forms / events.form_questions /
     // events.form_responses / events.form_answers via cross-schema override.
@@ -292,7 +292,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Tax entity configurations (Phase 6A.X)
         modelBuilder.ApplyConfiguration(new StateTaxRateConfiguration()); // Phase 6A.X: US State Sales Tax Rates
 
-        // W4.3: All form configurations (EventForm, FormQuestion, FormResponse, FormAnswer)
+        // W4.3: All form configurations (Form, FormQuestion, FormResponse, FormAnswer)
         // moved to FormsDbContext (Modules.Forms.Infrastructure).
 
         // Support entity configurations (Phase 6A.89)
@@ -571,7 +571,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Tax.StateTaxRate), // Phase 6A.X: US State Sales Tax Rates
             typeof(SupportTicket), // Phase 6A.89: Support/Feedback System
             typeof(AdminAuditLog), // Phase 6A.89: Admin Audit Logging
-            // W4.3: EventForm + FormQuestion + FormResponse + FormAnswer moved to FormsDbContext.
+            // W4.3: Form + FormQuestion + FormResponse + FormAnswer moved to FormsDbContext.
             typeof(Donation), // Standalone Donation System
             typeof(Collection), // Event fund contributions (Financial Features)
             typeof(Sponsor), // Money/item sponsorships (Financial Features)

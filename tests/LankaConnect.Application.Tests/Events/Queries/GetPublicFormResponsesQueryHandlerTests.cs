@@ -34,7 +34,7 @@ namespace LankaConnect.Application.Tests.Events.Queries;
 /// </summary>
 public class GetPublicFormResponsesQueryHandlerTests
 {
-    private readonly Mock<IEventFormRepository> _formRepository = new();
+    private readonly Mock<IFormRepository> _formRepository = new();
     private readonly Mock<IFormResponseRepository> _responseRepository = new();
     private readonly Mock<ILogger<GetPublicFormResponsesQueryHandler>> _logger = new();
 
@@ -44,24 +44,24 @@ public class GetPublicFormResponsesQueryHandlerTests
     private GetPublicFormResponsesQueryHandler CreateHandler() =>
         new(_formRepository.Object, _responseRepository.Object, _logger.Object);
 
-    private static EventForm BuildForm(
+    private static Form BuildForm(
         Guid eventId,
         bool allowAttendeesToViewResponses,
-        EventFormStatus status = EventFormStatus.Active)
+        FormStatus status = FormStatus.Active)
     {
-        var form = EventForm.Create(
+        var form = Form.Create(
             eventId, "Survey", description: null,
             allowMultipleResponses: false, responseDeadline: null, maxResponses: null,
             allowAttendeesToViewResponses: allowAttendeesToViewResponses).Value;
 
         // Force status via the lifecycle methods. Create yields Draft.
-        if (status == EventFormStatus.Active || status == EventFormStatus.Closed
-            || status == EventFormStatus.Archived)
+        if (status == FormStatus.Active || status == FormStatus.Closed
+            || status == FormStatus.Archived)
         {
             form.AddQuestion("Q1?", FormQuestionType.ShortText, false, 0);
             form.Publish();  // Draft → Active
-            if (status == EventFormStatus.Closed) form.Close();
-            if (status == EventFormStatus.Archived)
+            if (status == FormStatus.Closed) form.Close();
+            if (status == FormStatus.Archived)
             {
                 form.Close();
                 form.Archive();
@@ -106,7 +106,7 @@ public class GetPublicFormResponsesQueryHandlerTests
     {
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((EventForm?)null);
+            .ReturnsAsync((Form?)null);
 
         var result = await CreateHandler().Handle(
             new GetPublicFormResponsesQuery(_eventId, _formId), CancellationToken.None);
@@ -152,7 +152,7 @@ public class GetPublicFormResponsesQueryHandlerTests
     {
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Draft));
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, FormStatus.Draft));
 
         var result = await CreateHandler().Handle(
             new GetPublicFormResponsesQuery(_eventId, _formId), CancellationToken.None);
@@ -166,7 +166,7 @@ public class GetPublicFormResponsesQueryHandlerTests
     {
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Archived));
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, FormStatus.Archived));
 
         var result = await CreateHandler().Handle(
             new GetPublicFormResponsesQuery(_eventId, _formId), CancellationToken.None);
@@ -180,7 +180,7 @@ public class GetPublicFormResponsesQueryHandlerTests
     {
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active));
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, FormStatus.Active));
 
         _responseRepository
             .Setup(r => r.GetPaginatedAsync(_formId, 1, It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -203,7 +203,7 @@ public class GetPublicFormResponsesQueryHandlerTests
         // Architect locked decision: Closed forms still publish (historical record).
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Closed));
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, FormStatus.Closed));
 
         _responseRepository
             .Setup(r => r.GetPaginatedAsync(_formId, 1, It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -249,7 +249,7 @@ public class GetPublicFormResponsesQueryHandlerTests
     {
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active));
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, FormStatus.Active));
 
         _responseRepository
             .Setup(r => r.GetPaginatedAsync(_formId, 1, It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -275,7 +275,7 @@ public class GetPublicFormResponsesQueryHandlerTests
         // expected to fall back to the ordinal label.
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active));
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, FormStatus.Active));
 
         _responseRepository
             .Setup(r => r.GetPaginatedAsync(_formId, 1, It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -298,7 +298,7 @@ public class GetPublicFormResponsesQueryHandlerTests
     {
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active));
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, FormStatus.Active));
 
         // Build responses in reverse-time order — handler must re-sort ASC before labeling.
         _responseRepository
@@ -331,7 +331,7 @@ public class GetPublicFormResponsesQueryHandlerTests
         var questionId = Guid.NewGuid();
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active));
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, FormStatus.Active));
 
         _responseRepository
             .Setup(r => r.GetPaginatedAsync(_formId, 1, It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -360,7 +360,7 @@ public class GetPublicFormResponsesQueryHandlerTests
 
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active));
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, FormStatus.Active));
 
         _responseRepository
             .Setup(r => r.GetPaginatedAsync(_formId, 1, It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -381,8 +381,8 @@ public class GetPublicFormResponsesQueryHandlerTests
     {
         // Capture the form's actual Id so the assertion is against the entity's
         // canonical identifier rather than our mock-key Guid (which need not match
-        // the entity's Id-on-Create since EventForm.Create generates a fresh GUID).
-        var form = BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active);
+        // the entity's Id-on-Create since Form.Create generates a fresh GUID).
+        var form = BuildForm(_eventId, allowAttendeesToViewResponses: true, FormStatus.Active);
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(form);

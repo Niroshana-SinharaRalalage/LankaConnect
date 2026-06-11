@@ -5,7 +5,7 @@ namespace LankaConnect.Modules.Forms.Domain.DomainEvents;
 /// <summary>
 /// Raised when a new custom form is created for an event.
 /// </summary>
-public record EventFormCreatedEvent(
+public record FormCreatedEvent(
     Guid EventId,
     Guid FormId,
     string Title,

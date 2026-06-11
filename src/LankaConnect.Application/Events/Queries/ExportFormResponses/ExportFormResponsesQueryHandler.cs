@@ -21,14 +21,14 @@ namespace LankaConnect.Application.Events.Queries.ExportFormResponses;
 public class ExportFormResponsesQueryHandler
     : IQueryHandler<ExportFormResponsesQuery, ExportResult>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IFormResponseRepository _formResponseRepository;
     private readonly ICsvExportService _csvExportService;
     private readonly IExcelExportService _excelExportService;
     private readonly ILogger<ExportFormResponsesQueryHandler> _logger;
 
     public ExportFormResponsesQueryHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IFormResponseRepository formResponseRepository,
         ICsvExportService csvExportService,
         IExcelExportService excelExportService,

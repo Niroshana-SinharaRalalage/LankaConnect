@@ -15,12 +15,12 @@ namespace LankaConnect.Application.Events.Queries.GetEventForms;
 
 public class GetEventFormsQueryHandler : IQueryHandler<GetEventFormsQuery, List<EventFormDto>>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IFormResponseRepository _formResponseRepository;
     private readonly ILogger<GetEventFormsQueryHandler> _logger;
 
     public GetEventFormsQueryHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IFormResponseRepository formResponseRepository,
         ILogger<GetEventFormsQueryHandler> logger)
     {
@@ -32,7 +32,7 @@ public class GetEventFormsQueryHandler : IQueryHandler<GetEventFormsQuery, List<
     public async Task<Result<List<EventFormDto>>> Handle(GetEventFormsQuery request, CancellationToken cancellationToken)
     {
         using (LogContext.PushProperty("Operation", "GetEventForms"))
-        using (LogContext.PushProperty("EntityType", "EventForm"))
+        using (LogContext.PushProperty("EntityType", "Form"))
         using (LogContext.PushProperty("EventId", request.EventId))
         {
             var stopwatch = Stopwatch.StartNew();

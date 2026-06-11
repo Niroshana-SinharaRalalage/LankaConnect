@@ -16,7 +16,7 @@ public record EventFormDto
     public Guid EventId { get; init; }
     public string Title { get; init; } = string.Empty;
     public string? Description { get; init; }
-    public EventFormStatus Status { get; init; }
+    public FormStatus Status { get; init; }
     public bool AllowMultipleResponses { get; init; }
     public DateTime? ResponseDeadline { get; init; }
     public int? MaxResponses { get; init; }
@@ -42,7 +42,7 @@ public record EventFormDetailDto
     public Guid EventId { get; init; }
     public string Title { get; init; } = string.Empty;
     public string? Description { get; init; }
-    public EventFormStatus Status { get; init; }
+    public FormStatus Status { get; init; }
     public bool AllowMultipleResponses { get; init; }
     public DateTime? ResponseDeadline { get; init; }
     public int? MaxResponses { get; init; }

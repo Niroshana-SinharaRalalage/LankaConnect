@@ -6,7 +6,7 @@ namespace LankaConnect.Modules.Forms.Domain.Entities;
 
 /// <summary>
 /// Aggregate root representing a respondent's submission to an event form.
-/// Separate aggregate from EventForm to handle unbounded growth and concurrent submissions.
+/// Separate aggregate from Form to handle unbounded growth and concurrent submissions.
 ///
 /// Architect decision: Independent aggregate because:
 /// 1. Responses can grow to thousands (unbounded)
@@ -29,7 +29,7 @@ public class FormResponse : LegacyBaseEntity
     public Guid EventFormId { get; private set; }
 
     /// <summary>
-    /// Denormalized FK to the event (for query efficiency without joining through EventForm).
+    /// Denormalized FK to the event (for query efficiency without joining through Form).
     /// </summary>
     public Guid EventId { get; private set; }
 
@@ -212,9 +212,9 @@ public class FormResponse : LegacyBaseEntity
     /// MUST be called by command handler AFTER all answer updates are complete.
     /// Command handler loads Form + Event once, then passes here to avoid re-querying.
     /// </summary>
-    /// <param name="form">EventForm already loaded by command handler (with questions)</param>
+    /// <param name="form">Form already loaded by command handler (with questions)</param>
     /// <param name="event">Event already loaded by command handler</param>
-    public Result RaiseUpdatedEventWithContext(EventForm form, Event @event)
+    public Result RaiseUpdatedEventWithContext(Form form, Event @event)
     {
         if (form == null)
             return Result.Failure("Form is required to raise updated event");

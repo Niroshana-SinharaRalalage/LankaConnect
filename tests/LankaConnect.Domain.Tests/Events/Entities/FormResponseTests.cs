@@ -176,7 +176,7 @@ public class FormResponseTests
         // Phase 6A.114: FormResponseUpdatedEvent raising moved out of UpdateAnswer()
         // into RaiseUpdatedEventWithContext(form, @event) to eliminate duplicate queries.
         // See FormResponse.cs lines 185-186. Event raising is tested separately when
-        // EventForm + Event fixtures are available.
+        // Form + Event fixtures are available.
         response.DomainEvents.Should().BeEmpty();
     }
 

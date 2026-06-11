@@ -34,7 +34,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
 {
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IEventRepository _eventRepository;
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly INewsletterSubscriberRepository _newsletterSubscriberRepository;
@@ -44,7 +44,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
     public EventPublishedEventHandler(
         IEventNotificationRecipientService recipientService,
         IEventRepository eventRepository,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
         INewsletterSubscriberRepository newsletterSubscriberRepository,
@@ -216,7 +216,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
 
                     // Phase 6A.112: Check if event has active signup forms
                     var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                    var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+                    var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
 
                     if (hasActiveForms)
                     {

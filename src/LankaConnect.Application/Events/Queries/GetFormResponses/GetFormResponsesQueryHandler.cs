@@ -15,12 +15,12 @@ namespace LankaConnect.Application.Events.Queries.GetFormResponses;
 
 public class GetFormResponsesQueryHandler : IQueryHandler<GetFormResponsesQuery, FormResponsesPagedDto>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IFormResponseRepository _formResponseRepository;
     private readonly ILogger<GetFormResponsesQueryHandler> _logger;
 
     public GetFormResponsesQueryHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IFormResponseRepository formResponseRepository,
         ILogger<GetFormResponsesQueryHandler> logger)
     {

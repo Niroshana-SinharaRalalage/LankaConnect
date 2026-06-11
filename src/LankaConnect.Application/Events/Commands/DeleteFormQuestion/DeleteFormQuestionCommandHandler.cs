@@ -14,12 +14,12 @@ namespace LankaConnect.Application.Events.Commands.DeleteFormQuestion;
 
 public class DeleteFormQuestionCommandHandler : ICommandHandler<DeleteFormQuestionCommand>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<DeleteFormQuestionCommandHandler> _logger;
 
     public DeleteFormQuestionCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IUnitOfWork unitOfWork,
         ILogger<DeleteFormQuestionCommandHandler> logger)
     {

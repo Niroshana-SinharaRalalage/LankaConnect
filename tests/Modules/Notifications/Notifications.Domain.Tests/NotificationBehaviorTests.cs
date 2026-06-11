@@ -13,7 +13,7 @@ namespace LankaConnect.Modules.Notifications.Domain.Tests;
 /// is stamped by <c>BaseDbContext.AuditableInterceptor</c> at
 /// SaveChanges - NOT by direct domain assignment. Therefore these
 /// tests do NOT assert UpdatedAt advancement (as Wave4.9.1.6/7 do for
-/// PhotoAlbum/EventForm); they assert mutator state-transition correctness
+/// PhotoAlbum/Form); they assert mutator state-transition correctness
 /// only. The interceptor's UpdatedAt stamping is covered by the existing
 /// integration tests + the IAuditable-Create coverage in
 /// <c>tests/LankaConnect.Domain.Tests/Common/IAuditableAggregateRoundTripTests.Notification_Create_Has_FreshAuditFields</c>.

@@ -3,9 +3,9 @@ using LankaConnect.Domain.Common;
 namespace LankaConnect.Modules.Forms.Domain.DomainEvents;
 
 /// <summary>
-/// Raised when a form transitions from Active to Closed status.
+/// Raised when a form transitions from Draft to Active status.
 /// </summary>
-public record EventFormClosedEvent(
+public record FormPublishedEvent(
     Guid EventId,
     Guid FormId,
     DateTime OccurredAt) : IDomainEvent;

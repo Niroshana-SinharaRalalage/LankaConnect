@@ -52,7 +52,7 @@ public interface IApplicationDbContext
     DbSet<EmailTemplate> EmailTemplates { get; }
     DbSet<UserEmailPreferences> UserEmailPreferences { get; }
 
-    // W4.3 (2026-06-06): EventForm/FormQuestion/FormResponse/FormAnswer DbSets moved
+    // W4.3 (2026-06-06): Form/FormQuestion/FormResponse/FormAnswer DbSets moved
     // to FormsDbContext (Modules.Forms.Infrastructure). Callers that need direct
     // DbContext access now inject FormsDbContext explicitly.
 

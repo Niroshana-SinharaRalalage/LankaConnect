@@ -6,9 +6,9 @@ using LankaConnect.Modules.Forms.Domain.Enums;
 
 namespace LankaConnect.Modules.Forms.Infrastructure.Data.Configurations;
 
-public class EventFormConfiguration : IEntityTypeConfiguration<EventForm>
+public class FormConfiguration : IEntityTypeConfiguration<Form>
 {
-    public void Configure(EntityTypeBuilder<EventForm> builder)
+    public void Configure(EntityTypeBuilder<Form> builder)
     {
         builder.HasKey(f => f.Id);
 

@@ -31,7 +31,7 @@ public sealed class FormsDbContext : DbContext
     {
     }
 
-    public DbSet<EventForm> EventForms => Set<EventForm>();
+    public DbSet<Form> EventForms => Set<Form>();
     public DbSet<FormQuestion> FormQuestions => Set<FormQuestion>();
     public DbSet<FormResponse> FormResponses => Set<FormResponse>();
     public DbSet<FormAnswer> FormAnswers => Set<FormAnswer>();
@@ -46,7 +46,7 @@ public sealed class FormsDbContext : DbContext
 
         modelBuilder.HasDefaultSchema(SchemaName);
 
-        modelBuilder.ApplyConfiguration(new EventFormConfiguration());
+        modelBuilder.ApplyConfiguration(new FormConfiguration());
         modelBuilder.ApplyConfiguration(new FormQuestionConfiguration());
         modelBuilder.ApplyConfiguration(new FormResponseConfiguration());
         modelBuilder.ApplyConfiguration(new FormAnswerConfiguration());
@@ -57,7 +57,7 @@ public sealed class FormsDbContext : DbContext
         // via HasDefaultSchema above. Table names retained explicitly because
         // EF's PascalCase pluralization would otherwise produce "EventForms",
         // "FormQuestions", etc.
-        modelBuilder.Entity<EventForm>().ToTable("event_forms");
+        modelBuilder.Entity<Form>().ToTable("event_forms");
         modelBuilder.Entity<FormQuestion>().ToTable("form_questions");
         modelBuilder.Entity<FormResponse>().ToTable("form_responses");
         modelBuilder.Entity<FormAnswer>().ToTable("form_answers");

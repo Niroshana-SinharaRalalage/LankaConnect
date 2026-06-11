@@ -15,12 +15,12 @@ namespace LankaConnect.Application.Events.Commands.UpdateFormQuestion;
 
 public class UpdateFormQuestionCommandHandler : ICommandHandler<UpdateFormQuestionCommand>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateFormQuestionCommandHandler> _logger;
 
     public UpdateFormQuestionCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IUnitOfWork unitOfWork,
         ILogger<UpdateFormQuestionCommandHandler> logger)
     {

@@ -14,12 +14,12 @@ namespace LankaConnect.Application.Events.Commands.ReopenEventForm;
 
 public class ReopenEventFormCommandHandler : ICommandHandler<ReopenEventFormCommand>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ReopenEventFormCommandHandler> _logger;
 
     public ReopenEventFormCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IUnitOfWork unitOfWork,
         ILogger<ReopenEventFormCommandHandler> logger)
     {
@@ -31,7 +31,7 @@ public class ReopenEventFormCommandHandler : ICommandHandler<ReopenEventFormComm
     public async Task<Result> Handle(ReopenEventFormCommand request, CancellationToken cancellationToken)
     {
         using (LogContext.PushProperty("Operation", "ReopenEventForm"))
-        using (LogContext.PushProperty("EntityType", "EventForm"))
+        using (LogContext.PushProperty("EntityType", "Form"))
         using (LogContext.PushProperty("FormId", request.FormId))
         using (LogContext.PushProperty("EventId", request.EventId))
         {

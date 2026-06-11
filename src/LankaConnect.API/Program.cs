@@ -110,7 +110,7 @@ try
 
     // W4.3 (2026-06-06) — Forms module composition. Registers FormsDbContext
     // (cross-schema overrides for events.event_forms / form_questions /
-    // form_responses / form_answers) + IEventFormRepository + IFormResponseRepository.
+    // form_responses / form_answers) + IFormRepository + IFormResponseRepository.
     builder.Services.AddFormsModule(builder.Configuration);
 
     // W4.7 (2026-06-06) — CulturalIntelligence module composition. Registers

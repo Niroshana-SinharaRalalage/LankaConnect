@@ -36,7 +36,7 @@ public class WhatsAppEventHandlerTests
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepo;
     private readonly Mock<IAddOnDefinitionRepository> _mockAddOnRepo;
     private readonly Mock<IFormResponseRepository> _mockFormResponseRepo;
-    private readonly Mock<IEventFormRepository> _mockEventFormRepo;
+    private readonly Mock<IFormRepository> _mockEventFormRepo;
     // Phase 6A.148.W5.6.A: WhatsApp RefundCompleted handler now resolves IRefundTotalCalculator
     // inside its Task.Run scope. Default mock returns the legacy fallback verbatim so existing
     // tests' expected dollar values stay valid.
@@ -53,7 +53,7 @@ public class WhatsAppEventHandlerTests
         _mockRegistrationRepo = new Mock<IRegistrationRepository>();
         _mockAddOnRepo = new Mock<IAddOnDefinitionRepository>();
         _mockFormResponseRepo = new Mock<IFormResponseRepository>();
-        _mockEventFormRepo = new Mock<IEventFormRepository>();
+        _mockEventFormRepo = new Mock<IFormRepository>();
         _mockRefundTotalCalculator = new Mock<LankaConnect.Application.Events.Services.IRefundTotalCalculator>();
         _mockRefundTotalCalculator
             .Setup(c => c.ComputeAttendeeFacingTotalAsync(
@@ -84,7 +84,7 @@ public class WhatsAppEventHandlerTests
             .Setup(sp => sp.GetService(typeof(IFormResponseRepository)))
             .Returns(_mockFormResponseRepo.Object);
         _mockServiceProvider
-            .Setup(sp => sp.GetService(typeof(IEventFormRepository)))
+            .Setup(sp => sp.GetService(typeof(IFormRepository)))
             .Returns(_mockEventFormRepo.Object);
         _mockServiceProvider
             .Setup(sp => sp.GetService(typeof(LankaConnect.Application.Events.Services.IRefundTotalCalculator)))
@@ -1306,14 +1306,14 @@ public class WhatsAppEventHandlerTests
         return response;
     }
 
-    /// <summary>Creates a real EventForm via reflection.</summary>
-    private static EventForm CreateRealEventForm(Guid formId, Guid eventId, string title = "Test Survey")
+    /// <summary>Creates a real Form via reflection.</summary>
+    private static Form CreateRealEventForm(Guid formId, Guid eventId, string title = "Test Survey")
     {
-        var type = typeof(EventForm);
+        var type = typeof(Form);
         var ctor = type.GetConstructor(
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
             null, Type.EmptyTypes, null);
-        var form = (EventForm)ctor!.Invoke(null);
+        var form = (Form)ctor!.Invoke(null);
         SetEntityId(form, formId);
         SetPrivateProperty(form, "EventId", eventId);
         SetPrivateProperty(form, "Title", title);

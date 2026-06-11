@@ -17,13 +17,13 @@ namespace LankaConnect.Application.Events.Commands.SubmitFormResponse;
 
 public class SubmitFormResponseCommandHandler : ICommandHandler<SubmitFormResponseCommand, SubmitFormResponseResult>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IFormResponseRepository _formResponseRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SubmitFormResponseCommandHandler> _logger;
 
     public SubmitFormResponseCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IFormResponseRepository formResponseRepository,
         IUnitOfWork unitOfWork,
         ILogger<SubmitFormResponseCommandHandler> logger)

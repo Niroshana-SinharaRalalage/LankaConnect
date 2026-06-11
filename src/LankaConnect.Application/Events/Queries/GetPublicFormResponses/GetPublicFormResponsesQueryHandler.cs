@@ -33,12 +33,12 @@ public class GetPublicFormResponsesQueryHandler : IQueryHandler<GetPublicFormRes
 {
     private const string NotFoundMessage = "Form not found";
 
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IFormResponseRepository _formResponseRepository;
     private readonly ILogger<GetPublicFormResponsesQueryHandler> _logger;
 
     public GetPublicFormResponsesQueryHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IFormResponseRepository formResponseRepository,
         ILogger<GetPublicFormResponsesQueryHandler> logger)
     {
@@ -96,7 +96,7 @@ public class GetPublicFormResponsesQueryHandler : IQueryHandler<GetPublicFormRes
                 // Gate 4: form must be in a status that makes sense for public viewing.
                 // Architect-locked: Active + Closed both publish (Closed is a
                 // historical record); Draft + Archived are private.
-                if (form.Status != EventFormStatus.Active && form.Status != EventFormStatus.Closed)
+                if (form.Status != FormStatus.Active && form.Status != FormStatus.Closed)
                 {
                     _logger.LogInformation(
                         "GetPublicFormResponses DENIED (404): form status not eligible - FormId={FormId}, Status={Status}",

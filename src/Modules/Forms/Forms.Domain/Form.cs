@@ -14,7 +14,7 @@ namespace LankaConnect.Modules.Forms.Domain;
 /// Lifecycle: Draft -> Active -> Closed -> Archived
 /// Only Active forms accept responses.
 /// </summary>
-public class EventForm : LegacyBaseEntity
+public class Form : LegacyBaseEntity
 {
     public const int MaxTitleLength = 200;
     public const int MaxDescriptionLength = 2000;
@@ -28,7 +28,7 @@ public class EventForm : LegacyBaseEntity
 
     public string Title { get; private set; } = string.Empty;
     public string? Description { get; private set; }
-    public EventFormStatus Status { get; private set; }
+    public FormStatus Status { get; private set; }
     public bool AllowMultipleResponses { get; private set; }
     public DateTime? ResponseDeadline { get; private set; }
     public int? MaxResponses { get; private set; }
@@ -57,11 +57,11 @@ public class EventForm : LegacyBaseEntity
     public IReadOnlyList<FormQuestion> Questions => _questions.AsReadOnly();
 
     // EF Core constructor
-    private EventForm()
+    private Form()
     {
     }
 
-    private EventForm(
+    private Form(
         Guid eventId,
         string title,
         string? description,
@@ -73,7 +73,7 @@ public class EventForm : LegacyBaseEntity
         EventId = eventId;
         Title = title;
         Description = description;
-        Status = EventFormStatus.Draft;
+        Status = FormStatus.Draft;
         AllowMultipleResponses = allowMultipleResponses;
         ResponseDeadline = responseDeadline;
         MaxResponses = maxResponses;
@@ -82,12 +82,12 @@ public class EventForm : LegacyBaseEntity
     }
 
     /// <summary>
-    /// Creates a new EventForm in Draft status.
+    /// Creates a new Form in Draft status.
     /// Phase 6A.146: <paramref name="allowAttendeesToViewResponses"/> is appended at the
     /// END of the signature as an optional parameter so positional callers (including
     /// the integration test suite) continue compiling unchanged.
     /// </summary>
-    public static Result<EventForm> Create(
+    public static Result<Form> Create(
         Guid eventId,
         string title,
         string? description = null,
@@ -97,36 +97,36 @@ public class EventForm : LegacyBaseEntity
         bool allowAttendeesToViewResponses = false)
     {
         if (eventId == Guid.Empty)
-            return Result<EventForm>.Failure("Event ID cannot be empty");
+            return Result<Form>.Failure("Event ID cannot be empty");
 
         if (string.IsNullOrWhiteSpace(title))
-            return Result<EventForm>.Failure("Form title cannot be empty");
+            return Result<Form>.Failure("Form title cannot be empty");
 
         title = title.Trim();
 
         if (title.Length > MaxTitleLength)
-            return Result<EventForm>.Failure($"Form title cannot exceed {MaxTitleLength} characters");
+            return Result<Form>.Failure($"Form title cannot exceed {MaxTitleLength} characters");
 
         if (description != null)
         {
             description = description.Trim();
             if (description.Length > MaxDescriptionLength)
-                return Result<EventForm>.Failure($"Form description cannot exceed {MaxDescriptionLength} characters");
+                return Result<Form>.Failure($"Form description cannot exceed {MaxDescriptionLength} characters");
             if (string.IsNullOrWhiteSpace(description))
                 description = null;
         }
 
         if (maxResponses.HasValue && maxResponses.Value < 1)
-            return Result<EventForm>.Failure("Maximum responses must be at least 1");
+            return Result<Form>.Failure("Maximum responses must be at least 1");
 
         if (responseDeadline.HasValue && responseDeadline.Value.Kind != DateTimeKind.Utc)
             responseDeadline = DateTime.SpecifyKind(responseDeadline.Value, DateTimeKind.Utc);
 
-        var form = new EventForm(eventId, title, description, allowMultipleResponses, responseDeadline, maxResponses, allowAttendeesToViewResponses);
+        var form = new Form(eventId, title, description, allowMultipleResponses, responseDeadline, maxResponses, allowAttendeesToViewResponses);
 
-        form.RaiseDomainEvent(new EventFormCreatedEvent(eventId, form.Id, title, DateTime.UtcNow));
+        form.RaiseDomainEvent(new FormCreatedEvent(eventId, form.Id, title, DateTime.UtcNow));
 
-        return Result<EventForm>.Success(form);
+        return Result<Form>.Success(form);
     }
 
     #region Question Management
@@ -301,16 +301,16 @@ public class EventForm : LegacyBaseEntity
     /// </summary>
     public Result Publish()
     {
-        if (Status != EventFormStatus.Draft)
+        if (Status != FormStatus.Draft)
             return Result.Failure("Only Draft forms can be published");
 
         if (_questions.Count == 0)
             return Result.Failure("Cannot publish a form with no questions");
 
-        Status = EventFormStatus.Active;
+        Status = FormStatus.Active;
         UpdatedAt = DateTime.UtcNow;
 
-        RaiseDomainEvent(new EventFormPublishedEvent(EventId, Id, DateTime.UtcNow));
+        RaiseDomainEvent(new FormPublishedEvent(EventId, Id, DateTime.UtcNow));
 
         return Result.Success();
     }
@@ -320,13 +320,13 @@ public class EventForm : LegacyBaseEntity
     /// </summary>
     public Result Close()
     {
-        if (Status != EventFormStatus.Active)
+        if (Status != FormStatus.Active)
             return Result.Failure("Only Active forms can be closed");
 
-        Status = EventFormStatus.Closed;
+        Status = FormStatus.Closed;
         UpdatedAt = DateTime.UtcNow;
 
-        RaiseDomainEvent(new EventFormClosedEvent(EventId, Id, DateTime.UtcNow));
+        RaiseDomainEvent(new FormClosedEvent(EventId, Id, DateTime.UtcNow));
 
         return Result.Success();
     }
@@ -336,10 +336,10 @@ public class EventForm : LegacyBaseEntity
     /// </summary>
     public Result Reopen()
     {
-        if (Status != EventFormStatus.Closed)
+        if (Status != FormStatus.Closed)
             return Result.Failure("Only Closed forms can be reopened");
 
-        Status = EventFormStatus.Active;
+        Status = FormStatus.Active;
         UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
@@ -350,10 +350,10 @@ public class EventForm : LegacyBaseEntity
     /// </summary>
     public Result Archive()
     {
-        if (Status == EventFormStatus.Archived)
+        if (Status == FormStatus.Archived)
             return Result.Failure("Form is already archived");
 
-        Status = EventFormStatus.Archived;
+        Status = FormStatus.Archived;
         UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
@@ -366,7 +366,7 @@ public class EventForm : LegacyBaseEntity
     /// </summary>
     public bool IsAcceptingResponses()
     {
-        if (Status != EventFormStatus.Active)
+        if (Status != FormStatus.Active)
             return false;
 
         if (ResponseDeadline.HasValue && DateTime.UtcNow > ResponseDeadline.Value)

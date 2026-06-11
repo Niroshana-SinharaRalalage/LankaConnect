@@ -14,12 +14,12 @@ namespace LankaConnect.Application.Events.Commands.UpdateEventForm;
 
 public class UpdateEventFormCommandHandler : ICommandHandler<UpdateEventFormCommand>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateEventFormCommandHandler> _logger;
 
     public UpdateEventFormCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IUnitOfWork unitOfWork,
         ILogger<UpdateEventFormCommandHandler> logger)
     {
@@ -31,7 +31,7 @@ public class UpdateEventFormCommandHandler : ICommandHandler<UpdateEventFormComm
     public async Task<Result> Handle(UpdateEventFormCommand request, CancellationToken cancellationToken)
     {
         using (LogContext.PushProperty("Operation", "UpdateEventForm"))
-        using (LogContext.PushProperty("EntityType", "EventForm"))
+        using (LogContext.PushProperty("EntityType", "Form"))
         using (LogContext.PushProperty("FormId", request.FormId))
         using (LogContext.PushProperty("EventId", request.EventId))
         {

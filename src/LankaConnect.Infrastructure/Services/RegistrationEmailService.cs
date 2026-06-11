@@ -32,13 +32,13 @@ public class RegistrationEmailService : IRegistrationEmailService
 {
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly ILogger<RegistrationEmailService> _logger;
 
     public RegistrationEmailService(
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         ILogger<RegistrationEmailService> logger)
     {
         _typedEmailService = typedEmailService;
@@ -143,7 +143,7 @@ public class RegistrationEmailService : IRegistrationEmailService
 
             // Phase 6A.128: Add signup forms URL if event has active forms
             var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-            var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+            var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
             if (hasActiveForms)
             {
                 emailParams.WithSignupForms(
@@ -313,7 +313,7 @@ public class RegistrationEmailService : IRegistrationEmailService
 
             // Phase 6A.128: Add signup forms URL if event has active forms
             var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-            var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+            var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
             if (hasActiveForms)
             {
                 emailParams.WithSignupForms(

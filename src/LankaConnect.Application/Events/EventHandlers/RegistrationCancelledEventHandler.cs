@@ -32,7 +32,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository; // Phase 7E.4: Load reg for HeadCount
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RegistrationCancelledEventHandler> _logger;
 
@@ -41,7 +41,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<RegistrationCancelledEventHandler> logger)
     {
@@ -134,7 +134,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
 
                 // Phase 6A.112: Check if event has active signup forms
                 var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+                var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
 
                 if (hasActiveForms)
                 {

@@ -16,14 +16,14 @@ namespace LankaConnect.Application.Events.Commands.UpdateFormResponse;
 
 public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormResponseCommand>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IFormResponseRepository _formResponseRepository;
     private readonly IEventRepository _eventRepository; // Phase 6A.114: Added for performance optimization
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateFormResponseCommandHandler> _logger;
 
     public UpdateFormResponseCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IFormResponseRepository formResponseRepository,
         IEventRepository eventRepository, // Phase 6A.114: Added for performance optimization
         IUnitOfWork unitOfWork,

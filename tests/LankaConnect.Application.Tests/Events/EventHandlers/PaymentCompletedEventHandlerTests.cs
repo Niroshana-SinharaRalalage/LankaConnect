@@ -41,7 +41,7 @@ public class PaymentCompletedEventHandlerTests
     private readonly Mock<IAddOnPurchaseRepository> _addOnPurchaseRepository;
     private readonly Mock<ICollectionRepository> _collectionRepository;
     private readonly Mock<ISponsorRepository> _sponsorRepository;
-    private readonly Mock<IEventFormRepository> _eventFormRepository;
+    private readonly Mock<IFormRepository> _eventFormRepository;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<ILogger<PaymentCompletedEventHandler>> _logger;
     private readonly PaymentCompletedEventHandler _handler;
@@ -57,13 +57,13 @@ public class PaymentCompletedEventHandlerTests
         _addOnPurchaseRepository = new Mock<IAddOnPurchaseRepository>();
         _collectionRepository = new Mock<ICollectionRepository>();
         _sponsorRepository = new Mock<ISponsorRepository>();
-        _eventFormRepository = new Mock<IEventFormRepository>();
+        _eventFormRepository = new Mock<IFormRepository>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _logger = new Mock<ILogger<PaymentCompletedEventHandler>>();
 
         // Phase 6A.112: Setup event form repository to return empty list by default
         _eventFormRepository.Setup(x => x.GetByEventIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<LankaConnect.Modules.Forms.Domain.EventForm>());
+            .ReturnsAsync(new List<LankaConnect.Modules.Forms.Domain.Form>());
 
         // Setup default URL helper behavior
         _emailUrlHelper.Setup(x => x.BuildEventDetailsUrl(It.IsAny<Guid>()))

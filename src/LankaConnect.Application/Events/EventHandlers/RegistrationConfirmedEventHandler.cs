@@ -36,7 +36,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RegistrationConfirmedEventHandler> _logger;
 
@@ -45,7 +45,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<RegistrationConfirmedEventHandler> logger)
     {
@@ -176,7 +176,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
 
             // Phase 6A.112: Check if event has active signup forms
             var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-            var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+            var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
 
             if (hasActiveForms)
             {

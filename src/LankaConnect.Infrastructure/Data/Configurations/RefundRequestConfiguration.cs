@@ -94,7 +94,7 @@ public class RefundRequestConfiguration : IEntityTypeConfiguration<RefundRequest
         builder.Property(r => r.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
 
         // Architect F3: Postgres xmin optimistic concurrency. Matches project convention
-        // (RegistrationConfiguration.cs:327, EventFormConfiguration.cs:70).
+        // (RegistrationConfiguration.cs:327, FormConfiguration.cs:70).
 #pragma warning disable CS0618 // Type or member is obsolete
         builder.UseXminAsConcurrencyToken();
 #pragma warning restore CS0618

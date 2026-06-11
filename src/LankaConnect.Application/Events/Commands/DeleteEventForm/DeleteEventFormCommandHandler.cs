@@ -14,12 +14,12 @@ namespace LankaConnect.Application.Events.Commands.DeleteEventForm;
 
 public class DeleteEventFormCommandHandler : ICommandHandler<DeleteEventFormCommand>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<DeleteEventFormCommandHandler> _logger;
 
     public DeleteEventFormCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IUnitOfWork unitOfWork,
         ILogger<DeleteEventFormCommandHandler> logger)
     {
@@ -31,7 +31,7 @@ public class DeleteEventFormCommandHandler : ICommandHandler<DeleteEventFormComm
     public async Task<Result> Handle(DeleteEventFormCommand request, CancellationToken cancellationToken)
     {
         using (LogContext.PushProperty("Operation", "DeleteEventForm"))
-        using (LogContext.PushProperty("EntityType", "EventForm"))
+        using (LogContext.PushProperty("EntityType", "Form"))
         using (LogContext.PushProperty("FormId", request.FormId))
         using (LogContext.PushProperty("EventId", request.EventId))
         {

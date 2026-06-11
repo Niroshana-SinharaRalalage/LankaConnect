@@ -5,7 +5,7 @@ namespace LankaConnect.Modules.Forms.Domain.Tests;
 
 /// <summary>
 /// Wave4.9.1.7 (2026-06-08): per-mutator round-trip audit-field tests for
-/// the EventForm aggregate. Same invariant as PhotoAlbum (Wave4.9.1.6):
+/// the Form aggregate. Same invariant as PhotoAlbum (Wave4.9.1.6):
 /// every state-mutating method MUST set <c>UpdatedAt = DateTime.UtcNow</c>.
 ///
 /// Pattern: CREATE -> assert CreatedAt fresh, UpdatedAt null -> MUTATE ->
@@ -18,9 +18,9 @@ namespace LankaConnect.Modules.Forms.Domain.Tests;
 /// </remarks>
 public sealed class EventFormAuditRoundTripTests
 {
-    private static EventForm NewForm()
+    private static Form NewForm()
     {
-        var result = EventForm.Create(
+        var result = Form.Create(
             eventId: Guid.NewGuid(),
             title: "Wave4.9.1.7 Round-Trip Form",
             description: "round-trip seed");
@@ -132,7 +132,7 @@ public sealed class EventFormAuditRoundTripTests
         var result = form.Publish();
 
         result.IsSuccess.Should().BeTrue();
-        form.Status.Should().Be(EventFormStatus.Active);
+        form.Status.Should().Be(FormStatus.Active);
         form.UpdatedAt.Should().NotBeNull();
         form.UpdatedAt!.Value.Should().BeAfter(lastUpdatedAt!.Value);
     }
@@ -149,7 +149,7 @@ public sealed class EventFormAuditRoundTripTests
         var result = form.Close();
 
         result.IsSuccess.Should().BeTrue();
-        form.Status.Should().Be(EventFormStatus.Closed);
+        form.Status.Should().Be(FormStatus.Closed);
         form.UpdatedAt.Should().NotBeNull();
         form.UpdatedAt!.Value.Should().BeAfter(lastUpdatedAt!.Value);
     }
@@ -167,7 +167,7 @@ public sealed class EventFormAuditRoundTripTests
         var result = form.Reopen();
 
         result.IsSuccess.Should().BeTrue();
-        form.Status.Should().Be(EventFormStatus.Active);
+        form.Status.Should().Be(FormStatus.Active);
         form.UpdatedAt.Should().NotBeNull();
         form.UpdatedAt!.Value.Should().BeAfter(lastUpdatedAt!.Value);
     }
@@ -182,7 +182,7 @@ public sealed class EventFormAuditRoundTripTests
         var result = form.Archive();
 
         result.IsSuccess.Should().BeTrue();
-        form.Status.Should().Be(EventFormStatus.Archived);
+        form.Status.Should().Be(FormStatus.Archived);
         form.UpdatedAt.Should().NotBeNull();
         form.UpdatedAt!.Value.Should().BeAfter(createdAt);
     }

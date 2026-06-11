@@ -6,7 +6,7 @@ namespace LankaConnect.Modules.Forms.Domain.Entities;
 
 /// <summary>
 /// Represents a question within a custom event form.
-/// Child entity of EventForm aggregate root.
+/// Child entity of Form aggregate root.
 /// Supports various question types (text, choice, number, date, yes/no).
 /// Options are stored as JSONB for choice-type questions (SingleChoice, MultipleChoice, Dropdown).
 /// </summary>
@@ -103,7 +103,7 @@ public class FormQuestion : LegacyBaseEntity
 
     /// <summary>
     /// Updates question details. Safe to call even when responses exist (text/help/sort changes allowed).
-    /// Changing question type or removing selected options is handled at the EventForm aggregate level.
+    /// Changing question type or removing selected options is handled at the Form aggregate level.
     /// </summary>
     public Result UpdateDetails(
         string questionText,

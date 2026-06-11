@@ -41,7 +41,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
     private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
     private readonly ICollectionRepository _collectionRepository;
     private readonly ISponsorRepository _sponsorRepository;
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<PaymentCompletedEventHandler> _logger;
 
@@ -56,7 +56,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         IAddOnPurchaseRepository addOnPurchaseRepository,
         ICollectionRepository collectionRepository,
         ISponsorRepository sponsorRepository,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<PaymentCompletedEventHandler> logger)
     {
@@ -286,7 +286,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
 
                 // Phase 6A.112: Check if event has active signup forms
                 var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+                var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
 
                 if (hasActiveForms)
                 {

@@ -52,7 +52,7 @@ public class FormResponseWhatsAppHandler : INotificationHandler<DomainEventNotif
                 using var scope = _scopeFactory.CreateScope();
                 var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppService>();
                 var formResponseRepository = scope.ServiceProvider.GetRequiredService<IFormResponseRepository>();
-                var eventFormRepository = scope.ServiceProvider.GetRequiredService<IEventFormRepository>();
+                var eventFormRepository = scope.ServiceProvider.GetRequiredService<IFormRepository>();
 
                 var formResponse = await formResponseRepository.GetByIdAsync(responseId, CancellationToken.None);
                 if (formResponse == null)

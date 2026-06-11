@@ -32,14 +32,14 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// </summary>
 public class FormResponseDeletedEmailHandler : INotificationHandler<DomainEventNotification<FormResponseDeletedEvent>>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<FormResponseDeletedEmailHandler> _logger;
 
     public FormResponseDeletedEmailHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IEventRepository eventRepository,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,

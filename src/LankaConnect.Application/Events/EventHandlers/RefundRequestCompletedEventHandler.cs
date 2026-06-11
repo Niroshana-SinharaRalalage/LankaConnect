@@ -44,7 +44,7 @@ public class RefundRequestCompletedEventHandler
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RefundRequestCompletedEventHandler> _logger;
 
@@ -53,7 +53,7 @@ public class RefundRequestCompletedEventHandler
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<RefundRequestCompletedEventHandler> logger)
     {
@@ -165,7 +165,7 @@ public class RefundRequestCompletedEventHandler
                 }
 
                 var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                if (forms.Any(f => f.Status == EventFormStatus.Active))
+                if (forms.Any(f => f.Status == FormStatus.Active))
                 {
                     emailParams.WithSignupForms(
                         $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");

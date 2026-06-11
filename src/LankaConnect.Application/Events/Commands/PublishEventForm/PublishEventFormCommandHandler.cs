@@ -14,12 +14,12 @@ namespace LankaConnect.Application.Events.Commands.PublishEventForm;
 
 public class PublishEventFormCommandHandler : ICommandHandler<PublishEventFormCommand>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<PublishEventFormCommandHandler> _logger;
 
     public PublishEventFormCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IUnitOfWork unitOfWork,
         ILogger<PublishEventFormCommandHandler> logger)
     {
@@ -31,7 +31,7 @@ public class PublishEventFormCommandHandler : ICommandHandler<PublishEventFormCo
     public async Task<Result> Handle(PublishEventFormCommand request, CancellationToken cancellationToken)
     {
         using (LogContext.PushProperty("Operation", "PublishEventForm"))
-        using (LogContext.PushProperty("EntityType", "EventForm"))
+        using (LogContext.PushProperty("EntityType", "Form"))
         using (LogContext.PushProperty("FormId", request.FormId))
         using (LogContext.PushProperty("EventId", request.EventId))
         {

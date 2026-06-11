@@ -33,7 +33,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<CommitmentUpdatedEventHandler> _logger;
 
@@ -41,7 +41,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
         IServiceScopeFactory scopeFactory,
         IUserRepository userRepository,
         IEventRepository eventRepository,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<CommitmentUpdatedEventHandler> logger)
     {
@@ -147,7 +147,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
 
                 // Phase 6A.129: Add signup forms URL if event has active forms
                 var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+                var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
                 if (hasActiveForms)
                 {
                     emailParams.WithSignupForms($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");

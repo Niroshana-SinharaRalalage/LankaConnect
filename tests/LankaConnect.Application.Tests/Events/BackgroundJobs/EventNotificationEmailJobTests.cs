@@ -36,7 +36,7 @@ public class EventNotificationEmailJobTests
 {
     private readonly Mock<IEventNotificationHistoryRepository> _mockHistoryRepository;
     private readonly Mock<IEventRepository> _mockEventRepository;
-    private readonly Mock<IEventFormRepository> _mockEventFormRepository;
+    private readonly Mock<IFormRepository> _mockFormRepository;
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepository;
     private readonly Mock<IEventNotificationRecipientService> _mockRecipientService;
     private readonly Mock<IUserRepository> _mockUserRepository;
@@ -51,7 +51,7 @@ public class EventNotificationEmailJobTests
     {
         _mockHistoryRepository = new Mock<IEventNotificationHistoryRepository>();
         _mockEventRepository = new Mock<IEventRepository>();
-        _mockEventFormRepository = new Mock<IEventFormRepository>();
+        _mockFormRepository = new Mock<IFormRepository>();
         _mockRegistrationRepository = new Mock<IRegistrationRepository>();
         _mockRecipientService = new Mock<IEventNotificationRecipientService>();
         _mockUserRepository = new Mock<IUserRepository>();
@@ -62,14 +62,14 @@ public class EventNotificationEmailJobTests
         _mockLogger = new Mock<ILogger<EventNotificationEmailJob>>();
 
         // Phase 6A.129: Return empty forms list by default
-        _mockEventFormRepository
+        _mockFormRepository
             .Setup(x => x.GetByEventIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<LankaConnect.Modules.Forms.Domain.EventForm>());
+            .ReturnsAsync(new List<LankaConnect.Modules.Forms.Domain.Form>());
 
         _job = new EventNotificationEmailJob(
             _mockHistoryRepository.Object,
             _mockEventRepository.Object,
-            _mockEventFormRepository.Object,
+            _mockFormRepository.Object,
             _mockRegistrationRepository.Object,
             _mockRecipientService.Object,
             _mockUserRepository.Object,

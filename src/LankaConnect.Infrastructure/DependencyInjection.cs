@@ -254,7 +254,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
 
         // Custom Form/Survey Sign-Up Feature Repositories
-        // W4.3 (2026-06-06): IEventFormRepository + IFormResponseRepository registrations
+        // W4.3 (2026-06-06): IFormRepository + IFormResponseRepository registrations
         // moved to FormsModule.AddFormsModule (called from LankaConnect.API/Program.cs).
 
         // W4.2 (2026-06-06): IPhotoAlbumRepository registration moved to

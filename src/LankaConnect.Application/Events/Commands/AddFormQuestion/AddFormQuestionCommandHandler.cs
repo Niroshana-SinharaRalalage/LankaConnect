@@ -15,12 +15,12 @@ namespace LankaConnect.Application.Events.Commands.AddFormQuestion;
 
 public class AddFormQuestionCommandHandler : ICommandHandler<AddFormQuestionCommand, Guid>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AddFormQuestionCommandHandler> _logger;
 
     public AddFormQuestionCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IUnitOfWork unitOfWork,
         ILogger<AddFormQuestionCommandHandler> logger)
     {

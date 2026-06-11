@@ -32,7 +32,7 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<AnonymousRegistrationConfirmedEventHandler> _logger;
 
@@ -40,7 +40,7 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
         ITypedEmailService typedEmailService,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<AnonymousRegistrationConfirmedEventHandler> logger)
     {
@@ -162,7 +162,7 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
 
                 // Phase 6A.112: Check if event has active signup forms
                 var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+                var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
 
                 if (hasActiveForms)
                 {

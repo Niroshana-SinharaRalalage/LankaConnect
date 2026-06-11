@@ -33,7 +33,7 @@ public class EventNotificationEmailJob
 {
     private readonly IEventNotificationHistoryRepository _historyRepository;
     private readonly IEventRepository _eventRepository;
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IUserRepository _userRepository;
@@ -46,7 +46,7 @@ public class EventNotificationEmailJob
     public EventNotificationEmailJob(
         IEventNotificationHistoryRepository historyRepository,
         IEventRepository eventRepository,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IRegistrationRepository registrationRepository,
         IEventNotificationRecipientService recipientService,
         IUserRepository userRepository,
@@ -167,7 +167,7 @@ public class EventNotificationEmailJob
 
             // Phase 6A.129: Check for active signup forms (once, outside the loop)
             var eventForms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-            var hasActiveSignupForms = eventForms.Any(f => f.Status == EventFormStatus.Active);
+            var hasActiveSignupForms = eventForms.Any(f => f.Status == FormStatus.Active);
             var signupFormsUrl = hasActiveSignupForms
                 ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms"
                 : "";

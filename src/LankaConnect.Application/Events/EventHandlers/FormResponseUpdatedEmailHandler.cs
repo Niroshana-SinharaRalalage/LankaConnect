@@ -32,7 +32,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventNotification<FormResponseUpdatedEvent>>
 {
     private readonly IFormResponseRepository _formResponseRepository;
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
@@ -40,7 +40,7 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
 
     public FormResponseUpdatedEmailHandler(
         IFormResponseRepository formResponseRepository,
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IEventRepository eventRepository,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,

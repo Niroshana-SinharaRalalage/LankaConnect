@@ -4,7 +4,7 @@ namespace LankaConnect.Modules.Forms.Domain.Enums;
 /// Status lifecycle for custom event forms.
 /// Forms progress through: Draft -> Active -> Closed -> Archived
 /// </summary>
-public enum EventFormStatus
+public enum FormStatus
 {
     /// <summary>
     /// Form is being designed by the organizer. Not visible to attendees. Not accepting responses.

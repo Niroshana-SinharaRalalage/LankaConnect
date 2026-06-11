@@ -17,13 +17,13 @@ namespace LankaConnect.Application.Events.Commands.CreateEventForm;
 
 public class CreateEventFormCommandHandler : ICommandHandler<CreateEventFormCommand, Guid>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateEventFormCommandHandler> _logger;
 
     public CreateEventFormCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
         ILogger<CreateEventFormCommandHandler> logger)
@@ -37,7 +37,7 @@ public class CreateEventFormCommandHandler : ICommandHandler<CreateEventFormComm
     public async Task<Result<Guid>> Handle(CreateEventFormCommand request, CancellationToken cancellationToken)
     {
         using (LogContext.PushProperty("Operation", "CreateEventForm"))
-        using (LogContext.PushProperty("EntityType", "EventForm"))
+        using (LogContext.PushProperty("EntityType", "Form"))
         using (LogContext.PushProperty("EventId", request.EventId))
         {
             var stopwatch = Stopwatch.StartNew();
@@ -61,10 +61,10 @@ public class CreateEventFormCommandHandler : ICommandHandler<CreateEventFormComm
                     return Result<Guid>.Failure($"Event with ID {request.EventId} not found");
                 }
 
-                // Create EventForm aggregate.
+                // Create Form aggregate.
                 // Phase 6A.146: pass AllowAttendeesToViewResponses through to the
                 // factory so the create-time toggle (default false) is honored.
-                var formResult = EventForm.Create(
+                var formResult = Form.Create(
                     request.EventId,
                     request.Title,
                     request.Description,

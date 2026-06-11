@@ -41,7 +41,7 @@ public static class FormsModule
             });
         }, ServiceLifetime.Scoped);
 
-        services.AddScoped<IEventFormRepository, EventFormRepository>();
+        services.AddScoped<IFormRepository, FormRepository>();
         services.AddScoped<IFormResponseRepository, FormResponseRepository>();
 
         return services;

@@ -14,12 +14,12 @@ namespace LankaConnect.Application.Events.Commands.CloseEventForm;
 
 public class CloseEventFormCommandHandler : ICommandHandler<CloseEventFormCommand>
 {
-    private readonly IEventFormRepository _eventFormRepository;
+    private readonly IFormRepository _eventFormRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CloseEventFormCommandHandler> _logger;
 
     public CloseEventFormCommandHandler(
-        IEventFormRepository eventFormRepository,
+        IFormRepository eventFormRepository,
         IUnitOfWork unitOfWork,
         ILogger<CloseEventFormCommandHandler> logger)
     {
@@ -31,7 +31,7 @@ public class CloseEventFormCommandHandler : ICommandHandler<CloseEventFormComman
     public async Task<Result> Handle(CloseEventFormCommand request, CancellationToken cancellationToken)
     {
         using (LogContext.PushProperty("Operation", "CloseEventForm"))
-        using (LogContext.PushProperty("EntityType", "EventForm"))
+        using (LogContext.PushProperty("EntityType", "Form"))
         using (LogContext.PushProperty("FormId", request.FormId))
         using (LogContext.PushProperty("EventId", request.EventId))
         {

@@ -13,7 +13,7 @@ using Xunit;
 namespace LankaConnect.Domain.Tests.Events.Entities;
 
 /// <summary>
-/// TDD tests for EventForm aggregate root.
+/// TDD tests for Form aggregate root.
 /// Tests creation, validation, question management, and lifecycle transitions.
 /// </summary>
 public class EventFormTests
@@ -25,12 +25,12 @@ public class EventFormTests
     [Fact]
     public void Create_WithValidData_Should_Return_Success()
     {
-        var result = EventForm.Create(_eventId, "Registration Survey");
+        var result = Form.Create(_eventId, "Registration Survey");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.EventId.Should().Be(_eventId);
         result.Value.Title.Should().Be("Registration Survey");
-        result.Value.Status.Should().Be(EventFormStatus.Draft);
+        result.Value.Status.Should().Be(FormStatus.Draft);
         result.Value.HasResponses.Should().BeFalse();
         result.Value.AllowMultipleResponses.Should().BeFalse();
         result.Value.ResponseDeadline.Should().BeNull();
@@ -38,14 +38,14 @@ public class EventFormTests
     }
 
     [Fact]
-    public void Create_Should_Raise_EventFormCreatedEvent()
+    public void Create_Should_Raise_FormCreatedEvent()
     {
-        var result = EventForm.Create(_eventId, "Test Form");
+        var result = Form.Create(_eventId, "Test Form");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<EventFormCreatedEvent>();
-        var domainEvent = (EventFormCreatedEvent)result.Value.DomainEvents.First();
+            .Which.Should().BeOfType<FormCreatedEvent>();
+        var domainEvent = (FormCreatedEvent)result.Value.DomainEvents.First();
         domainEvent.EventId.Should().Be(_eventId);
         domainEvent.FormId.Should().Be(result.Value.Id);
         domainEvent.Title.Should().Be("Test Form");
@@ -55,7 +55,7 @@ public class EventFormTests
     public void Create_WithAllOptions_Should_Set_All_Properties()
     {
         var deadline = DateTime.UtcNow.AddDays(7);
-        var result = EventForm.Create(
+        var result = Form.Create(
             _eventId, "Full Survey", "Please fill out this survey",
             allowMultipleResponses: true, responseDeadline: deadline, maxResponses: 100);
 
@@ -69,7 +69,7 @@ public class EventFormTests
     [Fact]
     public void Create_WithEmptyEventId_Should_Return_Failure()
     {
-        var result = EventForm.Create(Guid.Empty, "Test");
+        var result = Form.Create(Guid.Empty, "Test");
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Event ID cannot be empty");
     }
@@ -77,7 +77,7 @@ public class EventFormTests
     [Fact]
     public void Create_WithEmptyTitle_Should_Return_Failure()
     {
-        var result = EventForm.Create(_eventId, "");
+        var result = Form.Create(_eventId, "");
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Form title cannot be empty");
     }
@@ -85,25 +85,25 @@ public class EventFormTests
     [Fact]
     public void Create_WithTitleExceedingMaxLength_Should_Return_Failure()
     {
-        var longTitle = new string('A', EventForm.MaxTitleLength + 1);
-        var result = EventForm.Create(_eventId, longTitle);
+        var longTitle = new string('A', Form.MaxTitleLength + 1);
+        var result = Form.Create(_eventId, longTitle);
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain($"exceed {EventForm.MaxTitleLength}");
+        result.Error.Should().Contain($"exceed {Form.MaxTitleLength}");
     }
 
     [Fact]
     public void Create_WithDescriptionExceedingMaxLength_Should_Return_Failure()
     {
-        var longDesc = new string('A', EventForm.MaxDescriptionLength + 1);
-        var result = EventForm.Create(_eventId, "Test", longDesc);
+        var longDesc = new string('A', Form.MaxDescriptionLength + 1);
+        var result = Form.Create(_eventId, "Test", longDesc);
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain($"exceed {EventForm.MaxDescriptionLength}");
+        result.Error.Should().Contain($"exceed {Form.MaxDescriptionLength}");
     }
 
     [Fact]
     public void Create_WithMaxResponsesLessThan1_Should_Return_Failure()
     {
-        var result = EventForm.Create(_eventId, "Test", maxResponses: 0);
+        var result = Form.Create(_eventId, "Test", maxResponses: 0);
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Maximum responses must be at least 1");
     }
@@ -111,7 +111,7 @@ public class EventFormTests
     [Fact]
     public void Create_Should_Trim_Title_And_Description()
     {
-        var result = EventForm.Create(_eventId, "  Survey  ", "  Description  ");
+        var result = Form.Create(_eventId, "  Survey  ", "  Description  ");
         result.IsSuccess.Should().BeTrue();
         result.Value.Title.Should().Be("Survey");
         result.Value.Description.Should().Be("Description");
@@ -124,7 +124,7 @@ public class EventFormTests
     [Fact]
     public void AddQuestion_WithValidData_Should_Return_Success()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
 
         var result = form.AddQuestion("What is your name?", FormQuestionType.ShortText, true, 0);
 
@@ -138,7 +138,7 @@ public class EventFormTests
     [Fact]
     public void AddQuestion_ChoiceType_WithOptions_Should_Succeed()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         var options = new[]
         {
             QuestionOption.Create("Option A", 0).Value,
@@ -155,7 +155,7 @@ public class EventFormTests
     [Fact]
     public void AddQuestion_ChoiceType_WithoutOptions_Should_Fail()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
 
         var result = form.AddQuestion("Pick one", FormQuestionType.SingleChoice, false, 0);
 
@@ -166,7 +166,7 @@ public class EventFormTests
     [Fact]
     public void AddQuestion_TextType_WithOptions_Should_Fail()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         var options = new[]
         {
             QuestionOption.Create("Option A", 0).Value,
@@ -182,7 +182,7 @@ public class EventFormTests
     [Fact]
     public void RemoveQuestion_WhenNoResponses_Should_Succeed()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         var question = form.AddQuestion("Name?", FormQuestionType.ShortText, false, 0).Value;
 
         var result = form.RemoveQuestion(question.Id);
@@ -194,7 +194,7 @@ public class EventFormTests
     [Fact]
     public void RemoveQuestion_WhenHasResponses_Should_Fail()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         var question = form.AddQuestion("Name?", FormQuestionType.ShortText, false, 0).Value;
         form.MarkHasResponses();
 
@@ -207,7 +207,7 @@ public class EventFormTests
     [Fact]
     public void UpdateQuestion_TypeChange_WhenHasResponses_Should_Fail()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         var question = form.AddQuestion("Name?", FormQuestionType.ShortText, false, 0).Value;
         form.MarkHasResponses();
 
@@ -220,7 +220,7 @@ public class EventFormTests
     [Fact]
     public void UpdateQuestion_TextChange_WhenHasResponses_Should_Succeed()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         var question = form.AddQuestion("Nmae?", FormQuestionType.ShortText, false, 0).Value;
         form.MarkHasResponses();
 
@@ -233,7 +233,7 @@ public class EventFormTests
     [Fact]
     public void ReorderQuestions_WithValidIds_Should_Succeed()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         var q1 = form.AddQuestion("Q1", FormQuestionType.ShortText, false, 0).Value;
         var q2 = form.AddQuestion("Q2", FormQuestionType.ShortText, false, 1).Value;
         var q3 = form.AddQuestion("Q3", FormQuestionType.ShortText, false, 2).Value;
@@ -249,7 +249,7 @@ public class EventFormTests
     [Fact]
     public void ReorderQuestions_WithMissingIds_Should_Fail()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         form.AddQuestion("Q1", FormQuestionType.ShortText, false, 0);
         form.AddQuestion("Q2", FormQuestionType.ShortText, false, 1);
 
@@ -265,22 +265,22 @@ public class EventFormTests
     [Fact]
     public void Publish_FromDraft_WithQuestions_Should_Succeed()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         form.AddQuestion("Q1", FormQuestionType.ShortText, false, 0);
         form.ClearDomainEvents();
 
         var result = form.Publish();
 
         result.IsSuccess.Should().BeTrue();
-        form.Status.Should().Be(EventFormStatus.Active);
+        form.Status.Should().Be(FormStatus.Active);
         form.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<EventFormPublishedEvent>();
+            .Which.Should().BeOfType<FormPublishedEvent>();
     }
 
     [Fact]
     public void Publish_FromDraft_WithNoQuestions_Should_Fail()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
 
         var result = form.Publish();
 
@@ -308,15 +308,15 @@ public class EventFormTests
         var result = form.Close();
 
         result.IsSuccess.Should().BeTrue();
-        form.Status.Should().Be(EventFormStatus.Closed);
+        form.Status.Should().Be(FormStatus.Closed);
         form.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<EventFormClosedEvent>();
+            .Which.Should().BeOfType<FormClosedEvent>();
     }
 
     [Fact]
     public void Close_FromDraft_Should_Fail()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
 
         var result = form.Close();
 
@@ -333,7 +333,7 @@ public class EventFormTests
         var result = form.Reopen();
 
         result.IsSuccess.Should().BeTrue();
-        form.Status.Should().Be(EventFormStatus.Active);
+        form.Status.Should().Be(FormStatus.Active);
     }
 
     [Fact]
@@ -358,7 +358,7 @@ public class EventFormTests
     [Fact]
     public void IsAcceptingResponses_WhenDraft_Should_Return_False()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
 
         form.IsAcceptingResponses().Should().BeFalse();
     }
@@ -367,7 +367,7 @@ public class EventFormTests
     public void IsAcceptingResponses_WhenDeadlinePassed_Should_Return_False()
     {
         var pastDeadline = DateTime.UtcNow.AddDays(-1);
-        var form = EventForm.Create(_eventId, "Test", responseDeadline: pastDeadline).Value;
+        var form = Form.Create(_eventId, "Test", responseDeadline: pastDeadline).Value;
         form.AddQuestion("Q1", FormQuestionType.ShortText, false, 0);
         form.Publish();
 
@@ -377,7 +377,7 @@ public class EventFormTests
     [Fact]
     public void MarkHasResponses_Should_Set_Flag_To_True()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
 
         form.MarkHasResponses();
 
@@ -387,7 +387,7 @@ public class EventFormTests
     [Fact]
     public void MarkHasResponses_CalledTwice_Should_Not_Fail()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         form.MarkHasResponses();
         form.MarkHasResponses();
 
@@ -401,7 +401,7 @@ public class EventFormTests
     [Fact]
     public void UpdateDetails_WithValidData_Should_Succeed()
     {
-        var form = EventForm.Create(_eventId, "Old Title").Value;
+        var form = Form.Create(_eventId, "Old Title").Value;
         var deadline = DateTime.UtcNow.AddDays(14);
 
         var result = form.UpdateDetails("New Title", "New Description", true, deadline, 50);
@@ -417,7 +417,7 @@ public class EventFormTests
     [Fact]
     public void UpdateDetails_WithEmptyTitle_Should_Fail()
     {
-        var form = EventForm.Create(_eventId, "Title").Value;
+        var form = Form.Create(_eventId, "Title").Value;
 
         var result = form.UpdateDetails("", null, false, null, null);
 
@@ -432,7 +432,7 @@ public class EventFormTests
     [Fact]
     public void Create_Should_Default_AllowAttendeesToViewResponses_To_False()
     {
-        var result = EventForm.Create(_eventId, "Test Form");
+        var result = Form.Create(_eventId, "Test Form");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.AllowAttendeesToViewResponses.Should().BeFalse();
@@ -441,7 +441,7 @@ public class EventFormTests
     [Fact]
     public void Create_WithExplicitVisibilityTrue_Should_Set_Property()
     {
-        var result = EventForm.Create(
+        var result = Form.Create(
             _eventId, "Public Survey", description: null,
             allowMultipleResponses: false, responseDeadline: null, maxResponses: null,
             allowAttendeesToViewResponses: true);
@@ -453,7 +453,7 @@ public class EventFormTests
     [Fact]
     public void UpdateDetails_WithVisibilityTrue_Should_Update_Property()
     {
-        var form = EventForm.Create(_eventId, "Survey").Value;
+        var form = Form.Create(_eventId, "Survey").Value;
         form.AllowAttendeesToViewResponses.Should().BeFalse(); // pre-condition
 
         var result = form.UpdateDetails(
@@ -468,7 +468,7 @@ public class EventFormTests
     public void UpdateDetails_FromTrueToFalse_Should_Update_Property()
     {
         // Phase 6A.146 — organizer must be able to retract the public toggle.
-        var form = EventForm.Create(
+        var form = Form.Create(
             _eventId, "Survey", description: null,
             allowMultipleResponses: false, responseDeadline: null, maxResponses: null,
             allowAttendeesToViewResponses: true).Value;
@@ -486,7 +486,7 @@ public class EventFormTests
         // Architect's correction C1: the new parameter is OPTIONAL at the END so
         // every existing caller (UpdateEventFormCommandHandler, integration tests,
         // ~30+ positional callers) keeps compiling and keeps its prior semantics.
-        var form = EventForm.Create(
+        var form = Form.Create(
             _eventId, "Survey", description: null,
             allowMultipleResponses: false, responseDeadline: null, maxResponses: null,
             allowAttendeesToViewResponses: true).Value;
@@ -504,8 +504,8 @@ public class EventFormTests
         // Architect's correction C2: NO status guard on the toggle itself. The
         // public endpoint gates visibility on Active/Closed separately. This lets
         // an organizer configure the toggle before publishing the form.
-        var form = EventForm.Create(_eventId, "Survey").Value;
-        form.Status.Should().Be(EventFormStatus.Draft);
+        var form = Form.Create(_eventId, "Survey").Value;
+        form.Status.Should().Be(FormStatus.Draft);
 
         // Toggle on Draft
         form.UpdateDetails("Survey", null, false, null, null, allowAttendeesToViewResponses: true)
@@ -517,9 +517,9 @@ public class EventFormTests
 
     #region Helper Methods
 
-    private EventForm CreateActiveForm()
+    private Form CreateActiveForm()
     {
-        var form = EventForm.Create(_eventId, "Test Form").Value;
+        var form = Form.Create(_eventId, "Test Form").Value;
         form.AddQuestion("Q1", FormQuestionType.ShortText, false, 0);
         form.Publish();
         return form;

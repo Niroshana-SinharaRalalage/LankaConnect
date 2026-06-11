@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace LankaConnect.Modules.Forms.Infrastructure.Tests;
 
 /// <summary>
-/// Wave 4.9.4 (2026-06-10): asserts that EventForm + FormQuestion + FormResponse
+/// Wave 4.9.4 (2026-06-10): asserts that Form + FormQuestion + FormResponse
 /// + FormAnswer are mapped to the <c>forms</c> schema (not the legacy
 /// <c>events</c> schema) after the ALTER TABLE ... SET SCHEMA migration.
 /// Guards against cross-schema-override reintroduction. Mirrors the Wave 4.9.3
@@ -18,9 +18,9 @@ public sealed class FormsDbContextSchemaTests
     public void EventForm_Is_Mapped_To_Forms_Schema()
     {
         var model = BuildFormsDbContextModel();
-        var entityType = model.FindEntityType(typeof(EventForm));
+        var entityType = model.FindEntityType(typeof(Form));
 
-        entityType.Should().NotBeNull(because: "EventForm must be configured in FormsDbContext");
+        entityType.Should().NotBeNull(because: "Form must be configured in FormsDbContext");
         entityType!.GetSchema().Should().Be("forms",
             because: "Wave 4.9.4 (2026-06-10) moved events.event_forms -> forms.event_forms.");
         entityType!.GetTableName().Should().Be("event_forms");

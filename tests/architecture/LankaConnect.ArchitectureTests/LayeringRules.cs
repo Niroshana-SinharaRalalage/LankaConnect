@@ -564,7 +564,7 @@ public sealed class LayeringRules
     public void Modules_Forms_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith()
     {
         // W4.3 transitional (2026-06-06): mirrors the W4.2 Media pattern.
-        // LankaConnect.Domain edge intentionally allowed because EventForm + FormQuestion
+        // LankaConnect.Domain edge intentionally allowed because Form + FormQuestion
         // + FormResponse + FormAnswer still extend LegacyBaseEntity and use Result<T>;
         // rebase to direct BB.Entity<Guid> deferred to W4.8 Cross-cutting cleanup.
         // LankaConnect.Application + LankaConnect.Infrastructure excluded from the forbidden

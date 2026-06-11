@@ -584,6 +584,38 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    /// <summary>
+    /// Wave 5.3a (2026-06-11) — Forms.Contracts is the cross-module ABI. Mirrors the
+    /// W3.3 Notifications + W4.2 Media + Communications Contracts rules. Must not
+    /// reach any Forms-internal layer or any BuildingBlocks beyond Contracts.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Forms_Contracts_DependsOnlyOnBuildingBlocksContracts()
+    {
+        var assembly = typeof(Modules.Forms.Contracts.IFormQueries).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Forms.Domain",
+                "LankaConnect.Modules.Forms.Application",
+                "LankaConnect.Modules.Forms.Infrastructure",
+                "LankaConnect.Modules.Forms.Api",
+                "LankaConnect.BuildingBlocks.Domain",
+                "LankaConnect.BuildingBlocks.Application",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
     // ---------- W4.7 — CulturalIntelligence module boundaries (added 2026-06-06) ----------
 
     [Fact]

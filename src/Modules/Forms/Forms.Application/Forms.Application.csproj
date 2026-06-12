@@ -3,13 +3,24 @@
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Forms.Application</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Forms.Application</AssemblyName>
-    <Description>Forms module — Application layer. Commands, queries, handlers, DTOs. Currently empty — handlers continue to live in legacy LankaConnect.Application until W4.8 cross-cutting cleanup.</Description>
+    <Description>Forms module — Application layer. MediatR command/query handlers, DTOs, application services. Depends on Forms.Domain + Forms.Contracts + BuildingBlocks.Application (for pipeline behaviors + abstractions). No Infrastructure / Web / Modules.* leakage per ADR-002 module boundary.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Forms.Domain\Forms.Domain.csproj" />
     <ProjectReference Include="..\Forms.Contracts\Forms.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <!--
+      W5.3c.0 TRANSITIONAL EDGE (2026-06-12). Forms.Application references
+      the legacy LankaConnect.Application for ICommand / ICommandHandler /
+      ICurrentUserService / IUnitOfWork until BuildingBlocks.Application owns
+      those primitives + a richer current-actor abstraction. Cut this edge in
+      a follow-up (BuildingBlocks elevation pass) that ALSO cuts the matching
+      Notifications.Application transitional edge (added W3.4 2026-06-03 with
+      the same rationale). The corresponding ArchTest rule is relaxed during
+      the transition window (see LayeringRules.cs).
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
   </ItemGroup>
 
 </Project>

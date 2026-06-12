@@ -224,6 +224,37 @@ public sealed class LayeringRules
     }
 
     /// <summary>
+    /// W5.3c.0 mirror of Notifications.Application's transitional ArchTest
+    /// (above). Forms.Application also references the legacy
+    /// LankaConnect.Application transitionally for the same shared abstractions
+    /// (ICommand / ICommandHandler / ICurrentUserService / IUnitOfWork) until
+    /// BuildingBlocks.Application owns them. Re-tighten this rule by adding
+    /// "LankaConnect.Application" and "LankaConnect.Domain" back to
+    /// NotHaveDependencyOnAny once the BB elevation lands (cuts both this and
+    /// the Notifications.Application edge in a single coordinated wave).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Forms_Application_DoesNotDependOnInfraOrWebOrLayeredMonolith()
+    {
+        var assembly = typeof(Modules.Forms.Application.Queries.FormQueries).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Forms.Infrastructure",
+                "LankaConnect.Modules.Forms.Api",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
     /// W3 module-boundary invariant: the Notifications module Contracts layer
     /// is the cross-module ABI — depends only on BuildingBlocks.Contracts
     /// (for IntegrationEventBase + V1 marker). No domain entity / handler

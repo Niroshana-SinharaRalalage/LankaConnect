@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Modules.Forms.Domain;
 using LankaConnect.Modules.Forms.Domain.Entities;
@@ -38,7 +39,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
     private readonly Mock<IServiceScopeFactory> _scopeFactory;
     private readonly Mock<IUserRepository> _userRepository;
     private readonly Mock<IEventRepository> _eventRepository;
-    private readonly Mock<IFormRepository> _eventFormRepository;
+    private readonly Mock<IFormQueries> _eventFormRepository;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<ILogger<CommitmentCancelledEmailHandler>> _logger;
     private readonly CommitmentCancelledEmailHandler _handler;
@@ -48,7 +49,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
         _scopeFactory = new Mock<IServiceScopeFactory>();
         _userRepository = new Mock<IUserRepository>();
         _eventRepository = new Mock<IEventRepository>();
-        _eventFormRepository = new Mock<IFormRepository>();
+        _eventFormRepository = new Mock<IFormQueries>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _logger = new Mock<ILogger<CommitmentCancelledEmailHandler>>();
 
@@ -71,8 +72,8 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
         _scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
 
         _eventFormRepository
-            .Setup(x => x.GetByEventIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Form>());
+            .Setup(x => x.GetByOwnerAsync(FormOwnerEntityTypeDto.Event, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FormSummaryDto>());
 
         _handler = new CommitmentCancelledEmailHandler(
             _scopeFactory.Object,

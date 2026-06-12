@@ -1,9 +1,5 @@
 using System.Diagnostics;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Events.Common;
@@ -32,7 +28,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository; // Phase 7E.4: Load reg for HeadCount
-    private readonly IFormRepository _eventFormRepository;
+    private readonly IFormQueries _formQueries;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RegistrationCancelledEventHandler> _logger;
 
@@ -41,7 +37,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IFormRepository eventFormRepository,
+        IFormQueries formQueries,
         IEmailUrlHelper emailUrlHelper,
         ILogger<RegistrationCancelledEventHandler> logger)
     {
@@ -49,7 +45,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
-        _eventFormRepository = eventFormRepository;
+        _formQueries = formQueries;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
@@ -133,8 +129,8 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                 }
 
                 // Phase 6A.112: Check if event has active signup forms
-                var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
+                var forms = await _formQueries.GetByOwnerAsync(FormOwnerEntityTypeDto.Event, @event.Id, cancellationToken);
+                var hasActiveForms = forms.Any(f => f.Status == FormStatusDto.Active);
 
                 if (hasActiveForms)
                 {

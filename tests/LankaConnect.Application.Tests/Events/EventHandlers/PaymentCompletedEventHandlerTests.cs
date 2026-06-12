@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Modules.Forms.Domain;
 using LankaConnect.Modules.Forms.Domain.Entities;
@@ -41,7 +42,7 @@ public class PaymentCompletedEventHandlerTests
     private readonly Mock<IAddOnPurchaseRepository> _addOnPurchaseRepository;
     private readonly Mock<ICollectionRepository> _collectionRepository;
     private readonly Mock<ISponsorRepository> _sponsorRepository;
-    private readonly Mock<IFormRepository> _eventFormRepository;
+    private readonly Mock<IFormQueries> _eventFormRepository;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<ILogger<PaymentCompletedEventHandler>> _logger;
     private readonly PaymentCompletedEventHandler _handler;
@@ -57,13 +58,13 @@ public class PaymentCompletedEventHandlerTests
         _addOnPurchaseRepository = new Mock<IAddOnPurchaseRepository>();
         _collectionRepository = new Mock<ICollectionRepository>();
         _sponsorRepository = new Mock<ISponsorRepository>();
-        _eventFormRepository = new Mock<IFormRepository>();
+        _eventFormRepository = new Mock<IFormQueries>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _logger = new Mock<ILogger<PaymentCompletedEventHandler>>();
 
         // Phase 6A.112: Setup event form repository to return empty list by default
-        _eventFormRepository.Setup(x => x.GetByEventIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<LankaConnect.Modules.Forms.Domain.Form>());
+        _eventFormRepository.Setup(x => x.GetByOwnerAsync(FormOwnerEntityTypeDto.Event, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FormSummaryDto>());
 
         // Setup default URL helper behavior
         _emailUrlHelper.Setup(x => x.BuildEventDetailsUrl(It.IsAny<Guid>()))

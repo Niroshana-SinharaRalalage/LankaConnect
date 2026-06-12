@@ -1,9 +1,5 @@
 using System.Diagnostics;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Contracts;
 using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Helpers;
@@ -41,7 +37,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
     private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
     private readonly ICollectionRepository _collectionRepository;
     private readonly ISponsorRepository _sponsorRepository;
-    private readonly IFormRepository _eventFormRepository;
+    private readonly IFormQueries _formQueries;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<PaymentCompletedEventHandler> _logger;
 
@@ -56,7 +52,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         IAddOnPurchaseRepository addOnPurchaseRepository,
         ICollectionRepository collectionRepository,
         ISponsorRepository sponsorRepository,
-        IFormRepository eventFormRepository,
+        IFormQueries formQueries,
         IEmailUrlHelper emailUrlHelper,
         ILogger<PaymentCompletedEventHandler> logger)
     {
@@ -69,7 +65,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         _addOnPurchaseRepository = addOnPurchaseRepository;
         _collectionRepository = collectionRepository;
         _sponsorRepository = sponsorRepository;
-        _eventFormRepository = eventFormRepository;
+        _formQueries = formQueries;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
@@ -285,8 +281,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 }
 
                 // Phase 6A.112: Check if event has active signup forms
-                var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
+                var forms = await _formQueries.GetByOwnerAsync(FormOwnerEntityTypeDto.Event, @event.Id, cancellationToken);
+                var hasActiveForms = forms.Any(f => f.Status == FormStatusDto.Active);
 
                 if (hasActiveForms)
                 {

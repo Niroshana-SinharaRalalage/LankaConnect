@@ -1,9 +1,5 @@
 using System.Diagnostics;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
@@ -44,7 +40,7 @@ public class RefundRequestCompletedEventHandler
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IFormRepository _eventFormRepository;
+    private readonly IFormQueries _formQueries;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RefundRequestCompletedEventHandler> _logger;
 
@@ -53,7 +49,7 @@ public class RefundRequestCompletedEventHandler
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IFormRepository eventFormRepository,
+        IFormQueries formQueries,
         IEmailUrlHelper emailUrlHelper,
         ILogger<RefundRequestCompletedEventHandler> logger)
     {
@@ -61,7 +57,7 @@ public class RefundRequestCompletedEventHandler
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
-        _eventFormRepository = eventFormRepository;
+        _formQueries = formQueries;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
@@ -164,8 +160,8 @@ public class RefundRequestCompletedEventHandler
                         _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#sign-ups");
                 }
 
-                var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                if (forms.Any(f => f.Status == FormStatus.Active))
+                var forms = await _formQueries.GetByOwnerAsync(FormOwnerEntityTypeDto.Event, @event.Id, cancellationToken);
+                if (forms.Any(f => f.Status == FormStatusDto.Active))
                 {
                     emailParams.WithSignupForms(
                         $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");

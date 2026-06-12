@@ -1,9 +1,5 @@
 using System.Diagnostics;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Events.Common;
@@ -33,7 +29,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
-    private readonly IFormRepository _eventFormRepository;
+    private readonly IFormQueries _formQueries;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<CommitmentUpdatedEventHandler> _logger;
 
@@ -41,14 +37,14 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
         IServiceScopeFactory scopeFactory,
         IUserRepository userRepository,
         IEventRepository eventRepository,
-        IFormRepository eventFormRepository,
+        IFormQueries formQueries,
         IEmailUrlHelper emailUrlHelper,
         ILogger<CommitmentUpdatedEventHandler> logger)
     {
         _scopeFactory = scopeFactory;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
-        _eventFormRepository = eventFormRepository;
+        _formQueries = formQueries;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
@@ -146,8 +142,8 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                 }
 
                 // Phase 6A.129: Add signup forms URL if event has active forms
-                var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
+                var forms = await _formQueries.GetByOwnerAsync(FormOwnerEntityTypeDto.Event, @event.Id, cancellationToken);
+                var hasActiveForms = forms.Any(f => f.Status == FormStatusDto.Active);
                 if (hasActiveForms)
                 {
                     emailParams.WithSignupForms($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");

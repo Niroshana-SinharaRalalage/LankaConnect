@@ -1,9 +1,5 @@
 using System.Diagnostics;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Contracts;
 using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Configuration;
@@ -34,7 +30,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
 {
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IEventRepository _eventRepository;
-    private readonly IFormRepository _eventFormRepository;
+    private readonly IFormQueries _formQueries;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly INewsletterSubscriberRepository _newsletterSubscriberRepository;
@@ -44,7 +40,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
     public EventPublishedEventHandler(
         IEventNotificationRecipientService recipientService,
         IEventRepository eventRepository,
-        IFormRepository eventFormRepository,
+        IFormQueries formQueries,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
         INewsletterSubscriberRepository newsletterSubscriberRepository,
@@ -53,7 +49,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
     {
         _recipientService = recipientService;
         _eventRepository = eventRepository;
-        _eventFormRepository = eventFormRepository;
+        _formQueries = formQueries;
         _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
         _newsletterSubscriberRepository = newsletterSubscriberRepository;
@@ -215,8 +211,8 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                     }
 
                     // Phase 6A.112: Check if event has active signup forms
-                    var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-                    var hasActiveForms = forms.Any(f => f.Status == FormStatus.Active);
+                    var forms = await _formQueries.GetByOwnerAsync(FormOwnerEntityTypeDto.Event, @event.Id, cancellationToken);
+                    var hasActiveForms = forms.Any(f => f.Status == FormStatusDto.Active);
 
                     if (hasActiveForms)
                     {

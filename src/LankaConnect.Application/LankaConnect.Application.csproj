@@ -9,6 +9,14 @@
     <ProjectReference Include="..\Modules\Media\Media.Domain\Media.Domain.csproj" />
     <!-- W4.3 (2026-06-06) — EventForm + FormQuestion + FormResponse + FormAnswer + IFormRepositories moved out of legacy LankaConnect.Domain.Events. -->
     <ProjectReference Include="..\Modules\Forms\Forms.Domain\Forms.Domain.csproj" />
+    <!-- W5.3d (2026-06-12). Forms.Contracts surface (IFormQueries / IFormCommands / DTOs)
+         consumed by the 12 EventHandlers swapped away from IFormRepository in this commit.
+         The matching Forms.Domain ProjectReference (above) is retained for now because the
+         4 FormResponse EventHandlers still directly couple to Forms.Domain.DomainEvents
+         and IFormResponseRepository. Those couplings require a follow up commit
+         (architect pending) before Forms.Domain can be cut. ArchTest Rule 2 (Wave 5.3e)
+         blocks the cut step. -->
+    <ProjectReference Include="..\Modules\Forms\Forms.Contracts\Forms.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

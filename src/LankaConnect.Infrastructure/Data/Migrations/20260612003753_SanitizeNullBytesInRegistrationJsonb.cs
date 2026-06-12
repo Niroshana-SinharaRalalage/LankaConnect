@@ -5,78 +5,128 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <summary>
-    /// 2026-06-11 INCIDENT data-fix migration.
+    /// 2026-06-11/12 INCIDENT data-fix migration (REVISED v2).
     ///
-    /// Strips raw 0x00 (null) bytes from every JSONB column on
-    /// events.registrations and events.registration_additions. The
-    /// root incident is one Registration row on event
-    /// ad8903c4-e98e-49dd-b44e-d89f916c49dc whose JSONB has an
-    /// embedded null byte at byte 149 -- legal in Postgres jsonb storage but
-    /// illegal in JSON per RFC 8259 (and rejected by System.Text.Json during
-    /// EF Core 8's IncludeJsonEntityReference shaper). ONE bad row breaks
-    /// EVERY repository query that hydrates Event entities via Includes;
-    /// hotfix-2 (df0dc31b GetAllAsync) + hotfix-3 (433618b2 HasQueryFilter)
-    /// were defensive workarounds. This migration is the permanent fix.
+    /// V1 attempt (commit fa1932f4) FAILED on staging deploy with
+    /// Postgres SQLSTATE 22021 "invalid byte sequence for encoding UTF8: 0x00"
+    /// during the `column::text` cast. Postgres validates UTF8 on jsonb->text
+    /// cast BEFORE regexp_replace ever runs, so any approach that needs the
+    /// text representation cannot survive the bad byte. Approach changed:
+    /// PL/pgSQL exception handling.
     ///
-    /// Targets ALL rows containing 0x00 bytes (not just the known bad event)
-    /// -- defensive sweep, single chance to catch related corruption in
-    /// related tables. Idempotent: skips clean rows via
-    /// `WHERE position(E'\x00' in col::text) > 0`. Safe: regexp_replace
-    /// strips the byte without altering surrounding string content.
+    /// V2 approach: loop over each Registration row, attempt to cast each JSONB
+    /// column to text inside a BEGIN...EXCEPTION...END savepoint. If the cast
+    /// raises character_not_in_repertoire (SQLSTATE 22021), replace the column
+    /// with an empty JSONB value of the appropriate shape:
+    ///   - attendee_info, contact, head_count, head_count_delta : '{}'  (object)
+    ///   - attendees, pending_seat_assignments, new_attendees     : '[]'  (array)
     ///
-    /// Down() is intentionally a no-op -- re-introducing null bytes is never
-    /// desirable.
+    /// Trade-off: this is DATA-LOSSY for the affected row's affected column,
+    /// but the data was already unreadable to .NET (System.Text.Json rejects
+    /// 0x00 bytes per RFC 8259). The registration record itself is preserved
+    /// so head-counts / totals stay consistent; only the attendee personal
+    /// details / contact info on the corrupted column are wiped.
     ///
-    /// NOTE: EF Core scaffolded this migration with reference_data created_at
-    /// drift updates (seed values use NOW() which re-evaluates each scaffold)
-    /// -- those were REMOVED per CLAUDE.md Section 5. The .Designer.cs
-    /// companion snapshot intentionally retains the drift so subsequent
-    /// migrations don't re-emit the same updates.
-    ///
-    /// After this migration runs successfully on staging, the HasQueryFilter
-    /// in EventConfiguration.cs (added in hotfix-3 commit 433618b2) MUST be
-    /// removed in a follow-up commit, and the matching FromSqlRaw WHERE
-    /// clause in EventRepository.SearchAsync MUST be removed too.
+    /// Idempotent: rows whose columns cast cleanly are untouched.
     /// </summary>
     public partial class SanitizeNullBytesInRegistrationJsonb : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // events.registrations — five JSONB columns
-            foreach (var column in new[]
-            {
-                "attendee_info",
-                "attendees",
-                "pending_seat_assignments",
-                "contact",
-                "head_count",
-            })
-            {
-                migrationBuilder.Sql(
-                    "UPDATE events.registrations " +
-                    $"SET {column} = regexp_replace({column}::text, E'\\x00', '', 'g')::jsonb " +
-                    $"WHERE {column} IS NOT NULL AND position(E'\\x00' in {column}::text) > 0;");
-            }
+            migrationBuilder.Sql(@"
+DO $$
+DECLARE
+    reg_id uuid;
+    sanitized_count int := 0;
+    affected_cols text;
+BEGIN
+    -- events.registrations -- five JSONB columns
+    FOR reg_id IN SELECT id FROM events.registrations LOOP
+        affected_cols := '';
 
-            // events.registration_additions — two JSONB columns
-            foreach (var column in new[]
-            {
-                "new_attendees",
-                "head_count_delta",
-            })
-            {
-                migrationBuilder.Sql(
-                    "UPDATE events.registration_additions " +
-                    $"SET {column} = regexp_replace({column}::text, E'\\x00', '', 'g')::jsonb " +
-                    $"WHERE {column} IS NOT NULL AND position(E'\\x00' in {column}::text) > 0;");
-            }
+        BEGIN
+            PERFORM 1 FROM events.registrations
+            WHERE id = reg_id AND attendee_info::text IS NOT NULL;
+        EXCEPTION WHEN character_not_in_repertoire THEN
+            UPDATE events.registrations SET attendee_info = '{}'::jsonb WHERE id = reg_id;
+            affected_cols := affected_cols || 'attendee_info ';
+        END;
+
+        BEGIN
+            PERFORM 1 FROM events.registrations
+            WHERE id = reg_id AND attendees::text IS NOT NULL;
+        EXCEPTION WHEN character_not_in_repertoire THEN
+            UPDATE events.registrations SET attendees = '[]'::jsonb WHERE id = reg_id;
+            affected_cols := affected_cols || 'attendees ';
+        END;
+
+        BEGIN
+            PERFORM 1 FROM events.registrations
+            WHERE id = reg_id AND pending_seat_assignments::text IS NOT NULL;
+        EXCEPTION WHEN character_not_in_repertoire THEN
+            UPDATE events.registrations SET pending_seat_assignments = '[]'::jsonb WHERE id = reg_id;
+            affected_cols := affected_cols || 'pending_seat_assignments ';
+        END;
+
+        BEGIN
+            PERFORM 1 FROM events.registrations
+            WHERE id = reg_id AND contact::text IS NOT NULL;
+        EXCEPTION WHEN character_not_in_repertoire THEN
+            UPDATE events.registrations SET contact = '{}'::jsonb WHERE id = reg_id;
+            affected_cols := affected_cols || 'contact ';
+        END;
+
+        BEGIN
+            PERFORM 1 FROM events.registrations
+            WHERE id = reg_id AND head_count::text IS NOT NULL;
+        EXCEPTION WHEN character_not_in_repertoire THEN
+            UPDATE events.registrations SET head_count = '{}'::jsonb WHERE id = reg_id;
+            affected_cols := affected_cols || 'head_count ';
+        END;
+
+        IF affected_cols <> '' THEN
+            RAISE NOTICE 'Sanitized events.registrations id=% columns: %', reg_id, affected_cols;
+            sanitized_count := sanitized_count + 1;
+        END IF;
+    END LOOP;
+
+    -- events.registration_additions -- two JSONB columns
+    FOR reg_id IN SELECT id FROM events.registration_additions LOOP
+        affected_cols := '';
+
+        BEGIN
+            PERFORM 1 FROM events.registration_additions
+            WHERE id = reg_id AND new_attendees::text IS NOT NULL;
+        EXCEPTION WHEN character_not_in_repertoire THEN
+            UPDATE events.registration_additions SET new_attendees = '[]'::jsonb WHERE id = reg_id;
+            affected_cols := affected_cols || 'new_attendees ';
+        END;
+
+        BEGIN
+            PERFORM 1 FROM events.registration_additions
+            WHERE id = reg_id AND head_count_delta::text IS NOT NULL;
+        EXCEPTION WHEN character_not_in_repertoire THEN
+            UPDATE events.registration_additions SET head_count_delta = '{}'::jsonb WHERE id = reg_id;
+            affected_cols := affected_cols || 'head_count_delta ';
+        END;
+
+        IF affected_cols <> '' THEN
+            RAISE NOTICE 'Sanitized events.registration_additions id=% columns: %', reg_id, affected_cols;
+            sanitized_count := sanitized_count + 1;
+        END IF;
+    END LOOP;
+
+    RAISE NOTICE 'Total rows sanitized: %', sanitized_count;
+END $$;
+");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Intentionally empty: re-introducing 0x00 bytes is never desirable.
+            // Intentionally empty: re-introducing 0x00 bytes is never desirable
+            // and the original corrupt data is unrecoverable from the empty {} / [] values.
         }
     }
 }

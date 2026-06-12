@@ -1,3 +1,4 @@
+using FluentValidation;
 using LankaConnect.Modules.Forms.Application.Commands;
 using LankaConnect.Modules.Forms.Application.Queries;
 using LankaConnect.Modules.Forms.Contracts;
@@ -53,6 +54,18 @@ public static class FormsModule
         // IFormRepository, preserving the ArchTest module boundary.
         services.AddScoped<IFormQueries, FormQueries>();
         services.AddScoped<IFormCommands, FormCommands>();
+
+        // Wave 5.3c (2026-06-12): Forms.Application now hosts the 13 command
+        // handlers (5.3c.1) and 7 query handlers (5.3c.2) that moved out of
+        // LankaConnect.Application. LankaConnect.Application's DependencyInjection
+        // only scans its own assembly for MediatR / FluentValidation, so the
+        // moved handlers are invisible to the global container without explicit
+        // registration here. Scan the Forms.Application assembly for both
+        // MediatR handlers and FluentValidation validators (CreateEventFormCommandValidator
+        // et al. moved as part of 5.3c.1).
+        var formsAppAssembly = typeof(FormQueries).Assembly;
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(formsAppAssembly));
+        services.AddValidatorsFromAssembly(formsAppAssembly);
 
         return services;
     }

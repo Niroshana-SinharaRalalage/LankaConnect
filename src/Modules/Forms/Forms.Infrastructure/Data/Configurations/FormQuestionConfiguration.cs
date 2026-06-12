@@ -24,11 +24,15 @@ public class FormQuestionConfiguration : IEntityTypeConfiguration<FormQuestion>
         PropertyNameCaseInsensitive = true,
     };
 
+    // CRITICAL: do NOT call .AsReadOnly() in the materializer -- the entity's
+    // backing field is `List<QuestionOption> _options`, and EF Core needs to
+    // write the deserialized collection into that mutable field. Returning a
+    // ReadOnlyCollection<T> trips an InvalidCastException at hydration time.
     private static readonly ValueConverter<IReadOnlyList<QuestionOption>, string> OptionsConverter = new(
         v => JsonSerializer.Serialize(v, OptionsJsonOptions),
         v => string.IsNullOrEmpty(v)
-            ? (IReadOnlyList<QuestionOption>)new List<QuestionOption>().AsReadOnly()
-            : (JsonSerializer.Deserialize<List<QuestionOption>>(v, OptionsJsonOptions) ?? new List<QuestionOption>()).AsReadOnly());
+            ? new List<QuestionOption>()
+            : JsonSerializer.Deserialize<List<QuestionOption>>(v, OptionsJsonOptions) ?? new List<QuestionOption>());
 
     public void Configure(EntityTypeBuilder<FormQuestion> builder)
     {

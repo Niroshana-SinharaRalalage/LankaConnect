@@ -34,6 +34,10 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // V3 fix (2026-06-12): EF Core default keeps the Id column as
+            // PascalCase quoted "Id" -- v2 used unquoted `id` which Postgres
+            // lower-cases to a non-existent column. All Id references now
+            // properly quoted.
             migrationBuilder.Sql(@"
 DO $$
 DECLARE
@@ -42,77 +46,77 @@ DECLARE
     affected_cols text;
 BEGIN
     -- events.registrations -- five JSONB columns
-    FOR reg_id IN SELECT id FROM events.registrations LOOP
+    FOR reg_id IN SELECT ""Id"" FROM events.registrations LOOP
         affected_cols := '';
 
         BEGIN
             PERFORM 1 FROM events.registrations
-            WHERE id = reg_id AND attendee_info::text IS NOT NULL;
+            WHERE ""Id"" = reg_id AND attendee_info::text IS NOT NULL;
         EXCEPTION WHEN character_not_in_repertoire THEN
-            UPDATE events.registrations SET attendee_info = '{}'::jsonb WHERE id = reg_id;
+            UPDATE events.registrations SET attendee_info = '{}'::jsonb WHERE ""Id"" = reg_id;
             affected_cols := affected_cols || 'attendee_info ';
         END;
 
         BEGIN
             PERFORM 1 FROM events.registrations
-            WHERE id = reg_id AND attendees::text IS NOT NULL;
+            WHERE ""Id"" = reg_id AND attendees::text IS NOT NULL;
         EXCEPTION WHEN character_not_in_repertoire THEN
-            UPDATE events.registrations SET attendees = '[]'::jsonb WHERE id = reg_id;
+            UPDATE events.registrations SET attendees = '[]'::jsonb WHERE ""Id"" = reg_id;
             affected_cols := affected_cols || 'attendees ';
         END;
 
         BEGIN
             PERFORM 1 FROM events.registrations
-            WHERE id = reg_id AND pending_seat_assignments::text IS NOT NULL;
+            WHERE ""Id"" = reg_id AND pending_seat_assignments::text IS NOT NULL;
         EXCEPTION WHEN character_not_in_repertoire THEN
-            UPDATE events.registrations SET pending_seat_assignments = '[]'::jsonb WHERE id = reg_id;
+            UPDATE events.registrations SET pending_seat_assignments = '[]'::jsonb WHERE ""Id"" = reg_id;
             affected_cols := affected_cols || 'pending_seat_assignments ';
         END;
 
         BEGIN
             PERFORM 1 FROM events.registrations
-            WHERE id = reg_id AND contact::text IS NOT NULL;
+            WHERE ""Id"" = reg_id AND contact::text IS NOT NULL;
         EXCEPTION WHEN character_not_in_repertoire THEN
-            UPDATE events.registrations SET contact = '{}'::jsonb WHERE id = reg_id;
+            UPDATE events.registrations SET contact = '{}'::jsonb WHERE ""Id"" = reg_id;
             affected_cols := affected_cols || 'contact ';
         END;
 
         BEGIN
             PERFORM 1 FROM events.registrations
-            WHERE id = reg_id AND head_count::text IS NOT NULL;
+            WHERE ""Id"" = reg_id AND head_count::text IS NOT NULL;
         EXCEPTION WHEN character_not_in_repertoire THEN
-            UPDATE events.registrations SET head_count = '{}'::jsonb WHERE id = reg_id;
+            UPDATE events.registrations SET head_count = '{}'::jsonb WHERE ""Id"" = reg_id;
             affected_cols := affected_cols || 'head_count ';
         END;
 
         IF affected_cols <> '' THEN
-            RAISE NOTICE 'Sanitized events.registrations id=% columns: %', reg_id, affected_cols;
+            RAISE NOTICE 'Sanitized events.registrations Id=% columns: %', reg_id, affected_cols;
             sanitized_count := sanitized_count + 1;
         END IF;
     END LOOP;
 
     -- events.registration_additions -- two JSONB columns
-    FOR reg_id IN SELECT id FROM events.registration_additions LOOP
+    FOR reg_id IN SELECT ""Id"" FROM events.registration_additions LOOP
         affected_cols := '';
 
         BEGIN
             PERFORM 1 FROM events.registration_additions
-            WHERE id = reg_id AND new_attendees::text IS NOT NULL;
+            WHERE ""Id"" = reg_id AND new_attendees::text IS NOT NULL;
         EXCEPTION WHEN character_not_in_repertoire THEN
-            UPDATE events.registration_additions SET new_attendees = '[]'::jsonb WHERE id = reg_id;
+            UPDATE events.registration_additions SET new_attendees = '[]'::jsonb WHERE ""Id"" = reg_id;
             affected_cols := affected_cols || 'new_attendees ';
         END;
 
         BEGIN
             PERFORM 1 FROM events.registration_additions
-            WHERE id = reg_id AND head_count_delta::text IS NOT NULL;
+            WHERE ""Id"" = reg_id AND head_count_delta::text IS NOT NULL;
         EXCEPTION WHEN character_not_in_repertoire THEN
-            UPDATE events.registration_additions SET head_count_delta = '{}'::jsonb WHERE id = reg_id;
+            UPDATE events.registration_additions SET head_count_delta = '{}'::jsonb WHERE ""Id"" = reg_id;
             affected_cols := affected_cols || 'head_count_delta ';
         END;
 
         IF affected_cols <> '' THEN
-            RAISE NOTICE 'Sanitized events.registration_additions id=% columns: %', reg_id, affected_cols;
+            RAISE NOTICE 'Sanitized events.registration_additions Id=% columns: %', reg_id, affected_cols;
             sanitized_count := sanitized_count + 1;
         END IF;
     END LOOP;

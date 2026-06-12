@@ -5,7 +5,7 @@ using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Application.Events.Queries.GetPublicFormResponses;
+using LankaConnect.Modules.Forms.Application.Queries.GetPublicFormResponses;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace LankaConnect.Application.Tests.Events.Queries;
+namespace LankaConnect.Modules.Forms.Application.Tests.Queries;
 
 /// <summary>
 /// Phase 6A.146 — TDD tests for GetPublicFormResponsesQueryHandler.

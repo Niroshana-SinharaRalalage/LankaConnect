@@ -6,14 +6,9 @@ using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Events.Common;
 
-namespace LankaConnect.Application.Events.Queries.GetFormResponses;
+namespace LankaConnect.Modules.Forms.Application.Queries.GetEventFormDetail;
 
 /// <summary>
-/// Gets paginated responses for a form (organizer view).
+/// Gets a specific form with its questions for detail view.
 /// </summary>
-public record GetFormResponsesQuery(
-    Guid EventId,
-    Guid FormId,
-    int Page = 1,
-    int PageSize = 20
-) : IQuery<FormResponsesPagedDto>;
+public record GetEventFormDetailQuery(Guid EventId, Guid FormId) : IQuery<EventFormDetailDto>;

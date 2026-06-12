@@ -10,7 +10,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 
-namespace LankaConnect.Application.Events.Queries.GetMyFormResponseByUserId;
+namespace LankaConnect.Modules.Forms.Application.Queries.GetMyFormResponseByUserId;
 
 /// <summary>
 /// Handler for GetMyFormResponseByUserIdQuery.

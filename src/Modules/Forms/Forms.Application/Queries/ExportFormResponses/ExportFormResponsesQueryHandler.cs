@@ -12,7 +12,7 @@ using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.Queries.ExportFormResponses;
+namespace LankaConnect.Modules.Forms.Application.Queries.ExportFormResponses;
 
 /// <summary>
 /// Handles export of custom form responses to CSV or Excel format.

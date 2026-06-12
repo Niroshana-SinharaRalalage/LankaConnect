@@ -11,7 +11,7 @@ using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.Queries.GetFormResponses;
+namespace LankaConnect.Modules.Forms.Application.Queries.GetFormResponses;
 
 public class GetFormResponsesQueryHandler : IQueryHandler<GetFormResponsesQuery, FormResponsesPagedDto>
 {

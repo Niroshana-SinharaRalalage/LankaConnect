@@ -6,7 +6,7 @@ using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Events.Common;
 
-namespace LankaConnect.Application.Events.Queries.GetMyFormResponse;
+namespace LankaConnect.Modules.Forms.Application.Queries.GetMyFormResponse;
 
 /// <summary>
 /// Gets a respondent's own response by access token (for anonymous edit page).

@@ -65,7 +65,7 @@ using LankaConnect.Application.Events.Commands.AddPassToEvent;
 using LankaConnect.Application.Events.Commands.RemovePassFromEvent;
 using LankaConnect.Application.Events.Queries.GetEventAttendees;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
-using LankaConnect.Application.Events.Queries.ExportFormResponses;
+using LankaConnect.Modules.Forms.Application.Queries.ExportFormResponses;
 using LankaConnect.Application.Events.Queries.GetEventPasses;
 using LankaConnect.Application.Events.Commands.RemoveSignUpListFromEvent;
 using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
@@ -99,12 +99,12 @@ using LankaConnect.Modules.Forms.Application.Commands.ReorderFormQuestions;
 using LankaConnect.Modules.Forms.Application.Commands.SubmitFormResponse;
 using LankaConnect.Modules.Forms.Application.Commands.UpdateFormResponse;
 using LankaConnect.Modules.Forms.Application.Commands.DeleteFormResponse;
-using LankaConnect.Application.Events.Queries.GetEventForms;
-using LankaConnect.Application.Events.Queries.GetEventFormDetail;
-using LankaConnect.Application.Events.Queries.GetFormResponses;
-using LankaConnect.Application.Events.Queries.GetPublicFormResponses;  // Phase 6A.146
-using LankaConnect.Application.Events.Queries.GetMyFormResponse;
-using LankaConnect.Application.Events.Queries.GetMyFormResponseByUserId;
+using LankaConnect.Modules.Forms.Application.Queries.GetEventForms;
+using LankaConnect.Modules.Forms.Application.Queries.GetEventFormDetail;
+using LankaConnect.Modules.Forms.Application.Queries.GetFormResponses;
+using LankaConnect.Modules.Forms.Application.Queries.GetPublicFormResponses;  // Phase 6A.146
+using LankaConnect.Modules.Forms.Application.Queries.GetMyFormResponse;
+using LankaConnect.Modules.Forms.Application.Queries.GetMyFormResponseByUserId;
 using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
 using LankaConnect.Application.Events.Commands.CancelPendingAddition;
 using LankaConnect.Application.Events.Commands.AddTicketTier;

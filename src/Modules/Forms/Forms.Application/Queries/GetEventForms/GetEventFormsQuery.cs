@@ -6,10 +6,9 @@ using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Events.Common;
 
-namespace LankaConnect.Application.Events.Queries.GetMyFormResponseByUserId;
+namespace LankaConnect.Modules.Forms.Application.Queries.GetEventForms;
 
 /// <summary>
-/// Gets a logged-in user's own response by userId (for authenticated users).
-/// Phase 6A.106-110 Fix: Allow logged-in users to see Edit/Delete buttons in Signup Forms tab.
+/// Gets all forms for a specific event (summary view without questions).
 /// </summary>
-public record GetMyFormResponseByUserIdQuery(Guid FormId, Guid UserId) : IQuery<FormResponseDto?>;
+public record GetEventFormsQuery(Guid EventId) : IQuery<List<EventFormDto>>;

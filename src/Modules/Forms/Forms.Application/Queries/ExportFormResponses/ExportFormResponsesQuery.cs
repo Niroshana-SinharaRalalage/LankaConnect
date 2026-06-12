@@ -6,7 +6,7 @@ using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 
-namespace LankaConnect.Application.Events.Queries.ExportFormResponses;
+namespace LankaConnect.Modules.Forms.Application.Queries.ExportFormResponses;
 
 /// <summary>
 /// Query to export custom form responses to CSV or Excel format.

@@ -12,7 +12,7 @@ using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.Queries.GetMyFormResponse;
+namespace LankaConnect.Modules.Forms.Application.Queries.GetMyFormResponse;
 
 public class GetMyFormResponseQueryHandler : IQueryHandler<GetMyFormResponseQuery, FormResponseDto>
 {

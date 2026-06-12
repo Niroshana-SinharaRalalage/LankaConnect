@@ -13,7 +13,7 @@ using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.Queries.GetPublicFormResponses;
+namespace LankaConnect.Modules.Forms.Application.Queries.GetPublicFormResponses;
 
 /// <summary>
 /// Phase 6A.146 — handler for the public form-responses read path.

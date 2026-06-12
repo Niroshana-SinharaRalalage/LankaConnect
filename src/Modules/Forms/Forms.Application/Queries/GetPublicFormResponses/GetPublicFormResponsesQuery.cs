@@ -6,7 +6,7 @@ using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Events.Common;
 
-namespace LankaConnect.Application.Events.Queries.GetPublicFormResponses;
+namespace LankaConnect.Modules.Forms.Application.Queries.GetPublicFormResponses;
 
 /// <summary>
 /// Phase 6A.146 — public, [AllowAnonymous] query that returns the PII-redacted

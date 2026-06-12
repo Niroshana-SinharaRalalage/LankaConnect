@@ -11,7 +11,7 @@ using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.Queries.GetEventFormDetail;
+namespace LankaConnect.Modules.Forms.Application.Queries.GetEventFormDetail;
 
 public class GetEventFormDetailQueryHandler : IQueryHandler<GetEventFormDetailQuery, EventFormDetailDto>
 {

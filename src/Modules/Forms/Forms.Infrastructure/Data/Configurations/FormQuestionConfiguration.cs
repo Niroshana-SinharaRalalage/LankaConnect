@@ -1,6 +1,8 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
@@ -9,6 +11,25 @@ namespace LankaConnect.Modules.Forms.Infrastructure.Data.Configurations;
 
 public class FormQuestionConfiguration : IEntityTypeConfiguration<FormQuestion>
 {
+    // 2026-06-12 BUG-FIX: missing converter caused
+    // "Reading as 'IReadOnlyList<QuestionOption>' is not supported for fields
+    // having DataTypeName 'jsonb'" 500s on any event whose FormQuestion had
+    // Options data. Mirrors the W7E HeadCountConverter pattern in
+    // RegistrationConfiguration -- a NOT-OwnsOne JSON serializer + System.Text.Json,
+    // sidestepping the Phase 6A.130 IReadOnlyList rehydration trap. The
+    // existing deep-copy ValueComparer (lines below) already guards against
+    // the Phase 6A.129 mutate-in-place snapshot trap.
+    private static readonly JsonSerializerOptions OptionsJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    private static readonly ValueConverter<IReadOnlyList<QuestionOption>, string> OptionsConverter = new(
+        v => JsonSerializer.Serialize(v, OptionsJsonOptions),
+        v => string.IsNullOrEmpty(v)
+            ? (IReadOnlyList<QuestionOption>)new List<QuestionOption>().AsReadOnly()
+            : (JsonSerializer.Deserialize<List<QuestionOption>>(v, OptionsJsonOptions) ?? new List<QuestionOption>()).AsReadOnly());
+
     public void Configure(EntityTypeBuilder<FormQuestion> builder)
     {
         builder.HasKey(q => q.Id);
@@ -49,6 +70,7 @@ public class FormQuestionConfiguration : IEntityTypeConfiguration<FormQuestion>
         builder.Property(q => q.Options)
             .HasColumnName("options")
             .HasColumnType("jsonb")
+            .HasConversion(OptionsConverter)
             .Metadata.SetValueComparer(new ValueComparer<IReadOnlyList<QuestionOption>>(
                 (c1, c2) => c1 != null && c2 != null
                     ? c1.SequenceEqual(c2)

@@ -1,3 +1,6 @@
+using LankaConnect.Modules.Forms.Application.Commands;
+using LankaConnect.Modules.Forms.Application.Queries;
+using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Modules.Forms.Domain;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Modules.Forms.Infrastructure.Data;
@@ -43,6 +46,13 @@ public static class FormsModule
 
         services.AddScoped<IFormRepository, FormRepository>();
         services.AddScoped<IFormResponseRepository, FormResponseRepository>();
+
+        // Wave 5.3b (2026-06-11): cross-module Contracts surface — IFormQueries +
+        // IFormCommands. Cross-module consumers (Wave 5.3d EventHandlers in
+        // LankaConnect.Application.Events.*) inject these interfaces instead of
+        // IFormRepository, preserving the ArchTest module boundary.
+        services.AddScoped<IFormQueries, FormQueries>();
+        services.AddScoped<IFormCommands, FormCommands>();
 
         return services;
     }

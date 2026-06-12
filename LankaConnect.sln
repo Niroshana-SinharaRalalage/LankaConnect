@@ -195,6 +195,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedKernel.Cultural.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Forms.Contracts.Tests", "tests\Modules\Forms\Forms.Contracts.Tests\Forms.Contracts.Tests.csproj", "{CD759FCF-5C07-4AA1-B95E-C5901A70D283}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Forms.Application.Tests", "tests\Modules\Forms\Forms.Application.Tests\Forms.Application.Tests.csproj", "{B9DE8C27-F06B-4483-9095-4A455654325C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -508,6 +510,10 @@ Global
 		{CD759FCF-5C07-4AA1-B95E-C5901A70D283}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CD759FCF-5C07-4AA1-B95E-C5901A70D283}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CD759FCF-5C07-4AA1-B95E-C5901A70D283}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B9DE8C27-F06B-4483-9095-4A455654325C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9DE8C27-F06B-4483-9095-4A455654325C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9DE8C27-F06B-4483-9095-4A455654325C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9DE8C27-F06B-4483-9095-4A455654325C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{88DC2F5A-D5CB-4AA0-91BA-01E70C0822B0} = {1C682E29-A286-437F-BFB1-70E7B2D5C95D}
@@ -604,5 +610,6 @@ Global
 		{87539D45-B3DE-4094-8FD5-FA436223D398} = {5B4DD37B-8BB1-49F8-B305-92F5DE52B238}
 		{3C2EEB36-8016-4828-9DE8-7DB2FF692553} = {87539D45-B3DE-4094-8FD5-FA436223D398}
 		{CD759FCF-5C07-4AA1-B95E-C5901A70D283} = {26D871FA-4A2D-43B7-98F2-8CF1FC82D555}
+		{B9DE8C27-F06B-4483-9095-4A455654325C} = {26D871FA-4A2D-43B7-98F2-8CF1FC82D555}
 	EndGlobalSection
 EndGlobal

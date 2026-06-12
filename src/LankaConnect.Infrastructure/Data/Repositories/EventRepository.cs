@@ -822,12 +822,10 @@ public class EventRepository : Repository<Event>, IEventRepository
             _repoLogger.LogInformation("[SEARCH-5] Added start date filter (TBD-inclusive): {StartDateFrom}", startDateFrom.Value);
         }
 
-        // 2026-06-11 INCIDENT GUARD: append the corrupt-event exclude clause.
-        // EventConfiguration applies a HasQueryFilter that excludes
-        // ad8903c4-e98e-49dd-b44e-d89f916c49dc from EVERY LINQ query, but
-        // FromSqlRaw BYPASSES query filters -- so SearchAsync must add the
-        // exclude manually. See memory [[corrupt-jsonb-event-2026-06-11]].
-        whereConditions.Add("e.\"Id\" <> 'ad8903c4-e98e-49dd-b44e-d89f916c49dc'");
+        // 2026-06-12: SearchAsync corrupt-event exclude clause REMOVED.
+        // Migration 20260612003753_SanitizeNullBytesInRegistrationJsonb (commit
+        // a3df8b31) permanently repaired the bad rows; the defensive WHERE
+        // filter is no longer needed.
 
         var whereClause = string.Join(" AND ", whereConditions);
 

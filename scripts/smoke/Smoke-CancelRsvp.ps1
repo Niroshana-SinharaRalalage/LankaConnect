@@ -39,10 +39,10 @@
 #>
 [CmdletBinding()]
 param(
-    # Default = "Phase 6 Test - Free Event" — organizer-owned, Published,
-    # start 2026-06-20 (future at time of write). RSVPs allowed.
-    # Override to point at any future Published event the test user organizes.
-    [string]$EventId    = '6d202a73-fa55-46e6-b966-e4409b8e6342',
+    # Default = "6A.153 window smoke (OPEN)" — Niroshana-owned, Published,
+    # purpose-built for window-smoke fixtures (start 2026-06-25). Override to
+    # any future-dated Published event the test user organizes.
+    [string]$EventId    = '18f6fbcf-d54f-4d63-8f75-a4f50358c51e',
     [string]$StagingUrl = $(if ($env:LC_STAGING_URL) { $env:LC_STAGING_URL } else { 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io' })
 )
 
@@ -58,7 +58,6 @@ if (-not $env:LC_BEARER) {
 
 $headers = @{ Authorization = "Bearer $env:LC_BEARER" }
 $formId = $null
-$rsvpCreated = $false
 
 function Invoke-Api {
     param([string]$Method, [string]$Path, [object]$Body, [int[]]$AcceptedStatusCodes = @(200, 201))
@@ -122,16 +121,18 @@ try {
 
     # ----- 2. Create an RSVP for the test organizer -----
     Write-Host "[3/5] Creating RSVP..." -ForegroundColor Cyan
-    $rsvpBody = @{ }
+    $rsvpBody = @{
+        userId   = $env:LC_USER_ID
+        quantity = 1
+        email    = $env:LC_USER_EMAIL
+    }
     try {
         Invoke-Api -Method POST -Path "/api/Events/$EventId/rsvp" -Body $rsvpBody -AcceptedStatusCodes @(200, 201, 204, 409) | Out-Null
-        $rsvpCreated = $true
     }
     catch {
         # 409 (already RSVP'd) is fine — we'll cancel whatever exists.
         if ($_.Exception.Message -match '409') {
             Write-Host "  RSVP already exists; proceeding."
-            $rsvpCreated = $true
         }
         else { throw }
     }

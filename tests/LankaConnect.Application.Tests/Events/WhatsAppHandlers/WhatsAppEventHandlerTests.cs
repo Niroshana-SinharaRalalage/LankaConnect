@@ -6,6 +6,7 @@ using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.EventHandlers;
+using LankaConnect.Modules.Forms.Application.EventHandlers; // W5.3d.2: FormResponseWhatsAppHandler moved here
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;

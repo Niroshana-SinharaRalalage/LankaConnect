@@ -14,7 +14,7 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace LankaConnect.Application.Events.EventHandlers;
+namespace LankaConnect.Modules.Forms.Application.EventHandlers;
 
 /// <summary>
 /// Phase 7B.3: Sends WhatsApp form response confirmation when a user submits an event form.

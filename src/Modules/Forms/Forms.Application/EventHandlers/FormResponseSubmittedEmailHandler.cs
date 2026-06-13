@@ -18,33 +18,34 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.EventHandlers;
+namespace LankaConnect.Modules.Forms.Application.EventHandlers;
 
 /// <summary>
-/// Sends update notification email when a form response is modified.
-/// Phase 6A.107: Email notification confirming changes with edit link.
+/// Sends confirmation email when a form response is submitted.
+/// Phase 6A.107: Email notification with edit link for cross-browser access.
 ///
 /// FAIL-SILENT PATTERN: Email failures are logged but don't throw exceptions
-/// to prevent transaction rollback.
+/// to prevent transaction rollback. Domain event has already been raised,
+/// response is already persisted - email is supplementary communication.
 ///
-/// Architect Review: Approved - mirrors signup commitment update pattern.
+/// Architect Review: Approved - mirrors signup commitment pattern with response summary limits.
 /// </summary>
-public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventNotification<FormResponseUpdatedEvent>>
+public class FormResponseSubmittedEmailHandler : INotificationHandler<DomainEventNotification<FormResponseSubmittedEvent>>
 {
     private readonly IFormResponseRepository _formResponseRepository;
     private readonly IFormRepository _eventFormRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
-    private readonly ILogger<FormResponseUpdatedEmailHandler> _logger;
+    private readonly ILogger<FormResponseSubmittedEmailHandler> _logger;
 
-    public FormResponseUpdatedEmailHandler(
+    public FormResponseSubmittedEmailHandler(
         IFormResponseRepository formResponseRepository,
         IFormRepository eventFormRepository,
         IEventRepository eventRepository,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
-        ILogger<FormResponseUpdatedEmailHandler> logger)
+        ILogger<FormResponseSubmittedEmailHandler> logger)
     {
         _formResponseRepository = formResponseRepository;
         _eventFormRepository = eventFormRepository;
@@ -54,11 +55,11 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
         _logger = logger;
     }
 
-    public async Task Handle(DomainEventNotification<FormResponseUpdatedEvent> notification, CancellationToken cancellationToken)
+    public async Task Handle(DomainEventNotification<FormResponseSubmittedEvent> notification, CancellationToken cancellationToken)
     {
         var domainEvent = notification.DomainEvent;
 
-        using (LogContext.PushProperty("Operation", "FormResponseUpdatedEmail"))
+        using (LogContext.PushProperty("Operation", "FormResponseSubmittedEmail"))
         using (LogContext.PushProperty("EntityType", "FormResponse"))
         using (LogContext.PushProperty("FormId", domainEvent.FormId))
         using (LogContext.PushProperty("ResponseId", domainEvent.ResponseId))
@@ -66,59 +67,66 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "FormResponseUpdatedEmail START: FormId={FormId}, ResponseId={ResponseId}",
-                domainEvent.FormId, domainEvent.ResponseId);
+                "FormResponseSubmittedEmail START: FormId={FormId}, ResponseId={ResponseId}, HasEmail={HasEmail}, HasToken={HasToken}",
+                domainEvent.FormId, domainEvent.ResponseId,
+                !string.IsNullOrEmpty(domainEvent.RespondentEmail),
+                !string.IsNullOrEmpty(domainEvent.AccessToken));
 
             try
             {
-                // Phase 6A.114: Use Form and Event from domain event (already loaded by command handler)
-                // Performance optimization: Eliminates 2 duplicate database queries
-                // Before: 3 queries (response, form, event) = 40s total
-                // After: 1 query (response only) = 5-8s total (75-80% improvement!)
-                var form = domainEvent.Form;
-                var eventEntity = domainEvent.Event;
+                // Skip if no email provided (anonymous user without email)
+                if (string.IsNullOrWhiteSpace(domainEvent.RespondentEmail))
+                {
+                    stopwatch.Stop();
+                    _logger.LogInformation(
+                        "FormResponseSubmittedEmail SKIPPED: No respondent email provided, Duration={ElapsedMs}ms",
+                        stopwatch.ElapsedMilliseconds);
+                    return;
+                }
 
-                _logger.LogInformation(
-                    "FormResponseUpdatedEmail: Using pre-loaded entities from domain event - Form={FormTitle}, Event={EventTitle}",
-                    form.Title, eventEntity.Title.Value);
-
-                // Load response with answers (still needed for email content with latest data)
+                // Load response with answers
                 var response = await _formResponseRepository.GetByIdWithAnswersAsync(domainEvent.ResponseId, cancellationToken);
                 if (response == null)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "FormResponseUpdatedEmail FAILED: Response not found - ResponseId={ResponseId}, Duration={ElapsedMs}ms",
+                        "FormResponseSubmittedEmail FAILED: Response not found - ResponseId={ResponseId}, Duration={ElapsedMs}ms",
                         domainEvent.ResponseId, stopwatch.ElapsedMilliseconds);
                     return;
                 }
 
-                // Skip if no email provided
-                if (string.IsNullOrWhiteSpace(response.RespondentEmail))
+                // Load form with questions (for response summary)
+                var form = await _eventFormRepository.GetByIdWithQuestionsAsync(domainEvent.FormId, cancellationToken);
+                if (form == null)
                 {
                     stopwatch.Stop();
-                    _logger.LogInformation(
-                        "FormResponseUpdatedEmail SKIPPED: No respondent email, Duration={ElapsedMs}ms",
-                        stopwatch.ElapsedMilliseconds);
+                    _logger.LogWarning(
+                        "FormResponseSubmittedEmail FAILED: Form not found - FormId={FormId}, Duration={ElapsedMs}ms",
+                        domainEvent.FormId, stopwatch.ElapsedMilliseconds);
                     return;
                 }
 
-                // Build response summary
+                // Load event (for event details in email)
+                var eventEntity = await _eventRepository.GetByIdAsync(response.EventId, cancellationToken);
+                if (eventEntity == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "FormResponseSubmittedEmail FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        response.EventId, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                // Build response summary with length limits (Architect fix: max 5 questions, 100 chars per answer)
                 var responseSummary = BuildResponseSummary(response.Answers, form.Questions, maxQuestions: 5, maxAnswerLength: 100);
 
-                // Phase 6A.116 Issue #8: Build edit URL with proper path (fixes 404 error)
-                // Note: No token available for update emails (plaintext token is only returned on initial submission)
-                // User must use token from original confirmation email or be logged in to edit
-                var editUrl = _emailUrlHelper.BuildFormEditUrl(eventEntity.Id, domainEvent.FormId, accessToken: null);
-
-                _logger.LogInformation(
-                    "FormResponseUpdatedEmail: Generated edit URL: {EditUrl}, EventId: {EventId}, FormId: {FormId}",
-                    editUrl, eventEntity.Id, domainEvent.FormId);
+                // Build edit URL with access token (for anonymous users) or without (for logged-in users)
+                var editUrl = BuildEditUrl(response.EventId, domainEvent.FormId, domainEvent.AccessToken);
 
                 // Create email parameters
-                var emailParams = FormResponseEmailParams.CreateUpdate(
+                var emailParams = FormResponseEmailParams.CreateConfirmation(
                     userName: response.RespondentName ?? "User",
-                    userEmail: response.RespondentEmail,
+                    userEmail: domainEvent.RespondentEmail,
                     eventId: eventEntity.Id,
                     eventTitle: eventEntity.Title.Value,
                     formTitle: form.Title,
@@ -128,7 +136,7 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                     timeZoneId: eventEntity.TimeZoneId,
                     eventLocation: eventEntity.Location?.ToString() ?? string.Empty,
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(eventEntity.Id),
-                    updatedAt: domainEvent.OccurredAt
+                    submittedAt: response.SubmittedAt
                 );
 
                 // Add optional fields
@@ -156,27 +164,17 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                         .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
                         .ToList());
 
-                // Phase 6A.116 Issue #4, #9: Add signup lists & forms URLs
+                // Phase 6A.129: Add signup lists & forms URLs for email action buttons
                 if (eventEntity.SignUpLists?.Any() == true)
                 {
                     var signupListsUrl = _emailUrlHelper.BuildSignupListsUrl(eventEntity.Id);
                     emailParams.WithSignupListsUrl(signupListsUrl);
-
-                    _logger.LogInformation(
-                        "FormResponseUpdatedEmail: Added signup lists URL: {SignupListsUrl}",
-                        signupListsUrl);
                 }
-
-                // Phase 6A.116 Issue #4: Always add signup forms URL since we're in a form response context
-                // The event definitely has forms if we're sending a form response email
+                // Always add signup forms URL — event has forms if we're sending a form response email
                 var signupFormsUrl = _emailUrlHelper.BuildSignupFormsUrl(eventEntity.Id);
                 emailParams.WithSignupFormsUrl(signupFormsUrl);
 
-                _logger.LogInformation(
-                    "FormResponseUpdatedEmail: Added signup forms URL: {SignupFormsUrl}",
-                    signupFormsUrl);
-
-                // Send email (fail-silent)
+                // Send email (fail-silent: log errors but don't throw)
                 var emailResult = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
                 stopwatch.Stop();
@@ -184,27 +182,31 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                 if (emailResult.Success)
                 {
                     _logger.LogInformation(
-                        "FormResponseUpdatedEmail SUCCESS: Email sent to {RecipientEmail}, Duration={ElapsedMs}ms",
-                        response.RespondentEmail, stopwatch.ElapsedMilliseconds);
+                        "FormResponseSubmittedEmail SUCCESS: Email sent to {RecipientEmail}, Duration={ElapsedMs}ms",
+                        domainEvent.RespondentEmail, stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
                     _logger.LogError(
-                        "FormResponseUpdatedEmail FAILED: Email send failed - RecipientEmail={RecipientEmail}, Error={Error}, Duration={ElapsedMs}ms",
-                        response.RespondentEmail, string.Join(", ", emailResult.Errors), stopwatch.ElapsedMilliseconds);
+                        "FormResponseSubmittedEmail FAILED: Email send failed - RecipientEmail={RecipientEmail}, Error={Error}, Duration={ElapsedMs}ms",
+                        domainEvent.RespondentEmail, string.Join(", ", emailResult.Errors), stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                // FAIL-SILENT: Log error but don't throw
+                // FAIL-SILENT: Log error but don't throw (prevent transaction rollback)
                 _logger.LogError(ex,
-                    "FormResponseUpdatedEmail EXCEPTION: Unexpected error - FormId={FormId}, ResponseId={ResponseId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    "FormResponseSubmittedEmail EXCEPTION: Unexpected error - FormId={FormId}, ResponseId={ResponseId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
                     domainEvent.FormId, domainEvent.ResponseId, stopwatch.ElapsedMilliseconds, ex.Message);
             }
         }
     }
 
+    /// <summary>
+    /// Builds a concise response summary from form answers.
+    /// Architect fix: Limits to 5 questions, 100 chars per answer to prevent email bloat.
+    /// </summary>
     private string BuildResponseSummary(
         IReadOnlyList<FormAnswer> answers,
         IReadOnlyList<FormQuestion> questions,
@@ -227,19 +229,37 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                             string.Join(", ", answer.SelectedOptionTextSnapshots ?? new List<string>()) ??
                             answer.BooleanValue?.ToString() ?? "";
 
+            // Truncate long answers
             if (answerText.Length > maxAnswerLength)
                 answerText = $"{answerText.Substring(0, maxAnswerLength)}...";
 
-            return $"<strong>{questionText}:</strong> {answerText}";
+            return $"{questionText}: {answerText}";
         });
 
-        // Phase 6A.115 Issue #4: Use HTML line breaks instead of pipes for better email readability
-        var summary = string.Join("<br/>", summaryParts);
+        var summary = string.Join(" | ", summaryParts);
 
         var remainingCount = answers.Count - maxQuestions;
         if (remainingCount > 0)
-            summary += $"<br/><em>... and {remainingCount} more response{(remainingCount > 1 ? "s" : "")}</em>";
+            summary += $" | ... and {remainingCount} more response{(remainingCount > 1 ? "s" : "")}";
 
         return summary;
+    }
+
+    /// <summary>
+    /// Builds edit URL with access token for anonymous users or without for logged-in users.
+    /// Architect fix: Token passed via domain event (in-memory only, never persisted).
+    /// </summary>
+    private string BuildEditUrl(Guid eventId, Guid formId, string? accessToken)
+    {
+        var baseUrl = _emailUrlHelper.BuildEventDetailsUrl(eventId).Replace("/details", "");
+
+        // For anonymous users: Include token in URL for cross-browser access
+        // For logged-in users: No token needed (fetched by userId in backend)
+        if (!string.IsNullOrEmpty(accessToken))
+        {
+            return $"{baseUrl}/events/{eventId}/forms/{formId}?token={accessToken}";
+        }
+
+        return $"{baseUrl}/events/{eventId}/forms/{formId}";
     }
 }

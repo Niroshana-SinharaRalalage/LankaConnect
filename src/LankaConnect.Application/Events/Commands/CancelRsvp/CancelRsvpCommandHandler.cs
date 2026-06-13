@@ -1,10 +1,6 @@
 using System.Diagnostics;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
 using System.Linq;
+using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
@@ -23,7 +19,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IRegistrationRefundService _refundService;
-    private readonly IFormResponseRepository _formResponseRepository;
+    private readonly IFormCommands _formCommands;
     private readonly IAddOnRefundService _addOnRefundService;
     // Phase 6A.137F: Collection and sponsor refund support
     private readonly ICollectionRepository _collectionRepository;
@@ -41,7 +37,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IRegistrationRefundService refundService,
-        IFormResponseRepository formResponseRepository,
+        IFormCommands formCommands,
         IAddOnRefundService addOnRefundService,
         // Phase 6A.137F: Inject collection/sponsor refund dependencies
         ICollectionRepository collectionRepository,
@@ -58,7 +54,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _refundService = refundService;
-        _formResponseRepository = formResponseRepository;
+        _formCommands = formCommands;
         _addOnRefundService = addOnRefundService;
         _collectionRepository = collectionRepository;
         _sponsorRepository = sponsorRepository;
@@ -231,7 +227,14 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                             request.EventId, request.UserId);
                     }
 
-                    // Cancellation enhancement: Handle form response deletion (non-blocking)
+                    // Cancellation enhancement: Handle form response deletion (non-blocking).
+                    // Wave 5.3d.2: routed through IFormCommands (Forms.Contracts) instead of the
+                    // legacy IFormResponseRepository. FormCommands.DeleteResponsesByEventAndUserAsync
+                    // raises FormResponseDeletedEvent per response before delete (mirrors the
+                    // pre-5.3d in-line loop) so the cancellation email + WhatsApp pipeline still
+                    // fires. Atomicity: the call self-saves on FormsDbContext (W4.3 / ADR-010)
+                    // — a partial failure surfaces as the existing warning collection and the
+                    // outer try/catch records it without blocking the cancel.
                     bool? formResponsesDeleted = null;
                     int? formResponsesDeletedCount = null;
                     if (request.DeleteFormResponses)
@@ -242,33 +245,15 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                                 "CancelRsvp: Deleting form responses - EventId={EventId}, UserId={UserId}",
                                 request.EventId, request.UserId);
 
-                            var formResponses = await _formResponseRepository.GetByEventAndUserAsync(
+                            var deletedCount = await _formCommands.DeleteResponsesByEventAndUserAsync(
                                 request.EventId, request.UserId, cancellationToken);
 
-                            if (formResponses.Count > 0)
-                            {
-                                foreach (var response in formResponses)
-                                {
-                                    response.RaiseDeletedEvent();
-                                    await _formResponseRepository.DeleteAsync(response, cancellationToken);
-                                }
+                            formResponsesDeleted = true;
+                            formResponsesDeletedCount = deletedCount;
 
-                                formResponsesDeleted = true;
-                                formResponsesDeletedCount = formResponses.Count;
-
-                                _logger.LogInformation(
-                                    "CancelRsvp: Deleted {Count} form responses - EventId={EventId}, UserId={UserId}",
-                                    formResponses.Count, request.EventId, request.UserId);
-                            }
-                            else
-                            {
-                                formResponsesDeleted = true;
-                                formResponsesDeletedCount = 0;
-
-                                _logger.LogInformation(
-                                    "CancelRsvp: No form responses found to delete - EventId={EventId}, UserId={UserId}",
-                                    request.EventId, request.UserId);
-                            }
+                            _logger.LogInformation(
+                                "CancelRsvp: Deleted {Count} form responses - EventId={EventId}, UserId={UserId}",
+                                deletedCount, request.EventId, request.UserId);
                         }
                         catch (Exception ex)
                         {

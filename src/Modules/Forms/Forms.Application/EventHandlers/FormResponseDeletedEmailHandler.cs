@@ -17,7 +17,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.EventHandlers;
+namespace LankaConnect.Modules.Forms.Application.EventHandlers;
 
 /// <summary>
 /// Sends cancellation notification email when a form response is deleted.

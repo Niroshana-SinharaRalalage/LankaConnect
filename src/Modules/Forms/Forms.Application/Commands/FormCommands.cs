@@ -29,8 +29,13 @@ public sealed class FormCommands : IFormCommands
             return 0;
         }
 
+        // Wave 5.3d.2: raise FormResponseDeletedEvent per response BEFORE delete.
+        // Mirrors DeleteFormResponseCommandHandler.cs:143 — without it, the
+        // FormResponseDeleted email + WhatsApp pipeline goes silent when this
+        // contract method replaces the previous in-line CancelRsvp loop.
         foreach (var response in responses)
         {
+            response.RaiseDeletedEvent();
             await _formResponseRepository.DeleteAsync(response, ct);
         }
 

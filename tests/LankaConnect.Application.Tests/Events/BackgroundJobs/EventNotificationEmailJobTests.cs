@@ -1,9 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
@@ -36,7 +32,7 @@ public class EventNotificationEmailJobTests
 {
     private readonly Mock<IEventNotificationHistoryRepository> _mockHistoryRepository;
     private readonly Mock<IEventRepository> _mockEventRepository;
-    private readonly Mock<IFormRepository> _mockFormRepository;
+    private readonly Mock<IFormQueries> _mockFormQueries;
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepository;
     private readonly Mock<IEventNotificationRecipientService> _mockRecipientService;
     private readonly Mock<IUserRepository> _mockUserRepository;
@@ -51,7 +47,7 @@ public class EventNotificationEmailJobTests
     {
         _mockHistoryRepository = new Mock<IEventNotificationHistoryRepository>();
         _mockEventRepository = new Mock<IEventRepository>();
-        _mockFormRepository = new Mock<IFormRepository>();
+        _mockFormQueries = new Mock<IFormQueries>();
         _mockRegistrationRepository = new Mock<IRegistrationRepository>();
         _mockRecipientService = new Mock<IEventNotificationRecipientService>();
         _mockUserRepository = new Mock<IUserRepository>();
@@ -62,14 +58,14 @@ public class EventNotificationEmailJobTests
         _mockLogger = new Mock<ILogger<EventNotificationEmailJob>>();
 
         // Phase 6A.129: Return empty forms list by default
-        _mockFormRepository
-            .Setup(x => x.GetByEventIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<LankaConnect.Modules.Forms.Domain.Form>());
+        _mockFormQueries
+            .Setup(x => x.GetByOwnerAsync(FormOwnerEntityTypeDto.Event, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FormSummaryDto>());
 
         _job = new EventNotificationEmailJob(
             _mockHistoryRepository.Object,
             _mockEventRepository.Object,
-            _mockFormRepository.Object,
+            _mockFormQueries.Object,
             _mockRegistrationRepository.Object,
             _mockRecipientService.Object,
             _mockUserRepository.Object,

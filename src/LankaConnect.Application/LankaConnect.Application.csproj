@@ -7,15 +7,18 @@
     <ProjectReference Include="..\Modules\Notifications\Notifications.Domain\Notifications.Domain.csproj" />
     <!-- W4.2 (2026-06-06) — PhotoAlbum + AlbumPhoto + IPhotoAlbumRepository moved out of legacy LankaConnect.Domain.Events. -->
     <ProjectReference Include="..\Modules\Media\Media.Domain\Media.Domain.csproj" />
-    <!-- W4.3 (2026-06-06) — EventForm + FormQuestion + FormResponse + FormAnswer + IFormRepositories moved out of legacy LankaConnect.Domain.Events. -->
-    <ProjectReference Include="..\Modules\Forms\Forms.Domain\Forms.Domain.csproj" />
-    <!-- W5.3d (2026-06-12). Forms.Contracts surface (IFormQueries / IFormCommands / DTOs)
-         consumed by the 12 EventHandlers swapped away from IFormRepository in this commit.
-         The matching Forms.Domain ProjectReference (above) is retained for now because the
-         4 FormResponse EventHandlers still directly couple to Forms.Domain.DomainEvents
-         and IFormResponseRepository. Those couplings require a follow up commit
-         (architect pending) before Forms.Domain can be cut. ArchTest Rule 2 (Wave 5.3e)
-         blocks the cut step. -->
+    <!-- W5.3d.3 (2026-06-13). Cross-module Forms surface for legacy
+         LankaConnect.Application code: IFormQueries / IFormCommands / DTOs from
+         Forms.Contracts. The W4.3-era Forms.Domain ProjectReference was CUT in
+         this commit — see ArchTest LegacyApplication_DoesNotDependOnFormsDomain
+         (LayeringRules.cs) which now pins the boundary. All consumers:
+           - 12 EventHandlers (5.3d.1) on IFormQueries
+           - CancelRsvpCommandHandler (5.3d.2) on IFormCommands
+           - EventNotificationEmailJob (5.3d.3) on IFormQueries
+           - EventFormDtos (5.3d.3) on FormStatusDto / FormQuestionTypeDto
+         The 4 FormResponse* EventHandlers (Submitted/Updated/Deleted/WhatsApp)
+         moved into Forms.Application/EventHandlers in 5.3d.2 — they no longer
+         live in this assembly. -->
     <ProjectReference Include="..\Modules\Forms\Forms.Contracts\Forms.Contracts.csproj" />
   </ItemGroup>
 

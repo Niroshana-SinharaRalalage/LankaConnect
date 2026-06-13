@@ -6,6 +6,7 @@ using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
+using LankaConnect.Modules.Forms.Application.Mappings;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
@@ -65,7 +66,7 @@ public class GetEventFormsQueryHandler : IQueryHandler<GetEventFormsQuery, List<
                         EventId = form.EventId,
                         Title = form.Title,
                         Description = form.Description,
-                        Status = form.Status,
+                        Status = form.Status.ToContractDto(),
                         AllowMultipleResponses = form.AllowMultipleResponses,
                         ResponseDeadline = form.ResponseDeadline,
                         MaxResponses = form.MaxResponses,

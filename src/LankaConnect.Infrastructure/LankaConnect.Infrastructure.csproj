@@ -2,6 +2,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- W5.3d.3 (2026-06-13). Wave 5.3d.3 cut the legacy
+         LankaConnect.Application -> Forms.Domain edge, and Infrastructure had
+         been leaning on it transitively. EF Core configurations
+         (RefundRequestConfiguration), the registration email service, and the
+         Twilio template seeder still legitimately consume Forms.Domain types
+         from the Infrastructure layer (ADR-002 allows the legacy infra layer
+         to reach module Domain layers for cross-module persistence wiring).
+         Make the dependency explicit so the cut is contained to the Application
+         layer per the master-TODO ArchTest invariant
+         (LegacyApplication_DoesNotDependOnFormsDomain). -->
+    <ProjectReference Include="..\Modules\Forms\Forms.Domain\Forms.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

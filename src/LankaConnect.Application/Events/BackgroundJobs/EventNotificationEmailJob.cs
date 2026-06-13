@@ -1,9 +1,5 @@
 using System.Diagnostics;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Helpers;
@@ -33,7 +29,7 @@ public class EventNotificationEmailJob
 {
     private readonly IEventNotificationHistoryRepository _historyRepository;
     private readonly IEventRepository _eventRepository;
-    private readonly IFormRepository _eventFormRepository;
+    private readonly IFormQueries _formQueries;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IUserRepository _userRepository;
@@ -46,7 +42,7 @@ public class EventNotificationEmailJob
     public EventNotificationEmailJob(
         IEventNotificationHistoryRepository historyRepository,
         IEventRepository eventRepository,
-        IFormRepository eventFormRepository,
+        IFormQueries formQueries,
         IRegistrationRepository registrationRepository,
         IEventNotificationRecipientService recipientService,
         IUserRepository userRepository,
@@ -58,7 +54,7 @@ public class EventNotificationEmailJob
     {
         _historyRepository = historyRepository;
         _eventRepository = eventRepository;
-        _eventFormRepository = eventFormRepository;
+        _formQueries = formQueries;
         _registrationRepository = registrationRepository;
         _recipientService = recipientService;
         _userRepository = userRepository;
@@ -166,8 +162,8 @@ public class EventNotificationEmailJob
             var eventImageUrl = primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "";
 
             // Phase 6A.129: Check for active signup forms (once, outside the loop)
-            var eventForms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
-            var hasActiveSignupForms = eventForms.Any(f => f.Status == FormStatus.Active);
+            var eventForms = await _formQueries.GetByOwnerAsync(FormOwnerEntityTypeDto.Event, @event.Id, cancellationToken);
+            var hasActiveSignupForms = eventForms.Any(f => f.Status == FormStatusDto.Active);
             var signupFormsUrl = hasActiveSignupForms
                 ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms"
                 : "";

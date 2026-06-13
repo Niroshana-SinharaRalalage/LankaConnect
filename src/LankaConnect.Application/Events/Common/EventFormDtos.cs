@@ -1,9 +1,5 @@
 using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Contracts;
 
 namespace LankaConnect.Application.Events.Common;
 
@@ -16,7 +12,7 @@ public record EventFormDto
     public Guid EventId { get; init; }
     public string Title { get; init; } = string.Empty;
     public string? Description { get; init; }
-    public FormStatus Status { get; init; }
+    public FormStatusDto Status { get; init; }
     public bool AllowMultipleResponses { get; init; }
     public DateTime? ResponseDeadline { get; init; }
     public int? MaxResponses { get; init; }
@@ -42,7 +38,7 @@ public record EventFormDetailDto
     public Guid EventId { get; init; }
     public string Title { get; init; } = string.Empty;
     public string? Description { get; init; }
-    public FormStatus Status { get; init; }
+    public FormStatusDto Status { get; init; }
     public bool AllowMultipleResponses { get; init; }
     public DateTime? ResponseDeadline { get; init; }
     public int? MaxResponses { get; init; }
@@ -67,7 +63,7 @@ public record FormQuestionDto
 {
     public Guid Id { get; init; }
     public string QuestionText { get; init; } = string.Empty;
-    public FormQuestionType QuestionType { get; init; }
+    public FormQuestionTypeDto QuestionType { get; init; }
     public bool IsRequired { get; init; }
     public int SortOrder { get; init; }
     public string? HelpText { get; init; }

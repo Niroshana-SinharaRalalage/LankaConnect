@@ -655,6 +655,36 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    /// <summary>
+    /// W5.3d.3 (2026-06-13) — pins the cut completed in this commit:
+    /// LankaConnect.Application no longer references Forms.Domain. Cross-module
+    /// Forms access from the legacy Application layer flows through
+    /// Forms.Contracts (IFormQueries / IFormCommands / *Dto). Catch any future
+    /// regression where a new handler/service inside LankaConnect.Application
+    /// imports a Forms.Domain symbol.
+    ///
+    /// Scope note: LankaConnect.Infrastructure still legitimately references
+    /// Forms.Domain (RefundRequestConfiguration EF mapping, the registration
+    /// email service, the Twilio template seeder). That coupling is the legacy
+    /// infrastructure layer reaching module Domain for cross-module persistence
+    /// wiring and is explicitly allowed by ADR-002; only the Application-layer
+    /// cut is pinned here.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void LegacyApplication_DoesNotDependOnFormsDomain()
+    {
+        var assembly = typeof(LankaConnect.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Forms.Domain")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
     // ---------- W4.7 — CulturalIntelligence module boundaries (added 2026-06-06) ----------
 
     [Fact]

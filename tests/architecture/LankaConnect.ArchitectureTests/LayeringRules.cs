@@ -232,6 +232,15 @@ public sealed class LayeringRules
     /// "LankaConnect.Application" and "LankaConnect.Domain" back to
     /// NotHaveDependencyOnAny once the BB elevation lands (cuts both this and
     /// the Notifications.Application edge in a single coordinated wave).
+    ///
+    /// W5.3d.2 (2026-06-12) — also relaxed `LankaConnect.Shared` because the
+    /// 4 FormResponse* EventHandlers moved into this assembly carry
+    /// LankaConnect.Shared.Email.{Contracts,Helpers,Services} and
+    /// LankaConnect.Shared.WhatsApp.Contracts usings — that namespace is the
+    /// horizontal/utility email + WhatsApp templating kernel shared across
+    /// every module today. Add `"LankaConnect.Shared"` back to the ban list
+    /// once BuildingBlocks.Shared (or a Communications.Contracts elevation)
+    /// owns those abstractions.
     /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]
@@ -247,8 +256,7 @@ public sealed class LayeringRules
                 "LankaConnect.BuildingBlocks.Infrastructure",
                 "LankaConnect.BuildingBlocks.Web",
                 "LankaConnect.Infrastructure",
-                "LankaConnect.API",
-                "LankaConnect.Shared")
+                "LankaConnect.API")
             .GetResult();
 
         AssertCompliant(result, assembly.GetName().Name!);

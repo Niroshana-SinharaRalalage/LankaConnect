@@ -31,9 +31,19 @@ public static class FormsModule
             ?? throw new InvalidOperationException(
                 "ConnectionStrings:DefaultConnection is required to register FormsDbContext.");
 
+        // Hotfix 2026-06-12 (surfaced by Wave 5.3d.2 Smoke-CancelRsvp).
+        // FormResponse.SelectedOptionIds is a List<Guid> jsonb column — writing it
+        // via Npgsql 8+ requires EnableDynamicJson() on the data source. Mirrors
+        // src/LankaConnect.Infrastructure/DependencyInjection.cs:73 for AppDbContext.
+        // Without this opt-in, every POST /api/Events/{eventId}/forms/{formId}/responses
+        // throws InvalidCastException at save (broken since W4.3 2026-06-06).
+        var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
+        dataSourceBuilder.EnableDynamicJson();
+        var dataSource = dataSourceBuilder.Build();
+
         services.AddDbContext<FormsDbContext>(options =>
         {
-            options.UseNpgsql(connectionString, npgsqlOptions =>
+            options.UseNpgsql(dataSource, npgsqlOptions =>
             {
                 npgsqlOptions.MigrationsAssembly(typeof(FormsDbContext).Assembly.GetName().Name);
                 npgsqlOptions.MigrationsHistoryTable(MigrationsHistoryTable, FormsDbContext.SchemaName);

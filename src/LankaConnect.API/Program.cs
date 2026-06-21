@@ -8,6 +8,7 @@ using LankaConnect.Application.Badges.BackgroundJobs;
 using LankaConnect.Application.Communications.BackgroundJobs;
 using LankaConnect.BuildingBlocks.Web.Telemetry;
 using LankaConnect.Infrastructure;
+using LankaConnect.Modules.Communications.Api;
 using LankaConnect.Modules.CulturalIntelligence.Api;
 using LankaConnect.Modules.Forms.Api;
 using LankaConnect.Modules.Media.Api;
@@ -112,6 +113,12 @@ try
     // (cross-schema overrides for events.event_forms / form_questions /
     // form_responses / form_answers) + IFormRepository + IFormResponseRepository.
     builder.Services.AddFormsModule(builder.Configuration);
+
+    // W5.4.b (2026-06-13) — Communications module composition. Registers the
+    // cross-module Contracts surface (IEmailGroupQueries). The underlying
+    // IEmailGroupRepository is still wired by AddInfrastructure until
+    // W5.4.d.2 physical move.
+    builder.Services.AddCommunicationsModule(builder.Configuration);
 
     // W4.7 (2026-06-06) — CulturalIntelligence module composition. Registers
     // ICulturalCalendar (StubCulturalCalendar impl).

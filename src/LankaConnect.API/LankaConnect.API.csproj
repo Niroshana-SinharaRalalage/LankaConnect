@@ -38,6 +38,8 @@
     <ProjectReference Include="..\Modules\Media\Media.Api\Media.Api.csproj" />
     <!-- W4.3 (2026-06-06) — Forms module: hosts AddFormsModule (EventForm + FormQuestion + FormResponse + FormAnswer). -->
     <ProjectReference Include="..\Modules\Forms\Forms.Api\Forms.Api.csproj" />
+    <!-- W5.4.b (2026-06-13) — Communications module: hosts AddCommunicationsModule (IEmailGroupQueries cross-module Contracts surface). EmailGroup aggregate moves to Communications.Domain in W5.4.d.2. -->
+    <ProjectReference Include="..\Modules\Communications\Communications.Api\Communications.Api.csproj" />
     <!-- W4.7 (2026-06-06) — CulturalIntelligence module: hosts AddCulturalIntelligenceModule (StubCulturalCalendar). -->
     <ProjectReference Include="..\Modules\CulturalIntelligence\CulturalIntelligence.Api\CulturalIntelligence.Api.csproj" />
   </ItemGroup>

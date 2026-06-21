@@ -395,6 +395,15 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    /// <summary>
+    /// W5.4.b (2026-06-13) — relaxed `LankaConnect.Domain` from the ban list.
+    /// EmailGroupQueries in Communications.Application wraps the existing
+    /// IEmailGroupRepository which still lives in LankaConnect.Domain.Communications
+    /// until W5.4.d.2 physical move. Mirrors the Forms 5.3d.2 ArchTest relaxation
+    /// that allowed LankaConnect.Shared during a transition window.
+    /// Re-tighten by adding "LankaConnect.Domain" back to the ban list after
+    /// W5.4.d.2 ships the EmailGroup -> Communications.Domain physical move.
+    /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]
     public void Modules_Communications_Application_DoesNotDependOnInfraOrWebOrLayeredMonolith()
@@ -408,7 +417,6 @@ public sealed class LayeringRules
                 "LankaConnect.Modules.Communications.Api",
                 "LankaConnect.BuildingBlocks.Infrastructure",
                 "LankaConnect.BuildingBlocks.Web",
-                "LankaConnect.Domain",
                 "LankaConnect.Application",
                 "LankaConnect.Infrastructure",
                 "LankaConnect.API",

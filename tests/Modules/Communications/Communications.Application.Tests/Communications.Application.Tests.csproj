@@ -17,6 +17,7 @@
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Moq" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +27,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Modules\Communications\Communications.Application\Communications.Application.csproj" />
+    <!-- W5.4.b (2026-06-13): EmailGroup + IEmailGroupRepository still live in LankaConnect.Domain
+         until W5.4.d.2 physical move; needed here for Mock<IEmailGroupRepository> setup. -->
+    <ProjectReference Include="..\..\..\..\src\LankaConnect.Domain\LankaConnect.Domain.csproj" />
   </ItemGroup>
 
 </Project>

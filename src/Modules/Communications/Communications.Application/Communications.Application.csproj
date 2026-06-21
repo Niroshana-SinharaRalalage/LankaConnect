@@ -12,6 +12,15 @@
     <ProjectReference Include="..\Communications.Domain\Communications.Domain.csproj" />
     <ProjectReference Include="..\Communications.Contracts\Communications.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <!--
+      W5.4.b TRANSITIONAL EDGE (2026-06-13). EmailGroupQueries wraps the
+      existing IEmailGroupRepository which still lives in LankaConnect.Domain
+      until W5.4.d.2 (physical move). Edge mirrors the Forms 5.3c.0 transitional
+      Forms.Application -> LankaConnect.Application pattern (different layer
+      here because IEmailGroupRepository sits in LankaConnect.Domain, not
+      Application). Cut alongside the EmailGroup file move in W5.4.d.2.
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

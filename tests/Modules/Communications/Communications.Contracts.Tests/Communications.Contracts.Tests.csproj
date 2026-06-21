@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>LankaConnect.Modules.Communications.Contracts.Tests</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Communications.Contracts.Tests</AssemblyName>
+    <Description>Shape-pinning tests for the Communications.Contracts cross-module ABI. Wave 5.4.a (2026-06-13).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Modules\Communications\Communications.Contracts\Communications.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

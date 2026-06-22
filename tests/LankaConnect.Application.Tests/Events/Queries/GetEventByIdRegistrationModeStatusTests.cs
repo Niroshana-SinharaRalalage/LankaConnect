@@ -1,4 +1,5 @@
 using AutoMapper;
+using LankaConnect.Modules.Communications.Contracts;
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Mappings;
@@ -32,7 +33,7 @@ public class GetEventByIdRegistrationModeStatusTests
 {
     private readonly Mock<IEventRepository> _eventRepository = new();
     private readonly Mock<IRegistrationRepository> _registrationRepository = new();
-    private readonly Mock<IEmailGroupRepository> _emailGroupRepository = new();
+    private readonly Mock<IEmailGroupQueries> _emailGroupRepository = new();
     private readonly Mock<ICurrentUserService> _currentUserService = new();
     private readonly Mock<ILogger<GetEventByIdQueryHandler>> _logger = new();
     private readonly IMapper _mapper;
@@ -46,11 +47,11 @@ public class GetEventByIdRegistrationModeStatusTests
         _currentUserService.SetupGet(c => c.IsAuthenticated).Returns(false);
         _currentUserService.SetupGet(c => c.UserId).Returns(Guid.Empty);
 
-        // No email groups by default. Cast to the interface return type so Moq picks the
-        // right extension overload.
+        // Wave 5.4.d.1: swapped to IEmailGroupQueries; method shape now uses
+        // IReadOnlyList<Guid> in + IReadOnlyList<EmailGroupSummaryDto> out.
         _emailGroupRepository
-            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((IReadOnlyList<EmailGroup>)new List<EmailGroup>());
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<EmailGroupSummaryDto>)new List<EmailGroupSummaryDto>());
     }
 
     private static Event CreateFreeEvent()

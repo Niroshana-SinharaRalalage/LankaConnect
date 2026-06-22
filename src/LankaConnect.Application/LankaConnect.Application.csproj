@@ -20,6 +20,12 @@
          moved into Forms.Application/EventHandlers in 5.3d.2 — they no longer
          live in this assembly. -->
     <ProjectReference Include="..\Modules\Forms\Forms.Contracts\Forms.Contracts.csproj" />
+    <!-- W5.4.d.1 (2026-06-22). Cross-module Communications surface for legacy
+         LankaConnect.Application code: IEmailGroupQueries + EmailGroup DTOs from
+         Communications.Contracts. The W4.3-era LankaConnect.Domain.Communications
+         dependency stays in place for the next phase; W5.4.d.3 will cut it and
+         pin via ArchTest LegacyApplication_DoesNotDependOnCommunicationsDomain. -->
+    <ProjectReference Include="..\Modules\Communications\Communications.Contracts\Communications.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

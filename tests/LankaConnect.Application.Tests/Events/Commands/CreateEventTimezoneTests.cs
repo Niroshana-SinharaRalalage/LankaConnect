@@ -1,4 +1,5 @@
 using FluentAssertions;
+using LankaConnect.Modules.Communications.Contracts;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Commands.CreateEvent;
 using LankaConnect.Domain.Common;
@@ -24,7 +25,7 @@ public class CreateEventTimezoneTests
     private readonly Mock<IEventRepository> _mockEventRepository;
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
-    private readonly Mock<IEmailGroupRepository> _mockEmailGroupRepository;
+    private readonly Mock<IEmailGroupQueries> _mockEmailGroupRepository;
     private readonly Mock<IApplicationDbContext> _mockDbContext;
     private readonly Mock<IRevenueCalculatorService> _mockRevenueCalculatorService;
     private readonly Mock<ITimeZoneLookupService> _mockTimeZoneLookupService;
@@ -35,7 +36,7 @@ public class CreateEventTimezoneTests
         _mockEventRepository = new Mock<IEventRepository>();
         _mockUserRepository = new Mock<IUserRepository>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
-        _mockEmailGroupRepository = new Mock<IEmailGroupRepository>();
+        _mockEmailGroupRepository = new Mock<IEmailGroupQueries>();
         _mockDbContext = new Mock<IApplicationDbContext>();
         _mockRevenueCalculatorService = new Mock<IRevenueCalculatorService>();
         _mockTimeZoneLookupService = new Mock<ITimeZoneLookupService>();

@@ -22,6 +22,7 @@ public sealed class IEmailGroupQueriesShapeTests
             "GetByIdsAsync",
             "GetByIdAsync",
             "GetByIdWithEmailsAsync",
+            "GetByIdsWithEmailsAsync",
             "GetByOwnerAsync",
         });
     }

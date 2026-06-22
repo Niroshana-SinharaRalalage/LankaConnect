@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using AutoMapper;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Common; // Phase 6A.32: EmailGroupSummaryDto
+using LankaConnect.Application.Communications.Common; // Phase 6A.32: legacy EmailGroupSummaryDto consumed by EventDto
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
+using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -20,7 +20,7 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
 {
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository; // Phase 6A.137: Registration status
-    private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
+    private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.1: was IEmailGroupRepository
     private readonly ICurrentUserService _currentUserService; // Phase 6A.133: Multi-organizer
     private readonly IMapper _mapper;
     private readonly ILogger<GetEventByIdQueryHandler> _logger;
@@ -28,14 +28,14 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
     public GetEventByIdQueryHandler(
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository, // Phase 6A.137: Registration status
-        IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
+        IEmailGroupQueries emailGroupQueries, // Wave 5.4.d.1
         ICurrentUserService currentUserService, // Phase 6A.133: Multi-organizer
         IMapper mapper,
         ILogger<GetEventByIdQueryHandler> logger)
     {
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
-        _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
+        _emailGroupQueries = emailGroupQueries;
         _currentUserService = currentUserService;
         _mapper = mapper;
         _logger = logger;
@@ -92,14 +92,18 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
                 var result = _mapper.Map<EventDto>(@event);
 
                 // Phase 6A.32: Batch query for email groups (Fix #3: No N+1)
-                var emailGroupSummaries = new List<EmailGroupSummaryDto>();
+                var emailGroupSummaries = new List<LankaConnect.Application.Communications.Common.EmailGroupSummaryDto>();
                 if (@event.EmailGroupIds.Any())
                 {
                     _logger.LogInformation(
                         "GetEventById: Loading email groups - EventId={EventId}, EmailGroupCount={EmailGroupCount}",
                         @event.Id, @event.EmailGroupIds.Count);
 
-                    var emailGroups = await _emailGroupRepository.GetByIdsAsync(@event.EmailGroupIds, cancellationToken);
+                    // Wave 5.4.d.1 (2026-06-22): cross-module fetch via IEmailGroupQueries.
+                    // Returns Modules.Communications.Contracts.EmailGroupSummaryDto; we project
+                    // 3 fields into the legacy Application.Communications.Common.EmailGroupSummaryDto
+                    // that EventDto consumes (full qualifier needed because both types share the name).
+                    var emailGroups = await _emailGroupQueries.GetByIdsAsync(@event.EmailGroupIds, cancellationToken);
 
                     foreach (var groupId in @event.EmailGroupIds)
                     {
@@ -107,7 +111,7 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
 
                         if (group != null)
                         {
-                            emailGroupSummaries.Add(new EmailGroupSummaryDto
+                            emailGroupSummaries.Add(new LankaConnect.Application.Communications.Common.EmailGroupSummaryDto
                             {
                                 Id = group.Id,
                                 Name = group.Name,

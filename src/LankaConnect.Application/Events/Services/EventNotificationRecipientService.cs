@@ -1,8 +1,8 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Domain.Communications.Entities; // NewsletterSubscriber (EmailGroup no longer needed post-W5.4.d.1)
 using LankaConnect.Domain.Events;
+using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
 using Microsoft.Extensions.Logging;
@@ -17,7 +17,7 @@ namespace LankaConnect.Application.Events.Services;
 public class EventNotificationRecipientService : IEventNotificationRecipientService
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IEmailGroupRepository _emailGroupRepository;
+    private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.1
     private readonly INewsletterSubscriberRepository _subscriberRepository;
     private readonly IMetroAreaRepository _metroAreaRepository;
     private readonly IGeoLocationService _geoLocationService;
@@ -25,14 +25,14 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
 
     public EventNotificationRecipientService(
         IEventRepository eventRepository,
-        IEmailGroupRepository emailGroupRepository,
+        IEmailGroupQueries emailGroupQueries,
         INewsletterSubscriberRepository subscriberRepository,
         IMetroAreaRepository metroAreaRepository,
         IGeoLocationService geoLocationService,
         ILogger<EventNotificationRecipientService> logger)
     {
         _eventRepository = eventRepository;
-        _emailGroupRepository = emailGroupRepository;
+        _emailGroupQueries = emailGroupQueries;
         _subscriberRepository = subscriberRepository;
         _metroAreaRepository = metroAreaRepository;
         _geoLocationService = geoLocationService;
@@ -167,10 +167,14 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
             @event.EmailGroupIds.Count,
             string.Join(", ", @event.EmailGroupIds));
 
-        IReadOnlyList<Domain.Communications.Entities.EmailGroup> emailGroups;
+        IReadOnlyList<EmailGroupDetailDto> emailGroups;
         try
         {
-            emailGroups = await _emailGroupRepository.GetByIdsAsync(
+            // Wave 5.4.d.1 (2026-06-22): swapped from IEmailGroupRepository.GetByIdsAsync to
+            // IEmailGroupQueries.GetByIdsWithEmailsAsync — returns Contracts EmailGroupDetailDto
+            // with the individual emails already split + cleaned at the boundary, so the
+            // SelectMany(g.GetEmailList()) call below collapses into g.Emails directly.
+            emailGroups = await _emailGroupQueries.GetByIdsWithEmailsAsync(
                 @event.EmailGroupIds,
                 cancellationToken);
             _logger.LogInformation("[RCA-EG3] Email groups fetched: {Count}", emailGroups.Count);
@@ -183,7 +187,7 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         }
 
         var emails = emailGroups
-            .SelectMany(g => g.GetEmailList())
+            .SelectMany(g => g.Emails)
             .ToList();
 
         _logger.LogInformation("[RCA-EG4] Retrieved {Count} emails from {GroupCount} email groups",

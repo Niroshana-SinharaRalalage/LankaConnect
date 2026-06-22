@@ -9,8 +9,7 @@ using LankaConnect.Domain.Events.Enums; // Phase 8X: EventPaymentMode
 using LankaConnect.Domain.Events.Services; // Phase 6A.X: Revenue breakdown
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
-using Microsoft.EntityFrameworkCore; // Phase 6A.32: ChangeTracker API for shadow navigation
+using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -20,8 +19,8 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
-    private readonly IApplicationDbContext _dbContext; // Phase 6A.32: ChangeTracker API
+    private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.1
+    private readonly IApplicationDbContext _dbContext; // legacy injection (unused after W5.4.d.1 but kept for DI compatibility until W5.4.d.3 cleanup)
     private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
     private readonly ITimeZoneLookupService _timeZoneLookupService; // Issue #55: Timezone lookup
     private readonly ILogger<UpdateEventCommandHandler> _logger;
@@ -29,7 +28,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
     public UpdateEventCommandHandler(
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
-        IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
+        IEmailGroupQueries emailGroupQueries, // Wave 5.4.d.1
         IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
         IRevenueCalculatorService revenueCalculatorService, // Phase 6A.X: Revenue breakdown
         ITimeZoneLookupService timeZoneLookupService, // Issue #55: Timezone lookup
@@ -37,7 +36,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
-        _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
+        _emailGroupQueries = emailGroupQueries;
         _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
         _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
         _timeZoneLookupService = timeZoneLookupService; // Issue #55: Timezone lookup
@@ -668,17 +667,13 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         {
             var distinctGroupIds = request.EmailGroupIds.Distinct().ToList();
 
-            // CRITICAL FIX Phase 6A.33: Load EmailGroup entities WITH TRACKING from DbContext
-            // Repository's GetByIdsAsync uses AsNoTracking(), so entities aren't tracked
-            // Same pattern as UpdateUserPreferredMetroAreasCommandHandler - load from DbContext directly
-            var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
-                ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+            // Wave 5.4.d.1 (2026-06-22): validate email groups via IEmailGroupQueries.
+            // The previous dbContext.Set<EmailGroup>() WITH-TRACKING pull is gone —
+            // Wave 5.4.c.0 (Event.cs typed-nav surgery) made the tracking concern moot
+            // because Event.SetEmailGroups now manipulates _emailGroupLinks directly
+            // without needing an EmailGroup CLR reference at all.
+            var emailGroups = await _emailGroupQueries.GetByIdsAsync(distinctGroupIds, cancellationToken);
 
-            var emailGroups = await dbContext.Set<Domain.Communications.Entities.EmailGroup>()
-                .Where(g => distinctGroupIds.Contains(g.Id))
-                .ToListAsync(cancellationToken);
-
-            // Validate all groups exist, belong to organizer, and are active
             foreach (var groupId in distinctGroupIds)
             {
                 var emailGroup = emailGroups.FirstOrDefault(g => g.Id == groupId);

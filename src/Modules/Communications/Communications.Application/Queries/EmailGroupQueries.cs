@@ -55,6 +55,24 @@ public sealed class EmailGroupQueries : IEmailGroupQueries
         return group?.ToDetailDto();
     }
 
+    public async Task<IReadOnlyList<EmailGroupDetailDto>> GetByIdsWithEmailsAsync(
+        IReadOnlyList<Guid> ids,
+        CancellationToken ct = default)
+    {
+        if (ids.Count == 0)
+        {
+            return Array.Empty<EmailGroupDetailDto>();
+        }
+
+        var groups = await _repository.GetByIdsAsync(ids, ct);
+        var result = new List<EmailGroupDetailDto>(groups.Count);
+        foreach (var group in groups)
+        {
+            result.Add(group.ToDetailDto());
+        }
+        return result;
+    }
+
     public async Task<IReadOnlyList<EmailGroupSummaryDto>> GetByOwnerAsync(
         Guid ownerId,
         CancellationToken ct = default)

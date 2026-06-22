@@ -1,4 +1,5 @@
 using FluentAssertions;
+using LankaConnect.Modules.Communications.Contracts;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Commands.CreateEvent;
 using LankaConnect.Domain.Common;
@@ -33,7 +34,7 @@ public class CreateEventTbdDatesTests
     private readonly Mock<IEventRepository> _mockEventRepository = new();
     private readonly Mock<IUserRepository> _mockUserRepository = new();
     private readonly Mock<IUnitOfWork> _mockUnitOfWork = new();
-    private readonly Mock<IEmailGroupRepository> _mockEmailGroupRepository = new();
+    private readonly Mock<IEmailGroupQueries> _mockEmailGroupRepository = new();
     private readonly Mock<IApplicationDbContext> _mockDbContext = new();
     private readonly Mock<IRevenueCalculatorService> _mockRevenueCalculatorService = new();
     private readonly Mock<ITimeZoneLookupService> _mockTimeZoneLookupService = new();

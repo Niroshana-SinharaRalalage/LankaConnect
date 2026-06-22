@@ -44,6 +44,17 @@ public interface IEmailGroupQueries
     Task<EmailGroupDetailDto?> GetByIdWithEmailsAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
+    /// Batch detail query: returns email groups matching the supplied ids with
+    /// their individual email addresses hydrated. Missing ids are silently
+    /// skipped. Wave 5.4.d.1 (2026-06-22) — added so the cross-aggregate
+    /// EventNotificationRecipientService can swap from IEmailGroupRepository
+    /// to the Contracts surface without losing the email-list payload.
+    /// </summary>
+    Task<IReadOnlyList<EmailGroupDetailDto>> GetByIdsWithEmailsAsync(
+        IReadOnlyList<Guid> ids,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns all email groups owned by the given user.
     /// </summary>
     Task<IReadOnlyList<EmailGroupSummaryDto>> GetByOwnerAsync(

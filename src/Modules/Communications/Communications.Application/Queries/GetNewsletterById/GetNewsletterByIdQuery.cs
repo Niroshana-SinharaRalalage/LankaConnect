@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
 
-namespace LankaConnect.Application.Communications.Queries.GetNewsletterById;
+namespace LankaConnect.Modules.Communications.Application.Queries.GetNewsletterById;
 
 /// <summary>
 /// Query to get a newsletter by ID

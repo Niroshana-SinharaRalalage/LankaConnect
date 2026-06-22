@@ -1,7 +1,8 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
+using LankaConnect.Modules.Communications.Application.Common;
 
-namespace LankaConnect.Application.Communications.Queries.GetEmailGroups;
+namespace LankaConnect.Modules.Communications.Application.Queries.GetEmailGroups;
 
 /// <summary>
 /// Query to get email groups

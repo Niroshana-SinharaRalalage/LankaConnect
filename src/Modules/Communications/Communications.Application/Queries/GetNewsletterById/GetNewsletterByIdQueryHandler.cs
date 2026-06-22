@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Communications.Queries.GetNewsletterById;
+namespace LankaConnect.Modules.Communications.Application.Queries.GetNewsletterById;
 
 /// <summary>
 /// Handler for GetNewsletterByIdQuery

@@ -1,4 +1,4 @@
-namespace LankaConnect.Application.Communications.Common;
+namespace LankaConnect.Modules.Communications.Application.Common;
 
 /// <summary>
 /// DTO for EmailGroup entity

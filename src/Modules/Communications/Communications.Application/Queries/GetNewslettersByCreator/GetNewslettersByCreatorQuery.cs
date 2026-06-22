@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
 
-namespace LankaConnect.Application.Communications.Queries.GetNewslettersByCreator;
+namespace LankaConnect.Modules.Communications.Application.Queries.GetNewslettersByCreator;
 
 /// <summary>
 /// Query to get newsletters created by current user

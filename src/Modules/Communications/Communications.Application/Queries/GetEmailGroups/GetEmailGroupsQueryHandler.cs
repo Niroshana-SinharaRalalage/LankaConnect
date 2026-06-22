@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
+using LankaConnect.Modules.Communications.Application.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
@@ -8,7 +9,7 @@ using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Communications.Queries.GetEmailGroups;
+namespace LankaConnect.Modules.Communications.Application.Queries.GetEmailGroups;
 
 /// <summary>
 /// Handler for GetEmailGroupsQuery

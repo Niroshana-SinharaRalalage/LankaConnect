@@ -5,9 +5,9 @@ using LankaConnect.API.Extensions;
 using LankaConnect.Application.Communications.Common;
 using LankaConnect.Application.Communications.Queries.GetEmailGroups;
 using LankaConnect.Application.Communications.Queries.GetEmailGroupById;
-using LankaConnect.Application.Communications.Commands.CreateEmailGroup;
-using LankaConnect.Application.Communications.Commands.UpdateEmailGroup;
-using LankaConnect.Application.Communications.Commands.DeleteEmailGroup;
+using LankaConnect.Modules.Communications.Application.Commands.CreateEmailGroup;
+using LankaConnect.Modules.Communications.Application.Commands.UpdateEmailGroup;
+using LankaConnect.Modules.Communications.Application.Commands.DeleteEmailGroup;
 
 namespace LankaConnect.API.Controllers;
 

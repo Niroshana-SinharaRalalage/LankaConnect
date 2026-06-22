@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Commands.CreateNewsletter;
+using LankaConnect.Modules.Communications.Application.Commands.CreateNewsletter;
 using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;

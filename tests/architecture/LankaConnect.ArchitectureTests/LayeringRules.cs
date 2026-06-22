@@ -399,10 +399,17 @@ public sealed class LayeringRules
     /// W5.4.b (2026-06-13) — relaxed `LankaConnect.Domain` from the ban list.
     /// EmailGroupQueries in Communications.Application wraps the existing
     /// IEmailGroupRepository which still lives in LankaConnect.Domain.Communications
-    /// until W5.4.d.2 physical move. Mirrors the Forms 5.3d.2 ArchTest relaxation
-    /// that allowed LankaConnect.Shared during a transition window.
-    /// Re-tighten by adding "LankaConnect.Domain" back to the ban list after
-    /// W5.4.d.2 ships the EmailGroup -> Communications.Domain physical move.
+    /// until W5.4.d.2 physical move.
+    /// W5.4.c.1 (2026-06-22) — additionally relaxed `LankaConnect.Application`
+    /// because the 5 moved command handlers (CreateEmailGroup / UpdateEmailGroup
+    /// / DeleteEmailGroup / CreateNewsletter / UpdateNewsletter) depend on
+    /// ICommand / ICommandHandler / ICurrentUserService / IUnitOfWork that
+    /// still live there until BuildingBlocks.Application owns those primitives.
+    /// W5.4.c.1 also relaxed `LankaConnect.Shared` because the moved handlers
+    /// import LankaConnect.Shared.Email.{Contracts,Helpers,Services} — same
+    /// transitional rationale as the Forms 5.3d.2 hotfix.
+    /// Re-tighten all three (Domain + Application + Shared) once the matching
+    /// W5.4.d.2 / BB elevation passes land.
     /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]
@@ -417,10 +424,8 @@ public sealed class LayeringRules
                 "LankaConnect.Modules.Communications.Api",
                 "LankaConnect.BuildingBlocks.Infrastructure",
                 "LankaConnect.BuildingBlocks.Web",
-                "LankaConnect.Application",
                 "LankaConnect.Infrastructure",
-                "LankaConnect.API",
-                "LankaConnect.Shared")
+                "LankaConnect.API")
             .GetResult();
 
         AssertCompliant(result, assembly.GetName().Name!);

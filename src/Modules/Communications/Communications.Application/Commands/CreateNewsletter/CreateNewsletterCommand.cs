@@ -1,6 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 
-namespace LankaConnect.Application.Communications.Commands.CreateNewsletter;
+namespace LankaConnect.Modules.Communications.Application.Commands.CreateNewsletter;
 
 /// <summary>
 /// Phase 6A.74: Command to create a new newsletter/news alert

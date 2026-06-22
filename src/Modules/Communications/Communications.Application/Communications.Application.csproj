@@ -21,6 +21,17 @@
       Application). Cut alongside the EmailGroup file move in W5.4.d.2.
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <!--
+      W5.4.c.1 TRANSITIONAL EDGE (2026-06-22). The 5 moved command handlers
+      (CreateEmailGroup / UpdateEmailGroup / DeleteEmailGroup / CreateNewsletter
+      / UpdateNewsletter) depend on ICommand / ICommandHandler /
+      ICurrentUserService / IUnitOfWork that still live in
+      LankaConnect.Application until BuildingBlocks.Application owns those
+      primitives. Mirrors the Forms 5.3c.0 + Notifications W3.4 transitional
+      edges with the matching ArchTest relaxation. Cut alongside the
+      BuildingBlocks.Application elevation pass.
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

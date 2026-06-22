@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace LankaConnect.Application.Communications.Commands.CreateEmailGroup;
+namespace LankaConnect.Modules.Communications.Application.Commands.CreateEmailGroup;
 
 /// <summary>
 /// Validator for CreateEmailGroupCommand

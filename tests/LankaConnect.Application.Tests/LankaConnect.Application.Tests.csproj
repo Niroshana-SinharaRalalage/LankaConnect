@@ -45,6 +45,11 @@
          WhatsAppEventHandlerTests still exercises it directly until those 2 tests
          relocate to Forms.Application.Tests in a future cleanup. -->
     <ProjectReference Include="..\..\src\Modules\Forms\Forms.Application\Forms.Application.csproj" />
+    <!-- W5.4.c.1 (2026-06-22): CreateNewsletter / UpdateNewsletter handlers moved to
+         Communications.Application; the 2 existing test files in
+         tests/.../Communications/Commands still exercise them directly. Future cleanup
+         relocates them to Communications.Application.Tests. -->
+    <ProjectReference Include="..\..\src\Modules\Communications\Communications.Application\Communications.Application.csproj" />
     <ProjectReference Include="..\LankaConnect.TestUtilities\LankaConnect.TestUtilities.csproj" />
   </ItemGroup>
 

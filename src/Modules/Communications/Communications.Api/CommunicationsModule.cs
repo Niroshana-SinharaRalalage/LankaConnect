@@ -1,5 +1,7 @@
+using FluentValidation;
 using LankaConnect.Modules.Communications.Application.Queries;
 using LankaConnect.Modules.Communications.Contracts;
+using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -35,6 +37,18 @@ public static class CommunicationsModule
         // injected from LankaConnect.Infrastructure's existing DI registration
         // until W5.4.d.2.
         services.AddScoped<IEmailGroupQueries, EmailGroupQueries>();
+
+        // Wave 5.4.c.1 (2026-06-22): Communications.Application now hosts the 5
+        // command handlers (CreateEmailGroup / UpdateEmailGroup / DeleteEmailGroup
+        // / CreateNewsletter / UpdateNewsletter) that moved out of
+        // LankaConnect.Application. The legacy DependencyInjection.cs only scans
+        // its own assembly for MediatR / FluentValidation, so the moved handlers
+        // + validators are invisible to the global container without explicit
+        // registration here. Scan the Communications.Application assembly for
+        // both handler kinds (mirrors the FormsModule 5.3c.2 hotfix pattern).
+        var commsAppAssembly = typeof(EmailGroupQueries).Assembly;
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(commsAppAssembly));
+        services.AddValidatorsFromAssembly(commsAppAssembly);
 
         return services;
     }

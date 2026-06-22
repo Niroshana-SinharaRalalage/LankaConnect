@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
 using MediatR;
 
-namespace LankaConnect.Application.Communications.Commands.DeleteEmailGroup;
+namespace LankaConnect.Modules.Communications.Application.Commands.DeleteEmailGroup;
 
 /// <summary>
 /// Command to delete an email group (soft delete)

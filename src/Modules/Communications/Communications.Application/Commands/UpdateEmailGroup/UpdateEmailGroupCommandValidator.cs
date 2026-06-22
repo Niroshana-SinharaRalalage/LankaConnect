@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace LankaConnect.Application.Communications.Commands.UpdateEmailGroup;
+namespace LankaConnect.Modules.Communications.Application.Commands.UpdateEmailGroup;
 
 /// <summary>
 /// Validator for UpdateEmailGroupCommand

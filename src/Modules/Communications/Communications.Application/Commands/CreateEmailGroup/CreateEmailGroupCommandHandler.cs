@@ -9,7 +9,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Communications.Commands.CreateEmailGroup;
+namespace LankaConnect.Modules.Communications.Application.Commands.CreateEmailGroup;
 
 /// <summary>
 /// Handler for CreateEmailGroupCommand

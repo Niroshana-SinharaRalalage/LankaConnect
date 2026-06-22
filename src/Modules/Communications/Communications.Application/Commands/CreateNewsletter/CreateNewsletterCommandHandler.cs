@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Communications.Commands.CreateNewsletter;
+namespace LankaConnect.Modules.Communications.Application.Commands.CreateNewsletter;
 
 /// <summary>
 /// Phase 6A.74: Handler for creating newsletters

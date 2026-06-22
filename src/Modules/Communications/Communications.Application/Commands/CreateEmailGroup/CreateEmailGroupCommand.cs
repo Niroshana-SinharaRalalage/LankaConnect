@@ -2,15 +2,14 @@ using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
 using MediatR;
 
-namespace LankaConnect.Application.Communications.Commands.UpdateEmailGroup;
+namespace LankaConnect.Modules.Communications.Application.Commands.CreateEmailGroup;
 
 /// <summary>
-/// Command to update an existing email group
+/// Command to create a new email group
 /// Phase 6A.25: Email Groups Management
 /// </summary>
-public record UpdateEmailGroupCommand : IRequest<Result<EmailGroupDto>>
+public record CreateEmailGroupCommand : IRequest<Result<EmailGroupDto>>
 {
-    public Guid Id { get; init; }
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
     public string EmailAddresses { get; init; } = string.Empty;

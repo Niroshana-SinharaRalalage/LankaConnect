@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Communications.Commands.UpdateNewsletter;
+namespace LankaConnect.Modules.Communications.Application.Commands.UpdateNewsletter;
 
 /// <summary>
 /// Phase 6A.74: Handler for updating newsletters
@@ -306,7 +306,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                 {
                     var distinctMetroIds = request.MetroAreaIds.Distinct().ToList();
 
-                    var metroAreaEntities = await dbContext2.Set<Domain.Events.MetroArea>()
+                    var metroAreaEntities = await dbContext2.Set<LankaConnect.Domain.Events.MetroArea>()
                         .Where(m => distinctMetroIds.Contains(m.Id))
                         .ToListAsync(cancellationToken);
 
@@ -321,7 +321,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                 {
                     // Clear metro areas if none provided
                     var metroAreasCollection = dbContext2.Entry(newsletter).Collection("_metroAreaEntities");
-                    metroAreasCollection.CurrentValue = new List<Domain.Events.MetroArea>();
+                    metroAreasCollection.CurrentValue = new List<LankaConnect.Domain.Events.MetroArea>();
 
                     _logger.LogInformation("UpdateNewsletter: [HOTFIX] Cleared metro areas shadow navigation");
                 }

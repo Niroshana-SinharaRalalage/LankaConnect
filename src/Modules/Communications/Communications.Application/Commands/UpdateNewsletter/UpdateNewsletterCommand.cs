@@ -1,6 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 
-namespace LankaConnect.Application.Communications.Commands.UpdateNewsletter;
+namespace LankaConnect.Modules.Communications.Application.Commands.UpdateNewsletter;
 
 /// <summary>
 /// Phase 6A.74: Command to update a newsletter in Draft status

@@ -117,35 +117,20 @@ public class NewsletterConfiguration : IEntityTypeConfiguration<Newsletter>
         builder.Ignore(n => n.EmailGroupIds);
         builder.Ignore(n => n.MetroAreaIds);
 
-        // Phase 6A.74: Email Groups - Many-to-Many Relationship
-        // Junction table pattern following EventConfiguration
-        builder
-            .HasMany<EmailGroup>("_emailGroupEntities")
-            .WithMany()
-            .UsingEntity<Dictionary<string, object>>(
-                "newsletter_email_groups",
-                j => j
-                    .HasOne<EmailGroup>()
-                    .WithMany()
-                    .HasForeignKey("email_group_id")
-                    .OnDelete(DeleteBehavior.Cascade), // Safe with soft delete pattern
-                j => j
-                    .HasOne<Newsletter>()
-                    .WithMany()
-                    .HasForeignKey("newsletter_id")
-                    .OnDelete(DeleteBehavior.Cascade),
-                j =>
-                {
-                    j.ToTable("newsletter_email_groups", "communications");
-                    j.HasKey("newsletter_id", "email_group_id"); // Composite primary key
-                    j.Property<DateTime>("created_at")
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+        // Wave 5.4.d.1b (2026-06-22). Replaced the Phase 6A.74 typed M2M nav
+        // (HasMany<EmailGroup>("_emailGroupEntities")...UsingEntity<Dictionary>...)
+        // with the explicit junction CLR type NewsletterEmailGroupLink. Mirrors
+        // the W5.4.c.0 EventConfiguration surgery. Same physical table
+        // (communications.newsletter_email_groups), same columns + composite PK
+        // + indexes. EF-snapshot-only change. Entity-level shape lives in
+        // NewsletterEmailGroupLinkConfiguration.
+        builder.HasMany(n => n.EmailGroupLinks)
+            .WithOne()
+            .HasForeignKey(l => l.NewsletterId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-                    // Indexes for query performance
-                    j.HasIndex("newsletter_id");
-                    j.HasIndex("email_group_id");
-                });
+        builder.Navigation(n => n.EmailGroupLinks)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Phase 6A.74 Enhancement 1: Metro Areas - Many-to-Many Relationship
         // Junction table for location targeting (non-event newsletters)

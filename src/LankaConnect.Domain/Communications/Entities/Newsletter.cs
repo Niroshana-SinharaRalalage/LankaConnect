@@ -13,8 +13,14 @@ public class Newsletter : LegacyBaseEntity
 {
     private readonly List<Guid> _emailGroupIds = new();
     private readonly List<Guid> _metroAreaIds = new();
-    private List<EmailGroup> _emailGroupEntities = new(); // Shadow navigation for EF Core
-    private List<MetroArea> _metroAreaEntities = new(); // Shadow navigation for EF Core
+    // Wave 5.4.d.1b (2026-06-22) — replaced Phase 6A.74 `_emailGroupEntities:
+    // List<EmailGroup>` typed nav with this explicit junction CLR collection.
+    // Same rationale as the W5.4.c.0 Event surgery: EF Core 8 cannot model a
+    // typed M2M nav once EmailGroup moves to Communications.Domain. _metroAreaEntities
+    // stays as-is because MetroArea is NOT moving in Wave 5.4 — it lives in
+    // LankaConnect.Domain.Events and is reachable from this same Domain assembly.
+    private readonly List<NewsletterEmailGroupLink> _emailGroupLinks = new();
+    private List<MetroArea> _metroAreaEntities = new(); // Shadow navigation for EF Core (unchanged)
 
     public NewsletterTitle Title { get; private set; }
     public NewsletterDescription Description { get; private set; }
@@ -38,6 +44,9 @@ public class Newsletter : LegacyBaseEntity
 
     public IReadOnlyList<Guid> EmailGroupIds => _emailGroupIds.AsReadOnly();
     public IReadOnlyList<Guid> MetroAreaIds => _metroAreaIds.AsReadOnly();
+    // Wave 5.4.d.1b (2026-06-22): EmailGroupLinks exposes the junction collection
+    // for EF Core HasMany expression-tree binding (mirrors EventEmailGroupLinks).
+    public IReadOnlyList<NewsletterEmailGroupLink> EmailGroupLinks => _emailGroupLinks.AsReadOnly();
 
     // EF Core constructor
     private Newsletter()
@@ -77,7 +86,13 @@ public class Newsletter : LegacyBaseEntity
             Status = NewsletterStatus.Draft;
         }
 
+        // Wave 5.4.d.1b (2026-06-22): post-ctor Id is already populated by
+        // LegacyBaseEntity ctor before this body runs, so we can mint links here.
         _emailGroupIds.AddRange(emailGroupIds);
+        foreach (var gid in emailGroupIds)
+        {
+            _emailGroupLinks.Add(NewsletterEmailGroupLink.Create(Id, gid));
+        }
         if (metroAreaIds != null)
         {
             _metroAreaIds.AddRange(metroAreaIds);
@@ -284,8 +299,15 @@ public class Newsletter : LegacyBaseEntity
         EventId = eventId;
         TargetAllLocations = targetAllLocations;
 
+        // Wave 5.4.d.1b (2026-06-22): mirror _emailGroupIds onto _emailGroupLinks
+        // so EF persists the junction directly (no infra shadow-nav sync needed).
         _emailGroupIds.Clear();
         _emailGroupIds.AddRange(emailGroupIds);
+        _emailGroupLinks.Clear();
+        foreach (var gid in emailGroupIds)
+        {
+            _emailGroupLinks.Add(NewsletterEmailGroupLink.Create(Id, gid));
+        }
 
         _metroAreaIds.Clear();
         if (metroAreaIds != null)
@@ -308,11 +330,19 @@ public class Newsletter : LegacyBaseEntity
     /// </summary>
     public bool CanDelete() => Status == NewsletterStatus.Draft && !IsAnnouncementOnly;
 
-    // Sync method for repository pattern - called by infrastructure layer
-    public void SyncEmailGroupIdsFromEntities(List<Guid> emailGroupIds)
+    /// <summary>
+    /// Wave 5.4.d.1b (2026-06-22): Newsletter's _emailGroupLinks now hydrates
+    /// directly via EF Core's HasMany binding — the previous repository-side
+    /// SyncEmailGroupIdsFromEntities back-door rebuilt _emailGroupIds from a
+    /// typed-nav payload that no longer exists. The call site in
+    /// NewsletterRepository.GetByIdAsync now invokes
+    /// <see cref="SyncEmailGroupIdsFromLinks"/> after EF populates
+    /// _emailGroupLinks.
+    /// </summary>
+    public void SyncEmailGroupIdsFromLinks()
     {
         _emailGroupIds.Clear();
-        _emailGroupIds.AddRange(emailGroupIds);
+        _emailGroupIds.AddRange(_emailGroupLinks.Select(l => l.EmailGroupId));
     }
 
     // Phase 6A.74 Enhancement 1: Sync method for metro area IDs

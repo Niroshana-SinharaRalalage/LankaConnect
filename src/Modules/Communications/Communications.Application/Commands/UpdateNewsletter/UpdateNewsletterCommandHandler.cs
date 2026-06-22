@@ -264,42 +264,16 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                     "UpdateNewsletter: Newsletter domain model updated successfully - NewsletterId={NewsletterId}",
                     request.Id);
 
-                // Phase 6A.74 HOTFIX: Sync shadow navigation for email groups and metro areas
-                // The domain's Update() method updates _emailGroupIds and _metroAreaIds lists,
-                // but EF Core only tracks shadow navigation (_emailGroupEntities, _metroAreaEntities).
-                // We must sync the loaded entities to shadow navigation for persistence to junction tables.
-                // Pattern mirrors NewsletterRepository.AddAsync (lines 39-90)
-                _logger.LogInformation(
-                    "UpdateNewsletter: [HOTFIX] Syncing shadow navigation for EF Core many-to-many relationships - NewsletterId={NewsletterId}",
-                    request.Id);
-
+                // Wave 5.4.d.1b (2026-06-22). Phase 6A.74 HOTFIX shadow-nav
+                // manipulation for email groups is no longer needed — Newsletter.Update()
+                // now updates _emailGroupLinks (the EF-tracked junction collection)
+                // alongside _emailGroupIds, so EF emits the matching INSERT/DELETE
+                // junction rows automatically. The metro-area shadow-nav block
+                // below remains because MetroArea was NOT migrated to a junction
+                // CLR type in Wave 5.4 (it lives in LankaConnect.Domain.Events and
+                // doesn't cross the module boundary that's being cut).
                 var dbContext2 = _dbContext as DbContext
                     ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
-
-                // Sync email groups shadow navigation
-                if (request.EmailGroupIds != null && request.EmailGroupIds.Any())
-                {
-                    var distinctGroupIds = request.EmailGroupIds.Distinct().ToList();
-
-                    var emailGroupEntities = await dbContext2.Set<EmailGroup>()
-                        .Where(eg => distinctGroupIds.Contains(eg.Id))
-                        .ToListAsync(cancellationToken);
-
-                    var emailGroupsCollection = dbContext2.Entry(newsletter).Collection("_emailGroupEntities");
-                    emailGroupsCollection.CurrentValue = emailGroupEntities;
-
-                    _logger.LogInformation(
-                        "UpdateNewsletter: [HOTFIX] Synced {Count} email groups to shadow navigation",
-                        emailGroupEntities.Count);
-                }
-                else
-                {
-                    // Clear email groups if none provided
-                    var emailGroupsCollection = dbContext2.Entry(newsletter).Collection("_emailGroupEntities");
-                    emailGroupsCollection.CurrentValue = new List<EmailGroup>();
-
-                    _logger.LogInformation("UpdateNewsletter: [HOTFIX] Cleared email groups shadow navigation");
-                }
 
                 // Sync metro areas shadow navigation
                 if (request.MetroAreaIds != null && request.MetroAreaIds.Any())

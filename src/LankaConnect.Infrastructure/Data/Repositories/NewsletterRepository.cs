@@ -49,32 +49,9 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
                 // Call base implementation to add entity to DbSet (state = Added)
                 await base.AddAsync(entity, cancellationToken);
 
-                // Sync email groups from domain list to shadow navigation for persistence
-                if (entity.EmailGroupIds.Any())
-                {
-                    _repoLogger.LogDebug("Loading {Count} email group entities for shadow navigation", entity.EmailGroupIds.Count);
-
-                    // Load the EmailGroup entities from the database based on the domain's ID list
-                    var emailGroupEntities = await _context.Set<EmailGroup>()
-                        .Where(eg => entity.EmailGroupIds.Contains(eg.Id))
-                        .ToListAsync(cancellationToken);
-
-                    if (emailGroupEntities.Count != entity.EmailGroupIds.Count)
-                    {
-                        _repoLogger.LogWarning("Email group count mismatch - Expected: {Expected}, Found: {Found}",
-                            entity.EmailGroupIds.Count, emailGroupEntities.Count);
-                    }
-
-                    // Access shadow navigation using EF Core's Entry API
-                    var emailGroupsCollection = _context.Entry(entity).Collection("_emailGroupEntities");
-
-                    // Set the loaded entities into the shadow navigation
-                    // EF Core will detect this and create rows in newsletter_email_groups junction table
-                    // Entity remains in Added state - NO state changes needed
-                    emailGroupsCollection.CurrentValue = emailGroupEntities;
-
-                    _repoLogger.LogDebug("Synced {Count} email groups to shadow navigation", emailGroupEntities.Count);
-                }
+                // Wave 5.4.d.1b (2026-06-22). EmailGroup shadow-nav fetching dropped.
+                // Newsletter.cs now owns _emailGroupLinks directly; EF handles the
+                // junction-row inserts as part of the standard insert pipeline.
 
                 // Phase 6A.74 Enhancement 1: Sync metro areas from domain list to shadow navigation for persistence
                 if (entity.MetroAreaIds.Any())
@@ -147,9 +124,11 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
 
             try
             {
-                // Build query with eager loading for shadow navigation
+                // Wave 5.4.d.1b (2026-06-22). _emailGroupEntities Include swapped for
+                // _emailGroupLinks via the public navigation property. _metroAreaEntities
+                // unchanged because MetroArea is not in scope for Wave 5.4.
                 IQueryable<Newsletter> query = _dbSet
-                    .Include("_emailGroupEntities")
+                    .Include(n => n.EmailGroupLinks)
                     .Include("_metroAreaEntities");
 
                 // Apply tracking behavior based on parameter
@@ -179,18 +158,12 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
                     return null;
                 }
 
-                // Sync email group IDs from shadow navigation to domain
-                var emailGroupsCollection = _context.Entry(newsletter).Collection("_emailGroupEntities");
-                var emailGroupEntities = emailGroupsCollection.CurrentValue as IEnumerable<EmailGroup>;
-
-                if (emailGroupEntities != null)
-                {
-                    var emailGroupIds = emailGroupEntities.Select(eg => eg.Id).ToList();
-                    newsletter.SyncEmailGroupIdsFromEntities(emailGroupIds);
-
-                    _repoLogger.LogDebug("Synced {EmailGroupCount} email group IDs to domain entity",
-                        emailGroupIds.Count);
-                }
+                // Wave 5.4.d.1b (2026-06-22). The _emailGroupLinks Include above
+                // hydrates the junction directly; Newsletter.SyncEmailGroupIdsFromLinks
+                // mirrors them onto _emailGroupIds for business-logic consumption.
+                newsletter.SyncEmailGroupIdsFromLinks();
+                _repoLogger.LogDebug("Synced {EmailGroupCount} email group IDs from junction links to domain entity",
+                    newsletter.EmailGroupIds.Count);
 
                 // Phase 6A.74 Enhancement 1: Sync metro area IDs from shadow navigation to domain
                 var metroAreasCollection = _context.Entry(newsletter).Collection("_metroAreaEntities");

@@ -193,6 +193,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // EventEmailGroupLink must also appear in the configuredEntityTypes whitelist
         // (search for it below) — otherwise the sweep loop calls Ignore() on it.
         modelBuilder.ApplyConfiguration(new EventEmailGroupLinkConfiguration());
+        // Wave 5.4.d.1b (2026-06-22). Mirror of the EventEmailGroupLink registration
+        // for the Newsletter side. Replaces the Phase 6A.74 typed M2M nav.
+        modelBuilder.ApplyConfiguration(new NewsletterEmailGroupLinkConfiguration());
         // Phase 6A.154: EventSlugAliasConfiguration — order-independent.
         // EventConfiguration declares HasMany(e => e.SlugAliases) as a scalar
         // VanitySlug column (NOT OwnsOne), so EF Core 8 doesn't shadow-map
@@ -589,6 +592,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact), // Multiple Organizer Contacts
             typeof(LankaConnect.Domain.Events.Entities.EventSlugAlias), // Phase 6A.154: retired vanity slug aliases (permanent 301 sources)
             typeof(LankaConnect.Domain.Events.Entities.EventEmailGroupLink), // Wave 5.4.c.0: explicit junction CLR type replacing the Phase 6A.32 typed M2M nav
+            typeof(LankaConnect.Domain.Communications.Entities.NewsletterEmailGroupLink), // Wave 5.4.d.1b: mirror of EventEmailGroupLink for Newsletter side
             // W4.2: PhotoAlbum + AlbumPhoto moved to MediaDbContext.
             typeof(WhatsAppMessageRecord), // Phase 7A: WhatsApp Integration
             typeof(WhatsAppTemplate), // Phase 7A: WhatsApp Integration

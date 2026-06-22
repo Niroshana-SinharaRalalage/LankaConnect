@@ -1,3 +1,5 @@
+using LankaConnect.Modules.Communications.Domain.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Application.Communications.Common;
 using LankaConnect.Application.Communications.Services;
 using LankaConnect.Application.Common.Interfaces;

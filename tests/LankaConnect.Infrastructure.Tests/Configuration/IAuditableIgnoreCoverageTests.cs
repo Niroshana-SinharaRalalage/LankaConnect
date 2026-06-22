@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Communications.Domain.Entities;
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Infrastructure.Data;
@@ -125,7 +126,7 @@ public sealed class IAuditableIgnoreCoverageTests
         // Wave4.9.2.7 Phase 1.7 (2026-06-09): communications email-side subset (8 entities)
         typeof(LankaConnect.Domain.Communications.Entities.EmailDispatchLog),
         typeof(LankaConnect.Domain.Communications.Entities.EmailFailureDetail),
-        typeof(LankaConnect.Domain.Communications.Entities.EmailGroup),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailGroup),
         typeof(LankaConnect.Domain.Communications.Entities.EmailMessage),
         typeof(LankaConnect.Domain.Communications.Entities.EmailMetricRecord),
         typeof(LankaConnect.Domain.Communications.Entities.EmailTemplate),

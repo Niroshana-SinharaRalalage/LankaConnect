@@ -1,4 +1,5 @@
 using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Modules.Forms.Domain;

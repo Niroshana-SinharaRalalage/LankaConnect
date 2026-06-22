@@ -1,4 +1,6 @@
 using FluentValidation;
+using LankaConnect.Modules.Communications.Domain.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Application.Queries;
 using LankaConnect.Modules.Communications.Contracts;
 using MediatR;
@@ -33,10 +35,16 @@ public static class CommunicationsModule
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        // Wave 5.4.b cross-module Contracts surface. IEmailGroupRepository is
-        // injected from LankaConnect.Infrastructure's existing DI registration
-        // until W5.4.d.2.
+        // Wave 5.4.b cross-module Contracts surface.
         services.AddScoped<IEmailGroupQueries, EmailGroupQueries>();
+
+        // Wave 5.4.d.2 (2026-06-22): IEmailGroupRepository registration moved
+        // here from LankaConnect.Infrastructure.DependencyInjection alongside
+        // the physical EmailGroupRepository file move. The repository still
+        // shares AppDbContext (no separate CommunicationsDbContext in W5.4);
+        // ctor injects via the W5.4.d.2 transitional LankaConnect.Infrastructure
+        // ProjectReference.
+        services.AddScoped<IEmailGroupRepository, LankaConnect.Modules.Communications.Infrastructure.Repositories.EmailGroupRepository>();
 
         // Wave 5.4.c.1 (2026-06-22): Communications.Application now hosts the 5
         // command handlers (CreateEmailGroup / UpdateEmailGroup / DeleteEmailGroup

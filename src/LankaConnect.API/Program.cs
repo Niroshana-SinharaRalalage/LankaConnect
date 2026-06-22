@@ -1,4 +1,6 @@
 using Hangfire;
+using LankaConnect.Modules.Communications.Domain.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.API.Infrastructure;
 using LankaConnect.API.Filters;
 using LankaConnect.Application;

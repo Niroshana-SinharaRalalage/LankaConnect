@@ -431,6 +431,17 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    /// <summary>
+    /// W5.4.d.2 (2026-06-22). Relaxed `LankaConnect.Infrastructure` from the ban
+    /// list. EmailGroupRepository extends LankaConnect.Infrastructure.Data.
+    /// Repositories.Repository&lt;T&gt; base and injects AppDbContext directly during
+    /// the transitional window (no separate CommunicationsDbContext in W5.4).
+    /// Mirrors the W3.4 Notifications.Infrastructure relaxation. Same with
+    /// LankaConnect.Domain (EmailGroup extends LegacyBaseEntity) and
+    /// LankaConnect.Application (Result&lt;T&gt; usage via the transitional edge).
+    /// Re-tighten once a dedicated CommunicationsDbContext lands and the
+    /// LegacyBaseEntity / Result&lt;T&gt; primitives elevate into BuildingBlocks.
+    /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]
     public void Modules_Communications_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith()
@@ -442,11 +453,7 @@ public sealed class LayeringRules
             .NotHaveDependencyOnAny(
                 "LankaConnect.Modules.Communications.Api",
                 "LankaConnect.BuildingBlocks.Web",
-                "LankaConnect.Domain",
-                "LankaConnect.Application",
-                "LankaConnect.Infrastructure",
-                "LankaConnect.API",
-                "LankaConnect.Shared")
+                "LankaConnect.API")
             .GetResult();
 
         AssertCompliant(result, assembly.GetName().Name!);

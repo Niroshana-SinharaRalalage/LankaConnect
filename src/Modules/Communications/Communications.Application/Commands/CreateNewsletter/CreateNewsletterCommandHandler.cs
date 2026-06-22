@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using LankaConnect.Modules.Communications.Domain.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;

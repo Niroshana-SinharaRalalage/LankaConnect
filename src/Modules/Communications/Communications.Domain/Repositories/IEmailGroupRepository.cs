@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Modules.Communications.Domain.Entities;
 
-namespace LankaConnect.Domain.Communications;
+namespace LankaConnect.Modules.Communications.Domain.Repositories;
 
 /// <summary>
 /// Repository interface for EmailGroup aggregate

@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Communications.Entities;
+namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
 /// Email Group Entity

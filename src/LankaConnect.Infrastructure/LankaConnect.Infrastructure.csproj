@@ -13,6 +13,11 @@
          layer per the master-TODO ArchTest invariant
          (LegacyApplication_DoesNotDependOnFormsDomain). -->
     <ProjectReference Include="..\Modules\Forms\Forms.Domain\Forms.Domain.csproj" />
+    <!-- W5.4.d.2 (2026-06-22). Communications.Domain hosts EmailGroup + IEmailGroupRepository
+         (moved out of LankaConnect.Domain.Communications). LankaConnect.Infrastructure
+         needs an explicit ref because Migration Designer files + EmailGroup ChangeTracker
+         calls reach the type. Mirrors the W5.3d.3 Forms.Domain handling. -->
+    <ProjectReference Include="..\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

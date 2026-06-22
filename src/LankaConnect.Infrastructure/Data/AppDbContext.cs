@@ -133,8 +133,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Badge> Badges => Set<Badge>(); // Phase 6A.25: Badge Management
     public DbSet<EventBadge> EventBadges => Set<EventBadge>(); // Phase 6A.25: Event-Badge assignments
 
-    // Email Group Entity Set (Phase 6A.25)
-    public DbSet<EmailGroup> EmailGroups => Set<EmailGroup>(); // Phase 6A.25: Email Groups Management
+    // Wave 5.4.d.2 (2026-06-22): EmailGroup moved to Communications.Domain;
+    // fully-qualified type ref keeps the DbSet on AppDbContext during the
+    // transitional window (W5.4 doesn't carve out CommunicationsDbContext yet).
+    public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup> EmailGroups => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup>(); // Phase 6A.25: Email Groups Management
 
     // Stripe Customer Entity Set (Phase 6A.4)
     public DbSet<StripeCustomer> StripeCustomers => Set<StripeCustomer>(); // Phase 6A.4: Stripe Payment Integration
@@ -377,7 +379,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             // Phase 1.7 (Wave4.9.2.7, 2026-06-09): communications email-side subset (8 entities)
             typeof(LankaConnect.Domain.Communications.Entities.EmailDispatchLog),
             typeof(LankaConnect.Domain.Communications.Entities.EmailFailureDetail),
-            typeof(LankaConnect.Domain.Communications.Entities.EmailGroup),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailGroup), // Wave 5.4.d.2: moved to Communications.Domain
             typeof(LankaConnect.Domain.Communications.Entities.EmailMessage),
             typeof(LankaConnect.Domain.Communications.Entities.EmailMetricRecord),
             typeof(LankaConnect.Domain.Communications.Entities.EmailTemplate),
@@ -575,7 +577,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(RegistrationPayment), // Add-Only Attendees Feature
             typeof(Badge), // Phase 6A.25
             typeof(EventBadge), // Phase 6A.25
-            typeof(EmailGroup), // Phase 6A.25: Email Groups Management
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailGroup), // Phase 6A.25: Email Groups Management (Wave 5.4.d.2: moved to Communications.Domain)
             typeof(StripeCustomer), // Phase 6A.4: Stripe Payment Integration
             typeof(LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent), // Phase 6A.24: Webhook idempotency tracking
             typeof(ReferenceValue), // Phase 6A.47: Unified Reference Data

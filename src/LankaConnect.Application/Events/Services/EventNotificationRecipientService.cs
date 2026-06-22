@@ -1,3 +1,5 @@
+using LankaConnect.Modules.Communications.Domain.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Communications.Entities; // NewsletterSubscriber (EmailGroup no longer needed post-W5.4.d.1)

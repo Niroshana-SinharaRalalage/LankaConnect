@@ -1,3 +1,5 @@
+using LankaConnect.Modules.Communications.Domain.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Application.Commands.UpdateNewsletter;
 using LankaConnect.Domain.Common;

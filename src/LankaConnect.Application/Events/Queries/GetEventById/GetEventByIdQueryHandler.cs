@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using AutoMapper;
+using LankaConnect.Modules.Communications.Domain.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common; // Phase 6A.32: legacy EmailGroupSummaryDto consumed by EventDto
 using LankaConnect.Application.Events.Common;

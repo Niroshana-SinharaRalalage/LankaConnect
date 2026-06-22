@@ -71,4 +71,7 @@
     <Compile Include="Data\Migrations\Phase7C3aDecomposeLocationTests.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="....srcModulesCommunicationsCommunications.DomainCommunications.Domain.csproj" />
+  </ItemGroup>
 </Project>

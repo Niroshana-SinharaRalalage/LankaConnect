@@ -6,10 +6,17 @@
     <Description>Communications module — Domain layer. Aggregates, entities, value objects, domain events, repository interfaces. Per ADR-002 module boundary: depends only on BuildingBlocks.Domain; no LankaConnect.Application/Infrastructure/Modules.* references.</Description>
   </PropertyGroup>
 
-  <!-- W4 SKELETON (2026-06-04). Empty shell — domain types move in W4.1.2 per W3.9 playbook §Step 2. -->
-
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
+    <!--
+      W5.4.d.2 TRANSITIONAL EDGE (2026-06-22). EmailGroup extends
+      LankaConnect.Domain.Common.LegacyBaseEntity and uses Result T from the
+      legacy Domain assembly. Architect-accepted pragmatic edge matching the
+      W4.3 Forms.Domain rationale (rebase to direct BB.Entity Guid + IAuditable
+      deferred to a future cross-cutting cleanup wave).
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
   </ItemGroup>
 
 </Project>

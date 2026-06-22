@@ -26,6 +26,13 @@
          dependency stays in place for the next phase; W5.4.d.3 will cut it and
          pin via ArchTest LegacyApplication_DoesNotDependOnCommunicationsDomain. -->
     <ProjectReference Include="..\Modules\Communications\Communications.Contracts\Communications.Contracts.csproj" />
+    <!-- W5.4.d.2 (2026-06-22). Communications.Domain now hosts EmailGroup + IEmailGroupRepository
+         (moved out of LankaConnect.Domain.Communications). LankaConnect.Application keeps a
+         transitional ProjectReference here so the 2 remaining out-of-scope Newsletter query
+         handlers (GetPublishedNewsletters + GetNewslettersByEvent) that do direct
+         dbContext.Set EmailGroup queries can compile. W5.4.d.3 refactors them onto
+         IEmailGroupQueries from Contracts and cuts this edge + the matching ArchTest fires. -->
+    <ProjectReference Include="..\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

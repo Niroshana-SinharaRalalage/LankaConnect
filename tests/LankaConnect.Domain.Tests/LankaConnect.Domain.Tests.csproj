@@ -30,6 +30,8 @@
     <!-- G1.b (2026-06-08): module-domain references for IAuditableAggregateRoundTripTests. -->
     <ProjectReference Include="..\..\src\Modules\Media\Media.Domain\Media.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Notifications\Notifications.Domain\Notifications.Domain.csproj" />
+    <!-- W5.4.d.2 (2026-06-22): Communications.Domain now hosts EmailGroup, tested via IAuditableAggregateRoundTripTests. -->
+    <ProjectReference Include="..\..\src\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
   </ItemGroup>
 
 </Project>

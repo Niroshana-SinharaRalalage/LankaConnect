@@ -1,4 +1,6 @@
 using Azure.Storage.Blobs;
+using LankaConnect.Modules.Communications.Domain.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain;
 using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
@@ -231,7 +233,7 @@ public static class DependencyInjection
         services.AddScoped<IBadgeRepository, BadgeRepository>();
 
         // Add Email Group Repository (Phase 6A.25)
-        services.AddScoped<IEmailGroupRepository, EmailGroupRepository>();
+        // Wave 5.4.d.2 (2026-06-22): registration moved to CommunicationsModule
 
         // Add Metro Area Repository (Phase 6A Event Notifications)
         services.AddScoped<IMetroAreaRepository, MetroAreaRepository>();

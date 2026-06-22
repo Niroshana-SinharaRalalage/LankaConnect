@@ -68,7 +68,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .Include(e => e.Images)
                     .Include(e => e.Videos)  // Phase 6A.12: Include videos for event media gallery
                     .Include(e => e.Registrations)  // Session 21: Include registrations for cancel/update operations
-                    .Include("_emailGroupLinks")  // Wave 5.4.c.0: hydrate EventEmailGroupLink junction directly (replaces _emailGroupEntities typed nav)
+                    .Include(e => e.EmailGroupLinks)  // Wave 5.4.c.0: hydrate EventEmailGroupLink junction (replaces _emailGroupEntities typed nav)
                     .Include(e => e.Location)  // Phase 6A.X FIX: Include Location for revenue breakdown calculation
                     .Include(e => e.OrganizerContacts)  // Multiple organizer contacts
                     .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers for tiered ticketing

@@ -693,44 +693,19 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                     return Result.Failure($"Email group '{emailGroup.Name}' is inactive and cannot be used");
             }
 
-            // Update email group IDs in domain model (for business logic)
+            // Wave 5.4.c.0 (2026-06-13). Single SetEmailGroups call suffices —
+            // it updates _emailGroupLinks directly (the EF-tracked junction
+            // collection). The Phase 6A.32 manual ChangeTracker shadow-nav
+            // manipulation that used to follow is gone with the typed nav.
             var updateResult = @event.SetEmailGroups(distinctGroupIds);
             if (updateResult.IsFailure)
                 return updateResult;
-
-            // CRITICAL FIX Phase 6A.32: Use EF Core ChangeTracker API to update shadow navigation
-            // We cannot modify shadow navigation from domain layer - must use EF Core's API
-            // This is the CORRECT way to handle many-to-many with shadow properties per ADR-008
-            var emailGroupsCollection = dbContext.Entry(@event).Collection("_emailGroupEntities");
-            await emailGroupsCollection.LoadAsync(cancellationToken);  // Ensure tracked
-
-            var currentEmailGroups = emailGroupsCollection.CurrentValue as ICollection<Domain.Communications.Entities.EmailGroup>
-                ?? new List<Domain.Communications.Entities.EmailGroup>();
-
-            // Clear existing and add new entities (now tracked from DbContext query above)
-            currentEmailGroups.Clear();
-
-            foreach (var emailGroup in emailGroups)
-            {
-                currentEmailGroups.Add(emailGroup);
-            }
         }
         else if (request.EmailGroupIds != null && !request.EmailGroupIds.Any())
         {
-            // Empty list provided - clear all email groups
+            // Wave 5.4.c.0 (2026-06-13). ClearEmailGroups clears _emailGroupLinks
+            // directly — no separate shadow-nav clear needed anymore.
             @event.ClearEmailGroups();
-
-            // Also clear the shadow navigation
-            var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
-                ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
-
-            var emailGroupsCollection = dbContext.Entry(@event).Collection("_emailGroupEntities");
-            await emailGroupsCollection.LoadAsync(cancellationToken);
-
-            var currentEmailGroups = emailGroupsCollection.CurrentValue as ICollection<Domain.Communications.Entities.EmailGroup>
-                ?? new List<Domain.Communications.Entities.EmailGroup>();
-
-            currentEmailGroups.Clear();
         }
         // If null, don't modify existing email groups
 

@@ -105,7 +105,7 @@ public class EventNotificationEmailJob
             }
 
             // Phase 6A.61+ FIX: Use trackChanges: false to properly load email groups from junction table
-            // Background jobs don't need change tracking - this ensures .Include("_emailGroupEntities") works correctly
+            // Background jobs don't need change tracking - this ensures .Include("_emailGroupLinks") works correctly (Wave 5.4.c.0)
             var @event = await _eventRepository.GetByIdAsync(history.EventId, trackChanges: false, cancellationToken);
             if (@event == null)
             {

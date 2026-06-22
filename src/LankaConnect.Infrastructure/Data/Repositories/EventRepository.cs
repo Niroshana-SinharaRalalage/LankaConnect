@@ -23,81 +23,12 @@ public class EventRepository : Repository<Event>, IEventRepository
         _repoLogger = logger;
     }
 
-    /// <summary>
-    /// Phase 6A.33 FIX: Override AddAsync to sync shadow navigation for email groups when adding new event
-    /// When creating a new event with email groups, the domain's _emailGroupIds list contains the email group GUIDs,
-    /// but the shadow navigation _emailGroupEntities needs to be populated with actual EmailGroup entities
-    /// for EF Core to create the many-to-many junction table rows.
-    /// Pattern mirrors UserRepository.AddAsync for metro areas - no entity state changes, just set CurrentValue.
-    /// Phase 6A.X: Added comprehensive logging with LogContext, Stopwatch, and PostgreSQL SqlState extraction
-    /// </summary>
-    public override async Task AddAsync(Event entity, CancellationToken cancellationToken = default)
-    {
-        using (LogContext.PushProperty("Operation", "Add"))
-        using (LogContext.PushProperty("EntityType", "Event"))
-        using (LogContext.PushProperty("EntityId", entity.Id))
-        using (LogContext.PushProperty("EmailGroupCount", entity.EmailGroupIds.Count))
-        {
-            var stopwatch = Stopwatch.StartNew();
-
-            _repoLogger.LogDebug(
-                "AddAsync START: EntityId={EntityId}, Title={Title}, EmailGroupCount={EmailGroupCount}",
-                entity.Id,
-                entity.Title.Value,
-                entity.EmailGroupIds.Count);
-
-            try
-            {
-                // Call base implementation to add entity to DbSet (state = Added)
-                await base.AddAsync(entity, cancellationToken);
-
-                // Sync email groups from domain list to shadow navigation for persistence
-                // This bridges the gap between domain's List<Guid> and EF Core's ICollection<EmailGroup>
-                if (entity.EmailGroupIds.Any())
-                {
-                    // Load the EmailGroup entities from the database based on the domain's ID list
-                    var emailGroupEntities = await _context.Set<Domain.Communications.Entities.EmailGroup>()
-                        .Where(eg => entity.EmailGroupIds.Contains(eg.Id))
-                        .ToListAsync(cancellationToken);
-
-                    _repoLogger.LogDebug(
-                        "AddAsync: Loaded {EmailGroupEntityCount} email group entities for syncing",
-                        emailGroupEntities.Count);
-
-                    // Access shadow navigation using EF Core's Entry API
-                    var emailGroupsCollection = _context.Entry(entity).Collection("_emailGroupEntities");
-
-                    // Set the loaded entities into the shadow navigation
-                    // EF Core will detect this and create rows in event_email_groups junction table
-                    // Entity remains in Added state - NO state changes needed
-                    emailGroupsCollection.CurrentValue = emailGroupEntities;
-                }
-
-                stopwatch.Stop();
-
-                _repoLogger.LogInformation(
-                    "AddAsync COMPLETE: EntityId={EntityId}, Title={Title}, EmailGroupsSynced={EmailGroupsSynced}, Duration={ElapsedMs}ms",
-                    entity.Id,
-                    entity.Title.Value,
-                    entity.EmailGroupIds.Any(),
-                    stopwatch.ElapsedMilliseconds);
-            }
-            catch (Exception ex)
-            {
-                stopwatch.Stop();
-
-                _repoLogger.LogError(ex,
-                    "AddAsync FAILED: EntityId={EntityId}, Title={Title}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
-                    entity.Id,
-                    entity.Title.Value,
-                    stopwatch.ElapsedMilliseconds,
-                    ex.Message,
-                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
-
-                throw;
-            }
-        }
-    }
+    // Wave 5.4.c.0 (2026-06-13). Dropped the Phase 6A.33 AddAsync override.
+    // Email-group persistence no longer needs a shadow-nav fetch: Event.cs now
+    // populates _emailGroupLinks directly (List<EventEmailGroupLink>), and EF
+    // tracks them as a normal owned-collection. Base AddAsync handles
+    // everything; the junction-table rows are emitted by EF's standard
+    // insert pipeline.
 
     // GetByIdAsync with eager loading for SignUpLists, Images, Videos, Registrations, and EmailGroups
     // This is required for GetEventSignUpLists query, media gallery display, correct DisplayOrder calculation,
@@ -137,7 +68,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .Include(e => e.Images)
                     .Include(e => e.Videos)  // Phase 6A.12: Include videos for event media gallery
                     .Include(e => e.Registrations)  // Session 21: Include registrations for cancel/update operations
-                    .Include("_emailGroupEntities")  // Phase 6A.33: Include email groups shadow navigation from junction table
+                    .Include("_emailGroupLinks")  // Wave 5.4.c.0: hydrate EventEmailGroupLink junction directly (replaces _emailGroupEntities typed nav)
                     .Include(e => e.Location)  // Phase 6A.X FIX: Include Location for revenue breakdown calculation
                     .Include(e => e.OrganizerContacts)  // Multiple organizer contacts
                     .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers for tiered ticketing
@@ -197,21 +128,11 @@ public class EventRepository : Repository<Event>, IEventRepository
                         "This will prevent domain events from being dispatched!");
                 }
 
-                // Phase 6A.33 FIX: Sync email group IDs from shadow navigation to domain
-                var emailGroupsCollection = _context.Entry(eventEntity).Collection("_emailGroupEntities");
-                var emailGroupEntities = emailGroupsCollection.CurrentValue as IEnumerable<Domain.Communications.Entities.EmailGroup>;
-
-                int emailGroupCount = 0;
-                if (emailGroupEntities != null)
-                {
-                    var emailGroupIds = emailGroupEntities.Select(eg => eg.Id).ToList();
-                    emailGroupCount = emailGroupIds.Count;
-                    eventEntity.SyncEmailGroupIdsFromEntities(emailGroupIds);
-
-                    _repoLogger.LogInformation(
-                        "[DIAG-R5] Synced {EmailGroupCount} email group IDs to domain entity",
-                        emailGroupCount);
-                }
+                // Wave 5.4.c.0 (2026-06-13). Dropped the Phase 6A.33 SyncEmailGroupIdsFromEntities
+                // hydration call. _emailGroupLinks is now hydrated directly by EF via the
+                // .Include("_emailGroupLinks") above; Event.EmailGroupIds derives from that
+                // collection. No domain-side sync method exists anymore.
+                int emailGroupCount = eventEntity.EmailGroupCount();
 
                 stopwatch.Stop();
 

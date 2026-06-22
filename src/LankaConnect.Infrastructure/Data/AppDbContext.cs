@@ -185,6 +185,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new TicketTierConfiguration()); // Multi-tier ticketing (must be before EventConfiguration to avoid shared-type Money conflict)
         modelBuilder.ApplyConfiguration(new EventConfiguration());
+        // Wave 5.4.c.0 (2026-06-13). Junction CLR entity for the Event <-> EmailGroup M2M
+        // that replaced the typed-nav configuration in EventConfiguration. Entity-level
+        // shape (table, key, columns, indexes) lives in EventEmailGroupLinkConfiguration;
+        // the Event-side relationship (HasMany(e => e.EmailGroupLinks)) lives in
+        // EventConfiguration following the codebase Images/Videos/SignUpLists pattern.
+        // EventEmailGroupLink must also appear in the configuredEntityTypes whitelist
+        // (search for it below) — otherwise the sweep loop calls Ignore() on it.
+        modelBuilder.ApplyConfiguration(new EventEmailGroupLinkConfiguration());
         // Phase 6A.154: EventSlugAliasConfiguration — order-independent.
         // EventConfiguration declares HasMany(e => e.SlugAliases) as a scalar
         // VanitySlug column (NOT OwnsOne), so EF Core 8 doesn't shadow-map
@@ -580,6 +588,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(SponsorshipPackage), // Phase 6A.156: organizer-defined sponsorship packages (Gold/Silver/Bronze)
             typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact), // Multiple Organizer Contacts
             typeof(LankaConnect.Domain.Events.Entities.EventSlugAlias), // Phase 6A.154: retired vanity slug aliases (permanent 301 sources)
+            typeof(LankaConnect.Domain.Events.Entities.EventEmailGroupLink), // Wave 5.4.c.0: explicit junction CLR type replacing the Phase 6A.32 typed M2M nav
             // W4.2: PhotoAlbum + AlbumPhoto moved to MediaDbContext.
             typeof(WhatsAppMessageRecord), // Phase 7A: WhatsApp Integration
             typeof(WhatsAppTemplate), // Phase 7A: WhatsApp Integration

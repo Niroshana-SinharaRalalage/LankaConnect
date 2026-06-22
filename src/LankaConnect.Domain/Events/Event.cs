@@ -29,8 +29,12 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
     private readonly List<EventPass> _passes = new(); // Event passes/tickets support
     private readonly List<SignUpList> _signUpLists = new(); // Sign-up lists for volunteers/items
     private readonly List<EventBadge> _badges = new(); // Phase 6A.25: Event badges for promotional overlays
-    private readonly List<Guid> _emailGroupIds = new(); // Phase 6A.32: Email group references for event invitations
-    private readonly List<Domain.Communications.Entities.EmailGroup> _emailGroupEntities = new(); // Phase 6A.32: Shadow navigation for EF Core
+    // Wave 5.4.c.0 (2026-06-13). Replaced Phase 6A.32 `_emailGroupIds: List<Guid>`
+    // + `_emailGroupEntities: List<EmailGroup>` (the typed nav that blocked
+    // Wave 4.1.2) with this single junction CLR list. EmailGroupIds derives
+    // from it; mutators manipulate it directly. Persisted to the same
+    // physical event_email_groups table — EF-snapshot-only change.
+    private readonly List<EventEmailGroupLink> _emailGroupLinks = new();
     private readonly List<EventOrganizerContact> _organizerContacts = new(); // Multiple organizer contacts
     private readonly List<EventSlugAlias> _slugAliases = new(); // Phase 6A.154: retired vanity slugs (permanent 301 sources)
 
@@ -165,10 +169,18 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
     public IReadOnlyList<EventPass> Passes => _passes.AsReadOnly(); // Read-only pass collection
     public IReadOnlyList<SignUpList> SignUpLists => _signUpLists.AsReadOnly(); // Read-only sign-up lists collection
     public IReadOnlyList<EventBadge> Badges => _badges.AsReadOnly(); // Phase 6A.25: Read-only badge collection
-    // Phase 6A.33 FIX: EmailGroupIds exposes domain's _emailGroupIds list (source of truth for business logic)
-    // Infrastructure layer syncs _emailGroupEntities shadow navigation from _emailGroupIds for persistence
-    // Pattern mirrors User.PreferredMetroAreaIds per ADR-009
-    public IReadOnlyList<Guid> EmailGroupIds => _emailGroupIds.AsReadOnly();
+    // Wave 5.4.c.0 (2026-06-13). EmailGroupIds derives from the single junction
+    // CLR list _emailGroupLinks (which IS the EF-persisted side after the
+    // typed-nav surgery). No infrastructure sync needed — EF hydration
+    // populates the links directly and mutators manipulate them.
+    public IReadOnlyList<Guid> EmailGroupIds => _emailGroupLinks.Select(l => l.EmailGroupId).ToList().AsReadOnly();
+
+    // Wave 5.4.c.0 (2026-06-13). EmailGroupLinks exposes the junction
+    // collection for EF Core's HasMany expression-tree binding (mirrors the
+    // Images / Videos / SignUpLists pattern on this aggregate). Callers
+    // should use EmailGroupIds for business logic; this surface exists for
+    // EF metadata discovery only.
+    public IReadOnlyList<EventEmailGroupLink> EmailGroupLinks => _emailGroupLinks.AsReadOnly();
 
     // Session 21: Updated to support both legacy Quantity and new multi-attendee format
     public int CurrentRegistrations => _registrations
@@ -2096,13 +2108,12 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
     #region Email Group Management
 
     /// <summary>
-    /// Assigns email groups to this event for invitation distribution
-    /// Business Rules:
-    /// - Email groups must belong to the event organizer
-    /// - Duplicate assignments are prevented
-    /// - Can assign multiple groups at once
-    /// Phase 6A.32: Email Groups Integration
-    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
+    /// Assigns email groups to this event for invitation distribution.
+    /// Wave 5.4.c.0 (2026-06-13): manipulates _emailGroupLinks directly so EF
+    /// Core hydrates + persists this collection — no separate infrastructure
+    /// sync (Phase 6A.33 SyncEmailGroupIdsFromEntities back-door dropped).
+    /// Business rules: distinct, non-empty Guids; duplicate assignments are
+    /// silently skipped.
     /// </summary>
     public Result AssignEmailGroups(IEnumerable<Guid> emailGroupIds)
     {
@@ -2112,28 +2123,23 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         var groupList = emailGroupIds.Where(id => id != Guid.Empty).Distinct().ToList();
 
         if (!groupList.Any())
-            return Result.Success(); // No groups to assign
+            return Result.Success();
 
-        // Add groups that aren't already assigned to domain list
         foreach (var groupId in groupList)
         {
-            if (!_emailGroupIds.Contains(groupId))
+            if (!_emailGroupLinks.Any(l => l.EmailGroupId == groupId))
             {
-                _emailGroupIds.Add(groupId);
+                _emailGroupLinks.Add(EventEmailGroupLink.Create(Id, groupId));
             }
         }
-
-        // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
-        // See EventRepository.AddAsync/UpdateAsync - uses EF Core Entry API per ADR-009
 
         return Result.Success();
     }
 
     /// <summary>
-    /// Replaces all email groups with a new set
-    /// Primary method for updating email groups during event editing
-    /// Phase 6A.32: Email Groups Integration
-    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
+    /// Replaces all email groups with a new set. Wave 5.4.c.0 (2026-06-13) —
+    /// operates on _emailGroupLinks; EF tracks add/remove diffs and emits
+    /// matching junction-table rows.
     /// </summary>
     public Result SetEmailGroups(IEnumerable<Guid> emailGroupIds)
     {
@@ -2142,20 +2148,17 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
 
         var groupList = emailGroupIds.Where(id => id != Guid.Empty).Distinct().ToList();
 
-        // Update domain collection (used by business logic)
-        _emailGroupIds.Clear();
-        _emailGroupIds.AddRange(groupList);
-
-        // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
-        // See EventRepository.AddAsync/UpdateAsync - uses EF Core Entry API per ADR-009
+        _emailGroupLinks.Clear();
+        foreach (var groupId in groupList)
+        {
+            _emailGroupLinks.Add(EventEmailGroupLink.Create(Id, groupId));
+        }
 
         return Result.Success();
     }
 
     /// <summary>
-    /// Removes specific email groups from this event
-    /// Phase 6A.32: Email Groups Integration
-    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
+    /// Removes specific email groups from this event. Wave 5.4.c.0 (2026-06-13).
     /// </summary>
     public Result RemoveEmailGroups(IEnumerable<Guid> emailGroupIds)
     {
@@ -2165,66 +2168,31 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         var groupList = emailGroupIds.Where(id => id != Guid.Empty).ToList();
 
         if (!groupList.Any())
-            return Result.Success(); // No groups to remove
+            return Result.Success();
 
-        // Remove from domain list
-        foreach (var groupId in groupList)
-        {
-            _emailGroupIds.Remove(groupId);
-        }
-
-        // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
-        // See EventRepository - uses EF Core Entry API per ADR-009
+        _emailGroupLinks.RemoveAll(l => groupList.Contains(l.EmailGroupId));
 
         return Result.Success();
     }
 
     /// <summary>
-    /// Removes all email groups from this event
-    /// Phase 6A.32: Email Groups Integration
-    /// NOTE: _emailGroupEntities shadow navigation synced by infrastructure layer per ADR-009
+    /// Removes all email groups from this event. Wave 5.4.c.0 (2026-06-13).
     /// </summary>
     public Result ClearEmailGroups()
     {
-        if (_emailGroupIds.Any())
+        if (_emailGroupLinks.Any())
         {
-            _emailGroupIds.Clear();
-
-            // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
-            // See EventRepository - uses EF Core Entry API per ADR-009
-
+            _emailGroupLinks.Clear();
         }
 
         return Result.Success();
     }
 
-    /// <summary>
-    /// Phase 6A.33 FIX: Sync domain's email group ID list from loaded EF Core entities
-    /// This method is called ONLY by infrastructure layer after loading event from database
-    /// Does NOT mark entity as updated or raise events - this is a hydration concern
-    /// Per ADR-009: Domain maintains List&lt;Guid&gt; for business logic, EF Core has shadow navigation for persistence
-    /// Pattern mirrors User.SyncPreferredMetroAreaIdsFromEntities
-    /// </summary>
-    /// <param name="emailGroupIds">IDs extracted from loaded shadow navigation entities</param>
-    internal void SyncEmailGroupIdsFromEntities(IEnumerable<Guid> emailGroupIds)
-    {
-        _emailGroupIds.Clear();
-        _emailGroupIds.AddRange(emailGroupIds);
-        // NOTE: Do NOT call MarkAsUpdated() - this is a read operation, not a modification
-        // NOTE: Do NOT raise domain events - this is infrastructure hydration, not business operation
-    }
+    /// <summary>Checks if this event has any email groups assigned.</summary>
+    public bool HasEmailGroups() => _emailGroupLinks.Any();
 
-    /// <summary>
-    /// Checks if this event has any email groups assigned
-    /// Phase 6A.32: Email Groups Integration
-    /// </summary>
-    public bool HasEmailGroups() => _emailGroupIds.Any();
-
-    /// <summary>
-    /// Gets the count of email groups assigned to this event
-    /// Phase 6A.32: Email Groups Integration
-    /// </summary>
-    public int EmailGroupCount() => _emailGroupIds.Count;
+    /// <summary>Gets the count of email groups assigned to this event.</summary>
+    public int EmailGroupCount() => _emailGroupLinks.Count;
 
     #endregion
 

@@ -4,7 +4,6 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Communications.Entities; // Phase 6A.32: Email groups relationship
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
@@ -508,35 +507,22 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         // Indexes for location-based searches will be added via raw SQL in migration
         // due to nested owned entity limitations with EF Core indexing
 
-        // Phase 6A.32: Email Groups - Many-to-Many Relationship
-        // Fix #1: Junction table ONLY, no JSONB denormalization
-        // Fix #2: Cascade delete on BOTH FKs (safe with soft delete pattern)
-        builder
-            .HasMany<EmailGroup>("_emailGroupEntities")
-            .WithMany()
-            .UsingEntity<Dictionary<string, object>>(
-                "event_email_groups",
-                j => j
-                    .HasOne<EmailGroup>()
-                    .WithMany()
-                    .HasForeignKey("email_group_id")
-                    .OnDelete(DeleteBehavior.Cascade), // Fix #2: Safe with soft delete
-                j => j
-                    .HasOne<Event>()
-                    .WithMany()
-                    .HasForeignKey("event_id")
-                    .OnDelete(DeleteBehavior.Cascade), // Fix #2: Safe with soft delete
-                j =>
-                {
-                    j.ToTable("event_email_groups");
-                    j.HasKey("event_id", "email_group_id"); // Composite primary key
-                    j.Property<DateTime>("assigned_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+        // Wave 5.4.c.0 (2026-06-13). The Phase 6A.32 typed M2M nav
+        // (HasMany<EmailGroup>("_emailGroupEntities")...UsingEntity<Dictionary>...)
+        // was replaced by the explicit junction CLR type EventEmailGroupLink.
+        // Same physical table (event_email_groups), same columns + PK + indexes
+        // — EF-snapshot-only change. The relationship uses the standard
+        // codebase pattern (mirrors Images / Videos / SignUpLists above): public
+        // navigation property + .UsePropertyAccessMode(Field) so EF reads/writes
+        // the backing field _emailGroupLinks directly without invoking the
+        // aggregate's mutator methods during hydration.
+        builder.HasMany(e => e.EmailGroupLinks)
+            .WithOne()
+            .HasForeignKey(l => l.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-                    // Indexes for query performance
-                    j.HasIndex("event_id");
-                    j.HasIndex("email_group_id");
-                });
+        builder.Navigation(e => e.EmailGroupLinks)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 
     // Phase 6A.154: rebuild EventVanitySlug from its raw string column without

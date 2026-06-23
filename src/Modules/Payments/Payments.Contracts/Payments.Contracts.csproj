@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Payments.Contracts</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Payments.Contracts</AssemblyName>
+    <Description>Payments module - Contracts layer (cross-module wire-format ABI). Public dispatch interface + DTOs for refund-request and Stripe-customer read access. Depends only on BuildingBlocks.Contracts. No domain entity leakage. Wave 4.4.a (2026-06-23).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

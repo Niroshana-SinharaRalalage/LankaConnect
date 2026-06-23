@@ -396,6 +396,61 @@ public sealed class LayeringRules
     }
 
     /// <summary>
+    /// Wave 4.4.a (2026-06-23) — Payments.Contracts module boundary.
+    /// Mirrors Modules_Communications_Contracts_DependsOnlyOnBuildingBlocksContracts.
+    /// Contracts must depend only on BuildingBlocks.Contracts (the cross-module
+    /// wire-format ABI) — never on LankaConnect.Domain, LankaConnect.Application,
+    /// LankaConnect.Infrastructure, or any other module's non-Contracts layer.
+    /// Catches accidental ProjectReference additions to Payments.Contracts.csproj.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Payments_Contracts_DependsOnlyOnBuildingBlocksContracts()
+    {
+        var assembly = typeof(Modules.Payments.Contracts.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Payments.Domain",
+                "LankaConnect.Modules.Payments.Application",
+                "LankaConnect.Modules.Payments.Infrastructure",
+                "LankaConnect.Modules.Payments.Api",
+                "LankaConnect.BuildingBlocks.Domain",
+                "LankaConnect.BuildingBlocks.Application",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared",
+                "LankaConnect.Modules.Notifications.Domain",
+                "LankaConnect.Modules.Notifications.Contracts",
+                "LankaConnect.Modules.Notifications.Application",
+                "LankaConnect.Modules.Notifications.Infrastructure",
+                "LankaConnect.Modules.Notifications.Api",
+                "LankaConnect.Modules.Media.Domain",
+                "LankaConnect.Modules.Media.Contracts",
+                "LankaConnect.Modules.Media.Application",
+                "LankaConnect.Modules.Media.Infrastructure",
+                "LankaConnect.Modules.Media.Api",
+                "LankaConnect.Modules.Communications.Domain",
+                "LankaConnect.Modules.Communications.Contracts",
+                "LankaConnect.Modules.Communications.Application",
+                "LankaConnect.Modules.Communications.Infrastructure",
+                "LankaConnect.Modules.Communications.Api",
+                "LankaConnect.Modules.Forms.Domain",
+                "LankaConnect.Modules.Forms.Contracts",
+                "LankaConnect.Modules.Forms.Application",
+                "LankaConnect.Modules.Forms.Infrastructure",
+                "LankaConnect.Modules.Forms.Api")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
     /// W5.4.b (2026-06-13) — relaxed `LankaConnect.Domain` from the ban list.
     /// EmailGroupQueries in Communications.Application wraps the existing
     /// IEmailGroupRepository which still lives in LankaConnect.Domain.Communications

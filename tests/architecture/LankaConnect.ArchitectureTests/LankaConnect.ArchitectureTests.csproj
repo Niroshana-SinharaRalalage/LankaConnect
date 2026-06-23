@@ -83,6 +83,7 @@
     <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
     <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Time\SharedKernel.Time.csproj" />
     <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Contracts\SharedKernel.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Payments\Payments.Contracts\Payments.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

@@ -705,6 +705,66 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    /// <summary>
+    /// W5.4.d.3 (2026-06-22) — pins the Application-side cut completed in this
+    /// commit: LankaConnect.Application no longer references Communications.Domain.
+    /// Cross-module Communications access from the legacy Application layer flows
+    /// through Communications.Contracts (IEmailGroupQueries / *Dto). Catch any
+    /// future regression where a new handler/service inside LankaConnect.Application
+    /// imports a Communications.Domain symbol.
+    ///
+    /// Scope note: LankaConnect.Infrastructure still legitimately references
+    /// Communications.Domain (AppDbContext owns the EmailGroup DbSet during the
+    /// transitional window; EmailGroupConfiguration lives in the legacy infra
+    /// layer to avoid a circular ref with Communications.Infrastructure). That
+    /// coupling is the legacy infrastructure layer reaching module Domain for
+    /// cross-module persistence wiring and is explicitly allowed by ADR-002;
+    /// only the Application-layer cut is pinned here. Mirrors the W5.3d.3 Forms
+    /// LegacyApplication_DoesNotDependOnFormsDomain rule.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void LegacyApplication_DoesNotDependOnCommunicationsDomain()
+    {
+        var assembly = typeof(LankaConnect.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Communications.Domain")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
+    /// W5.4.d.3 (2026-06-22) — pins the Domain-side cut completed in this commit:
+    /// LankaConnect.Domain no longer references Communications.Domain. This rule
+    /// has no Forms-side equivalent because the Forms aggregates never held a
+    /// cross-aggregate typed nav from LankaConnect.Domain.Events into
+    /// Forms.Domain. Communications IS different — Newsletter.cs had a typed
+    /// M2M nav to EmailGroup (Phase 6A.74 `_emailGroupEntities: List&lt;EmailGroup&gt;`),
+    /// and W5.4.d.1b surgery replaced that nav with the explicit
+    /// NewsletterEmailGroupLink junction CLR type that holds raw Guids. This
+    /// ArchTest guards against future re-introduction of a Communications.Domain
+    /// type reference from any aggregate in LankaConnect.Domain (Event, Newsletter,
+    /// or any future entity).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void LegacyDomain_DoesNotDependOnCommunicationsDomain()
+    {
+        var assembly = typeof(LankaConnect.Domain.Events.Event).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Communications.Domain")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
     // ---------- W4.7 — CulturalIntelligence module boundaries (added 2026-06-06) ----------
 
     [Fact]

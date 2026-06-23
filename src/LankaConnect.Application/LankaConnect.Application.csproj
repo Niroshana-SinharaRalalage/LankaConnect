@@ -20,19 +20,20 @@
          moved into Forms.Application/EventHandlers in 5.3d.2 — they no longer
          live in this assembly. -->
     <ProjectReference Include="..\Modules\Forms\Forms.Contracts\Forms.Contracts.csproj" />
-    <!-- W5.4.d.1 (2026-06-22). Cross-module Communications surface for legacy
+    <!-- W5.4.d.3 (2026-06-22). Cross-module Communications surface for legacy
          LankaConnect.Application code: IEmailGroupQueries + EmailGroup DTOs from
-         Communications.Contracts. The W4.3-era LankaConnect.Domain.Communications
-         dependency stays in place for the next phase; W5.4.d.3 will cut it and
-         pin via ArchTest LegacyApplication_DoesNotDependOnCommunicationsDomain. -->
+         Communications.Contracts. The W5.4.d.2 transitional Communications.Domain
+         ProjectReference was CUT in this commit - see ArchTest
+         LegacyApplication_DoesNotDependOnCommunicationsDomain
+         (LayeringRules.cs) which now pins the boundary. All consumers:
+         - GetEventByIdQueryHandler / EventNotificationRecipientService /
+           CreateEventCommandHandler / UpdateEventCommandHandler (5.4.d.1) on
+           IEmailGroupQueries
+         - GetPublishedNewslettersQueryHandler / GetNewslettersByEventQueryHandler
+           (5.4.d.3) on IEmailGroupQueries (dbContext.Set<EmailGroup> retired)
+         - 4 EmailGroup commands + 2 EmailGroup queries already physically moved to
+           Communications.Application in 5.4.c.1 + 5.4.c.2. -->
     <ProjectReference Include="..\Modules\Communications\Communications.Contracts\Communications.Contracts.csproj" />
-    <!-- W5.4.d.2 (2026-06-22). Communications.Domain now hosts EmailGroup + IEmailGroupRepository
-         (moved out of LankaConnect.Domain.Communications). LankaConnect.Application keeps a
-         transitional ProjectReference here so the 2 remaining out-of-scope Newsletter query
-         handlers (GetPublishedNewsletters + GetNewslettersByEvent) that do direct
-         dbContext.Set EmailGroup queries can compile. W5.4.d.3 refactors them onto
-         IEmailGroupQueries from Contracts and cuts this edge + the matching ArchTest fires. -->
-    <ProjectReference Include="..\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

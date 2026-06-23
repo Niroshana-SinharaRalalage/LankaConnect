@@ -4,8 +4,9 @@ using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Domain.Events;
+using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.3: IEmailGroupQueries replaces dbContext.Set<EmailGroup>
+using ContractsEmailGroupSummaryDto = LankaConnect.Modules.Communications.Contracts.EmailGroupSummaryDto;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Serilog.Context;
@@ -20,15 +21,18 @@ public class GetNewslettersByEventQueryHandler : IQueryHandler<GetNewslettersByE
 {
     private readonly INewsletterRepository _newsletterRepository;
     private readonly IApplicationDbContext _dbContext;
+    private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.3
     private readonly ILogger<GetNewslettersByEventQueryHandler> _logger;
 
     public GetNewslettersByEventQueryHandler(
         INewsletterRepository newsletterRepository,
         IApplicationDbContext dbContext,
+        IEmailGroupQueries emailGroupQueries, // Wave 5.4.d.3
         ILogger<GetNewslettersByEventQueryHandler> logger)
     {
         _newsletterRepository = newsletterRepository;
         _dbContext = dbContext;
+        _emailGroupQueries = emailGroupQueries;
         _logger = logger;
     }
 
@@ -89,15 +93,13 @@ public class GetNewslettersByEventQueryHandler : IQueryHandler<GetNewslettersByE
                         .ToListAsync(cancellationToken)
                     : new List<object>().Select(x => new { NewsletterId = Guid.Empty, MetroAreaId = Guid.Empty }).ToList();
 
-                // Batch load email group entities
+                // Wave 5.4.d.3 (2026-06-22): batch fetch via IEmailGroupQueries (cross-module Contracts).
+                // Replaces the previous dbContext.Set<EmailGroup>().Where().ToList() pull.
                 var allEmailGroupIds = emailGroupJunction.Select(j => j.EmailGroupId).Distinct().ToList();
-                var emailGroupLookup = allEmailGroupIds.Any() && dbContext != null
-                    ? (await dbContext.Set<EmailGroup>()
-                        .AsNoTracking()
-                        .Where(eg => allEmailGroupIds.Contains(eg.Id))
-                        .ToListAsync(cancellationToken))
+                var emailGroupLookup = allEmailGroupIds.Any()
+                    ? (await _emailGroupQueries.GetByIdsAsync(allEmailGroupIds, cancellationToken))
                         .ToDictionary(eg => eg.Id)
-                    : new Dictionary<Guid, EmailGroup>();
+                    : new Dictionary<Guid, ContractsEmailGroupSummaryDto>();
 
                 // Batch load metro area entities
                 var allMetroAreaIds = metroAreaJunction.Select(j => j.MetroAreaId).Distinct().ToList();
@@ -119,7 +121,7 @@ public class GetNewslettersByEventQueryHandler : IQueryHandler<GetNewslettersByE
                         kvp => kvp.Key,
                         kvp => kvp.Value
                             .Where(id => emailGroupLookup.ContainsKey(id))
-                            .Select(id => new EmailGroupSummaryDto
+                            .Select(id => new LankaConnect.Application.Communications.Common.EmailGroupSummaryDto
                             {
                                 Id = emailGroupLookup[id].Id,
                                 Name = emailGroupLookup[id].Name,
@@ -168,7 +170,7 @@ public class GetNewslettersByEventQueryHandler : IQueryHandler<GetNewslettersByE
                         EmailGroupIds = emailGroupIdsByNewsletter.TryGetValue(newsletter.Id, out var egIds)
                             ? egIds : newsletter.EmailGroupIds,
                         EmailGroups = emailGroupDtosByNewsletter.TryGetValue(newsletter.Id, out var egDtos)
-                            ? egDtos : new List<EmailGroupSummaryDto>(),
+                            ? egDtos : new List<LankaConnect.Application.Communications.Common.EmailGroupSummaryDto>(),
                         MetroAreaIds = metroAreaIdsByNewsletter.TryGetValue(newsletter.Id, out var maIds)
                             ? maIds : newsletter.MetroAreaIds,
                         MetroAreas = metroAreaDtosByNewsletter.TryGetValue(newsletter.Id, out var maDtos)

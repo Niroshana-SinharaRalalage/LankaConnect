@@ -21,6 +21,18 @@
       W5.4.b; future-me should not waste a wave trying to delete it.
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <!--
+      Wave 4.4.c.1 TRANSITIONAL EDGE (2026-06-23). The 7 moved RefundRequest
+      command handlers depend on ICommand / ICommandHandler / IUnitOfWork /
+      ICurrentUserService / IApplicationDbContext (from LankaConnect.
+      Application.Common.Interfaces) AND IRefundExecutionService /
+      IRefundReconciliationService (from LankaConnect.Application.Events.
+      Services). Mirrors the W5.4.c.1 + W5.3c.1 transitional edges. Cut
+      alongside the BuildingBlocks.Application elevation pass (the
+      ICommand/IUnitOfWork primitives) + Wave 4.4.c.4 (the Refund services
+      relocation into Payments.Application).
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

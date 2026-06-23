@@ -1,6 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 
-namespace LankaConnect.Application.Events.Commands.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.Commands.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148: Attendee-initiated refund request creation.

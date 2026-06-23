@@ -6,7 +6,7 @@ using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.Commands.ForceCancelStuckRefund;
+namespace LankaConnect.Modules.Payments.Application.Commands.ForceCancelStuckRefund;
 
 /// <summary>
 /// Handler for <see cref="ForceCancelStuckRefundCommand"/>. Loads the registration with

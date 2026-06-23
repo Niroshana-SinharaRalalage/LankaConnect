@@ -9,7 +9,7 @@ using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.Commands.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.Commands.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148: Organizer creates a refund on behalf of an attendee. Skips Pending —

@@ -1,6 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 
-namespace LankaConnect.Application.Events.Commands.ForceCancelStuckRefund;
+namespace LankaConnect.Modules.Payments.Application.Commands.ForceCancelStuckRefund;
 
 /// <summary>
 /// Phase 7E follow-up: Organiser-initiated cancellation of a registration that is stuck in

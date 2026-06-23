@@ -13,9 +13,10 @@ using LankaConnect.Application.Events.Commands.PostponeEvent;
 using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
-using LankaConnect.Application.Events.Commands.WithdrawRefundRequest;
-using LankaConnect.Application.Events.Commands.ForceCancelStuckRefund;
-using LankaConnect.Application.Events.Commands.RefundRequests;
+// Wave 4.4.c.1 (2026-06-23): refund command handlers moved to Payments.Application.
+using LankaConnect.Modules.Payments.Application.Commands.WithdrawRefundRequest;
+using LankaConnect.Modules.Payments.Application.Commands.ForceCancelStuckRefund;
+using LankaConnect.Modules.Payments.Application.Commands.RefundRequests;
 using LankaConnect.Application.Events.Queries.RefundRequests;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
 using LankaConnect.Application.Events.Commands.ResendTicketEmail;

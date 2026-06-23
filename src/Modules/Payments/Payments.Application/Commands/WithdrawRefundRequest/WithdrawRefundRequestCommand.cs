@@ -1,6 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 
-namespace LankaConnect.Application.Events.Commands.WithdrawRefundRequest;
+namespace LankaConnect.Modules.Payments.Application.Commands.WithdrawRefundRequest;
 
 /// <summary>
 /// Phase 6A.91: Command to withdraw a pending refund request.

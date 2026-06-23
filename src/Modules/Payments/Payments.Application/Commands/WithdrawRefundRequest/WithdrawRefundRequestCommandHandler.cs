@@ -6,7 +6,7 @@ using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.Commands.WithdrawRefundRequest;
+namespace LankaConnect.Modules.Payments.Application.Commands.WithdrawRefundRequest;
 
 /// <summary>
 /// Phase 6A.91: Handler for withdrawing a pending refund request.

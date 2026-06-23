@@ -402,9 +402,18 @@ public sealed class LayeringRules
     /// ProjectReference is PERMANENT (architect Risk #1 Option A) because
     /// RefundRequest + RefundRequestLineItem + RegistrationPayment stay as
     /// Registration aggregate children in LankaConnect.Domain.Events.Entities.
-    /// So LankaConnect.Domain is NOT in the ban list. LankaConnect.Application
-    /// will be added at Wave 4.4.c.1 when the moved command handlers pull in
-    /// ICommand / ICommandHandler / IUnitOfWork / ICurrentUserService.
+    /// So LankaConnect.Domain is NOT in the ban list.
+    /// Wave 4.4.c.1 (2026-06-23) — additionally relaxed
+    /// <c>LankaConnect.Application</c> because the 7 moved RefundRequest
+    /// command handlers (ApproveRefundRequest / CreateRefundRequest /
+    /// CreateOrganizerInitiatedRefund / RejectRefundRequest /
+    /// WithdrawRefundRequestV2 / ForceCancelStuckRefund / WithdrawRefundRequest)
+    /// depend on ICommand / ICommandHandler / IUnitOfWork / ICurrentUserService /
+    /// IApplicationDbContext + the legacy IRefundExecutionService /
+    /// IRefundReconciliationService (until Wave 4.4.c.4 moves the services).
+    /// Mirrors the W5.4.c.1 / W5.3c.1 transitional ArchTest relaxations.
+    /// Re-tighten once BuildingBlocks.Application owns the ICommand/IUnitOfWork
+    /// primitives AND the refund services land in Payments.Application.
     /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]

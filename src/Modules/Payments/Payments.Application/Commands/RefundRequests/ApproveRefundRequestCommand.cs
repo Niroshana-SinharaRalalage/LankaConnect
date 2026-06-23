@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Shared.Enums;
 
-namespace LankaConnect.Application.Events.Commands.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.Commands.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148: Organizer approves an attendee's pending refund request with

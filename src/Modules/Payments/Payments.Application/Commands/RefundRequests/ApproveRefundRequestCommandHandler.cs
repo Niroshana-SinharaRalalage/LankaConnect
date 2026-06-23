@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.Commands.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.Commands.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148: Organizer approves a pending refund request with per-line approved

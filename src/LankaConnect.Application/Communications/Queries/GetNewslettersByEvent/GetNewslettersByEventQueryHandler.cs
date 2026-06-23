@@ -78,12 +78,15 @@ public class GetNewslettersByEventQueryHandler : IQueryHandler<GetNewslettersByE
                         .ToDictionaryAsync(h => h.NewsletterId, cancellationToken)
                     : new Dictionary<Guid, NewsletterEmailHistory>();
 
-                // Phase 6A.135: Query junction tables for email group and metro area mappings
+                // Phase 6A.135: Query junction tables for email group and metro area mappings.
+                // Wave 5.4.d.1b (2026-06-22) — newsletter_email_groups is now the CLR-typed
+                // NewsletterEmailGroupLink junction; the shared-type Dictionary access throws
+                // "Cannot create a DbSet for 'Dictionary<string, object>'" at runtime.
                 var emailGroupJunction = dbContext != null
-                    ? await dbContext.Set<Dictionary<string, object>>("newsletter_email_groups")
-                        .Where(j => newsletterIds.Contains((Guid)j["newsletter_id"]))
-                        .Select(j => new { NewsletterId = (Guid)j["newsletter_id"], EmailGroupId = (Guid)j["email_group_id"] })
-                        .ToListAsync(cancellationToken)
+                    ? (await dbContext.Set<NewsletterEmailGroupLink>()
+                        .Where(j => newsletterIds.Contains(j.NewsletterId))
+                        .Select(j => new { j.NewsletterId, j.EmailGroupId })
+                        .ToListAsync(cancellationToken))
                     : new List<object>().Select(x => new { NewsletterId = Guid.Empty, EmailGroupId = Guid.Empty }).ToList();
 
                 var metroAreaJunction = dbContext != null

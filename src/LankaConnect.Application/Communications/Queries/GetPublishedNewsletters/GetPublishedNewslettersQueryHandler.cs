@@ -73,12 +73,17 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
                 var newsletterIds = newsletters.Select(n => n.Id).ToList();
                 var dbContext = _dbContext as DbContext;
 
-                // Phase 6A.135: Query junction tables for email group and metro area mappings
+                // Phase 6A.135: Query junction tables for email group and metro area mappings.
+                // Wave 5.4.d.1b (2026-06-22) — newsletter_email_groups switched from a shared-type
+                // Dictionary<string, object> entity to the CLR-typed NewsletterEmailGroupLink junction.
+                // The shared-type Set<Dictionary<string, object>>("newsletter_email_groups") signature
+                // now throws "Cannot create a DbSet for 'Dictionary<string, object>' because it is
+                // configured as an shared-type entity type" at runtime; query via the CLR type instead.
                 var emailGroupJunction = dbContext != null
-                    ? await dbContext.Set<Dictionary<string, object>>("newsletter_email_groups")
-                        .Where(j => newsletterIds.Contains((Guid)j["newsletter_id"]))
-                        .Select(j => new { NewsletterId = (Guid)j["newsletter_id"], EmailGroupId = (Guid)j["email_group_id"] })
-                        .ToListAsync(cancellationToken)
+                    ? (await dbContext.Set<NewsletterEmailGroupLink>()
+                        .Where(j => newsletterIds.Contains(j.NewsletterId))
+                        .Select(j => new { j.NewsletterId, j.EmailGroupId })
+                        .ToListAsync(cancellationToken))
                     : new List<object>().Select(x => new { NewsletterId = Guid.Empty, EmailGroupId = Guid.Empty }).ToList();
 
                 var metroAreaJunction = dbContext != null

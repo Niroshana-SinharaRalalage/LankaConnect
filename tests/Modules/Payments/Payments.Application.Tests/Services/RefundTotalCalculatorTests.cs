@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Payments.Application.Services; // W4.4.c.4: service impls moved here (interfaces stay in legacy)
 using FluentAssertions;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Events;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace LankaConnect.Application.Tests.Events.Services;
+namespace LankaConnect.Modules.Payments.Application.Tests.Services;
 
 /// <summary>
 /// Phase 6A.148.W5.6.A — pins the contract of <see cref="IRefundTotalCalculator"/>.

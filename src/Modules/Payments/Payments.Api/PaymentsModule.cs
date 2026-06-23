@@ -1,5 +1,7 @@
 using FluentValidation;
+using LankaConnect.Application.Events.Services; // W4.4.c.4: refund service interfaces remain in legacy (avoids circular ref from 4 cross-module consumers).
 using LankaConnect.Modules.Payments.Application.Queries;
+using LankaConnect.Modules.Payments.Application.Services;
 using LankaConnect.Modules.Payments.Contracts;
 using MediatR;
 using Microsoft.Extensions.Configuration;
@@ -45,6 +47,19 @@ public static class PaymentsModule
         var paymentsAppAssembly = typeof(PaymentQueries).Assembly;
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(paymentsAppAssembly));
         services.AddValidatorsFromAssembly(paymentsAppAssembly);
+
+        // Wave 4.4.c.4 (2026-06-23): the 6 refund service registrations move here
+        // from LankaConnect.Application.DependencyInjection alongside the physical
+        // move of their files into Payments.Application/Services/. Lifetimes
+        // preserved from the legacy registrations -- IRefundLineDispatcher stays
+        // a singleton because RefundLineDispatcher captures IServiceScopeFactory
+        // once and is stateless (Phase 6A.148.W5.D2 contract).
+        services.AddScoped<IRegistrationRefundService, RegistrationRefundService>();
+        services.AddScoped<IRefundReconciliationService, RefundReconciliationService>();
+        services.AddScoped<IAddOnRefundService, AddOnRefundService>();
+        services.AddScoped<IRefundExecutionService, RefundExecutionService>();
+        services.AddSingleton<IRefundLineDispatcher, RefundLineDispatcher>();
+        services.AddScoped<IRefundTotalCalculator, RefundTotalCalculator>();
 
         return services;
     }

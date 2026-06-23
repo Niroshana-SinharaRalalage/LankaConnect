@@ -53,33 +53,15 @@ public static class DependencyInjection
         // Phase 6A.47: Reference data service with caching
         services.AddScoped<IReferenceDataService, ReferenceDataService>();
 
-        // Phase 6A.92: Register shared refund service
-        services.AddScoped<IRegistrationRefundService, RegistrationRefundService>();
-
-        // Phase 7G: Durable refund-reconciliation safety net for missed
-        // charge.refunded webhooks (deploy windows, network blips). Background
-        // hosted service registration lives in Infrastructure.DependencyInjection.
-        services.AddScoped<IRefundReconciliationService, RefundReconciliationService>();
-
-        // Cancellation enhancement: Register add-on refund service
-        services.AddScoped<IAddOnRefundService, AddOnRefundService>();
-
-        // Phase 6A.148: Refund approval workflow — execution service dispatches Stripe
-        // AFTER the approve transaction commits (architect F10).
-        services.AddScoped<IRefundExecutionService, RefundExecutionService>();
-
-        // Phase 6A.148.W5.D2: Per-line dispatcher used by RefundExecutionService.
-        // Each call creates its own IServiceScopeFactory scope so per-line saves never
-        // share a DbContext with the parent Registration aggregate — eliminates the
-        // xmin clash that caused the W5.D7 stuck-refund incident. Singleton because
-        // the scope factory is captured once and the dispatcher is stateless.
-        services.AddSingleton<IRefundLineDispatcher, RefundLineDispatcher>();
-
-        // Phase 6A.148.W5.6.A: Handler-side aggregation for the refund completion email.
-        // Sums RefundRequestLineItem.ApprovedAmount across all Refunded lines so the
-        // consolidated email shows the true grand total (operator UAT: $262 was approved
-        // but only $80 displayed because the legacy formula reads Registration columns).
-        services.AddScoped<IRefundTotalCalculator, RefundTotalCalculator>();
+        // Wave 4.4.c.4 (2026-06-23): the 6 refund service registrations relocated to
+        // PaymentsModule.cs alongside the physical move of the service files into
+        // Payments.Application/Services/. See AddPaymentsModule for the new home:
+        //   - IRegistrationRefundService -> RegistrationRefundService
+        //   - IRefundReconciliationService -> RefundReconciliationService
+        //   - IAddOnRefundService -> AddOnRefundService
+        //   - IRefundExecutionService -> RefundExecutionService
+        //   - IRefundLineDispatcher -> RefundLineDispatcher (singleton)
+        //   - IRefundTotalCalculator -> RefundTotalCalculator
 
         // Slice 5 Chunk 2: Two-branch authorization for VenueLayout CRUD endpoints.
         services.AddScoped<ILayoutAuthorizationService, LayoutAuthorizationService>();

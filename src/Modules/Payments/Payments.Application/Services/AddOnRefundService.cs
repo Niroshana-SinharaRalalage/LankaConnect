@@ -1,3 +1,4 @@
+using LankaConnect.Application.Events.Services; // W4.4.c.4: interfaces stay in legacy (4 cross-module consumers; circular ref otherwise)
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.Services;
+namespace LankaConnect.Modules.Payments.Application.Services;
 
 /// <summary>
 /// Processes add-on purchase refunds for a user during event cancellation.

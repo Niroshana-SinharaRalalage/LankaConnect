@@ -1,8 +1,9 @@
+using LankaConnect.Application.Events.Services; // W4.4.c.4: interfaces stay in legacy (4 cross-module consumers; circular ref otherwise)
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 
-namespace LankaConnect.Application.Events.Services;
+namespace LankaConnect.Modules.Payments.Application.Services;
 
 /// <inheritdoc cref="IRefundTotalCalculator"/>
 public class RefundTotalCalculator : IRefundTotalCalculator

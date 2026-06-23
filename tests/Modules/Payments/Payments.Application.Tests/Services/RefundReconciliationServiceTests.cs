@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Payments.Application.Services; // W4.4.c.4: service impls moved here (interfaces stay in legacy)
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
@@ -11,7 +12,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace LankaConnect.Application.Tests.Events.Services;
+namespace LankaConnect.Modules.Payments.Application.Tests.Services;
 
 /// <summary>
 /// Phase 7G — tests for the durable refund-reconciliation safety net.

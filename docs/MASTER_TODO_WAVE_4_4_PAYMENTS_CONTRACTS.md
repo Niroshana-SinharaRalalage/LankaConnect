@@ -1,6 +1,6 @@
 # Wave 4.4 — Payments.Contracts (IPaymentQueries + IPaymentCommands) — Implementation Plan
 
-**Status**: PLANNED — drafted 2026-06-23, awaits architect consult before 4.4.a kicks off.
+**Status**: READY FOR EXECUTION — architect consult 2026-06-23 ruled Risk #1 = Option A, Risk #2 = Option I. See "Architect Ruling Addendum" at bottom for the full ruling text + 4 additional findings folded into the sub-phase definitions.
 
 **Predecessor**: Wave 4.1 Communications.Contracts (the just-shipped commits labeled `Wave5.4.*` — see [[wave-numbering-correction]] memory; those commits ARE the Wave 4.1 master-plan deliverable, just mis-labeled at the per-wave-doc level).
 
@@ -290,9 +290,9 @@ public interface IPaymentCommands
 
 - **Option C — defer Wave 4.4 until after the Phase A architect re-think**. The [[project_phase_a_v5_wave_plan]] memory notes that "Plan v5 Amendment" is the current authoritative ordering. If the architect determines that Refund/Registration is one of the cases where the Capability/Product split needs additional design work (the `Products/LankaEvents` vs `Capabilities/Payments` boundary is unclear when one aggregate root owns children that belong to two different capability domains), then 4.4 should pause until Wave 5 Products carve-out lands and the boundary is firm.
 
-**Recommended path: Option A.** Reasons: (1) the structural win (ArchTest Rule 5 + handler cohesion in Payments.Application) is mostly achieved without the entity move; (2) Option B's aggregate-invariant problem looks load-bearing and may not have a clean resolution; (3) Option C delays by ~3-4 weeks, which is excessive for a ruling that may swing either way.
+**ARCHITECT RULING 2026-06-23: Option A. Option B is dead.** The "single-active-refund" invariant at `Registration.cs:1073` (`if (HasActiveRefundRequest) return Failure(...)`) is evaluated SYNCHRONOUSLY during `CreateRefundRequest()` and depends on the in-memory `_refundRequests.Any(r => r.IsActive)` predicate. Replacing the typed nav with a junction CLR holding raw Guids leaves the aggregate unable to evaluate `IsActive` without either querying `IRefundRequestRepository` from inside the aggregate (forbidden) or hoisting the guard into a domain service running BEFORE `Registration.CreateRefundRequest()` (breaks the DDD "aggregate enforces its own invariants" rule). This is STRUCTURALLY DIFFERENT from W5.4.c.0 (Event↔EmailGroup) where the junction held a pure many-to-many membership with no per-row state predicate. The W5.4 precedent does NOT transfer.
 
-**ARCHITECT INPUT NEEDED before 4.4.a kicks off.**
+**Critical correction to the Option A scope** (architect Additional Finding #1): the `Payments.Domain → LankaConnect.Domain` ProjectReference is NOT transitional. It is the PERMANENT structural compromise for this wave. Future-me: do not waste a wave attempting to delete it. Removal requires either (a) Registration itself moves to a Payments-aware aggregate root, or (b) a future wave splits Registration into Events-side + Payments-side projections. Both are out-of-scope for Wave 4.4.
 
 ### Risk #2 — `IStripePaymentService` interface scope
 
@@ -300,13 +300,11 @@ The 817-LOC `IStripePaymentService` interface in `src/LankaConnect.Application/C
 
 **Question**: does it stay in `LankaConnect.Application.Common.Interfaces` (the port stays in the legacy layer; only the adapter `StripePaymentService` moves to Payments.Infrastructure), or does it physically relocate to `Payments.Contracts` (cross-module-consumable surface) or `Payments.Application` (Payments-internal port)?
 
-**Wave precedent**:
-- W5.3 (Forms) kept `IFormQueries` / `IFormCommands` in `Forms.Contracts`. No equivalent of "big interface used everywhere" existed.
-- W5.4 (Communications) ditto — `IEmailGroupQueries` in `Communications.Contracts`, `IEmailService` (the SMTP port equivalent) stayed in `LankaConnect.Application` because it's consumed by many capability modules.
+**ARCHITECT RULING 2026-06-23: Option I.** `IStripePaymentService.cs:1-13` imports `LankaConnect.Domain.Billing`, `LankaConnect.Domain.Enterprise`, and `LankaConnect.Domain.Business` types (CreateStripeSubscriptionRequest, CreateEnterpriseSubscriptionRequest, ChargeUsageRequest, CreatePartnerPayoutRequest). These are CulturalIntelligenceBilling/SaaS-tier types that Risk #3 explicitly flags OUT OF SCOPE. Moving `IStripePaymentService` to `Payments.Contracts` would force `Payments.Contracts` to ProjectReference `LankaConnect.Domain.Billing` — which violates the cardinal Contracts rule (`Modules_Payments_Contracts_DependsOnlyOnBuildingBlocksContracts`). Option II is structurally impossible until Billing is itself extracted.
 
-**Recommended path**: `IStripePaymentService` is the Payments equivalent of `IEmailService` — a fundamental port consumed across many capabilities. It STAYS in `LankaConnect.Application.Common.Interfaces`. The implementation `StripePaymentService.cs` moves to `Payments.Infrastructure` in 4.4.d.2. ArchTest Rule 5 explicitly excludes `LankaConnect.Application.Common.Interfaces` from the ban (similar to how W5.4.d.3 didn't ban LankaConnect.Application from depending on Communications types that stayed in shared interfaces).
+**Wave precedent correction (architect Additional Finding #4)**: there is NO `IEmailService` interface in the codebase. The Communications precedent that maps to this case is the `Payments.Domain → LankaConnect.Domain` transitional edge from commit `b7b19d99` (W5.4.d.2), not an imaginary `IEmailService` stay-put pattern.
 
-**ARCHITECT INPUT NEEDED before 4.4.c.4 (services move).**
+**Implementation note**: When writing ArchTest Rule 5 (`LegacyApplication_DoesNotDependOnPaymentsDomain`), the assertion targets `LankaConnect.Domain.Payments.*` namespace specifically — NOT `LankaConnect.Application.Common.Interfaces.IStripePaymentService`. Phrase the rule precisely or it misfires on the legitimate `IStripePaymentService` reference. At 4.4.d.2 when `StripePaymentService.cs` moves to `Payments.Infrastructure`, the adapter needs ProjectReferences to `LankaConnect.Domain.Billing` + `LankaConnect.Domain.Enterprise` to compile — flag in the commit message so reviewers don't mistake it for scope creep.
 
 ### Risk #3 — Billing aggregate (`CulturalIntelligenceBilling.cs` + supporting types) is OUT OF SCOPE
 
@@ -332,7 +330,7 @@ Per `[[feedback_read_side_bypass_audit]]`, the 4.4.c.5 gap-verification grep MUS
 
 ## Implementation checklist (next-session resumption)
 
-- [ ] **Pre-flight (NEW)**: architect consult on Risk #1 (Option A vs B vs C) and Risk #2 (IStripePaymentService location). Cannot start 4.4.a without these two rulings.
+- [x] **Pre-flight (DONE 2026-06-23)**: architect ruled Risk #1 = Option A, Risk #2 = Option I (see Architect Ruling Addendum below). 4 additional findings folded into sub-phases.
 - [ ] **4.4.a**: define Payments.Contracts surface + Contracts.Tests + ArchTest rule (`Modules_Payments_Contracts_DependsOnlyOnBuildingBlocksContracts`)
 - [ ] **4.4.b**: implement PaymentQueries in Payments.Application + DI + ~7 query tests
 - [ ] **4.4.c.0**: SKIPPED under Option A. Under Option B: Registration._refundRequests typed-nav surgery + RegistrationRefundRequestLink + EF mapping flip + EF-snapshot rebaseline migration + unit tests + S3+S5 smoke.
@@ -345,10 +343,35 @@ Per `[[feedback_read_side_bypass_audit]]`, the 4.4.c.5 gap-verification grep MUS
 - [ ] **4.4.d.2**: physical move of Stripe repos + RefundRequestRepository + StripeWebhookHandler (NOT the RefundRequest entity under Option A); namespace patch; Payments DI wire-up
 - [ ] **4.4.d.3**: cut LankaConnect.Application → LankaConnect.Domain.Payments edge + ArchTest Rule 5 (LegacyApplication_DoesNotDependOnPaymentsDomain). Rule 6 only if Option B chosen.
 
-**Pre-flight before 4.4.a**:
-1. Confirm Risk #1 + Risk #2 resolutions with architect.
+**Pre-flight before 4.4.a (architect additional findings folded in)**:
+1. ~~Confirm Risk #1 + Risk #2 resolutions with architect.~~ DONE 2026-06-23 — Option A + Option I.
 2. Grep `src/LankaConnect.Application/` for ALL imports of `RefundRequest`, `StripeCustomer`, `StripeWebhookEvent`, `RegistrationPayment` types to cross-check the 4.4.c.x scope numbers in this plan.
 3. Grep `dbContext.Set<` for the 5 payment-related table names (per `[[feedback_read_side_bypass_audit]]`) so the 4.4.c.5 gap audit knows what to look for upfront.
+4. **(Architect Additional Finding #3)** Before 4.4.c.1 kicks off, grep `Registration.cs` for `_payments.Any(` / `_registrationPayments.Any(` / similar invariant predicates over RegistrationPayment. If found, document in the Rule 5 docstring alongside the RefundRequest case so the scope decision captures BOTH children.
+5. **(Architect Additional Finding #2)** 4.4.d.2 must verify `StripeWebhookHandler` idempotency-probe path: after the move, `IPaymentQueries.IsWebhookEventProcessedAsync` must resolve from the SAME DI scope as the webhook controller, or events silently re-process. Add to the 4.4.c.5 grep checklist (verify `IStripeWebhookEventRepository` consumers all go through `IPaymentQueries` post-move).
+
+---
+
+## Architect Ruling Addendum (2026-06-23)
+
+### Risk #1 ruling — Option A
+
+> Option B is dead. The "single-active-refund" invariant at `Registration.cs:1073` (`if (HasActiveRefundRequest) return Failure(...)`) is evaluated SYNCHRONOUSLY during `CreateRefundRequest()` and depends on the in-memory `_refundRequests.Any(r => r.IsActive)` predicate — i.e., the typed nav with materialized child state. Replacing the typed nav with a `List<RegistrationRefundRequestLink>` (raw Guids) leaves the aggregate unable to evaluate `IsActive` without either (a) querying `IRefundRequestRepository` from inside the aggregate (forbidden) or (b) hoisting the guard into a domain service that runs BEFORE `Registration.CreateRefundRequest()` — which moves the invariant out of the aggregate boundary and breaks the DDD "aggregate enforces its own invariants" rule. This is structurally different from W5.4.c.0 (Event↔EmailGroup) where the junction held a pure many-to-many membership with no per-row state predicate. The W5.4 precedent does NOT transfer. Option C is unnecessary delay.
+
+**Implementation directive from architect**: Rule 5's docstring MUST explicitly state "Rule 6 LegacyDomain→PaymentsDomain is INTENTIONALLY ABSENT because RefundRequest/RefundRequestLineItem/RegistrationPayment remain Registration aggregate children per the architect ruling 2026-06-23" — otherwise a future contributor treats the missing rule as an oversight. In 4.4.d.2 when `IRefundRequestRepository` moves to `Payments.Domain.Repositories`, the interface signature MUST continue returning `LankaConnect.Domain.Events.Entities.RefundRequest` (NOT a Payments.Domain alias) — the `Payments.Domain → LankaConnect.Domain` ProjectReference is load-bearing, not transitional. Treat that edge as PERMANENT for this wave.
+
+### Risk #2 ruling — Option I
+
+> `IStripePaymentService.cs:1-13` imports `LankaConnect.Domain.Billing`, `LankaConnect.Domain.Enterprise`, and `LankaConnect.Domain.Business` types. Moving the interface to `Payments.Contracts` would force `Payments.Contracts` to ProjectReference `LankaConnect.Domain.Billing` — violating the cardinal Contracts rule. Option II is structurally impossible until Billing is itself extracted. Option III is wrong per the plan's own analysis. The interface stays where it is; the adapter moves to Payments.Infrastructure.
+
+**Implementation directive from architect**: ArchTest Rule 5 (`LegacyApplication_DoesNotDependOnPaymentsDomain`) targets `LankaConnect.Domain.Payments.*` namespace specifically — NOT `LankaConnect.Application.Common.Interfaces.IStripePaymentService`. Phrase the rule precisely. The adapter `StripePaymentService.cs` move in 4.4.d.2 will need `Payments.Infrastructure → LankaConnect.Domain.Billing` + `→ LankaConnect.Domain.Enterprise` ProjectReferences (acceptable per ADR-002).
+
+### Additional findings folded in
+
+1. **Edge permanence**: `Payments.Domain → LankaConnect.Domain` is structural compromise, NOT transitional. Plan wording updated.
+2. **Webhook idempotency-probe DI scope**: 4.4.c.5 checklist updated.
+3. **`RegistrationPayment` invariant grep**: 4.4.c.1 pre-flight updated.
+4. **`IEmailService` precedent removed**: corrected to cite W5.4.d.2 `b7b19d99` edge pattern.
 
 ---
 

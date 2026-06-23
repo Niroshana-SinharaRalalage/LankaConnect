@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Shared.Enums;
 
-namespace LankaConnect.Application.Events.Queries.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.Queries.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148: Attendee-facing refund request projection.

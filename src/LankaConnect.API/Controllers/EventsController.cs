@@ -17,7 +17,7 @@ using LankaConnect.Application.Events.Commands.CancelRsvp;
 using LankaConnect.Modules.Payments.Application.Commands.WithdrawRefundRequest;
 using LankaConnect.Modules.Payments.Application.Commands.ForceCancelStuckRefund;
 using LankaConnect.Modules.Payments.Application.Commands.RefundRequests;
-using LankaConnect.Application.Events.Queries.RefundRequests;
+using LankaConnect.Modules.Payments.Application.Queries.RefundRequests; // Wave 4.4.c.2 (2026-06-23)
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
 using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Commands.ResendAttendeeConfirmation;

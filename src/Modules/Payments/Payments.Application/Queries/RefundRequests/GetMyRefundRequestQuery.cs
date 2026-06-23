@@ -1,6 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 
-namespace LankaConnect.Application.Events.Queries.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.Queries.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148: Attendee fetches their own most-recent refund request for an event,

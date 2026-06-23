@@ -11,6 +11,7 @@ using LankaConnect.Application.Communications.BackgroundJobs;
 using LankaConnect.BuildingBlocks.Web.Telemetry;
 using LankaConnect.Infrastructure;
 using LankaConnect.Modules.Communications.Api;
+using LankaConnect.Modules.Payments.Api;
 using LankaConnect.Modules.CulturalIntelligence.Api;
 using LankaConnect.Modules.Forms.Api;
 using LankaConnect.Modules.Media.Api;
@@ -121,6 +122,16 @@ try
     // IEmailGroupRepository is still wired by AddInfrastructure until
     // W5.4.d.2 physical move.
     builder.Services.AddCommunicationsModule(builder.Configuration);
+
+    // Wave 4.4.b (2026-06-23) — Payments module composition. Registers the
+    // cross-module Contracts surface (IPaymentQueries) + MediatR /
+    // FluentValidation scan of Payments.Application. Repository
+    // implementations (StripeCustomerRepository, StripeWebhookEventRepository,
+    // RefundRequestRepository) stay registered by AddInfrastructure until
+    // Wave 4.4.d.2 physical move. Per architect Risk #1 Option A ruling,
+    // RefundRequest stays a Registration aggregate child in
+    // LankaConnect.Domain.Events.Entities -- no Payments.Domain skeleton yet.
+    builder.Services.AddPaymentsModule(builder.Configuration);
 
     // W4.7 (2026-06-06) — CulturalIntelligence module composition. Registers
     // ICulturalCalendar (StubCulturalCalendar impl).

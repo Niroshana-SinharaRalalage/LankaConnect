@@ -86,19 +86,20 @@ public interface IPaymentQueries
 
     /// <summary>
     /// Returns the Stripe customer id mapped to the given LankaConnect user, or
-    /// <c>null</c> if no Stripe customer has been minted yet. Single-field
-    /// shortcut for the common checkout path - callers needing full detail use
-    /// <see cref="GetStripeCustomerAsync"/>.
+    /// <c>null</c> if no Stripe customer has been minted yet. Shortcut for the
+    /// common checkout path.
     /// </summary>
+    /// <remarks>
+    /// Wave 4.4.b scope correction (2026-06-23): the original 4.4.a draft also
+    /// declared a <c>GetStripeCustomerAsync</c> method returning a full
+    /// <c>StripeCustomerSummaryDto</c>. Dropped per YAGNI -- the legacy
+    /// <c>IStripeCustomerRepository</c> doesn't expose a full-record query and
+    /// no real consumer of full StripeCustomer detail was identified in the
+    /// 4.4.a survey. If a real consumer surfaces at 4.4.d.1 audit, add the
+    /// method back alongside an <c>IStripeCustomerRepository.GetByUserIdAsync</c>
+    /// addition.
+    /// </remarks>
     Task<string?> GetStripeCustomerIdAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the full Stripe-customer projection for the given LankaConnect
-    /// user, or <c>null</c> if no mapping exists.
-    /// </summary>
-    Task<StripeCustomerSummaryDto?> GetStripeCustomerAsync(
-        Guid userId,
-        CancellationToken ct = default);
 
     // -------- Webhook idempotency probe --------
 

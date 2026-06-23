@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>LankaConnect.Modules.Payments.Application.Tests</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Payments.Application.Tests</AssemblyName>
+    <Description>Unit tests for the Payments module Application layer. Wave 4.4.b (2026-06-23).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Moq" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Modules\Payments\Payments.Application\Payments.Application.csproj" />
+    <!-- Wave 4.4.b (2026-06-23): RefundRequest + IRefundRequestRepository still live in
+         LankaConnect.Domain per architect Risk #1 Option A ruling (permanently). Needed
+         for Mock<IRefundRequestRepository> + RefundRequest.CreatePending() in test setup. -->
+    <ProjectReference Include="..\..\..\..\src\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

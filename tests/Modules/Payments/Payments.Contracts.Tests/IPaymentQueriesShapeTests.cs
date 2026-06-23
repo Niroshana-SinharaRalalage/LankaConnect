@@ -14,8 +14,12 @@ namespace LankaConnect.Modules.Payments.Contracts.Tests;
 public sealed class IPaymentQueriesShapeTests
 {
     [Fact]
-    public void IPaymentQueries_Has_NineMethods()
+    public void IPaymentQueries_Has_EightMethods()
     {
+        // Wave 4.4.b scope correction (2026-06-23): original 4.4.a draft pinned
+        // 9 methods including a speculative GetStripeCustomerAsync. Dropped per
+        // YAGNI -- legacy IStripeCustomerRepository has no full-record query
+        // and no real consumer was identified in the 4.4.a survey.
         var methods = typeof(IPaymentQueries).GetMethods(BindingFlags.Public | BindingFlags.Instance);
 
         methods.Select(m => m.Name).Should().BeEquivalentTo(new[]
@@ -27,7 +31,6 @@ public sealed class IPaymentQueriesShapeTests
             "ListByEventAsync",
             "ListStuckApprovedAsync",
             "GetStripeCustomerIdAsync",
-            "GetStripeCustomerAsync",
             "IsWebhookEventProcessedAsync",
         });
     }
@@ -117,18 +120,4 @@ public sealed class IPaymentQueriesShapeTests
         ((byte)RefundLineItemTypeDto.Sponsor).Should().Be(3);
     }
 
-    [Fact]
-    public void StripeCustomerSummaryDto_Carries_CoreFields()
-    {
-        var props = typeof(StripeCustomerSummaryDto).GetProperties();
-
-        props.Select(p => p.Name).Should().BeEquivalentTo(new[]
-        {
-            nameof(StripeCustomerSummaryDto.UserId),
-            nameof(StripeCustomerSummaryDto.StripeCustomerId),
-            nameof(StripeCustomerSummaryDto.Email),
-            nameof(StripeCustomerSummaryDto.Name),
-            nameof(StripeCustomerSummaryDto.StripeCreatedAt),
-        });
-    }
 }

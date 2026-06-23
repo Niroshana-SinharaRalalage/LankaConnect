@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Payments.Application</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Payments.Application</AssemblyName>
+    <Description>Payments module - Application layer. PaymentQueries (IPaymentQueries impl), Contract mapping extensions, MediatR handler scan entry point. Wave 4.4.b (2026-06-23).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Payments.Contracts\Payments.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <!--
+      Wave 4.4.b EDGE (2026-06-23). PaymentQueries wraps the legacy
+      IRefundRequestRepository (LankaConnect.Domain.Events.Repositories) +
+      IStripeCustomerRepository / IStripeWebhookEventRepository
+      (LankaConnect.Domain.Payments). Per architect Risk #1 Option A ruling,
+      RefundRequest + RefundRequestLineItem + RegistrationPayment stay as
+      Registration aggregate children in LankaConnect.Domain.Events.Entities.
+      So this LankaConnect.Domain edge is the PERMANENT structural compromise,
+      NOT transitional. Label stays "transitional" only by analogy with
+      W5.4.b; future-me should not waste a wave trying to delete it.
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+  </ItemGroup>
+
+</Project>

@@ -396,6 +396,37 @@ public sealed class LayeringRules
     }
 
     /// <summary>
+    /// Wave 4.4.b (2026-06-23) — Payments.Application module boundary.
+    /// Mirrors the W5.4.b Communications.Application relaxation. The
+    /// transitional <c>Payments.Application -&gt; LankaConnect.Domain</c>
+    /// ProjectReference is PERMANENT (architect Risk #1 Option A) because
+    /// RefundRequest + RefundRequestLineItem + RegistrationPayment stay as
+    /// Registration aggregate children in LankaConnect.Domain.Events.Entities.
+    /// So LankaConnect.Domain is NOT in the ban list. LankaConnect.Application
+    /// will be added at Wave 4.4.c.1 when the moved command handlers pull in
+    /// ICommand / ICommandHandler / IUnitOfWork / ICurrentUserService.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Payments_Application_DoesNotDependOnInfraOrWebOrLayeredMonolith()
+    {
+        var assembly = typeof(Modules.Payments.Application.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Payments.Infrastructure",
+                "LankaConnect.Modules.Payments.Api",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
     /// Wave 4.4.a (2026-06-23) — Payments.Contracts module boundary.
     /// Mirrors Modules_Communications_Contracts_DependsOnlyOnBuildingBlocksContracts.
     /// Contracts must depend only on BuildingBlocks.Contracts (the cross-module

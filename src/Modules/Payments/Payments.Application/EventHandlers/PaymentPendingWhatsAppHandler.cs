@@ -8,7 +8,7 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace LankaConnect.Application.Events.EventHandlers;
+namespace LankaConnect.Modules.Payments.Application.EventHandlers;
 
 /// <summary>
 /// Phase 7B.3: Sends WhatsApp payment pending reminder when a registration is created with pending payment.

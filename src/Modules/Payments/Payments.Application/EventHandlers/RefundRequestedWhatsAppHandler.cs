@@ -1,6 +1,5 @@
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -10,43 +9,41 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace LankaConnect.Application.Events.EventHandlers;
+namespace LankaConnect.Modules.Payments.Application.EventHandlers;
 
 /// <summary>
-/// Phase 7A.3: Sends WhatsApp notification when a refund is completed.
-/// Parallel to RefundCompletedEventHandler (email). Email handler is UNTOUCHED.
+/// Phase 7A.3: Sends WhatsApp notification when a refund is requested.
+/// Parallel to RefundRequestedEventHandler (email). Email handler is UNTOUCHED.
 /// Uses fire-and-forget with IServiceScopeFactory [FIX C6].
 /// </summary>
-public class RefundCompletedWhatsAppHandler : INotificationHandler<DomainEventNotification<RefundCompletedEvent>>
+public class RefundRequestedWhatsAppHandler : INotificationHandler<DomainEventNotification<RefundRequestedEvent>>
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<RefundCompletedWhatsAppHandler> _logger;
+    private readonly ILogger<RefundRequestedWhatsAppHandler> _logger;
 
-    public RefundCompletedWhatsAppHandler(
+    public RefundRequestedWhatsAppHandler(
         IServiceScopeFactory scopeFactory,
-        ILogger<RefundCompletedWhatsAppHandler> logger)
+        ILogger<RefundRequestedWhatsAppHandler> logger)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
-    public Task Handle(DomainEventNotification<RefundCompletedEvent> notification, CancellationToken cancellationToken)
+    public Task Handle(DomainEventNotification<RefundRequestedEvent> notification, CancellationToken cancellationToken)
     {
         var domainEvent = notification.DomainEvent;
         var eventId = domainEvent.EventId;
         var registrationId = domainEvent.RegistrationId;
         var userId = domainEvent.UserId;
-        // Phase 6A.148.W5.6.A — legacy fallback; the WhatsApp Task.Run below will replace
-        // this with the workflow-aggregated total via IRefundTotalCalculator when applicable.
-        var legacyFallbackTotal = domainEvent.RefundAmount + domainEvent.AddOnRefundAmount;
+        var refundAmount = domainEvent.RefundAmount + domainEvent.AddOnRefundAmount;
 
         _logger.LogInformation(
-            "[Phase 7A] WhatsApp RefundCompleted START: EventId={EventId}, RegistrationId={RegistrationId}, LegacyAmount={Amount}",
-            eventId, registrationId, legacyFallbackTotal);
+            "[Phase 7A] WhatsApp RefundRequested START: EventId={EventId}, RegistrationId={RegistrationId}, Amount={Amount}",
+            eventId, registrationId, refundAmount);
 
         if (!userId.HasValue)
         {
-            _logger.LogInformation("[Phase 7A] WhatsApp RefundCompleted SKIPPED: No UserId (anonymous user)");
+            _logger.LogInformation("[Phase 7A] WhatsApp RefundRequested SKIPPED: No UserId (anonymous user)");
             return Task.CompletedTask;
         }
 
@@ -60,16 +57,11 @@ public class RefundCompletedWhatsAppHandler : INotificationHandler<DomainEventNo
                 var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppService>();
                 var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
                 var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository>();
-                // Phase 6A.148.W5.6.A — workflow-aware total (parity with email handler).
-                var totalCalculator = scope.ServiceProvider.GetRequiredService<IRefundTotalCalculator>();
-
-                var refundAmount = await totalCalculator.ComputeAttendeeFacingTotalAsync(
-                    domainEvent.StripeRefundId, legacyFallbackTotal, CancellationToken.None);
 
                 var user = await userRepository.GetByIdAsync(capturedUserId, CancellationToken.None);
                 if (user == null)
                 {
-                    _logger.LogWarning("[Phase 7A] WhatsApp RefundCompleted: User not found - UserId={UserId}", capturedUserId);
+                    _logger.LogWarning("[Phase 7A] WhatsApp RefundRequested: User not found - UserId={UserId}", capturedUserId);
                     return;
                 }
 
@@ -81,12 +73,13 @@ public class RefundCompletedWhatsAppHandler : INotificationHandler<DomainEventNo
                     { WhatsAppTemplateContract.Common.UserName, $"{user.FirstName} {user.LastName}" },
                     { WhatsAppTemplateContract.Refund.RefundAmount, $"${refundAmount:F2}" },
                     { WhatsAppTemplateContract.Common.EventTitle, eventTitle },
-                    { WhatsAppTemplateContract.Refund.ReferenceId, domainEvent.StripeRefundId }
+                    { WhatsAppTemplateContract.Refund.RefundStatus, "Processing" },
+                    { WhatsAppTemplateContract.Refund.ReferenceId, domainEvent.PaymentIntentId }
                 };
 
                 var result = await whatsAppService.SendTemplateMessageAsync(
                     capturedUserId,
-                    WhatsAppTemplateContract.TemplateNames.RefundCompleted,
+                    WhatsAppTemplateContract.TemplateNames.RefundInitiated,
                     parameters,
                     WhatsAppNotificationType.Refund,
                     eventId,
@@ -95,20 +88,20 @@ public class RefundCompletedWhatsAppHandler : INotificationHandler<DomainEventNo
 
                 if (result.IsSuccess && !result.Value.WasSkipped)
                 {
-                    _logger.LogInformation("[Phase 7A] WhatsApp RefundCompleted SENT: EventId={EventId}, UserId={UserId}", eventId, capturedUserId);
+                    _logger.LogInformation("[Phase 7A] WhatsApp RefundRequested SENT: EventId={EventId}, UserId={UserId}", eventId, capturedUserId);
                 }
                 else if (result.IsSuccess && result.Value.WasSkipped)
                 {
-                    _logger.LogInformation("[Phase 7A] WhatsApp RefundCompleted SKIPPED: {Reason}", result.Value.SkipReason);
+                    _logger.LogInformation("[Phase 7A] WhatsApp RefundRequested SKIPPED: {Reason}", result.Value.SkipReason);
                 }
                 else
                 {
-                    _logger.LogWarning("[Phase 7A] WhatsApp RefundCompleted FAILED: {Errors}", string.Join(", ", result.Errors));
+                    _logger.LogWarning("[Phase 7A] WhatsApp RefundRequested FAILED: {Errors}", string.Join(", ", result.Errors));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Phase 7A] WhatsApp RefundCompleted EXCEPTION: EventId={EventId}, UserId={UserId}", eventId, capturedUserId);
+                _logger.LogError(ex, "[Phase 7A] WhatsApp RefundRequested EXCEPTION: EventId={EventId}, UserId={UserId}", eventId, capturedUserId);
             }
         }, CancellationToken.None);
 

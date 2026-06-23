@@ -12,7 +12,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.EventHandlers.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.EventHandlers.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148.D8b: Sends the "your organizer has initiated a refund on your behalf"

@@ -2,7 +2,7 @@ using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Shared.Email.Contracts;
 
-namespace LankaConnect.Application.Events.EventHandlers.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.EventHandlers.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148.D8: Single source of truth for mapping a domain

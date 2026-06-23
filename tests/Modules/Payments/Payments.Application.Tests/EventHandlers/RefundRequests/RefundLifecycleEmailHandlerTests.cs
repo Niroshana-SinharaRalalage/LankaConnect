@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Events.EventHandlers.RefundRequests;
+using LankaConnect.Modules.Payments.Application.EventHandlers.RefundRequests;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -17,7 +17,7 @@ using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 
-namespace LankaConnect.Application.Tests.Events.EventHandlers.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.Tests.EventHandlers.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148.D8 + D8b: Single test file covering all four refund-lifecycle email

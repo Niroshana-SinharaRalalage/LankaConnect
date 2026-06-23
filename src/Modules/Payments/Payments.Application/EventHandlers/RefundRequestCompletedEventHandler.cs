@@ -14,7 +14,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.EventHandlers;
+namespace LankaConnect.Modules.Payments.Application.EventHandlers;
 
 /// <summary>
 /// Phase 6A.148.W5.6.B G2 — handles <see cref="RefundRequestCompletedEvent"/> by sending

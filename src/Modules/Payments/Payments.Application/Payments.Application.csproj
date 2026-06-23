@@ -33,6 +33,15 @@
       relocation into Payments.Application).
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!--
+      Wave 4.4.c.3 TRANSITIONAL EDGE (2026-06-23). The 17 moved Payment / Refund
+      event handlers import LankaConnect.Shared.Email.{Contracts,Helpers,Services}
+      + LankaConnect.Shared.WhatsApp.Contracts for the email-/whatsapp-emission
+      side effects. Mirrors the W5.4.c.1 + W5.3d.2 transitional Shared edges.
+      Cut alongside the elevation of Shared.Email + Shared.WhatsApp Contracts
+      into BuildingBlocks or a dedicated Communications.Templates module.
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

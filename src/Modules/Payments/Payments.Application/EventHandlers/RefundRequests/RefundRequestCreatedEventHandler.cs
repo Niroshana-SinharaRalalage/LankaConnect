@@ -12,7 +12,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.EventHandlers.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.EventHandlers.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148.D8 (Wave 3 rewire): Sends the "your refund request is pending organizer

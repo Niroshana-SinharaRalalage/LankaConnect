@@ -10,7 +10,7 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace LankaConnect.Application.Events.EventHandlers;
+namespace LankaConnect.Modules.Payments.Application.EventHandlers;
 
 /// <summary>
 /// Phase 7A.3: Sends WhatsApp notification when payment is completed for a paid event.

@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Events.Services;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -15,59 +14,62 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.EventHandlers;
+namespace LankaConnect.Modules.Payments.Application.EventHandlers;
 
 /// <summary>
-/// Phase 6A.92: Handles RefundCompletedEvent to send refund confirmation email to user.
-/// Triggered when Stripe confirms the refund has been processed (via charge.refunded webhook).
-/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
+/// Phase 6A.92: Handles RefundRequestedEvent to send refund notification email to user.
+/// Triggered when a refund is initiated (either by user cancellation or event cancellation).
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support.
+///
+/// LEGACY HANDLER — DO NOT EXTEND.
+/// Phase 6A.148 introduced an approval-workflow refund path with its own dedicated
+/// lifecycle handlers (RefundRequestCreated / RefundRequestApproved / RefundRequestRejected /
+/// OrganizerInitiatedRefundCreated under <c>Events.EventHandlers.RefundRequests</c>) and
+/// dedicated lifecycle templates (Wave 3 D7). This handler now only fires on the
+/// <c>Refund:ApprovalWorkflow:Enabled=false</c> code path, which exists for rollback
+/// safety only. Remove this handler + the RefundRequestedEvent itself after the
+/// feature flag has ramped to 100% in production AND the legacy paths in
+/// <c>CancelRsvpCommandHandler</c> + <c>EventCancellationEmailJob</c> have been removed.
 /// </summary>
-public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotification<RefundCompletedEvent>>
+public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotification<RefundRequestedEvent>>
 {
     private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IFormQueries _formQueries;
     private readonly IEmailUrlHelper _emailUrlHelper;
-    // Phase 6A.148.W5.6.A — handler-side aggregation for the consolidated refund total.
-    // The event payload carries only Registration.TotalPrice + AddOnRefundAmount (legacy
-    // columns) which undercounts workflow refunds with Sponsor/Collection lines.
-    private readonly IRefundTotalCalculator _refundTotalCalculator;
-    private readonly ILogger<RefundCompletedEventHandler> _logger;
+    private readonly ILogger<RefundRequestedEventHandler> _logger;
 
-    public RefundCompletedEventHandler(
+    public RefundRequestedEventHandler(
         ITypedEmailService typedEmailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IFormQueries formQueries,
         IEmailUrlHelper emailUrlHelper,
-        IRefundTotalCalculator refundTotalCalculator,
-        ILogger<RefundCompletedEventHandler> logger)
+        ILogger<RefundRequestedEventHandler> logger)
     {
         _typedEmailService = typedEmailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _formQueries = formQueries;
         _emailUrlHelper = emailUrlHelper;
-        _refundTotalCalculator = refundTotalCalculator;
         _logger = logger;
     }
 
-    public async Task Handle(DomainEventNotification<RefundCompletedEvent> notification, CancellationToken cancellationToken)
+    public async Task Handle(DomainEventNotification<RefundRequestedEvent> notification, CancellationToken cancellationToken)
     {
         var domainEvent = notification.DomainEvent;
 
-        using (LogContext.PushProperty("Operation", "RefundCompleted"))
+        using (LogContext.PushProperty("Operation", "RefundRequested"))
         using (LogContext.PushProperty("EntityType", "Registration"))
         using (LogContext.PushProperty("EventId", domainEvent.EventId))
         using (LogContext.PushProperty("RegistrationId", domainEvent.RegistrationId))
-        using (LogContext.PushProperty("StripeRefundId", domainEvent.StripeRefundId))
         {
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "[Phase 6A.92] RefundCompleted START: EventId={EventId}, RegistrationId={RegId}, RefundId={RefundId}, Amount=${Amount}",
-                domainEvent.EventId, domainEvent.RegistrationId, domainEvent.StripeRefundId, domainEvent.RefundAmount);
+                "[Phase 6A.92] RefundRequested START: EventId={EventId}, RegistrationId={RegId}, UserId={UserId}, Amount=${Amount}",
+                domainEvent.EventId, domainEvent.RegistrationId, domainEvent.UserId, domainEvent.RefundAmount);
 
             try
             {
@@ -79,7 +81,7 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "[Phase 6A.92] RefundCompleted: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                        "[Phase 6A.92] RefundRequested: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
                         domainEvent.EventId, stopwatch.ElapsedMilliseconds);
                     return;
                 }
@@ -97,40 +99,30 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                     }
                 }
 
-                // Phase 6A.135: Legacy formula — ticket + addons from Registration columns.
-                // Correct for the pre-6A.148 direct-Stripe CancelRsvp path; UNDERCOUNTS for
-                // 6A.148 workflow refunds that include Sponsor / Collection lines.
-                var legacyFallbackTotal = domainEvent.RefundAmount + domainEvent.AddOnRefundAmount;
-
-                // Phase 6A.148.W5.6.A — workflow-aware aggregation. If the refund is owned
-                // by a workflow line, the calculator SUMs all Refunded line items'
-                // ApprovedAmount (single source of truth, same column the Decision email
-                // already reads). Returns the legacy total verbatim for legacy refunds.
-                var totalRefundAmount = await _refundTotalCalculator.ComputeAttendeeFacingTotalAsync(
-                    domainEvent.StripeRefundId, legacyFallbackTotal, cancellationToken);
+                // Phase 6A.87: Use typed email parameters for compile-time safety
+                // Phase 6A.87++ Fix: Pass PaymentIntentId for reference number in email
+                // Cancellation enhancement: Include add-on refund amount in email total
+                var totalRefundAmount = domainEvent.RefundAmount + domainEvent.AddOnRefundAmount;
 
                 _logger.LogInformation(
-                    "[Phase 6A.148.W5.6.A] RefundCompleted email total: ${TotalAmount} (legacy formula was ${Legacy}; ticket=${TicketAmount} addon=${AddOnAmount}) — StripeRefundId={Sri}",
-                    totalRefundAmount, legacyFallbackTotal, domainEvent.RefundAmount,
-                    domainEvent.AddOnRefundAmount, domainEvent.StripeRefundId);
+                    "[RefundEmail] Composing refund email - RegistrationRefund=${RegistrationRefund}, AddOnRefund=${AddOnRefund}, TotalRefund=${TotalRefund}",
+                    domainEvent.RefundAmount, domainEvent.AddOnRefundAmount, totalRefundAmount);
 
-                // Phase 6A.87: Use typed email parameters for compile-time safety
-                // Phase 6A.87 Fix: Added stripeRefundId parameter required by template
-                var emailParams = RefundEmailParams.CreateCompleted(
+                var emailParams = RefundEmailParams.CreateRequest(
                     userId: userId,
                     userName: userName,
                     userEmail: domainEvent.ContactEmail,
                     registrationId: domainEvent.RegistrationId,
-                    refundId: Guid.NewGuid(),  // Internal refund ID
+                    refundId: Guid.NewGuid(),  // Refund ID not available in domain event yet
                     eventId: @event.Id,
                     eventTitle: @event.Title?.Value ?? "Event",
                     eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: refund flow can't fire on TBD today (Register blocks)
                     timeZoneId: @event.TimeZoneId,
-                    refundAmount: totalRefundAmount,  // Phase 6A.135: Combined ticket + add-on amount
+                    refundAmount: totalRefundAmount,
                     originalAmount: totalRefundAmount,  // Same as refund for full refunds
-                    completedAt: DateTime.UtcNow,
-                    stripeRefundId: domainEvent.StripeRefundId,  // Phase 6A.87 Fix: Pass Stripe refund ID for template
-                    processingMethod: "Original Payment Method"
+                    refundReason: "Registration Cancellation",
+                    requestedAt: DateTime.UtcNow,
+                    paymentIntentId: domainEvent.PaymentIntentId  // Phase 6A.87++ Fix: Reference number
                 );
                 emailParams.EventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);  // Phase 6A.97: For "View Event Details" button
 
@@ -170,21 +162,21 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                 if (!typedResult.Success)
                 {
                     _logger.LogError(
-                        "[Phase 6A.87] RefundCompleted FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        "[Phase 6A.87] RefundRequested FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
                         domainEvent.ContactEmail, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
                     _logger.LogInformation(
-                        "[Phase 6A.100] RefundCompleted COMPLETE: Email sent - Email={Email}, RefundId={RefundId}, Amount=${Amount}, Duration={ElapsedMs}ms",
-                        domainEvent.ContactEmail, domainEvent.StripeRefundId, domainEvent.RefundAmount, stopwatch.ElapsedMilliseconds);
+                        "[Phase 6A.100] RefundRequested COMPLETE: Email sent - Email={Email}, Amount=${Amount}, Duration={ElapsedMs}ms",
+                        domainEvent.ContactEmail, domainEvent.RefundAmount, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 stopwatch.Stop();
                 _logger.LogWarning(
-                    "[Phase 6A.92] RefundCompleted CANCELED: Operation was canceled - EventId={EventId}, RegistrationId={RegId}, Duration={ElapsedMs}ms",
+                    "[Phase 6A.92] RefundRequested CANCELED: Operation was canceled - EventId={EventId}, RegistrationId={RegId}, Duration={ElapsedMs}ms",
                     domainEvent.EventId, domainEvent.RegistrationId, stopwatch.ElapsedMilliseconds);
                 throw;
             }
@@ -193,7 +185,7 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                 stopwatch.Stop();
                 // Fail-silent pattern: Log error but don't throw to prevent transaction rollback
                 _logger.LogError(ex,
-                    "[Phase 6A.92] RefundCompleted FAILED: Exception occurred - EventId={EventId}, RegistrationId={RegId}, Duration={ElapsedMs}ms",
+                    "[Phase 6A.92] RefundRequested FAILED: Exception occurred - EventId={EventId}, RegistrationId={RegId}, Duration={ElapsedMs}ms",
                     domainEvent.EventId, domainEvent.RegistrationId, stopwatch.ElapsedMilliseconds);
             }
         }

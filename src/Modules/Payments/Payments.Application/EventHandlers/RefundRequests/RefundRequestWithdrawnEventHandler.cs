@@ -12,7 +12,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.EventHandlers.RefundRequests;
+namespace LankaConnect.Modules.Payments.Application.EventHandlers.RefundRequests;
 
 /// <summary>
 /// Phase 6A.148.W4.D13 (G2 fix): Sends the "you withdrew your refund request" email

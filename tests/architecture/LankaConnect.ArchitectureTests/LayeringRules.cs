@@ -414,6 +414,12 @@ public sealed class LayeringRules
     /// Mirrors the W5.4.c.1 / W5.3c.1 transitional ArchTest relaxations.
     /// Re-tighten once BuildingBlocks.Application owns the ICommand/IUnitOfWork
     /// primitives AND the refund services land in Payments.Application.
+    /// Wave 4.4.c.3 (2026-06-23) — additionally relaxed
+    /// <c>LankaConnect.Shared</c> because the 17 moved Payment / Refund event
+    /// handlers import LankaConnect.Shared.Email.{Contracts,Helpers,Services}
+    /// + LankaConnect.Shared.WhatsApp.Contracts. Mirrors W5.4.c.1 Shared
+    /// relaxation. Re-tighten once Shared.Email + Shared.WhatsApp Contracts
+    /// elevate into BuildingBlocks or a dedicated module.
     /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]

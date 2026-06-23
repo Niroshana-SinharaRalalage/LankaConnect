@@ -18,7 +18,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Events.EventHandlers;
+namespace LankaConnect.Modules.Payments.Application.EventHandlers;
 
 /// <summary>
 /// Phase 6A.24: Handles PaymentCompletedEvent to send confirmation email and generate tickets for paid events.

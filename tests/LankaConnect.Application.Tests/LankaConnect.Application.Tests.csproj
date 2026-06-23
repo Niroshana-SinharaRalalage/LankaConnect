@@ -50,6 +50,10 @@
          tests/.../Communications/Commands still exercise them directly. Future cleanup
          relocates them to Communications.Application.Tests. -->
     <ProjectReference Include="..\..\src\Modules\Communications\Communications.Application\Communications.Application.csproj" />
+    <!-- W4.4.c.3 (2026-06-23): PaymentCompletedWhatsAppHandler moved to Payments.Application;
+         WhatsAppEventHandlerTests still exercises it directly until those tests
+         relocate to Payments.Application.Tests in a future cleanup. -->
+    <ProjectReference Include="..\..\src\Modules\Payments\Payments.Application\Payments.Application.csproj" />
     <ProjectReference Include="..\LankaConnect.TestUtilities\LankaConnect.TestUtilities.csproj" />
   </ItemGroup>
 

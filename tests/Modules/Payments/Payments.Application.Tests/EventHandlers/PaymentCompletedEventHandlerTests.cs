@@ -6,7 +6,7 @@ using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.EventHandlers;
+using LankaConnect.Modules.Payments.Application.EventHandlers;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -23,7 +23,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace LankaConnect.Application.Tests.Events.EventHandlers;
+namespace LankaConnect.Modules.Payments.Application.Tests.EventHandlers;
 
 /// <summary>
 /// Phase 6A.X Issue #29: Unit tests for PaymentCompletedEventHandler.

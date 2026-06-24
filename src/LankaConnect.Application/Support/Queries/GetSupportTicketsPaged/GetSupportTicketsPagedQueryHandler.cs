@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Support.DTOs;
-using LankaConnect.Application.Users.DTOs;
+using LankaConnect.Application.Common.Models; // W4.6.c.3: PagedResultDto extracted here
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Support;
 using LankaConnect.Domain.Users;

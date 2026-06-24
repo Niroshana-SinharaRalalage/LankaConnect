@@ -1,7 +1,7 @@
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Modules.Identity.Application.Commands.Users.UpdateLanguages;
-using LankaConnect.Application.Users.DTOs;
+using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;

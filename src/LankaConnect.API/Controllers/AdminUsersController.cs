@@ -1,3 +1,4 @@
+using LankaConnect.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,10 +9,10 @@ using LankaConnect.Modules.Identity.Application.Commands.Users.AdminDowngradeUse
 using LankaConnect.Modules.Identity.Application.Commands.Users.AdminLockUser;
 using LankaConnect.Modules.Identity.Application.Commands.Users.AdminUnlockUser;
 using LankaConnect.Modules.Identity.Application.Commands.Users.AdminUpgradeUser;
-using LankaConnect.Application.Users.DTOs;
-using LankaConnect.Application.Users.Queries.GetAdminUserDetails;
-using LankaConnect.Application.Users.Queries.GetAdminUsersPaged;
-using LankaConnect.Application.Users.Queries.GetAdminUserStatistics;
+using LankaConnect.Modules.Identity.Application.DTOs;
+using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUserDetails;
+using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUsersPaged;
+using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUserStatistics;
 using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.Domain.Users.Enums;
 

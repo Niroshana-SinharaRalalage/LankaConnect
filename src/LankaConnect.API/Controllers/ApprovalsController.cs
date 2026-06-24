@@ -2,10 +2,10 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LankaConnect.API.Extensions;
-using LankaConnect.Application.Users.Queries.GetPendingRoleUpgrades;
+using LankaConnect.Modules.Identity.Application.Queries.Users.GetPendingRoleUpgrades;
 using LankaConnect.Modules.Identity.Application.Commands.Users.ApproveRoleUpgrade;
 using LankaConnect.Modules.Identity.Application.Commands.Users.RejectRoleUpgrade;
-using LankaConnect.Application.Users.DTOs;
+using LankaConnect.Modules.Identity.Application.DTOs;
 
 namespace LankaConnect.API.Controllers;
 

@@ -13,12 +13,12 @@ using LankaConnect.Modules.Identity.Application.Commands.Users.RequestRoleUpgrad
 using LankaConnect.Modules.Identity.Application.Commands.Users.CancelRoleUpgrade;
 using LankaConnect.Modules.Identity.Application.Commands.Users.UpdateUserBasicInfo;
 using LankaConnect.Modules.Identity.Application.Commands.Users.UpdateUserEmail;
-using LankaConnect.Application.Users.Queries.GetUserById;
-using LankaConnect.Application.Users.Queries.GetLinkedProviders;
-using LankaConnect.Application.Users.Queries.GetUserPreferredMetroAreas;
-using LankaConnect.Application.Users.Queries.SearchUsers;
+using LankaConnect.Modules.Identity.Application.Queries.Users.GetUserById;
+using LankaConnect.Modules.Identity.Application.Queries.Users.GetLinkedProviders;
+using LankaConnect.Modules.Identity.Application.Queries.Users.GetUserPreferredMetroAreas;
+using LankaConnect.Modules.Identity.Application.Queries.Users.SearchUsers;
 using LankaConnect.Application.MetroAreas.Common;
-using LankaConnect.Application.Users.DTOs;
+using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Domain.Users.Enums;
 using Microsoft.Extensions.Logging;
 

@@ -1,5 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Users.DTOs;
+using LankaConnect.Modules.Identity.Application.DTOs;
 
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdateLanguages;
 

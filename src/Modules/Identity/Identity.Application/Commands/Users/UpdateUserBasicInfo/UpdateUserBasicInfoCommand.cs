@@ -1,5 +1,5 @@
 using MediatR;
-using LankaConnect.Application.Users.DTOs;
+using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdateUserBasicInfo;

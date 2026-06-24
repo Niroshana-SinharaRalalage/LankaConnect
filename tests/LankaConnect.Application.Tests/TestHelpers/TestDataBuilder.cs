@@ -3,7 +3,7 @@ using LankaConnect.Application.Businesses.Commands.UpdateBusiness;
 using LankaConnect.Application.Businesses.Commands.AddService;
 using LankaConnect.Application.Businesses.Common;
 using LankaConnect.Modules.Identity.Application.Commands.Users.CreateUser;
-using LankaConnect.Application.Users.DTOs;
+using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.Enums;
 using LankaConnect.Domain.Business.ValueObjects;

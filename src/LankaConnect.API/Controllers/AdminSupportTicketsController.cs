@@ -1,3 +1,4 @@
+using LankaConnect.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,7 @@ using LankaConnect.Application.Support.DTOs;
 using LankaConnect.Application.Support.Queries.GetSupportTicketById;
 using LankaConnect.Application.Support.Queries.GetSupportTicketsPaged;
 using LankaConnect.Application.Support.Queries.GetSupportTicketStatistics;
-using LankaConnect.Application.Users.DTOs;
+using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Domain.Support.Enums;
 
 namespace LankaConnect.API.Controllers;

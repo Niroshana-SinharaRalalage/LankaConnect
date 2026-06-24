@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using MediatR;
-using LankaConnect.Application.Auth.Commands.RegisterUser;
+using LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.Domain.Users;
@@ -14,7 +14,7 @@ using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
-namespace LankaConnect.Application.Tests.Auth;
+namespace LankaConnect.Modules.Identity.Application.Tests.Commands.Auth;
 
 public class RegisterUserHandlerTests
 {

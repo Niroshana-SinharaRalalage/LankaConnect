@@ -8,7 +8,7 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Application.Auth.Commands.RefreshToken;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RefreshToken;
 
 public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<RefreshTokenResponse>>
 {

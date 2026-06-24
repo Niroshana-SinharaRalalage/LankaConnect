@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Application.Auth.Commands.RegisterUser;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 
 public record RegisterUserResponse(
     Guid UserId,

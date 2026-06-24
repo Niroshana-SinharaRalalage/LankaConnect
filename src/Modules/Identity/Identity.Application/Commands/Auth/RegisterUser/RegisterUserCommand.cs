@@ -2,7 +2,7 @@ using MediatR;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users.Enums;
 
-namespace LankaConnect.Application.Auth.Commands.RegisterUser;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 
 /// <summary>
 /// Register User Command

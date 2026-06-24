@@ -403,6 +403,13 @@ public sealed class LayeringRules
     /// AND LankaConnect.Application (for IPasswordHashingService per
     /// architect Risk #4 ruling + ICommand/ICommandHandler/IUnitOfWork
     /// pending BuildingBlocks.Application elevation).
+    /// Wave 4.6.c.1 (2026-06-24) — additionally relaxed
+    /// <c>LankaConnect.Shared</c> because the 5 moved Auth command handlers
+    /// (LoginUser / LoginWithEntra / LogoutUser / RefreshToken / RegisterUser)
+    /// import LankaConnect.Shared.Email.Contracts (welcome + verification emails)
+    /// + LankaConnect.Shared.WhatsApp.Contracts (no Shared.Email ref in the 5
+    /// today, but the EntraExternalIdService adapter consumed at 4.6.c.5 will
+    /// hit Shared). Re-tighten once Shared.Email/WhatsApp elevate to BB.
     /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]

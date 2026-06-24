@@ -29,6 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\LankaConnect.API\LankaConnect.API.csproj" />
     <ProjectReference Include="..\LankaConnect.TestUtilities\LankaConnect.TestUtilities.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Identity.Application\Identity.Application.csproj" />
   </ItemGroup>
 
 </Project>

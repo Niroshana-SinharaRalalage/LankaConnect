@@ -2,11 +2,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using MediatR;
 using System.Security.Claims;
-using LankaConnect.Application.Auth.Commands.RegisterUser;
-using LankaConnect.Application.Auth.Commands.LoginUser;
-using LankaConnect.Application.Auth.Commands.RefreshToken;
-using LankaConnect.Application.Auth.Commands.LogoutUser;
-using LankaConnect.Application.Auth.Commands.LoginWithEntra;
+// Wave 4.6.c.1 (2026-06-24): Auth command handlers moved to Identity.Application.
+using LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
+using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
+using LankaConnect.Modules.Identity.Application.Commands.Auth.RefreshToken;
+using LankaConnect.Modules.Identity.Application.Commands.Auth.LogoutUser;
+using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 using LankaConnect.Application.Communications.Commands.SendPasswordReset;
 using LankaConnect.Application.Communications.Commands.ResetPassword;
 using LankaConnect.Application.Communications.Commands.VerifyEmail;

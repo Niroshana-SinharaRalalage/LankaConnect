@@ -1,7 +1,7 @@
 using MediatR;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Application.Auth.Commands.RefreshToken;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RefreshToken;
 
 public record RefreshTokenCommand(
     string RefreshToken,

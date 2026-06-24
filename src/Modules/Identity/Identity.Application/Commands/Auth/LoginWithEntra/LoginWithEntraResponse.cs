@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Users.Enums;
 
-namespace LankaConnect.Application.Auth.Commands.LoginWithEntra;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 
 /// <summary>
 /// Response containing authentication tokens and user information after successful Entra login

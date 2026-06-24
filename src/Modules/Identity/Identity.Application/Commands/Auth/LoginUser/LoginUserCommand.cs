@@ -1,7 +1,7 @@
 using MediatR;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Application.Auth.Commands.LoginUser;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 
 public record LoginUserCommand : IRequest<Result<LoginUserResponse>>
 {

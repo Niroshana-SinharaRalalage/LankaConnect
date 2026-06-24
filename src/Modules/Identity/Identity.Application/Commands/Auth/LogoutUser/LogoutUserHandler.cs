@@ -9,7 +9,7 @@ using LankaConnect.Domain.Shared.ValueObjects;
 using DomainUserRepository = LankaConnect.Domain.Users.IUserRepository;
 using DomainUnitOfWork = LankaConnect.Domain.Common.IUnitOfWork;
 
-namespace LankaConnect.Application.Auth.Commands.LogoutUser;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LogoutUser;
 
 public class LogoutUserHandler : IRequestHandler<LogoutUserCommand, Result>
 {

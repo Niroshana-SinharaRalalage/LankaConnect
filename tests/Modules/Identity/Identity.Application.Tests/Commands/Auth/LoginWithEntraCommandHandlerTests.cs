@@ -2,14 +2,14 @@ using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using LankaConnect.Application.Auth.Commands.LoginWithEntra;
+using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Common;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
-namespace LankaConnect.Application.Tests.Auth.Commands;
+namespace LankaConnect.Modules.Identity.Application.Tests.Commands.Auth;
 
 public class LoginWithEntraCommandHandlerTests
 {

@@ -2,7 +2,7 @@ using FluentValidation;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users.Enums;
 
-namespace LankaConnect.Application.Auth.Commands.RegisterUser;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 
 public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
 {

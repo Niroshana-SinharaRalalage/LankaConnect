@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace LankaConnect.Application.Auth.Commands.LoginUser;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 
 public class LoginUserValidator : AbstractValidator<LoginUserCommand>
 {

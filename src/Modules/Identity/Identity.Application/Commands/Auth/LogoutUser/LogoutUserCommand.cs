@@ -1,7 +1,7 @@
 using MediatR;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Application.Auth.Commands.LogoutUser;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LogoutUser;
 
 public record LogoutUserCommand(
     string RefreshToken,

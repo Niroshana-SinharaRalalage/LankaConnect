@@ -11,7 +11,7 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Application.Auth.Commands.RegisterUser;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 
 public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<RegisterUserResponse>>
 {

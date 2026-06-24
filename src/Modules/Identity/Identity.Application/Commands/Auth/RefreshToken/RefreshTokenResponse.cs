@@ -1,4 +1,4 @@
-namespace LankaConnect.Application.Auth.Commands.RefreshToken;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RefreshToken;
 
 public record RefreshTokenResponse(
     string AccessToken,

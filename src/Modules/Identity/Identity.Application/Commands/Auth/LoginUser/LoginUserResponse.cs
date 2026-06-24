@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Application.Auth.Commands.LoginUser;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 
 public record LoginUserResponse(
     Guid UserId,

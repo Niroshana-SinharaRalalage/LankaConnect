@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
-using LankaConnect.Application.Auth.Commands.LoginUser;
+using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
@@ -11,7 +11,7 @@ using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Common;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
-namespace LankaConnect.Application.Tests.Auth;
+namespace LankaConnect.Modules.Identity.Application.Tests.Commands.Auth;
 
 public class LoginUserHandlerTests
 {

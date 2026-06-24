@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
-using LankaConnect.Application.Auth.Commands.LoginWithEntra;
+using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.IntegrationTests.Common;
 using LankaConnect.IntegrationTests.Fakes;

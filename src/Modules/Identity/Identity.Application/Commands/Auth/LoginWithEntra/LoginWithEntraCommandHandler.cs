@@ -9,7 +9,7 @@ using LankaConnect.Domain.Users.Enums;
 using RefreshTokenVO = LankaConnect.Domain.Users.ValueObjects.RefreshToken;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
-namespace LankaConnect.Application.Auth.Commands.LoginWithEntra;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 
 /// <summary>
 /// Handler for authenticating users via Microsoft Entra External ID

@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace LankaConnect.Application.Auth.Commands.LoginWithEntra;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 
 /// <summary>
 /// Validates LoginWithEntraCommand

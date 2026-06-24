@@ -8,7 +8,7 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Application.Auth.Commands.LoginUser;
+namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 
 public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUserResponse>>
 {

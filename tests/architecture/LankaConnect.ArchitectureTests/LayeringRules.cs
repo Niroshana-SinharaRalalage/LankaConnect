@@ -1109,6 +1109,57 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    /// <summary>
+    /// Wave 4.6.d.3 (2026-06-24) — pins the future LankaConnect.Application →
+    /// Identity.Domain edge that Wave 4.6 was setting up. Mirrors the W5.3d.3
+    /// Forms + W5.4.d.3 Communications + W4.4.d.3 Payments rules.
+    ///
+    /// **FORWARD-LOOKING DEFERRED-MOVE NOTE (2026-06-24)**: At Wave 4.6.d.3
+    /// shipping time, the User aggregate STAYS in
+    /// <c>LankaConnect.Domain.Users</c>; the planned 4.6.d.2 physical move
+    /// was deferred because the 44 legacy LankaConnect.Application files
+    /// that inject <c>IUserRepository</c> directly require careful per-file
+    /// review (User-aggregate-specific surfaces -- FirstName/LastName/
+    /// Email.Value/IsActive/refresh-token methods/role-upgrade fields --
+    /// don't cleanly map to <see cref="LankaConnect.Modules.Identity.Contracts.UserSummaryDto"/>
+    /// / <see cref="LankaConnect.Modules.Identity.Contracts.UserDetailDto"/>
+    /// without surface expansion). Rule 5 PINS the boundary so when the
+    /// physical move + consumer sweep do land in a future wave, any
+    /// regression that re-introduces a cross-module Identity.Domain edge
+    /// from LankaConnect.Application is caught.
+    ///
+    /// **Wave 4.6 final structural state (2026-06-24)**:
+    /// - 26 command handlers + 8 query handlers + 1 event handler + 4
+    ///   security adapters relocated to <c>Identity.{Application,Infrastructure}</c>
+    /// - <c>IIdentityQueries</c> surface live (14 methods) + <c>IIdentityCommands</c>
+    ///   semantic password-reset surface live
+    /// - <c>ICurrentUserService</c> moved to <c>Identity.Contracts</c>
+    /// - 4 Communications EmailGroup handlers swapped to <see cref="LankaConnect.Modules.Identity.Contracts.IIdentityQueries"/>
+    ///   (architect Additional Finding #4 satisfied)
+    /// - User aggregate physical move + remaining 44-consumer sweep + the
+    ///   Communications.SendPasswordReset + ResetPassword handlers' swap
+    ///   onto <c>IIdentityCommands</c> deferred to a future Wave 4.6 follow-up
+    ///   or Wave 6.5 Outbox cutover sequencing decision.
+    ///
+    /// Scope note: this rule targets <c>LankaConnect.Modules.Identity.Domain</c>
+    /// namespace specifically (assembly doesn't exist YET; the rule passes
+    /// trivially today and becomes load-bearing when 4.6.d.2 ships).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void LegacyApplication_DoesNotDependOnIdentityDomain()
+    {
+        var assembly = typeof(LankaConnect.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Identity.Domain")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
     // ---------- W4.7 — CulturalIntelligence module boundaries (added 2026-06-06) ----------
 
     [Fact]

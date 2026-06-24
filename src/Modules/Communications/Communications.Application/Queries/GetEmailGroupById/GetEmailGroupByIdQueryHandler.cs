@@ -20,18 +20,18 @@ namespace LankaConnect.Modules.Communications.Application.Queries.GetEmailGroupB
 public class GetEmailGroupByIdQueryHandler : IQueryHandler<GetEmailGroupByIdQuery, EmailGroupDto>
 {
     private readonly IEmailGroupRepository _emailGroupRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<GetEmailGroupByIdQueryHandler> _logger;
 
     public GetEmailGroupByIdQueryHandler(
         IEmailGroupRepository emailGroupRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ICurrentUserService currentUserService,
         ILogger<GetEmailGroupByIdQueryHandler> logger)
     {
         _emailGroupRepository = emailGroupRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _currentUserService = currentUserService;
         _logger = logger;
     }
@@ -90,8 +90,8 @@ public class GetEmailGroupByIdQueryHandler : IQueryHandler<GetEmailGroupByIdQuer
                 }
 
                 // Get owner name
-                var owner = await _userRepository.GetByIdAsync(emailGroup.OwnerId, cancellationToken);
-                var ownerName = owner?.FullName ?? "Unknown";
+                var owner = await _identityQueries.GetUserByIdAsync(emailGroup.OwnerId, cancellationToken);
+                var ownerName = owner?.DisplayName ?? "Unknown";
 
                 // Map to DTO
                 var dto = new EmailGroupDto

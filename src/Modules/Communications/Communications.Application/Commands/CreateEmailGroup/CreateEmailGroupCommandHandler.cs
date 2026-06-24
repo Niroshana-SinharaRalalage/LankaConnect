@@ -23,20 +23,20 @@ namespace LankaConnect.Modules.Communications.Application.Commands.CreateEmailGr
 public class CreateEmailGroupCommandHandler : IRequestHandler<CreateEmailGroupCommand, Result<EmailGroupDto>>
 {
     private readonly IEmailGroupRepository _emailGroupRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateEmailGroupCommandHandler> _logger;
 
     public CreateEmailGroupCommandHandler(
         IEmailGroupRepository emailGroupRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         ILogger<CreateEmailGroupCommandHandler> logger)
     {
         _emailGroupRepository = emailGroupRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -122,8 +122,8 @@ public class CreateEmailGroupCommandHandler : IRequestHandler<CreateEmailGroupCo
                     await _unitOfWork.CommitAsync(cancellationToken);
 
                     // Get owner name for DTO
-                    var owner = await _userRepository.GetByIdAsync(userId, cancellationToken);
-                    var ownerName = owner?.FullName ?? "Unknown";
+                    var owner = await _identityQueries.GetUserByIdAsync(userId, cancellationToken);
+                    var ownerName = owner?.DisplayName ?? "Unknown";
 
                     _logger.LogInformation(
                         "CreateEmailGroup: Owner information retrieved - OwnerName={OwnerName}",

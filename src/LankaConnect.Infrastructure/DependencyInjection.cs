@@ -34,7 +34,6 @@ using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
 using LankaConnect.Infrastructure.Storage.Configuration;
 using LankaConnect.Infrastructure.Storage.Services;
-using LankaConnect.Infrastructure.Security.Services;
 using LankaConnect.Infrastructure.Security;
 using LankaConnect.Infrastructure.Email.Configuration;
 using LankaConnect.Infrastructure.Email.Services;
@@ -328,15 +327,16 @@ public static class DependencyInjection
         services.AddScoped<IImageService, LankaConnect.Infrastructure.Services.ImageService>();
         services.AddScoped<IAlbumImageService, LankaConnect.Infrastructure.Services.AlbumImageService>();
 
-        // Add Authentication Services
-        services.AddScoped<IJwtTokenService, JwtTokenService>();
-        services.AddScoped<IPasswordHashingService, PasswordHashingService>();
+        // Wave 4.6.c.5 (2026-06-24): 4 security adapter DI registrations
+        // (IJwtTokenService, IPasswordHashingService, ICurrentUserService,
+        // IEntraExternalIdService) relocated to PaymentsModule-style
+        // IdentityModule.AddIdentityModule alongside the adapter file moves
+        // into Identity.Infrastructure.Security. ITokenConfiguration stays
+        // here (no file move; lives in LankaConnect.Infrastructure.Security
+        // root + has no Identity-specific surface).
         services.AddScoped<ITokenConfiguration, TokenConfiguration>();
-        services.AddScoped<ICurrentUserService, CurrentUserService>(); // Phase 6A.6
 
-        // Add Entra External ID Services
         services.Configure<EntraExternalIdOptions>(configuration.GetSection(EntraExternalIdOptions.SectionName));
-        services.AddScoped<IEntraExternalIdService, EntraExternalIdService>();
 
         // Add Email Services
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));

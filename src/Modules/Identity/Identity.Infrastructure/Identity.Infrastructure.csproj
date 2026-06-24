@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Identity.Infrastructure</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Identity.Infrastructure</AssemblyName>
+    <Description>Identity module - Infrastructure layer. Hosts the 4 moved security adapters (JwtTokenService, EntraExternalIdService, PasswordHashingService, CurrentUserService). User aggregate repository move + ArchTest Rule 5 ship at 4.6.d.2 + 4.6.d.3. Wave 4.6.c.5 (2026-06-24).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Identity.Application\Identity.Application.csproj" />
+    <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
+    <!--
+      Wave 4.6.c.5 TRANSITIONAL EDGES (2026-06-24). The 4 moved security
+      adapters reach back into:
+       a) LankaConnect.Application.Common.Interfaces (IJwtTokenService,
+          IPasswordHashingService ports per architect Risk #2 Option C;
+          ICurrentUserService moved to Identity.Contracts at 4.6.a).
+       b) LankaConnect.Infrastructure (storage/cache/template helpers).
+       c) LankaConnect.Domain (User aggregate, until 4.6.d.2).
+       d) LankaConnect.Shared (Email/WhatsApp template helpers).
+      Cut alongside the BB.Application elevation + Wave 4.6.d.2 move.
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <ProjectReference Include="..\..\..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <ProjectReference Include="..\..\..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" />
+    <PackageReference Include="BCrypt.Net-Next" />
+    <PackageReference Include="Microsoft.Identity.Web" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+</Project>

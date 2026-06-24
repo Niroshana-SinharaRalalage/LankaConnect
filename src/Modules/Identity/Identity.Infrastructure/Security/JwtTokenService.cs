@@ -10,7 +10,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 
-namespace LankaConnect.Infrastructure.Security.Services;
+namespace LankaConnect.Modules.Identity.Infrastructure.Security;
 
 public class JwtTokenService : IJwtTokenService
 {

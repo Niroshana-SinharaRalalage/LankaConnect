@@ -1,6 +1,8 @@
 using FluentValidation;
+using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Modules.Identity.Application.Queries;
 using LankaConnect.Modules.Identity.Contracts;
+using LankaConnect.Modules.Identity.Infrastructure.Security;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +44,19 @@ public static class IdentityModule
         var identityAppAssembly = typeof(IdentityQueries).Assembly;
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(identityAppAssembly));
         services.AddValidatorsFromAssembly(identityAppAssembly);
+
+        // Wave 4.6.c.5 (2026-06-24): 4 security adapter registrations relocated
+        // from LankaConnect.Infrastructure.DependencyInjection alongside the
+        // physical file move into Identity.Infrastructure.Security. Mirrors
+        // the W4.4.d.2 PaymentsModule repository registration pattern.
+        // Ports stay in LankaConnect.Application.Common.Interfaces per
+        // architect Risk #2 Option C (signatures take User type so the ports
+        // cannot promote to Contracts purity). ICurrentUserService is the
+        // exception -- it moved to Identity.Contracts at 4.6.a.
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IPasswordHashingService, PasswordHashingService>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IEntraExternalIdService, EntraExternalIdService>();
 
         return services;
     }

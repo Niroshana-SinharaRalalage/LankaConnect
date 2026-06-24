@@ -1,3 +1,4 @@
+using LankaConnect.Infrastructure.Security; // W4.6.c.5: EntraExternalIdOptions stays in legacy
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging;
@@ -8,7 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Infrastructure.Security.Services;
+namespace LankaConnect.Modules.Identity.Infrastructure.Security;
 
 /// <summary>
 /// Service for validating Microsoft Entra External ID tokens and retrieving user information

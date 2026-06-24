@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Infrastructure.Security.Services;
+namespace LankaConnect.Modules.Identity.Infrastructure.Security;
 
 public class PasswordHashingService : IPasswordHashingService
 {

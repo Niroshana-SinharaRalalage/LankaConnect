@@ -396,6 +396,30 @@ public sealed class LayeringRules
     }
 
     /// <summary>
+    /// Wave 4.6.c.5 (2026-06-24) — Identity.Infrastructure module boundary.
+    /// Mirrors W4.4.d.2 Payments.Infrastructure relaxation. Transitional
+    /// edges to LankaConnect.{Application, Infrastructure, Domain, Shared}
+    /// are real (4 security adapters reach back for ports + storage helpers).
+    /// Re-tighten alongside BB.Application elevation + Wave 4.6.d.2.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Identity_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith()
+    {
+        var assembly = typeof(Modules.Identity.Infrastructure.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Identity.Api",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.API")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
     /// Wave 4.6.b (2026-06-24) — Identity.Application module boundary.
     /// Mirrors the W4.4 Payments.Application + W5.4 Communications.Application
     /// relaxations. Identity.Application transitionally references

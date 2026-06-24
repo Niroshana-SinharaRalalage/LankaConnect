@@ -3,7 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using LankaConnect.Application.Common.Interfaces;
 
-namespace LankaConnect.Infrastructure.Security.Services;
+namespace LankaConnect.Modules.Identity.Infrastructure.Security;
 
 /// <summary>
 /// Implementation of ICurrentUserService that uses HttpContext to get current user

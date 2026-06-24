@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Application.Tests.TestHelpers;

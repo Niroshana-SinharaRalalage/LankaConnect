@@ -396,6 +396,67 @@ public sealed class LayeringRules
     }
 
     /// <summary>
+    /// Wave 4.6.a (2026-06-24) — Identity.Contracts module boundary.
+    /// Mirrors Modules_Payments_Contracts + Modules_Communications_Contracts
+    /// + Modules_Forms_Contracts. Hosts the moved ICurrentUserService
+    /// (relocated from LankaConnect.Application.Common.Interfaces per
+    /// architect Risk #2 Option C). Identity.Contracts depends ONLY on
+    /// BuildingBlocks.Contracts -- accidental ProjectReference additions
+    /// here would couple consumers via implementation detail.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Identity_Contracts_DependsOnlyOnBuildingBlocksContracts()
+    {
+        var assembly = typeof(Modules.Identity.Contracts.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Identity.Domain",
+                "LankaConnect.Modules.Identity.Application",
+                "LankaConnect.Modules.Identity.Infrastructure",
+                "LankaConnect.Modules.Identity.Api",
+                "LankaConnect.BuildingBlocks.Domain",
+                "LankaConnect.BuildingBlocks.Application",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared",
+                "LankaConnect.Modules.Notifications.Domain",
+                "LankaConnect.Modules.Notifications.Contracts",
+                "LankaConnect.Modules.Notifications.Application",
+                "LankaConnect.Modules.Notifications.Infrastructure",
+                "LankaConnect.Modules.Notifications.Api",
+                "LankaConnect.Modules.Media.Domain",
+                "LankaConnect.Modules.Media.Contracts",
+                "LankaConnect.Modules.Media.Application",
+                "LankaConnect.Modules.Media.Infrastructure",
+                "LankaConnect.Modules.Media.Api",
+                "LankaConnect.Modules.Communications.Domain",
+                "LankaConnect.Modules.Communications.Contracts",
+                "LankaConnect.Modules.Communications.Application",
+                "LankaConnect.Modules.Communications.Infrastructure",
+                "LankaConnect.Modules.Communications.Api",
+                "LankaConnect.Modules.Forms.Domain",
+                "LankaConnect.Modules.Forms.Contracts",
+                "LankaConnect.Modules.Forms.Application",
+                "LankaConnect.Modules.Forms.Infrastructure",
+                "LankaConnect.Modules.Forms.Api",
+                "LankaConnect.Modules.Payments.Domain",
+                "LankaConnect.Modules.Payments.Contracts",
+                "LankaConnect.Modules.Payments.Application",
+                "LankaConnect.Modules.Payments.Infrastructure",
+                "LankaConnect.Modules.Payments.Api")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
     /// Wave 4.4.d.2 (2026-06-23) — Payments.Domain module boundary. Permanent
     /// edge to LankaConnect.Domain per architect Risk #1 Option A (RefundRequest
     /// + RefundRequestLineItem + RegistrationPayment stay as Registration aggregate

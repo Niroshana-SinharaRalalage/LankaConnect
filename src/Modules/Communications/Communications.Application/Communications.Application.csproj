@@ -32,6 +32,7 @@
       BuildingBlocks.Application elevation pass.
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

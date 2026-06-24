@@ -23,6 +23,7 @@
       rule is relaxed during the transition window (see LayeringRules.cs).
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

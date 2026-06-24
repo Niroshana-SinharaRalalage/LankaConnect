@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using System.Linq.Expressions;
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;

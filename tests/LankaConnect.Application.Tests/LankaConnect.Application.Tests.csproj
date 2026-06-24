@@ -60,5 +60,6 @@
   <ItemGroup>
     <!-- W5.4.d.2 (2026-06-22): EmailGroup hosted in Communications.Domain for EmailGroupTests + IAuditable round-trip coverage. -->
     <ProjectReference Include="..\..\src\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Identity.Contracts\Identity.Contracts.csproj" />
   </ItemGroup>
 </Project>

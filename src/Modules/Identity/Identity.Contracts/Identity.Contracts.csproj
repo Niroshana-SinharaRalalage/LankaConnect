@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Identity.Contracts</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Identity.Contracts</AssemblyName>
+    <Description>Identity module - Contracts layer. Cross-module read + mutator API for the User aggregate. Hosts ICurrentUserService (relocated from LankaConnect.Application.Common.Interfaces per architect Risk #2 Option C ruling). Depends only on BuildingBlocks.Contracts. Wave 4.6.a (2026-06-24).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -20,11 +20,13 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="FluentAssertions" />
+    <Using Include="Moq" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Modules\Identity\Identity.Application\Identity.Application.csproj" />
     <ProjectReference Include="..\..\..\..\src\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <ProjectReference Include="..\..\..\LankaConnect.Application.Tests\LankaConnect.Application.Tests.csproj" />
   </ItemGroup>
 
 </Project>

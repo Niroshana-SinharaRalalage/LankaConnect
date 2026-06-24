@@ -1,7 +1,7 @@
 using FluentValidation;
 using LankaConnect.Application.Common.Behaviors;
 using LankaConnect.Application.Tests.TestHelpers;
-using LankaConnect.Application.Users.Commands.CreateUser;
+using LankaConnect.Modules.Identity.Application.Commands.Users.CreateUser;
 using LankaConnect.Domain.Common;
 using MediatR;
 

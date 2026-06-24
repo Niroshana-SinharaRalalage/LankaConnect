@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LankaConnect.API.Extensions;
 using LankaConnect.Application.Users.Queries.GetPendingRoleUpgrades;
-using LankaConnect.Application.Users.Commands.ApproveRoleUpgrade;
-using LankaConnect.Application.Users.Commands.RejectRoleUpgrade;
+using LankaConnect.Modules.Identity.Application.Commands.Users.ApproveRoleUpgrade;
+using LankaConnect.Modules.Identity.Application.Commands.Users.RejectRoleUpgrade;
 using LankaConnect.Application.Users.DTOs;
 
 namespace LankaConnect.API.Controllers;

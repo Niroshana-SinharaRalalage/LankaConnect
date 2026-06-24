@@ -1,6 +1,6 @@
 using FluentValidation.TestHelper;
 using LankaConnect.Application.Tests.TestHelpers;
-using LankaConnect.Application.Users.Commands.CreateUser;
+using LankaConnect.Modules.Identity.Application.Commands.Users.CreateUser;
 
 namespace LankaConnect.Application.Tests.Validators;
 

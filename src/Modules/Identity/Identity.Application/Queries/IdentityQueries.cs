@@ -93,6 +93,43 @@ public sealed class IdentityQueries : IIdentityQueries
         return result;
     }
 
+    public async Task<IReadOnlyList<UserSummaryDto>> SearchUsersAsync(
+        string searchTerm,
+        Guid? excludeUserId,
+        int maxResults,
+        CancellationToken ct = default)
+    {
+        var users = await _userRepository.SearchUsersAsync(searchTerm, excludeUserId, maxResults, ct);
+        var result = new List<UserSummaryDto>(users.Count);
+        foreach (var user in users)
+        {
+            result.Add(user.ToSummaryDto());
+        }
+        return result;
+    }
+
+    public async Task<IReadOnlyList<UserSummaryDto>> GetUserSummariesByEmailsAsync(
+        IReadOnlyList<string> emails,
+        CancellationToken ct = default)
+    {
+        if (emails.Count == 0) return Array.Empty<UserSummaryDto>();
+        var result = new List<UserSummaryDto>(emails.Count);
+        foreach (var email in emails)
+        {
+            var emailVo = Email.Create(email);
+            if (emailVo.IsFailure) continue;
+            var user = await _userRepository.GetByEmailAsync(emailVo.Value, ct);
+            if (user is not null) result.Add(user.ToSummaryDto());
+        }
+        return result;
+    }
+
+    public async Task<UserContactDto?> GetContactInfoAsync(Guid id, CancellationToken ct = default)
+    {
+        var user = await _userRepository.GetByIdAsync(id, ct);
+        return user?.ToContactDto();
+    }
+
     public async Task<(IReadOnlyList<UserSummaryDto> Items, int TotalCount)> GetPagedAsync(
         int page,
         int pageSize,

@@ -87,4 +87,39 @@ public interface IIdentityCommands
         string? emailFallback,
         string newPlaintextPassword,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Initiates an email-verification flow for the supplied user. Generates
+    /// a one-shot token, persists it on the User aggregate with the supplied
+    /// expiry, and returns the payload Communications needs to dispatch the
+    /// verification email.
+    /// </summary>
+    /// <remarks>
+    /// Wave 4.6.d.2.a (2026-06-24). Architect-mandated semantic mutator
+    /// per the d.2.a ruling. Identity adapter owns: token generation, expiry,
+    /// User.GenerateEmailVerificationToken state transition. Caller owns
+    /// ONLY the email side-effect. Returns <c>null</c> when no user matches
+    /// <paramref name="userId"/> (caller surfaces a generic error to avoid
+    /// information leak).
+    /// </remarks>
+    Task<EmailVerificationInitiatedDto?> InitiateEmailVerificationAsync(
+        Guid userId,
+        TimeSpan tokenLifetime,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Completes an email-verification flow. Validates the supplied token
+    /// (existence + expiry + token-match), marks the User aggregate's
+    /// email as verified, and returns the payload Communications needs to
+    /// dispatch the welcome email.
+    /// </summary>
+    /// <remarks>
+    /// Wave 4.6.d.2.a (2026-06-24). Throws
+    /// <see cref="InvalidOperationException"/> when the token is missing /
+    /// expired / mismatched (caller catches + surfaces a generic
+    /// "your verification link is invalid or expired" to the UI).
+    /// </remarks>
+    Task<EmailVerificationCompletedDto> CompleteEmailVerificationAsync(
+        string token,
+        CancellationToken ct = default);
 }

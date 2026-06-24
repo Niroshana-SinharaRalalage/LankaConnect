@@ -93,6 +93,49 @@ public interface IIdentityQueries
         CancellationToken ct = default);
 
     /// <summary>
+    /// Phase 6A.133 search-by-name-email-or-phone surface for co-organizer
+    /// linking. Excludes the supplied user id (typically current user).
+    /// Returns up to <paramref name="maxResults"/> matches.
+    /// </summary>
+    /// <remarks>
+    /// Wave 4.6.d.2.a (2026-06-24). Added per architect ruling for the
+    /// BatchLinkOrganizerContacts consumer + similar attendee-search paths.
+    /// </remarks>
+    Task<IReadOnlyList<UserSummaryDto>> SearchUsersAsync(
+        string searchTerm,
+        Guid? excludeUserId,
+        int maxResults,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Batch lookup by email addresses. Returns a list of users whose emails
+    /// match (case-insensitive). Missing emails silently skipped.
+    /// </summary>
+    /// <remarks>
+    /// Wave 4.6.d.2.a (2026-06-24). Added per architect ruling for the
+    /// RegisterAnonymousAttendee + EventCancellationEmailJob newsletter-tail
+    /// flow that match attendees by email.
+    /// </remarks>
+    Task<IReadOnlyList<UserSummaryDto>> GetUserSummariesByEmailsAsync(
+        IReadOnlyList<string> emails,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Email-orchestration projection: returns a user's contact-tier fields
+    /// (email + display name + active + email-verified + lockout flags +
+    /// profile-photo). Used by the ~18 legacy consumers that need a few
+    /// fields beyond <see cref="UserSummaryDto"/> but not the full
+    /// <see cref="UserDetailDto"/> admin shape.
+    /// </summary>
+    /// <remarks>
+    /// Wave 4.6.d.2.a (2026-06-24). Architect-mandated to replace the bulk
+    /// of d.2.b consumer swaps. Returns <c>null</c> when no row exists.
+    /// </remarks>
+    Task<UserContactDto?> GetContactInfoAsync(
+        Guid id,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Admin user-list paging endpoint. Filter by role + active flag; search
     /// applies to email + display name. Returns the page slice + total count
     /// for the table pager.

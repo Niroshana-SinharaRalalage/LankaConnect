@@ -13,8 +13,11 @@ namespace LankaConnect.Modules.Identity.Contracts.Tests;
 public sealed class IIdentityQueriesShapeTests
 {
     [Fact]
-    public void IIdentityQueries_Has_FourteenMethods()
+    public void IIdentityQueries_Has_SeventeenMethods()
     {
+        // W4.6.d.2.a (2026-06-24): expanded from 14 -> 17 with SearchUsersAsync,
+        // GetUserSummariesByEmailsAsync, GetContactInfoAsync per architect ruling
+        // to cover the d.2.b 44-consumer sweep.
         var methods = typeof(IIdentityQueries).GetMethods(BindingFlags.Public | BindingFlags.Instance);
 
         methods.Select(m => m.Name).Should().BeEquivalentTo(new[]
@@ -26,6 +29,9 @@ public sealed class IIdentityQueriesShapeTests
             "GetUserNamesAsync",
             "GetEmailsByUserIdsAsync",
             "SearchByNameAsync",
+            "SearchUsersAsync",
+            "GetUserSummariesByEmailsAsync",
+            "GetContactInfoAsync",
             "GetPagedAsync",
             "GetUsersWithPendingRoleUpgradesAsync",
             "CountAsync",
@@ -37,14 +43,18 @@ public sealed class IIdentityQueriesShapeTests
     }
 
     [Fact]
-    public void IIdentityCommands_Has_TwoSemanticPasswordResetMethods()
+    public void IIdentityCommands_Has_FourSemanticMutators()
     {
+        // W4.6.d.2.a (2026-06-24): expanded from 2 -> 4 with email-verification
+        // semantic mutators per architect ruling.
         var methods = typeof(IIdentityCommands).GetMethods(BindingFlags.Public | BindingFlags.Instance);
 
         methods.Select(m => m.Name).Should().BeEquivalentTo(new[]
         {
             "InitiatePasswordResetAsync",
             "CompletePasswordResetAsync",
+            "InitiateEmailVerificationAsync",
+            "CompleteEmailVerificationAsync",
         });
     }
 

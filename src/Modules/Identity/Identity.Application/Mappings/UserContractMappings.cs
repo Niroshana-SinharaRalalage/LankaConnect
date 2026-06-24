@@ -26,6 +26,18 @@ internal static class UserContractMappings
             CreatedAt: src.CreatedAt,
             UpdatedAt: src.UpdatedAt);
 
+    public static UserContactDto ToContactDto(this User src) =>
+        new(
+            Id: src.Id,
+            Email: src.Email.Value,
+            FirstName: src.FirstName,
+            LastName: src.LastName,
+            DisplayName: src.FullName,
+            ProfilePhotoUrl: src.ProfilePhotoUrl,
+            IsActive: src.IsActive,
+            IsEmailVerified: src.IsEmailVerified,
+            IsAccountLocked: src.IsAccountLocked);
+
     public static UserDetailDto ToDetailDto(this User src) =>
         new(
             Id: src.Id,

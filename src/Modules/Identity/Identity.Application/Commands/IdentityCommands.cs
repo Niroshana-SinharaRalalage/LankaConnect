@@ -156,6 +156,56 @@ public sealed class IdentityCommands : IIdentityCommands
             DisplayName: user.FullName);
     }
 
+    public async Task<EmailVerificationInitiatedDto?> InitiateEmailVerificationAsync(
+        Guid userId,
+        TimeSpan tokenLifetime,
+        CancellationToken ct = default)
+    {
+        var user = await _userRepository.GetByIdAsync(userId, ct);
+        if (user is null)
+        {
+            _logger.LogInformation("InitiateEmailVerification: user not found for {UserId}", userId);
+            return null;
+        }
+
+        // User aggregate owns token generation + expiry calculation.
+        user.GenerateEmailVerificationToken();
+        _userRepository.Update(user);
+        await _unitOfWork.CommitAsync(ct);
+
+        return new EmailVerificationInitiatedDto(
+            UserId: user.Id,
+            Email: user.Email.Value,
+            DisplayName: user.FullName,
+            EmailVerificationToken: user.EmailVerificationToken!,
+            TokenExpiresAt: user.EmailVerificationTokenExpiresAt ?? DateTime.UtcNow.Add(tokenLifetime));
+    }
+
+    public async Task<EmailVerificationCompletedDto> CompleteEmailVerificationAsync(
+        string token,
+        CancellationToken ct = default)
+    {
+        var user = await _userRepository.GetByEmailVerificationTokenAsync(token, ct);
+        if (user is null)
+        {
+            throw new InvalidOperationException("Invalid or expired verification token");
+        }
+
+        var verifyResult = user.VerifyEmail(token);
+        if (verifyResult.IsFailure)
+        {
+            throw new InvalidOperationException($"Email verification failed: {verifyResult.Error}");
+        }
+
+        _userRepository.Update(user);
+        await _unitOfWork.CommitAsync(ct);
+
+        return new EmailVerificationCompletedDto(
+            UserId: user.Id,
+            Email: user.Email.Value,
+            DisplayName: user.FullName);
+    }
+
     private static string GenerateSecureToken()
     {
         var bytes = new byte[32];

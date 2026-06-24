@@ -1,5 +1,6 @@
 using FluentValidation;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Modules.Identity.Application.Commands;
 using LankaConnect.Modules.Identity.Application.Queries;
 using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Modules.Identity.Infrastructure.Security;
@@ -35,6 +36,11 @@ public static class IdentityModule
 
         // Wave 4.6.b cross-module Contracts surface.
         services.AddScoped<IIdentityQueries, IdentityQueries>();
+        // Wave 4.6.d.1 (2026-06-24): IIdentityCommands semantic mutators per
+        // architect Risk #3 Option A. Owns hashing/throttle/lifetime/refresh-token
+        // revocation. Communications.SendPasswordReset + ResetPassword handlers
+        // swap from IUserRepository + IPasswordHashingService to this surface.
+        services.AddScoped<IIdentityCommands, IdentityCommands>();
 
         // MediatR / FluentValidation scan of Identity.Application -- pulled
         // forward of the 4.6.c.1 handler moves so subsequent moves don't have

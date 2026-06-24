@@ -8,7 +8,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Users.EventHandlers;
+namespace LankaConnect.Modules.Identity.Application.EventHandlers;
 
 /// <summary>
 /// Handles MemberVerificationRequestedEvent to send email verification link.

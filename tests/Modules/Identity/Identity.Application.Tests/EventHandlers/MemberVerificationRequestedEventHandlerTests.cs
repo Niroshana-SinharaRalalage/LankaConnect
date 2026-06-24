@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Users.EventHandlers;
+using LankaConnect.Modules.Identity.Application.EventHandlers;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users.DomainEvents;
 using LankaConnect.Shared.Email.Contracts;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace LankaConnect.Application.Tests.Users.EventHandlers;
+namespace LankaConnect.Modules.Identity.Application.Tests.EventHandlers;
 
 /// <summary>
 /// Tests for MemberVerificationRequestedEventHandler

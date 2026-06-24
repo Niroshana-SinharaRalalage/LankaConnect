@@ -1,6 +1,6 @@
 # Wave 4.6 — Identity.Contracts (IIdentityQueries + IIdentityCommands) — Implementation Plan
 
-**Status**: PLANNED — drafted 2026-06-24, awaits architect consult before 4.6.a kicks off.
+**Status**: READY FOR EXECUTION — architect consult 2026-06-24 ruled Risk #2 = Option C, Risk #3 = Option A (semantic mutators), Risk #4 = Option A (with factual correction). 5 additional findings folded in. See "Architect Ruling Addendum" at bottom for the full ruling text + plan corrections.
 
 **Predecessor**: Wave 4.4 Payments.Contracts (shipped + STAGING-VERIFIED `86121c43`). Same Contracts-pattern shape; this wave finishes the 8 Wave 4 capability extractions.
 
@@ -256,9 +256,11 @@ public interface IIdentityCommands
 - **Option B** — port moves to `Identity.Contracts`. Cleaner architecturally but `ICurrentUserService` returns `Guid?` only (no User type) so it fits Contracts purity; `IJwtTokenService.GenerateAccessTokenAsync(User)` takes the User type which would force Identity.Contracts to leak User-typed signatures.
 - **Option C** — split: `ICurrentUserService` → Identity.Contracts (purity OK); `IJwtTokenService` stays in legacy per Option A reasoning.
 
-**Recommended path: Option C.** Surfaces the cleanest possible Identity.Contracts surface while avoiding the User-type leak.
+**ARCHITECT RULING 2026-06-24: Option C.** Split is the only option that respects both the Contracts-purity rule AND the "port follows its signature's dirtiest type" rule (same precedent as W4.4 IStripePaymentService).
 
-**ARCHITECT INPUT NEEDED before 4.6.c.5.**
+**Sequencing correction (architect Additional Finding #3)**: move `ICurrentUserService` at 4.6.a (NOT 4.6.c.5) so the **54 consumers** (corrected from "~30") across 6 modules can swap their `using LankaConnect.Application.Common.Interfaces;` → `using LankaConnect.Modules.Identity.Contracts;` in the same wave as Identity DI wire-up. Budget +2 hours for the namespace patch sweep + ban-list ArchTest re-check.
+
+`IJwtTokenService` stays in legacy with a `// Stays per W4.6 Risk #2 ruling — leaks User type` comment.
 
 ### Risk #3 — Password reset cross-module coupling
 
@@ -273,9 +275,29 @@ public interface IIdentityCommands
 - **Option B** — extract `PasswordReset` as a new Identity-Domain aggregate; Communications calls `IIdentityCommands.InitiatePasswordResetAsync(email)` and `IIdentityCommands.ResetPasswordAsync(token, newPassword)`. Requires migration (new table). Cleaner architecturally but +1-2 days wall-clock.
 - **Option C** — defer to a future Wave (5.x or 6.x) after Wave 6.5 Outbox; Identity.Contracts ships with the password-reset surface intentionally omitted.
 
-**Recommended path: Option A** with a documented `IIdentityCommands.SetPasswordResetTokenAsync` + `IIdentityCommands.SetPasswordAsync` cross-module mutator surface added at 4.6.d.1. Communications.SendPasswordResetCommandHandler swaps from `IUserRepository` to `IIdentityCommands` at that point. No migration, no new aggregate.
+**ARCHITECT RULING 2026-06-24: Option A — but with SEMANTIC mutators, not raw mutators.** Option B (extract PasswordReset aggregate) is over-engineering for 2 fields. Option C (defer + ban-list exception) is unacceptable because it leaves Communications.Application transitively pulling Identity.Domain and forces Rule 5 to have a "we'll clean it up later" exception — historically rots.
 
-**ARCHITECT INPUT NEEDED before 4.6.a (affects IIdentityCommands shape).**
+**The architect-mandated `IIdentityCommands` surface**:
+```csharp
+public interface IIdentityCommands
+{
+    Task<Result<PasswordResetInitiatedDto>> InitiatePasswordResetAsync(
+        string email, TimeSpan tokenLifetime, bool forceResend, CancellationToken ct);
+
+    Task<Result<PasswordResetCompletedDto>> CompletePasswordResetAsync(
+        string token, string? emailFallback, string newPlaintextPassword, CancellationToken ct);
+}
+```
+
+**CRITICAL — do NOT expose raw mutators** like `SetPasswordResetTokenAsync(token, expiresAt)` + `SetPasswordAsync(hashedPassword)`. That would:
+- Leak the password-hashing service requirement back to Communications (it currently injects `IPasswordHashingService` + calls `HashPassword()` before mutation)
+- Leak the token-lifetime + 5-minute-resend-throttle business rules
+
+The Identity-side adapter (`IdentityCommands` in Identity.Application) owns: hashing, expiry, throttle, refresh-token revocation, recently-sent check. Communications keeps ONLY the email-side-effect orchestration.
+
+**Factual plan correction (architect Additional Finding #2)**: `PasswordResetRequestedAt` field does NOT exist on User. The 5-minute resend throttle is derived as `PasswordResetTokenExpiresAt.AddHours(-1)`. The Identity adapter must replicate that derivation, not reach for a non-existent field.
+
+**Sequencing**: 4.6.d.1 adds the surface + adapter + swaps Communications.SendPasswordReset + ResetPassword handlers to inject IIdentityCommands (dropping IUserRepository + IPasswordHashingService). 4.6.d.3 lands Rule 5 clean.
 
 ### Risk #4 — `PasswordHashingService` has no interface
 
@@ -290,9 +312,13 @@ No `IPasswordHashingService` interface. Consumers (4 command handlers — Regist
 - **Option A** — extract `IPasswordHashingService` interface during 4.6.c.5 + move adapter to `Identity.Infrastructure/Security/`. Consumers swap to the interface. Standard hexagonal pattern.
 - **Option B** — leave as-is; Identity.Infrastructure adapters take the concrete type. Ugly but simpler.
 
-**Recommended path: Option A.** Cost: ~1 hour wall-clock. Yields proper port/adapter separation.
+**ARCHITECT RULING 2026-06-24: Option A — BUT THE PREMISE IS WRONG.** `IPasswordHashingService` ALREADY EXISTS at `src/LankaConnect.Application/Common/Interfaces/IPasswordHashingService.cs` (3 methods: HashPassword, VerifyPassword, ValidatePasswordStrength). Already registered as `AddScoped<IPasswordHashingService, PasswordHashingService>()` in DependencyInjection.cs:332. RegisterUserHandler / LoginUserHandler / ResetPasswordCommandHandler / AdminController inject the interface, NOT the concrete type.
 
-**ARCHITECT INPUT NEEDED before 4.6.c.5.**
+**The pre-flight survey was wrong** — survey table row "no interface exists" is factually incorrect. So the work at 4.6.c.5 is JUST the adapter move, NOT interface extraction.
+
+The existing `IPasswordHashingService` stays in `LankaConnect.Application.Common.Interfaces` (zero churn) — port has 4 in-Identity consumers + zero cross-module consumers (Communications becomes a caller of `IIdentityCommands.CompletePasswordResetAsync` per Risk #3 ruling, so it stops needing IPasswordHashingService directly). Promotion to Contracts deferred to a future cleanup wave.
+
+**Drop the planned "extract interface" step from the 4.6.c.5 checklist.** Saves ~1 hour wall-clock.
 
 ### Risk #5 — `EntraExternalIdService` integration scope
 
@@ -322,7 +348,7 @@ Of the 18 methods, 11 are auth-internal (token lookups, role-upgrade queries) an
 
 ## Implementation checklist (next-session resumption)
 
-- [ ] **Pre-flight (NEW)**: architect consult on Risk #2 (Option A/B/C), Risk #3 (Option A/B/C), Risk #4 (Option A/B). Cannot start 4.6.a without Risk #3 ruling (affects IIdentityCommands shape).
+- [x] **Pre-flight (DONE 2026-06-24)**: architect ruled Risk #2 = Option C, Risk #3 = Option A (semantic mutators), Risk #4 = Option A (with IPasswordHashingService factual correction). 5 additional findings folded into sub-phases below.
 - [ ] **4.6.a**: define Identity.Contracts surface + Contracts.Tests + ArchTest rule
 - [ ] **4.6.b**: implement IdentityQueries + IdentityModule DI + ~10 query tests
 - [ ] **4.6.c.1**: move 5 Auth command handlers into Identity.Application

@@ -940,6 +940,54 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    /// <summary>
+    /// Wave 4.4.d.3 (2026-06-23) — pins the Application-side boundary that Wave 4.4
+    /// established without ever introducing the edge in the first place:
+    /// LankaConnect.Application does NOT reference Payments.Domain. Cross-module
+    /// Payments access from the legacy Application layer flows through
+    /// Payments.Contracts (IPaymentQueries / IPaymentCommands / DTOs). Catch any
+    /// future regression where a new handler/service inside LankaConnect.Application
+    /// imports a Payments.Domain symbol.
+    ///
+    /// Mirrors W5.3d.3 (LegacyApplication_DoesNotDependOnFormsDomain) +
+    /// W5.4.d.3 (LegacyApplication_DoesNotDependOnCommunicationsDomain).
+    ///
+    /// Scope note: <c>LankaConnect.Infrastructure</c> still legitimately references
+    /// Payments.Domain (Wave 4.4.d.2 added that edge so the 3 webhook handlers +
+    /// StripePaymentService still living in Infrastructure can inject the moved
+    /// repository interfaces). That coupling is the legacy infrastructure layer
+    /// reaching module Domain for cross-module persistence wiring and is explicitly
+    /// allowed by ADR-002.
+    ///
+    /// **Rule 6 INTENTIONALLY ABSENT** (architect directive 2026-06-23):
+    /// there is NO companion LegacyDomain_DoesNotDependOnPaymentsDomain rule
+    /// because Risk #1 Option A keeps RefundRequest + RefundRequestLineItem +
+    /// RegistrationPayment as Registration aggregate children in
+    /// LankaConnect.Domain.Events.Entities -- AND the Payments.Domain ProjectReference
+    /// to LankaConnect.Domain (added at Wave 4.4.b) is the PERMANENT structural
+    /// compromise for this wave. The inverse edge (LankaConnect.Domain ->
+    /// Payments.Domain) does not exist today, but adding a Rule 6 to pin its
+    /// absence would mis-frame the architecture: the actual invariant is "Payments
+    /// is a downstream Domain dependent on LankaConnect.Domain", not "LankaConnect.
+    /// Domain is independent of Payments.Domain". Future contributor reading this
+    /// docstring: do not add a Rule 6 just for symmetry with Forms/Communications --
+    /// Wave 4.4's architectural shape is DIFFERENT by design.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void LegacyApplication_DoesNotDependOnPaymentsDomain()
+    {
+        var assembly = typeof(LankaConnect.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Payments.Domain")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
     // ---------- W4.7 — CulturalIntelligence module boundaries (added 2026-06-06) ----------
 
     [Fact]

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Identity.Application</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Identity.Application</AssemblyName>
+    <Description>Identity module - Application layer. IdentityQueries (IIdentityQueries impl), IdentityCommands (IIdentityCommands semantic mutators per architect Risk #3 Option A), Contract mapping extensions, MediatR handler scan entry point. Wave 4.6.b (2026-06-24).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <!--
+      Wave 4.6.b EDGE (2026-06-24). IdentityQueries wraps the legacy
+      IUserRepository (LankaConnect.Domain.Users). Per architect Risk #1
+      pre-flight resolution, User aggregate moves cleanly to Identity.Domain
+      at Wave 4.6.d.2 with NO permanent LankaConnect.Domain edge. Until then,
+      Identity.Application transitionally references LankaConnect.Domain.
+      Cut at 4.6.d.2.
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <!--
+      Wave 4.6.b TRANSITIONAL EDGE (2026-06-24). IIdentityCommands adapter
+      depends on IPasswordHashingService (stays in LankaConnect.Application.
+      Common.Interfaces per architect Risk #4 ruling); the moved Auth/Users
+      command handlers at 4.6.c.1-c.2 depend on ICommand/ICommandHandler/
+      IUnitOfWork. Mirrors W4.4.c.1 + W5.4.c.1 transitional edges.
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+  </ItemGroup>
+
+</Project>

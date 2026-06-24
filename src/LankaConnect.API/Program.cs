@@ -12,6 +12,7 @@ using LankaConnect.BuildingBlocks.Web.Telemetry;
 using LankaConnect.Infrastructure;
 using LankaConnect.Modules.Communications.Api;
 using LankaConnect.Modules.Payments.Api;
+using LankaConnect.Modules.Identity.Api;
 using LankaConnect.Modules.CulturalIntelligence.Api;
 using LankaConnect.Modules.Forms.Api;
 using LankaConnect.Modules.Media.Api;
@@ -132,6 +133,15 @@ try
     // RefundRequest stays a Registration aggregate child in
     // LankaConnect.Domain.Events.Entities -- no Payments.Domain skeleton yet.
     builder.Services.AddPaymentsModule(builder.Configuration);
+
+    // Wave 4.6.b (2026-06-24) — Identity module composition. Registers the
+    // cross-module Contracts surface (IIdentityQueries) + MediatR /
+    // FluentValidation scan of Identity.Application. The underlying
+    // IUserRepository stays registered by AddInfrastructure until Wave 4.6.d.2.
+    // CurrentUserService adapter relocates into Identity.Infrastructure at
+    // Wave 4.6.c.5 + this module's AddScoped<ICurrentUserService, ...> call
+    // moves here at the same time.
+    builder.Services.AddIdentityModule(builder.Configuration);
 
     // W4.7 (2026-06-06) — CulturalIntelligence module composition. Registers
     // ICulturalCalendar (StubCulturalCalendar impl).

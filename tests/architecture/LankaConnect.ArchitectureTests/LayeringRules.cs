@@ -396,6 +396,35 @@ public sealed class LayeringRules
     }
 
     /// <summary>
+    /// Wave 4.6.b (2026-06-24) — Identity.Application module boundary.
+    /// Mirrors the W4.4 Payments.Application + W5.4 Communications.Application
+    /// relaxations. Identity.Application transitionally references
+    /// LankaConnect.Domain (for User aggregate access -- cut at 4.6.d.2)
+    /// AND LankaConnect.Application (for IPasswordHashingService per
+    /// architect Risk #4 ruling + ICommand/ICommandHandler/IUnitOfWork
+    /// pending BuildingBlocks.Application elevation).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Identity_Application_DoesNotDependOnInfraOrWebOrLayeredMonolith()
+    {
+        var assembly = typeof(Modules.Identity.Application.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Identity.Infrastructure",
+                "LankaConnect.Modules.Identity.Api",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
     /// Wave 4.6.a (2026-06-24) — Identity.Contracts module boundary.
     /// Mirrors Modules_Payments_Contracts + Modules_Communications_Contracts
     /// + Modules_Forms_Contracts. Hosts the moved ICurrentUserService

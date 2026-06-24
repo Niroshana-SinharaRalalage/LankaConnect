@@ -44,6 +44,7 @@
     <ProjectReference Include="..\Modules\Payments\Payments.Api\Payments.Api.csproj" />
     <!-- W4.7 (2026-06-06) — CulturalIntelligence module: hosts AddCulturalIntelligenceModule (StubCulturalCalendar). -->
     <ProjectReference Include="..\Modules\CulturalIntelligence\CulturalIntelligence.Api\CulturalIntelligence.Api.csproj" />
+    <ProjectReference Include="..\Modules\Identity\Identity.Api\Identity.Api.csproj" />
   </ItemGroup>
 
   <!-- Phase 6A.34: Link Infrastructure email templates to API publish output -->

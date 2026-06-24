@@ -87,11 +87,12 @@ public sealed class IIdentityQueriesShapeTests
     {
         Enum.GetUnderlyingType(typeof(UserRoleDto)).Should().Be(typeof(byte));
 
-        ((byte)UserRoleDto.Member).Should().Be(0);
-        ((byte)UserRoleDto.Organizer).Should().Be(1);
-        ((byte)UserRoleDto.Admin).Should().Be(2);
-        ((byte)UserRoleDto.SuperAdmin).Should().Be(3);
-        ((byte)UserRoleDto.Volunteer).Should().Be(4);
+        ((byte)UserRoleDto.GeneralUser).Should().Be(1);
+        ((byte)UserRoleDto.BusinessOwner).Should().Be(2);
+        ((byte)UserRoleDto.EventOrganizer).Should().Be(3);
+        ((byte)UserRoleDto.EventOrganizerAndBusinessOwner).Should().Be(4);
+        ((byte)UserRoleDto.Admin).Should().Be(5);
+        ((byte)UserRoleDto.AdminManager).Should().Be(6);
     }
 
     [Fact]

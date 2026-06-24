@@ -12,9 +12,10 @@ namespace LankaConnect.Modules.Identity.Contracts;
 /// </remarks>
 public enum UserRoleDto : byte
 {
-    Member = 0,
-    Organizer = 1,
-    Admin = 2,
-    SuperAdmin = 3,
-    Volunteer = 4,
+    GeneralUser = 1,
+    BusinessOwner = 2,
+    EventOrganizer = 3,
+    EventOrganizerAndBusinessOwner = 4,
+    Admin = 5,
+    AdminManager = 6,
 }

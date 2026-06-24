@@ -88,6 +88,7 @@
     <ProjectReference Include="..\..\..\src\Modules\Payments\Payments.Domain\Payments.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Payments\Payments.Infrastructure\Payments.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Identity\Identity.Contracts\Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Identity\Identity.Application\Identity.Application.csproj" />
   </ItemGroup>
 
 </Project>

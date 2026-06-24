@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Payments.Domain</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Payments.Domain</AssemblyName>
+    <Description>Payments module - Domain layer. Hosts the moved Stripe + RefundRequest repository interfaces. Per architect Risk #1 Option A (2026-06-23), RefundRequest aggregate ITSELF stays in LankaConnect.Domain.Events.Entities (Registration aggregate child); only the repository interface relocates here. Wave 4.4.d.2 (2026-06-23).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
+    <!--
+      Wave 4.4.d.2 PERMANENT EDGE (2026-06-23, architect Risk #1 Option A).
+      IRefundRequestRepository signatures return LankaConnect.Domain.Events.
+      Entities.RefundRequest + .RefundRequestLineItem. Those types stay as
+      Registration aggregate children indefinitely. The Payments.Domain ->
+      LankaConnect.Domain edge is the PERMANENT structural compromise.
+      Mirrors the W5.4.d.2 Communications.Domain -> LankaConnect.Domain edge.
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

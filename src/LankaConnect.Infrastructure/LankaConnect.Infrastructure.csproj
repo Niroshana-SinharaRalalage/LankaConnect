@@ -18,6 +18,12 @@
          needs an explicit ref because Migration Designer files + EmailGroup ChangeTracker
          calls reach the type. Mirrors the W5.3d.3 Forms.Domain handling. -->
     <ProjectReference Include="..\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
+    <!-- Wave 4.4.d.2 (2026-06-23). Payments.Domain hosts IRefundRequestRepository +
+         IStripeCustomerRepository + IStripeWebhookEventRepository. LankaConnect.
+         Infrastructure still hosts 3 webhook handlers (AddOnPurchase / Collection /
+         Sponsor) + StripePaymentService that inject these interfaces. Explicit
+         ref makes that cross-module consumption visible. Mirrors W5.3d.3 / W5.4.d.2. -->
+    <ProjectReference Include="..\Modules\Payments\Payments.Domain\Payments.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

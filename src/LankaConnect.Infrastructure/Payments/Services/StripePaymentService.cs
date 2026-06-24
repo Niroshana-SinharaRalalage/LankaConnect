@@ -1,8 +1,8 @@
+using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Payments;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

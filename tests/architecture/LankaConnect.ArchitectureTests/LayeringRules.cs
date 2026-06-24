@@ -396,6 +396,80 @@ public sealed class LayeringRules
     }
 
     /// <summary>
+    /// Wave 4.4.d.2 (2026-06-23) — Payments.Domain module boundary. Permanent
+    /// edge to LankaConnect.Domain per architect Risk #1 Option A (RefundRequest
+    /// + RefundRequestLineItem + RegistrationPayment stay as Registration aggregate
+    /// children indefinitely). So LankaConnect.Domain is NOT in the ban list.
+    /// Other capability-module Domains banned per standard cross-module isolation.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Payments_Domain_DoesNotDependOnApplicationOrInfrastructureOrSiblings()
+    {
+        var assembly = typeof(Modules.Payments.Domain.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Payments.Application",
+                "LankaConnect.Modules.Payments.Infrastructure",
+                "LankaConnect.Modules.Payments.Api",
+                "LankaConnect.BuildingBlocks.Application",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Modules.Notifications.Domain",
+                "LankaConnect.Modules.Notifications.Contracts",
+                "LankaConnect.Modules.Notifications.Application",
+                "LankaConnect.Modules.Notifications.Infrastructure",
+                "LankaConnect.Modules.Notifications.Api",
+                "LankaConnect.Modules.Media.Domain",
+                "LankaConnect.Modules.Media.Contracts",
+                "LankaConnect.Modules.Media.Application",
+                "LankaConnect.Modules.Media.Infrastructure",
+                "LankaConnect.Modules.Media.Api",
+                "LankaConnect.Modules.Communications.Domain",
+                "LankaConnect.Modules.Communications.Contracts",
+                "LankaConnect.Modules.Communications.Application",
+                "LankaConnect.Modules.Communications.Infrastructure",
+                "LankaConnect.Modules.Communications.Api",
+                "LankaConnect.Modules.Forms.Domain",
+                "LankaConnect.Modules.Forms.Contracts",
+                "LankaConnect.Modules.Forms.Application",
+                "LankaConnect.Modules.Forms.Infrastructure",
+                "LankaConnect.Modules.Forms.Api")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
+    /// Wave 4.4.d.2 (2026-06-23) — Payments.Infrastructure module boundary.
+    /// Mirrors W5.4.d.2 Communications.Infrastructure relaxation. The
+    /// transitional <c>Payments.Infrastructure -&gt; LankaConnect.Infrastructure</c>
+    /// edge is REAL (Repository&lt;T&gt; base + AppDbContext share). Re-tighten once
+    /// a dedicated PaymentsDbContext lands.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Payments_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith()
+    {
+        var assembly = typeof(Modules.Payments.Infrastructure.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Payments.Api",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.API")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
     /// Wave 4.4.b (2026-06-23) — Payments.Application module boundary.
     /// Mirrors the W5.4.b Communications.Application relaxation. The
     /// transitional <c>Payments.Application -&gt; LankaConnect.Domain</c>

@@ -20,7 +20,7 @@ namespace LankaConnect.Application.Events.Services;
 /// Each call to <see cref="DispatchAsync"/>:
 /// <list type="number">
 ///   <item>Opens a FRESH <c>IServiceScopeFactory</c> scope</item>
-///   <item>Resolves the line via <see cref="LankaConnect.Domain.Events.Repositories.IRefundRequestRepository.GetLineItemByIdAsync"/></item>
+///   <item>Resolves the line via <see cref="LankaConnect.Modules.Payments.Domain.Repositories.IRefundRequestRepository.GetLineItemByIdAsync"/></item>
 ///   <item>Calls Stripe with the W5.D1 stable idempotency key (<c>refund_line_{lineId:N}</c>)</item>
 ///   <item>Mutates line state in-place (MarkProcessing / MarkRefunded / MarkFailed)</item>
 ///   <item>Commits the SCOPED <c>IUnitOfWork</c> — touches only the

@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 
-namespace LankaConnect.Domain.Events.Repositories;
+namespace LankaConnect.Modules.Payments.Domain.Repositories;
 
 /// <summary>
 /// Phase 6A.148 — repository for the refund_requests aggregate-internal entity.

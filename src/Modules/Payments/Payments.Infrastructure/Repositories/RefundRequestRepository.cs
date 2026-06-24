@@ -1,3 +1,5 @@
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
@@ -5,7 +7,7 @@ using LankaConnect.Domain.Events.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.Modules.Payments.Infrastructure.Repositories;
 
 /// <summary>
 /// Phase 6A.148 — EF Core implementation of <see cref="IRefundRequestRepository"/>.

@@ -43,10 +43,8 @@ using LankaConnect.Application.Communications.BackgroundJobs;
 using LankaConnect.Application.Common.Options;
 using LankaConnect.Shared.Email.Extensions;
 using LankaConnect.Infrastructure.Payments.Configuration;
-using LankaConnect.Infrastructure.Payments.Repositories;
 using LankaConnect.Infrastructure.Payments.Services;
 using LankaConnect.Infrastructure.Services.Tickets;
-using LankaConnect.Domain.Payments;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Tax.Repositories;
@@ -495,9 +493,9 @@ public static class DependencyInjection
             return new StripeClient(stripeOptions.SecretKey);
         });
 
-        // Register Stripe repositories
-        services.AddScoped<IStripeCustomerRepository, StripeCustomerRepository>();
-        services.AddScoped<IStripeWebhookEventRepository, StripeWebhookEventRepository>();
+        // Wave 4.4.d.2 (2026-06-23): IStripeCustomerRepository + IStripeWebhookEventRepository
+        // registrations relocated to PaymentsModule alongside the physical move of
+        // the interfaces (Payments.Domain) + impls (Payments.Infrastructure).
 
         // Session 23 (Phase 2B): Register Stripe payment service for event tickets
         services.AddScoped<IStripePaymentService, StripePaymentService>();
@@ -533,9 +531,9 @@ public static class DependencyInjection
         services.AddScoped<LankaConnect.Domain.Events.Repositories.ITicketScanLogRepository,
             LankaConnect.Infrastructure.Data.Repositories.TicketScanLogRepository>();
 
-        // Phase 6A.148: Refund approval workflow repository.
-        services.AddScoped<LankaConnect.Domain.Events.Repositories.IRefundRequestRepository,
-            LankaConnect.Infrastructure.Data.Repositories.RefundRequestRepository>();
+        // Wave 4.4.d.2 (2026-06-23): IRefundRequestRepository registration relocated
+        // to PaymentsModule alongside the physical move of the interface (Payments.Domain)
+        // + impl (Payments.Infrastructure).
 
         // Phase 6A.45: Export services for attendee management
         services.AddScoped<IExcelExportService, LankaConnect.Infrastructure.Services.Export.ExcelExportService>();

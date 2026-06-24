@@ -1,9 +1,9 @@
+using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.Domain.Payments;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Payments.Entities;
 
-namespace LankaConnect.Infrastructure.Payments.Repositories;
+namespace LankaConnect.Modules.Payments.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository implementation for StripeCustomer infrastructure entity

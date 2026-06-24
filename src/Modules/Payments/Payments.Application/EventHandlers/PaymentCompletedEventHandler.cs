@@ -383,8 +383,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                         // Now filters by RegistrationId first, then includes both Completed and Pending.
                         var completedAddOns = addOnPurchases?
                             .Where(p => p.RegistrationId == registration.Id
-                                     && (p.Status == Domain.Events.Enums.AddOnPurchaseStatus.Completed
-                                         || p.Status == Domain.Events.Enums.AddOnPurchaseStatus.Pending))
+                                     && (p.Status == LankaConnect.Domain.Events.Enums.AddOnPurchaseStatus.Completed
+                                         || p.Status == LankaConnect.Domain.Events.Enums.AddOnPurchaseStatus.Pending))
                             .ToList();
 
                         if (completedAddOns != null && completedAddOns.Count > 0)

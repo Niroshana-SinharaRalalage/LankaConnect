@@ -33,7 +33,7 @@ public class RefundReconciliationServiceTests
     // Phase 6A.148.W5.D6: deps required for stuck-Approved reconciliation. Existing tests
     // only exercise the stuck-RefundRequested code path, but the constructor now demands
     // these so DI catches misconfiguration at boot.
-    private readonly Mock<LankaConnect.Domain.Events.Repositories.IRefundRequestRepository> _refundRequestRepo = new();
+    private readonly Mock<LankaConnect.Modules.Payments.Domain.Repositories.IRefundRequestRepository> _refundRequestRepo = new();
     private readonly Mock<IRefundExecutionService> _refundExecutionService = new();
 
     private RefundReconciliationService Build()

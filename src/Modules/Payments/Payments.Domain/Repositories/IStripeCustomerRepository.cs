@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Payments;
+namespace LankaConnect.Modules.Payments.Domain.Repositories;
 
 /// <summary>
 /// Repository interface for Stripe customer sync data

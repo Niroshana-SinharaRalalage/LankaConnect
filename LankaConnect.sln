@@ -213,6 +213,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Payments.Application", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Payments.Application.Tests", "tests\Modules\Payments\Payments.Application.Tests\Payments.Application.Tests.csproj", "{77CB18D3-65B7-4CCD-842C-24D47724F71E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Payments.Domain", "src\Modules\Payments\Payments.Domain\Payments.Domain.csproj", "{D142A21E-170F-4B93-844A-8804499663D5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Payments.Infrastructure", "src\Modules\Payments\Payments.Infrastructure\Payments.Infrastructure.csproj", "{8502C522-91DF-49F1-9C2E-1CDCEBA894F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -554,6 +558,14 @@ Global
 		{77CB18D3-65B7-4CCD-842C-24D47724F71E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{77CB18D3-65B7-4CCD-842C-24D47724F71E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{77CB18D3-65B7-4CCD-842C-24D47724F71E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D142A21E-170F-4B93-844A-8804499663D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D142A21E-170F-4B93-844A-8804499663D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D142A21E-170F-4B93-844A-8804499663D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D142A21E-170F-4B93-844A-8804499663D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8502C522-91DF-49F1-9C2E-1CDCEBA894F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8502C522-91DF-49F1-9C2E-1CDCEBA894F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8502C522-91DF-49F1-9C2E-1CDCEBA894F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8502C522-91DF-49F1-9C2E-1CDCEBA894F3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{88DC2F5A-D5CB-4AA0-91BA-01E70C0822B0} = {1C682E29-A286-437F-BFB1-70E7B2D5C95D}
@@ -659,5 +671,7 @@ Global
 		{EE945296-36F2-4457-B501-7344C96AD0A8} = {89BC1BC3-F7EB-4197-95C4-53119922FDEC}
 		{05FE2087-80EA-4081-8756-47D9536B92FC} = {89BC1BC3-F7EB-4197-95C4-53119922FDEC}
 		{77CB18D3-65B7-4CCD-842C-24D47724F71E} = {FBBB2BEA-CB61-4211-923B-066E76DDC2AF}
+		{D142A21E-170F-4B93-844A-8804499663D5} = {89BC1BC3-F7EB-4197-95C4-53119922FDEC}
+		{8502C522-91DF-49F1-9C2E-1CDCEBA894F3} = {89BC1BC3-F7EB-4197-95C4-53119922FDEC}
 	EndGlobalSection
 EndGlobal

@@ -5,7 +5,6 @@ using LankaConnect.Application.Common.Options;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
-using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog.Context;
@@ -19,7 +18,7 @@ namespace LankaConnect.Application.Events.Commands.BatchLinkOrganizerContacts;
 public class BatchLinkOrganizerContactsCommandHandler : ICommandHandler<BatchLinkOrganizerContactsCommand>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly EventSettings _eventSettings;
@@ -27,14 +26,14 @@ public class BatchLinkOrganizerContactsCommandHandler : ICommandHandler<BatchLin
 
     public BatchLinkOrganizerContactsCommandHandler(
         IEventRepository eventRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         IOptions<EventSettings> eventSettings,
         ILogger<BatchLinkOrganizerContactsCommandHandler> logger)
     {
         _eventRepository = eventRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _eventSettings = eventSettings.Value;
@@ -88,7 +87,7 @@ public class BatchLinkOrganizerContactsCommandHandler : ICommandHandler<BatchLin
                 // 5. Validate all users exist
                 foreach (var link in request.Links)
                 {
-                    var user = await _userRepository.GetByIdAsync(link.UserId, cancellationToken);
+                    var user = await _identityQueries.GetContactInfoAsync(link.UserId, cancellationToken);
                     if (user == null)
                     {
                         return Result.Failure($"User with ID {link.UserId} not found");
@@ -96,7 +95,7 @@ public class BatchLinkOrganizerContactsCommandHandler : ICommandHandler<BatchLin
 
                     if (!user.IsActive)
                     {
-                        return Result.Failure($"User '{user.FullName}' is not active");
+                        return Result.Failure($"User '{user.DisplayName}' is not active");
                     }
                 }
 

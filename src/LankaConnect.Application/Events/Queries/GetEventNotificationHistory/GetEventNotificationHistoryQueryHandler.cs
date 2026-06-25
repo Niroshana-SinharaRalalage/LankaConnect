@@ -3,7 +3,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Contracts; // W4.7.c
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -17,16 +17,16 @@ namespace LankaConnect.Application.Events.Queries.GetEventNotificationHistory;
 public class GetEventNotificationHistoryQueryHandler : IRequestHandler<GetEventNotificationHistoryQuery, Result<List<EventNotificationHistoryDto>>>
 {
     private readonly IEventNotificationHistoryRepository _historyRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ILogger<GetEventNotificationHistoryQueryHandler> _logger;
 
     public GetEventNotificationHistoryQueryHandler(
         IEventNotificationHistoryRepository historyRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ILogger<GetEventNotificationHistoryQueryHandler> logger)
     {
         _historyRepository = historyRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _logger = logger;
     }
 
@@ -66,8 +66,8 @@ public class GetEventNotificationHistoryQueryHandler : IRequestHandler<GetEventN
 
                 foreach (var record in historyRecords)
                 {
-                    // Resolve user name
-                    var user = await _userRepository.GetByIdAsync(record.SentByUserId, cancellationToken);
+                    // Resolve user name (W4.7.c: via IIdentityQueries)
+                    var user = await _identityQueries.GetUserByIdAsync(record.SentByUserId, cancellationToken);
                     var userName = user != null ? $"{user.FirstName} {user.LastName}" : "Unknown User";
 
                     dtos.Add(new EventNotificationHistoryDto

@@ -5,7 +5,6 @@ using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Users;
 using LankaConnect.Shared.WhatsApp.Contracts;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,7 +46,7 @@ public class EventApprovedWhatsAppHandler : INotificationHandler<DomainEventNoti
                 using var scope = _scopeFactory.CreateScope();
                 var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppService>();
                 var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository>();
-                var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+                var identityQueries = scope.ServiceProvider.GetRequiredService<IIdentityQueries>();
 
                 var @event = await eventRepository.GetByIdAsync(eventId, CancellationToken.None);
                 if (@event == null)
@@ -56,7 +55,7 @@ public class EventApprovedWhatsAppHandler : INotificationHandler<DomainEventNoti
                     return;
                 }
 
-                var organizer = await userRepository.GetByIdAsync(@event.OrganizerId, CancellationToken.None);
+                var organizer = await identityQueries.GetUserByIdAsync(@event.OrganizerId, CancellationToken.None);
                 if (organizer == null)
                 {
                     _logger.LogWarning("[Phase 7B.3] WhatsApp EventApproved: Organizer not found - OrganizerId={OrganizerId}", @event.OrganizerId);

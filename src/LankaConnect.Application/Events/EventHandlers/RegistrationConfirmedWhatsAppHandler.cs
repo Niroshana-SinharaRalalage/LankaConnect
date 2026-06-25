@@ -5,7 +5,6 @@ using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Helpers;
 using LankaConnect.Shared.WhatsApp.Contracts;
 using MediatR;
@@ -49,10 +48,10 @@ public class RegistrationConfirmedWhatsAppHandler : INotificationHandler<DomainE
             {
                 using var scope = _scopeFactory.CreateScope();
                 var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppService>();
-                var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+                var identityQueries = scope.ServiceProvider.GetRequiredService<IIdentityQueries>();
                 var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository>();
 
-                var user = await userRepository.GetByIdAsync(attendeeId, CancellationToken.None);
+                var user = await identityQueries.GetUserByIdAsync(attendeeId, CancellationToken.None);
                 if (user == null)
                 {
                     _logger.LogWarning("[Phase 7A] WhatsApp RegistrationConfirmed: User not found - AttendeeId={AttendeeId}", attendeeId);

@@ -36,7 +36,10 @@ internal static class UserContractMappings
             ProfilePhotoUrl: src.ProfilePhotoUrl,
             IsActive: src.IsActive,
             IsEmailVerified: src.IsEmailVerified,
-            IsAccountLocked: src.IsAccountLocked);
+            IsAccountLocked: src.IsAccountLocked,
+            Role: (UserRoleDto)(byte)src.Role,
+            EmailVerificationTokenExpiresAt: src.EmailVerificationTokenExpiresAt,
+            PhoneNumber: src.PhoneNumber?.Value);
 
     public static UserDetailDto ToDetailDto(this User src) =>
         new(

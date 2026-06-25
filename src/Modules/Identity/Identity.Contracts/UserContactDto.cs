@@ -24,4 +24,7 @@ public sealed record UserContactDto(
     string? ProfilePhotoUrl,
     bool IsActive,
     bool IsEmailVerified,
-    bool IsAccountLocked);
+    bool IsAccountLocked,
+    UserRoleDto Role,
+    DateTime? EmailVerificationTokenExpiresAt,
+    string? PhoneNumber);

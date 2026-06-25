@@ -17,16 +17,16 @@ namespace LankaConnect.Application.Badges.Queries.GetBadges;
 public class GetBadgesQueryHandler : IQueryHandler<GetBadgesQuery, IReadOnlyList<BadgeDto>>
 {
     private readonly IBadgeRepository _badgeRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ICurrentUserService _currentUserService;
 
     public GetBadgesQueryHandler(
         IBadgeRepository badgeRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ICurrentUserService currentUserService)
     {
         _badgeRepository = badgeRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _currentUserService = currentUserService;
     }
 
@@ -89,7 +89,7 @@ public class GetBadgesQueryHandler : IQueryHandler<GetBadgesQuery, IReadOnlyList
             .ToList();
 
         var creatorNames = creatorIds.Any()
-            ? await _userRepository.GetUserNamesAsync(creatorIds, cancellationToken)
+            ? await _identityQueries.GetUserNamesAsync(creatorIds, cancellationToken)
             : new Dictionary<Guid, string>();
 
         // Map to DTOs using the extension method with creator names

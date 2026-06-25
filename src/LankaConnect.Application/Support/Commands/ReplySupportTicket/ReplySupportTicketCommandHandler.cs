@@ -23,7 +23,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
 {
     private readonly ISupportTicketRepository _ticketRepository;
     private readonly IAdminAuditLogRepository _auditLogRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ICurrentUserService _currentUserService;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IUnitOfWork _unitOfWork;
@@ -32,7 +32,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
     public ReplySupportTicketCommandHandler(
         ISupportTicketRepository ticketRepository,
         IAdminAuditLogRepository auditLogRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ICurrentUserService currentUserService,
         ITypedEmailService typedEmailService,
         IUnitOfWork unitOfWork,
@@ -40,7 +40,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
     {
         _ticketRepository = ticketRepository;
         _auditLogRepository = auditLogRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _currentUserService = currentUserService;
         _typedEmailService = typedEmailService;
         _unitOfWork = unitOfWork;
@@ -65,7 +65,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Get admin user to verify permissions
-                var adminUser = await _userRepository.GetByIdAsync(_currentUserService.UserId, cancellationToken);
+                var adminUser = await _identityQueries.GetUserByIdAsync(_currentUserService.UserId, cancellationToken);
                 if (adminUser == null)
                 {
                     _logger.LogWarning(
@@ -74,7 +74,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
                     return Result.Failure("Admin user not found");
                 }
 
-                if (adminUser.Role != UserRole.Admin && adminUser.Role != UserRole.AdminManager)
+                if (adminUser.Role != UserRoleDto.Admin && adminUser.Role != UserRoleDto.AdminManager)
                 {
                     _logger.LogWarning(
                         "ReplySupportTicket FAILED: Insufficient permissions - AdminUserId={AdminUserId}, Role={Role}",
@@ -110,7 +110,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
                 var auditDetails = JsonSerializer.Serialize(new
                 {
                     ReferenceId = ticket.ReferenceId,
-                    SubmitterEmail = ticket.Email.Value,
+                    SubmitterEmail = ticket.Email,
                     ReplyContentLength = request.Content.Length
                 });
 
@@ -126,7 +126,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Send reply notification email (fail-silent)
-                await SendReplyEmailAsync(ticket, adminUser.FullName, request.Content, cancellationToken);
+                await SendReplyEmailAsync(ticket, adminUser.DisplayName, request.Content, cancellationToken);
 
                 stopwatch.Stop();
 
@@ -161,7 +161,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
         {
             // Phase 6A.100: Create typed email parameters
             var emailParams = SupportTicketReplyEmailParams.Create(
-                recipientEmail: ticket.Email.Value,
+                recipientEmail: ticket.Email,
                 recipientName: ticket.Name,
                 referenceId: ticket.ReferenceId,
                 subject: ticket.Subject,
@@ -171,7 +171,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
 
             _logger.LogInformation(
                 "[Phase 6A.100] Sending support ticket reply email to {Email}, ReferenceId={ReferenceId}",
-                ticket.Email.Value, ticket.ReferenceId);
+                ticket.Email, ticket.ReferenceId);
 
             var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
@@ -179,13 +179,13 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
             {
                 _logger.LogInformation(
                     "[Phase 6A.100] Support ticket reply email sent successfully to {Email}, CorrelationId={CorrelationId}",
-                    ticket.Email.Value, result.CorrelationId);
+                    ticket.Email, result.CorrelationId);
             }
             else
             {
                 _logger.LogWarning(
                     "[Phase 6A.100] Failed to send support ticket reply email to {Email}: {Errors}",
-                    ticket.Email.Value, string.Join(", ", result.Errors));
+                    ticket.Email, string.Join(", ", result.Errors));
             }
         }
         catch (Exception ex)
@@ -193,7 +193,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
             // Fail-silent: Log error but don't throw
             _logger.LogError(ex,
                 "[Phase 6A.100] Error sending support ticket reply email to {Email}",
-                ticket.Email.Value);
+                ticket.Email);
         }
     }
 }

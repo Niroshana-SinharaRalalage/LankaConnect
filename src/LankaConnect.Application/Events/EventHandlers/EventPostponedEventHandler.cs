@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.6.d.2.b: IUserRepository -> IIdentityQueries/IIdentityCommands
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
@@ -20,20 +21,20 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class EventPostponedEventHandler : INotificationHandler<DomainEventNotification<EventPostponedEvent>>
 {
     private readonly ITypedEmailService _typedEmailService;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly ILogger<EventPostponedEventHandler> _logger;
 
     public EventPostponedEventHandler(
         ITypedEmailService typedEmailService,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         ILogger<EventPostponedEventHandler> logger)
     {
         _typedEmailService = typedEmailService;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _logger = logger;
@@ -112,7 +113,7 @@ public class EventPostponedEventHandler : INotificationHandler<DomainEventNotifi
                         continue;
                     }
 
-                    var user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
+                    var user = await _identityQueries.GetContactInfoAsync(registration.UserId.Value, cancellationToken);
                     if (user == null)
                     {
                         _logger.LogWarning(
@@ -127,7 +128,7 @@ public class EventPostponedEventHandler : INotificationHandler<DomainEventNotifi
                         var emailParams = EventPostponedEmailParams.Create(
                             userId: user.Id,
                             userName: $"{user.FirstName} {user.LastName}",
-                            userEmail: user.Email.Value,
+                            userEmail: user.Email,
                             eventId: @event.Id,
                             eventTitle: @event.Title.Value,
                             originalStartDate: domainEvent.PostponedAt,
@@ -142,14 +143,14 @@ public class EventPostponedEventHandler : INotificationHandler<DomainEventNotifi
                             successCount++;
                             _logger.LogDebug(
                                 "EventPostponed: Email sent to {Email} - Duration={DurationMs}ms",
-                                user.Email.Value, result.DurationMs);
+                                user.Email, result.DurationMs);
                         }
                         else
                         {
                             failCount++;
                             _logger.LogWarning(
                                 "EventPostponed: Failed to send email to {Email} - Errors={Errors}",
-                                user.Email.Value, string.Join(", ", result.Errors));
+                                user.Email, string.Join(", ", result.Errors));
                         }
                     }
                     catch (Exception emailEx)
@@ -157,7 +158,7 @@ public class EventPostponedEventHandler : INotificationHandler<DomainEventNotifi
                         failCount++;
                         _logger.LogError(emailEx,
                             "EventPostponed: Exception sending email to {Email}",
-                            user.Email.Value);
+                            user.Email);
                     }
                 }
 

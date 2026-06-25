@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.6.d.2.b: IUserRepository -> IIdentityQueries/IIdentityCommands
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Support.DTOs;
@@ -16,16 +17,16 @@ namespace LankaConnect.Application.Support.Queries.GetSupportTicketById;
 public class GetSupportTicketByIdQueryHandler : IQueryHandler<GetSupportTicketByIdQuery, SupportTicketDetailsDto>
 {
     private readonly ISupportTicketRepository _ticketRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ILogger<GetSupportTicketByIdQueryHandler> _logger;
 
     public GetSupportTicketByIdQueryHandler(
         ISupportTicketRepository ticketRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ILogger<GetSupportTicketByIdQueryHandler> logger)
     {
         _ticketRepository = ticketRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _logger = logger;
     }
 
@@ -63,7 +64,7 @@ public class GetSupportTicketByIdQueryHandler : IQueryHandler<GetSupportTicketBy
                 userIds = userIds.Distinct().ToList();
 
                 var userNames = userIds.Any()
-                    ? await _userRepository.GetUserNamesAsync(userIds, cancellationToken)
+                    ? await _identityQueries.GetUserNamesAsync(userIds, cancellationToken)
                     : new Dictionary<Guid, string>();
 
                 var dto = new SupportTicketDetailsDto
@@ -71,7 +72,7 @@ public class GetSupportTicketByIdQueryHandler : IQueryHandler<GetSupportTicketBy
                     Id = ticket.Id,
                     ReferenceId = ticket.ReferenceId,
                     Name = ticket.Name,
-                    Email = ticket.Email.Value,
+                    Email = ticket.Email,
                     Subject = ticket.Subject,
                     Message = ticket.Message,
                     Status = ticket.Status.ToString(),

@@ -20,7 +20,7 @@ public class AssignSupportTicketCommandHandler : ICommandHandler<AssignSupportTi
 {
     private readonly ISupportTicketRepository _ticketRepository;
     private readonly IAdminAuditLogRepository _auditLogRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AssignSupportTicketCommandHandler> _logger;
@@ -28,14 +28,14 @@ public class AssignSupportTicketCommandHandler : ICommandHandler<AssignSupportTi
     public AssignSupportTicketCommandHandler(
         ISupportTicketRepository ticketRepository,
         IAdminAuditLogRepository auditLogRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         ILogger<AssignSupportTicketCommandHandler> logger)
     {
         _ticketRepository = ticketRepository;
         _auditLogRepository = auditLogRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -59,7 +59,7 @@ public class AssignSupportTicketCommandHandler : ICommandHandler<AssignSupportTi
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Verify admin permissions
-                var adminUser = await _userRepository.GetByIdAsync(_currentUserService.UserId, cancellationToken);
+                var adminUser = await _identityQueries.GetUserByIdAsync(_currentUserService.UserId, cancellationToken);
                 if (adminUser == null)
                 {
                     _logger.LogWarning(
@@ -68,7 +68,7 @@ public class AssignSupportTicketCommandHandler : ICommandHandler<AssignSupportTi
                     return Result.Failure("Admin user not found");
                 }
 
-                if (adminUser.Role != UserRole.Admin && adminUser.Role != UserRole.AdminManager)
+                if (adminUser.Role != UserRoleDto.Admin && adminUser.Role != UserRoleDto.AdminManager)
                 {
                     _logger.LogWarning(
                         "AssignSupportTicket FAILED: Insufficient permissions - AdminUserId={AdminUserId}, Role={Role}",
@@ -77,7 +77,7 @@ public class AssignSupportTicketCommandHandler : ICommandHandler<AssignSupportTi
                 }
 
                 // Verify assignee is an admin
-                var assignee = await _userRepository.GetByIdAsync(request.AssignToUserId, cancellationToken);
+                var assignee = await _identityQueries.GetUserByIdAsync(request.AssignToUserId, cancellationToken);
                 if (assignee == null)
                 {
                     _logger.LogWarning(
@@ -86,7 +86,7 @@ public class AssignSupportTicketCommandHandler : ICommandHandler<AssignSupportTi
                     return Result.Failure("Assignee user not found");
                 }
 
-                if (assignee.Role != UserRole.Admin && assignee.Role != UserRole.AdminManager)
+                if (assignee.Role != UserRoleDto.Admin && assignee.Role != UserRoleDto.AdminManager)
                 {
                     _logger.LogWarning(
                         "AssignSupportTicket FAILED: Assignee is not an admin - AssignTo={AssignTo}, Role={Role}",
@@ -126,7 +126,7 @@ public class AssignSupportTicketCommandHandler : ICommandHandler<AssignSupportTi
                     ReferenceId = ticket.ReferenceId,
                     PreviousAssignee = previousAssignee?.ToString(),
                     NewAssignee = request.AssignToUserId.ToString(),
-                    AssigneeName = assignee.FullName
+                    AssigneeName = assignee.DisplayName
                 });
 
                 var auditLog = AdminAuditLog.CreateForTicketAction(

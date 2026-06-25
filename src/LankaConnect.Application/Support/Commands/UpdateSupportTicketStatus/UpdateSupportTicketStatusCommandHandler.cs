@@ -20,7 +20,7 @@ public class UpdateSupportTicketStatusCommandHandler : ICommandHandler<UpdateSup
 {
     private readonly ISupportTicketRepository _ticketRepository;
     private readonly IAdminAuditLogRepository _auditLogRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateSupportTicketStatusCommandHandler> _logger;
@@ -28,14 +28,14 @@ public class UpdateSupportTicketStatusCommandHandler : ICommandHandler<UpdateSup
     public UpdateSupportTicketStatusCommandHandler(
         ISupportTicketRepository ticketRepository,
         IAdminAuditLogRepository auditLogRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         ILogger<UpdateSupportTicketStatusCommandHandler> logger)
     {
         _ticketRepository = ticketRepository;
         _auditLogRepository = auditLogRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -59,7 +59,7 @@ public class UpdateSupportTicketStatusCommandHandler : ICommandHandler<UpdateSup
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Verify admin permissions
-                var adminUser = await _userRepository.GetByIdAsync(_currentUserService.UserId, cancellationToken);
+                var adminUser = await _identityQueries.GetUserByIdAsync(_currentUserService.UserId, cancellationToken);
                 if (adminUser == null)
                 {
                     _logger.LogWarning(
@@ -68,7 +68,7 @@ public class UpdateSupportTicketStatusCommandHandler : ICommandHandler<UpdateSup
                     return Result.Failure("Admin user not found");
                 }
 
-                if (adminUser.Role != UserRole.Admin && adminUser.Role != UserRole.AdminManager)
+                if (adminUser.Role != UserRoleDto.Admin && adminUser.Role != UserRoleDto.AdminManager)
                 {
                     _logger.LogWarning(
                         "UpdateSupportTicketStatus FAILED: Insufficient permissions - AdminUserId={AdminUserId}, Role={Role}",

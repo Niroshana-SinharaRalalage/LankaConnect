@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.6.d.2.b: IUserRepository -> IIdentityQueries/IIdentityCommands
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Support.DTOs;
@@ -17,16 +18,16 @@ namespace LankaConnect.Application.Support.Queries.GetSupportTicketsPaged;
 public class GetSupportTicketsPagedQueryHandler : IQueryHandler<GetSupportTicketsPagedQuery, PagedResultDto<SupportTicketDto>>
 {
     private readonly ISupportTicketRepository _ticketRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ILogger<GetSupportTicketsPagedQueryHandler> _logger;
 
     public GetSupportTicketsPagedQueryHandler(
         ISupportTicketRepository ticketRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ILogger<GetSupportTicketsPagedQueryHandler> logger)
     {
         _ticketRepository = ticketRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _logger = logger;
     }
 
@@ -63,7 +64,7 @@ public class GetSupportTicketsPagedQueryHandler : IQueryHandler<GetSupportTicket
                     .ToList();
 
                 var userNames = assignedUserIds.Any()
-                    ? await _userRepository.GetUserNamesAsync(assignedUserIds, cancellationToken)
+                    ? await _identityQueries.GetUserNamesAsync(assignedUserIds, cancellationToken)
                     : new Dictionary<Guid, string>();
 
                 var dtos = tickets.Select(t => new SupportTicketDto
@@ -71,7 +72,7 @@ public class GetSupportTicketsPagedQueryHandler : IQueryHandler<GetSupportTicket
                     Id = t.Id,
                     ReferenceId = t.ReferenceId,
                     Name = t.Name,
-                    Email = t.Email.Value,
+                    Email = t.Email,
                     Subject = t.Subject,
                     Status = t.Status.ToString(),
                     Priority = t.Priority.ToString(),

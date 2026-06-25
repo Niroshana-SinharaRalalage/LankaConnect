@@ -20,7 +20,7 @@ public class AddSupportTicketNoteCommandHandler : ICommandHandler<AddSupportTick
 {
     private readonly ISupportTicketRepository _ticketRepository;
     private readonly IAdminAuditLogRepository _auditLogRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AddSupportTicketNoteCommandHandler> _logger;
@@ -28,14 +28,14 @@ public class AddSupportTicketNoteCommandHandler : ICommandHandler<AddSupportTick
     public AddSupportTicketNoteCommandHandler(
         ISupportTicketRepository ticketRepository,
         IAdminAuditLogRepository auditLogRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         ILogger<AddSupportTicketNoteCommandHandler> logger)
     {
         _ticketRepository = ticketRepository;
         _auditLogRepository = auditLogRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -59,7 +59,7 @@ public class AddSupportTicketNoteCommandHandler : ICommandHandler<AddSupportTick
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Verify admin permissions
-                var adminUser = await _userRepository.GetByIdAsync(_currentUserService.UserId, cancellationToken);
+                var adminUser = await _identityQueries.GetUserByIdAsync(_currentUserService.UserId, cancellationToken);
                 if (adminUser == null)
                 {
                     _logger.LogWarning(
@@ -68,7 +68,7 @@ public class AddSupportTicketNoteCommandHandler : ICommandHandler<AddSupportTick
                     return Result.Failure("Admin user not found");
                 }
 
-                if (adminUser.Role != UserRole.Admin && adminUser.Role != UserRole.AdminManager)
+                if (adminUser.Role != UserRoleDto.Admin && adminUser.Role != UserRoleDto.AdminManager)
                 {
                     _logger.LogWarning(
                         "AddSupportTicketNote FAILED: Insufficient permissions - AdminUserId={AdminUserId}, Role={Role}",

@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.6.d.2.b: IUserRepository -> IIdentityQueries/IIdentityCommands
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;

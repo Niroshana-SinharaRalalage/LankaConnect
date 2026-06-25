@@ -135,3 +135,37 @@ Rule 5 (`LegacyApplication_DoesNotDependOnIdentityDomain`) remains **forward-loo
 ## Founder-visible gate to Wave 5
 
 Wave 5 (Products carve-out / `Products/LankaEvents`) does NOT open until this manifest is empty AND Wave 4.7.f ships. This is the contract.
+
+---
+
+## Wave 4.7.b/c/d execution finding (2026-06-25, after 4.7.a ships)
+
+When the simple-pattern Category C reads were swapped (SendBusinessNotificationCommandHandler, WhatsAppAutoDisabledDomainEventHandler, GetEmailStatusQueryHandler — same `_userRepository.GetByIdAsync` → `_identityQueries.GetContactInfoAsync` swap as the W4.6.d.2.b Support handlers), each consumer's test fixture also broke:
+
+- `Mock<IUserRepository>` → `Mock<IIdentityQueries>` — typed change
+- `.Setup(x => x.GetByIdAsync(...))` → `.Setup(x => x.GetContactInfoAsync(...))` — method name change
+- `.ReturnsAsync(user)` where `user` is a `User` aggregate → `.ReturnsAsync(userContactDto)` where the test fixture currently builds a User via `User.Register(...)` — test fixture rewrite per handler
+
+The Support handlers' tests didn't have this issue because Mocks were already set up with the moved test helpers in `TestHelpers.MockRepository`. The Communications + Events handler tests build User instances directly via `User.Register()` and pass them to mocks, requiring per-test conversion to UserContactDto / per-fixture refactoring.
+
+**Revised per-handler estimate for Category C** (post-4.7.a finding):
+- Source-side swap: 10-15 min per handler (mechanical sed)
+- Test-fixture refactor: 20-40 min per handler (User → UserContactDto conversion + ReturnsAsync setup rewrite + sometimes test data builder updates)
+- Total: 35-55 min per handler × 10 handlers = **7-9 hours wall-clock** (not 5-7).
+
+Same finding likely applies to Category B (15 EventHandlers) — each consumer test that injects `Mock<IUserRepository>` needs the same fixture refactor. Realistic Category B estimate: **9-13 hours** (not 5-7).
+
+**Revised Wave 4.7 total: 24-37 hours** across 5-7 sessions.
+
+---
+
+## Wave 4.7.a final state (2026-06-25, commit `38f6bf7d`)
+
+- 8 user-aggregate domain events relocated to `LankaConnect.Domain/Users/DomainEvents/`
+- UserEmailPreferences dead `using LankaConnect.Domain.Users.ValueObjects` stripped
+- Circular-dep blocker for Wave 4.7.e (physical User move) RESOLVED
+- ~20 consumer using-directive patches applied (mechanical sed)
+- Build green; 2645 Application tests + 45 ArchTests pass
+- STAGING-VERIFIED (Login 200 + GET event detail 200)
+
+Wave 4.7.b/c/d/e/f remain queued. Wave 5 still gated on full manifest drain.

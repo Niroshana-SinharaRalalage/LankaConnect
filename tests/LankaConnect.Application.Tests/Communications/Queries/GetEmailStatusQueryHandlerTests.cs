@@ -10,22 +10,23 @@ using FluentAssertions;
 using Xunit;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.Modules.Identity.Contracts; // W4.7.b
 
 namespace LankaConnect.Application.Tests.Communications.Queries;
 
 public class GetEmailStatusQueryHandlerTests
 {
     private readonly Mock<IEmailStatusRepository> _emailStatusRepository;
-    private readonly Mock<LankaConnect.Domain.Users.IUserRepository> _userRepository;
+    private readonly Mock<IIdentityQueries> _identityQueries;
     private readonly Mock<ILogger<GetEmailStatusQueryHandler>> _logger;
     private readonly GetEmailStatusQueryHandler _handler;
 
     public GetEmailStatusQueryHandlerTests()
     {
         _emailStatusRepository = new Mock<IEmailStatusRepository>();
-        _userRepository = new Mock<LankaConnect.Domain.Users.IUserRepository>();
+        _identityQueries = new Mock<IIdentityQueries>();
         _logger = new Mock<ILogger<GetEmailStatusQueryHandler>>();
-        _handler = new GetEmailStatusQueryHandler(_emailStatusRepository.Object, _userRepository.Object, _logger.Object);
+        _handler = new GetEmailStatusQueryHandler(_emailStatusRepository.Object, _identityQueries.Object, _logger.Object);
     }
 
     [Fact]
@@ -35,15 +36,15 @@ public class GetEmailStatusQueryHandlerTests
         var userId = Guid.NewGuid();
         var query = new GetEmailStatusQuery(userId);
         
-        var user = CreateTestUser();
+        var userDto = CreateTestUserDto(userId);
         var emailMessages = new List<LankaConnect.Domain.Communications.Entities.EmailMessage>
         {
             CreateTestEmailMessage("test@example.com", "Test Subject 1"),
             CreateTestEmailMessage("test2@example.com", "Test Subject 2")
         };
 
-        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
+        _identityQueries.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(userDto);
             
         _emailStatusRepository.Setup(x => x.GetEmailStatusAsync(
             userId,
@@ -86,8 +87,8 @@ public class GetEmailStatusQueryHandlerTests
         var userId = Guid.NewGuid();
         var query = new GetEmailStatusQuery(userId);
 
-        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((LankaConnect.Domain.Users.User?)null);
+        _identityQueries.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -209,10 +210,19 @@ public class GetEmailStatusQueryHandlerTests
         result.Value.Emails.Should().HaveCount(1);
     }
 
-    private static LankaConnect.Domain.Users.User CreateTestUser()
+    private static UserSummaryDto CreateTestUserDto(Guid id)
     {
-        var email = LankaConnect.Domain.Shared.ValueObjects.Email.Create("test@example.com").Value;
-        return LankaConnect.Domain.Users.User.Create(email, "Test", "User").Value;
+        return new UserSummaryDto(
+            Id: id,
+            Email: "test@example.com",
+            FirstName: "Test",
+            LastName: "User",
+            DisplayName: "Test User",
+            Role: UserRoleDto.GeneralUser,
+            Status: UserStatusDto.Active,
+            EmailVerified: true,
+            CreatedAt: DateTime.UtcNow,
+            UpdatedAt: null);
     }
 
     private static LankaConnect.Domain.Communications.Entities.EmailMessage CreateTestEmailMessage(string toEmail, string subject)

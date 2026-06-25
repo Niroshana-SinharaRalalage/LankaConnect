@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Communications.DomainEvents;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Contracts; // W4.7.b
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using MediatR;
@@ -29,20 +29,20 @@ public class WhatsAppAutoDisabledDomainEventHandler
     private const int DefaultGracePeriodDays = 30;
 
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
     private readonly ILogger<WhatsAppAutoDisabledDomainEventHandler> _logger;
 
     public WhatsAppAutoDisabledDomainEventHandler(
         IServiceScopeFactory scopeFactory,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEmailUrlHelper emailUrlHelper,
         Microsoft.Extensions.Configuration.IConfiguration configuration,
         ILogger<WhatsAppAutoDisabledDomainEventHandler> logger)
     {
         _scopeFactory = scopeFactory;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _emailUrlHelper = emailUrlHelper;
         _configuration = configuration;
         _logger = logger;
@@ -56,7 +56,7 @@ public class WhatsAppAutoDisabledDomainEventHandler
 
         try
         {
-            var user = await _userRepository.GetByIdAsync(domainEvent.UserId, cancellationToken);
+            var user = await _identityQueries.GetContactInfoAsync(domainEvent.UserId, cancellationToken);
             if (user == null)
             {
                 _logger.LogWarning(
@@ -74,7 +74,7 @@ public class WhatsAppAutoDisabledDomainEventHandler
             var emailParams = new WhatsAppAutoDisabledEmailParams
             {
                 UserName = user.FirstName,
-                UserEmail = user.Email.Value,
+                UserEmail = user.Email,
                 MaskedPhone = MaskPhone(domainEvent.PhoneNumber),
                 EnabledAt = domainEvent.OccurredAt.ToString("MMMM d, yyyy"),
                 GracePeriodDays = gracePeriodDays,
@@ -82,7 +82,7 @@ public class WhatsAppAutoDisabledDomainEventHandler
             };
 
             var capturedParams = emailParams;
-            var capturedEmail = user.Email.Value;
+            var capturedEmail = user.Email;
             var capturedUserId = domainEvent.UserId;
             var capturedReason = domainEvent.Reason;
             var capturedScopeFactory = _scopeFactory;

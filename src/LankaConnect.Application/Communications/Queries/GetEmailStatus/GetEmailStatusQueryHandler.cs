@@ -6,7 +6,7 @@ using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
 using DomainEmailMessage = LankaConnect.Domain.Communications.Entities.EmailMessage;
 using LankaConnect.Domain.Shared.ValueObjects;
-using IUserRepository = LankaConnect.Domain.Users.IUserRepository;
+using LankaConnect.Modules.Identity.Contracts; // W4.7.b
 using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Queries.GetEmailStatus;
@@ -17,16 +17,16 @@ namespace LankaConnect.Application.Communications.Queries.GetEmailStatus;
 public class GetEmailStatusQueryHandler : IRequestHandler<GetEmailStatusQuery, Result<GetEmailStatusResponse>>
 {
     private readonly IEmailStatusRepository _emailStatusRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ILogger<GetEmailStatusQueryHandler> _logger;
 
     public GetEmailStatusQueryHandler(
         IEmailStatusRepository emailStatusRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ILogger<GetEmailStatusQueryHandler> logger)
     {
         _emailStatusRepository = emailStatusRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _logger = logger;
     }
 
@@ -49,7 +49,7 @@ public class GetEmailStatusQueryHandler : IRequestHandler<GetEmailStatusQuery, R
                 // Validate user exists if UserId is provided
                 if (request.UserId.HasValue)
                 {
-                    var user = await _userRepository.GetByIdAsync(request.UserId.Value, cancellationToken);
+                    var user = await _identityQueries.GetUserByIdAsync(request.UserId.Value, cancellationToken);
                     if (user == null)
                     {
                         stopwatch.Stop();

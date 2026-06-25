@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
+using LankaConnect.Modules.Identity.Contracts; // W4.7.b
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using Serilog.Context;
@@ -15,18 +16,18 @@ namespace LankaConnect.Application.Communications.Commands.SendBusinessNotificat
 /// </summary>
 public class SendBusinessNotificationCommandHandler : IRequestHandler<SendBusinessNotificationCommand, Result<SendBusinessNotificationResponse>>
 {
-    private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IBusinessRepository _businessRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly ILogger<SendBusinessNotificationCommandHandler> _logger;
 
     public SendBusinessNotificationCommandHandler(
-        LankaConnect.Domain.Users.IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IBusinessRepository businessRepository,
         ITypedEmailService typedEmailService,
         ILogger<SendBusinessNotificationCommandHandler> logger)
     {
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _businessRepository = businessRepository;
         _typedEmailService = typedEmailService;
         _logger = logger;
@@ -51,8 +52,8 @@ public class SendBusinessNotificationCommandHandler : IRequestHandler<SendBusine
 
             try
             {
-                // Get user
-                var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+                // Get user via Identity.Contracts (W4.7.b)
+                var user = await _identityQueries.GetContactInfoAsync(request.UserId, cancellationToken);
                 if (user == null)
                 {
                     stopwatch.Stop();
@@ -88,15 +89,15 @@ public class SendBusinessNotificationCommandHandler : IRequestHandler<SendBusine
 
                 _logger.LogInformation(
                     "SendBusinessNotification: Entities found - UserEmail={UserEmail}, BusinessName={BusinessName}",
-                    user.Email.Value,
+                    user.Email,
                     business.Profile.Name);
 
                 // Phase 6A.100: Create typed email parameters
                 var emailParams = BusinessNotificationEmailParams.Create(
                     notificationType: request.NotificationType,
                     userId: user.Id,
-                    userName: user.FullName,
-                    userEmail: user.Email.Value,
+                    userName: user.DisplayName,
+                    userEmail: user.Email,
                     firstName: user.FirstName,
                     businessId: business.Id,
                     businessName: business.Profile.Name,
@@ -119,7 +120,7 @@ public class SendBusinessNotificationCommandHandler : IRequestHandler<SendBusine
                 {
                     _logger.LogWarning(
                         "SendBusinessNotification FAILED: Email send failed - Email={Email}, BusinessId={BusinessId}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        user.Email.Value,
+                        user.Email,
                         request.BusinessId,
                         string.Join(", ", sendResult.Errors),
                         stopwatch.ElapsedMilliseconds);
@@ -129,14 +130,14 @@ public class SendBusinessNotificationCommandHandler : IRequestHandler<SendBusine
                 var response = new SendBusinessNotificationResponse(
                     request.BusinessId,
                     request.UserId,
-                    user.Email.Value,
+                    user.Email,
                     request.NotificationType,
                     request.Subject,
                     DateTime.UtcNow);
 
                 _logger.LogInformation(
                     "[Phase 6A.100] SendBusinessNotification COMPLETE: Email={Email}, BusinessId={BusinessId}, NotificationType={NotificationType}, CorrelationId={CorrelationId}, Duration={ElapsedMs}ms",
-                    user.Email.Value,
+                    user.Email,
                     request.BusinessId,
                     request.NotificationType,
                     sendResult.CorrelationId,

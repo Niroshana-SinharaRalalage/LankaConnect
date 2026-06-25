@@ -1,169 +1,99 @@
-using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Commands.SendEmailVerification;
-using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Common;
+using LankaConnect.Modules.Identity.Contracts;
 using Microsoft.Extensions.Logging;
 using Moq;
 using FluentAssertions;
 using Xunit;
-using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Tests.Communications.Commands;
 
 /// <summary>
-/// Phase 6A.100: Tests for SendEmailVerificationCommandHandler
-/// Email is sent via MemberVerificationRequestedEvent domain event handler
+/// Wave 4.7.b (2026-06-25) -- handler now reads a UserContactDto via
+/// IIdentityQueries.GetContactInfoAsync (for the already-verified +
+/// throttle short-circuits) and dispatches IIdentityCommands.
+/// InitiateEmailVerificationAsync for the actual mutator. Old tests
+/// covered IUserRepository + IUnitOfWork concerns now owned by the
+/// Identity adapter.
 /// </summary>
 public class SendEmailVerificationCommandHandlerTests
 {
-    private readonly Mock<IUserRepository> _userRepository;
-    private readonly Mock<IUnitOfWork> _unitOfWork;
+    private readonly Mock<IIdentityQueries> _identityQueries;
+    private readonly Mock<IIdentityCommands> _identityCommands;
     private readonly Mock<ILogger<SendEmailVerificationCommandHandler>> _logger;
     private readonly SendEmailVerificationCommandHandler _handler;
 
     public SendEmailVerificationCommandHandlerTests()
     {
-        _userRepository = new Mock<IUserRepository>();
-        _unitOfWork = new Mock<IUnitOfWork>();
+        _identityQueries = new Mock<IIdentityQueries>();
+        _identityCommands = new Mock<IIdentityCommands>();
         _logger = new Mock<ILogger<SendEmailVerificationCommandHandler>>();
 
         _handler = new SendEmailVerificationCommandHandler(
-            _userRepository.Object,
-            _unitOfWork.Object,
-            _logger.Object
-        );
+            _identityQueries.Object,
+            _identityCommands.Object,
+            _logger.Object);
+    }
+
+    private static UserContactDto BuildContact(Guid id, bool emailVerified = false, DateTime? tokenExpiresAt = null)
+    {
+        return new UserContactDto(
+            Id: id,
+            Email: "user@example.com",
+            FirstName: "Test",
+            LastName: "User",
+            DisplayName: "Test User",
+            ProfilePhotoUrl: null,
+            IsActive: true,
+            IsEmailVerified: emailVerified,
+            IsAccountLocked: false,
+            Role: UserRoleDto.GeneralUser,
+            EmailVerificationTokenExpiresAt: tokenExpiresAt,
+            PhoneNumber: null);
     }
 
     [Fact]
-    public async Task Handle_WithValidUserId_ShouldGenerateTokenAndCommit()
+    public async Task Handle_WhenUserNotFound_ShouldReturnFailure()
     {
-        // Arrange
-        var user = CreateTestUserWithExpiredToken("test@example.com");
-        var command = new SendEmailVerificationCommand(user.Id);
-
-        _userRepository.Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.UserId.Should().Be(user.Id);
-        result.Value.Email.Should().Be(user.Email.Value);
-
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task Handle_WithNonExistentUser_ShouldReturnFailure()
-    {
-        // Arrange
         var userId = Guid.NewGuid();
-        var command = new SendEmailVerificationCommand(userId);
+        _identityQueries.Setup(x => x.GetContactInfoAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserContactDto?)null);
 
-        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        var result = await _handler.Handle(new SendEmailVerificationCommand(userId), CancellationToken.None);
 
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("User not found");
-
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Handle_WithAlreadyVerifiedUser_ShouldReturnSuccessWithoutResending()
+    public async Task Handle_WhenEmailAlreadyVerifiedAndNotForceResend_ShouldShortCircuit()
     {
-        // Arrange
-        var user = CreateTestUser("test@example.com");
-        // Verify the email first
-        var token = user.EmailVerificationToken!;
-        user.VerifyEmail(token);
+        var userId = Guid.NewGuid();
+        _identityQueries.Setup(x => x.GetContactInfoAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildContact(userId, emailVerified: true));
 
-        var command = new SendEmailVerificationCommand(user.Id);
+        var result = await _handler.Handle(new SendEmailVerificationCommand(userId, ForceResend: false), CancellationToken.None);
 
-        _userRepository.Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.UserId.Should().Be(user.Id);
         result.Value.WasRecentlySent.Should().BeFalse();
-
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _identityCommands.Verify(x => x.InitiateEmailVerificationAsync(
+            It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Handle_WithForceResend_ShouldSendEvenIfRecentlySent()
+    public async Task Handle_WhenIdentityInitiates_ShouldReturnSuccessResponse()
     {
-        // Arrange
-        var user = CreateTestUser("test@example.com");
-        // Token was generated recently (within 5 minutes)
-        // Note: User.Create() generates a token automatically with 24-hour expiry
+        var userId = Guid.NewGuid();
+        var expiresAt = DateTime.UtcNow.AddHours(24);
+        _identityQueries.Setup(x => x.GetContactInfoAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildContact(userId, emailVerified: false));
+        _identityCommands.Setup(x => x.InitiateEmailVerificationAsync(userId, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EmailVerificationInitiatedDto(userId, "user@example.com", "Test User", "token123", expiresAt));
 
-        var command = new SendEmailVerificationCommand(user.Id, ForceResend: true);
+        var result = await _handler.Handle(new SendEmailVerificationCommand(userId), CancellationToken.None);
 
-        _userRepository.Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
         result.IsSuccess.Should().BeTrue();
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task Handle_WithRecentlyGeneratedToken_ShouldReturnSuccessWithRecentlySentTrue()
-    {
-        // Arrange
-        // User.Create() generates a token that's considered "recent" (within 5 minutes)
-        var user = CreateTestUser("test@example.com");
-        var command = new SendEmailVerificationCommand(user.Id);
-
-        _userRepository.Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert - Since token was just generated, it's considered "recently sent"
-        result.IsSuccess.Should().BeTrue();
-        result.Value.UserId.Should().Be(user.Id);
-        result.Value.WasRecentlySent.Should().BeTrue();
-
-        // Should NOT commit because token was recently generated
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    private static User CreateTestUser(string email)
-    {
-        var userEmail = UserEmail.Create(email).Value;
-        return User.Create(userEmail, "Test", "User").Value;
-    }
-
-    private static User CreateTestUserWithExpiredToken(string email)
-    {
-        var userEmail = UserEmail.Create(email).Value;
-        var user = User.Create(userEmail, "Test", "User").Value;
-
-        // Clear the token expiration to simulate an expired/old token
-        // Use reflection to set EmailVerificationTokenExpiresAt to a past date
-        var expiresAtField = typeof(User).GetProperty("EmailVerificationTokenExpiresAt",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-
-        // Set to a time more than 5 minutes ago (token was created 6 minutes ago)
-        var oldExpiry = DateTime.UtcNow.AddHours(24).AddMinutes(-6);
-        expiresAtField?.SetValue(user, oldExpiry);
-
-        return user;
+        result.Value.UserId.Should().Be(userId);
+        result.Value.TokenExpiresAt.Should().Be(expiresAt);
     }
 }

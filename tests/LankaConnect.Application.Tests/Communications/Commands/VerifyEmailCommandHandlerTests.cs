@@ -1,172 +1,77 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Commands.VerifyEmail;
-using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Users.ValueObjects;
-using LankaConnect.Domain.Common;
-using LankaConnect.Shared.Email.Contracts;
-using LankaConnect.Shared.Email.Services;
+using Xunit;
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using FluentAssertions;
-using Xunit;
-using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
+using LankaConnect.Application.Communications.Commands.VerifyEmail;
+using LankaConnect.Domain.Common;
+using LankaConnect.Modules.Identity.Contracts;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 
 namespace LankaConnect.Application.Tests.Communications.Commands;
 
 /// <summary>
-/// Phase 6A.100: Updated tests for ITypedEmailService migration
+/// Wave 4.7.b (2026-06-25) -- handler now thin shell over
+/// <see cref="IIdentityCommands.CompleteEmailVerificationAsync"/>. Old
+/// tests covered IUserRepository + IUnitOfWork concerns which now live
+/// inside the Identity adapter.
 /// </summary>
 public class VerifyEmailCommandHandlerTests
 {
-    private readonly Mock<LankaConnect.Domain.Users.IUserRepository> _userRepository;
-    private readonly Mock<IUnitOfWork> _unitOfWork;
+    private readonly Mock<IIdentityCommands> _identityCommands;
     private readonly Mock<ITypedEmailService> _typedEmailService;
     private readonly Mock<ILogger<VerifyEmailCommandHandler>> _logger;
     private readonly VerifyEmailCommandHandler _handler;
 
     public VerifyEmailCommandHandlerTests()
     {
-        _userRepository = new Mock<LankaConnect.Domain.Users.IUserRepository>();
-        _unitOfWork = new Mock<IUnitOfWork>();
+        _identityCommands = new Mock<IIdentityCommands>();
         _typedEmailService = new Mock<ITypedEmailService>();
         _logger = new Mock<ILogger<VerifyEmailCommandHandler>>();
 
-        _handler = new VerifyEmailCommandHandler(
-            _userRepository.Object,
-            _typedEmailService.Object,
-            _unitOfWork.Object,
-            _logger.Object
-        );
-    }
-
-    [Fact]
-    public async Task Handle_WithValidToken_ShouldVerifyEmailAndSendWelcomeEmail()
-    {
-        // Arrange
-        var user = CreateTestUser("test@example.com");
-
-        // Phase 6A.53: User.Create() now automatically generates verification token
-        // Use the token that was automatically generated
-        var token = user.EmailVerificationToken!;
-        var command = new VerifyEmailCommand(token);
-
-        // Phase 6A.53: Mock token-only user retrieval (aligns with password reset pattern)
-        _userRepository.Setup(x => x.GetByEmailVerificationTokenAsync(token, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
-
-        // Phase 6A.100: Mock typed email service for welcome email (fire and forget)
         _typedEmailService.Setup(x => x.SendEmailAsync(
-            It.IsAny<WelcomeEmailParams>(),
+            It.IsAny<IEmailParameters>(),
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(TypedEmailSendResult.Ok(Guid.NewGuid().ToString(), 100));
 
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.UserId.Should().Be(user.Id);
-        result.Value.Email.Should().Be(user.Email.Value);
-        result.Value.WasAlreadyVerified.Should().BeFalse();
-
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-
-        // Note: Welcome email is sent in fire-and-forget Task.Run, so we can't reliably verify it in tests
-        // The important part is that the verification succeeds
+        _handler = new VerifyEmailCommandHandler(
+            _identityCommands.Object,
+            _typedEmailService.Object,
+            _logger.Object);
     }
 
     [Fact]
-    public async Task Handle_WithInvalidToken_ShouldReturnFailure()
+    public async Task Handle_WithEmptyToken_ShouldReturnFailure()
     {
-        // Arrange
-        // Phase 6A.53: Invalid token won't find any user in database
-        var invalidToken = "invalid-token-different-from-generated";
-        var command = new VerifyEmailCommand(invalidToken);
+        var result = await _handler.Handle(new VerifyEmailCommand(""), CancellationToken.None);
 
-        // Phase 6A.53: Mock token lookup returning null (user not found)
-        _userRepository.Setup(x => x.GetByEmailVerificationTokenAsync(invalidToken, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
         result.IsFailure.Should().BeTrue();
-        // Phase 6A.53: Error message updated to match token-only lookup
         result.Error.Should().Be("Invalid or expired verification token");
-
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Handle_WithUserNotFound_ShouldReturnFailure()
+    public async Task Handle_WhenIdentityCompletes_ShouldReturnSuccessResponse()
     {
-        // Arrange
-        // Phase 6A.53: Token not found in database (expired or never existed)
-        var token = "nonexistent-token";
-        var command = new VerifyEmailCommand(token);
+        var userId = Guid.NewGuid();
+        _identityCommands.Setup(x => x.CompleteEmailVerificationAsync("validtoken", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EmailVerificationCompletedDto(userId, "user@example.com", "Test User"));
 
-        // Phase 6A.53: Mock token lookup returning null
-        _userRepository.Setup(x => x.GetByEmailVerificationTokenAsync(token, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        var result = await _handler.Handle(new VerifyEmailCommand("validtoken"), CancellationToken.None);
 
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        // Phase 6A.53: Error message updated for token-only lookup
-        result.Error.Should().Be("Invalid or expired verification token");
-
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Handle_WithAlreadyVerifiedUser_ShouldReturnSuccess()
-    {
-        // Arrange
-        var user = CreateTestUser("test@example.com");
-
-        // Phase 6A.53: Set user as already verified
-        var token = user.EmailVerificationToken!;
-        user.VerifyEmail(token); // This will set IsEmailVerified to true and clear token
-
-        // Phase 6A.53: Even though token is cleared, user might still be found if we create a new token
-        // For this test, we'll use the original token and mock the repository to return the verified user
-        var command = new VerifyEmailCommand(token);
-
-        // Phase 6A.53: Mock token lookup returning already-verified user
-        _userRepository.Setup(x => x.GetByEmailVerificationTokenAsync(token, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.UserId.Should().Be(user.Id);
-        result.Value.Email.Should().Be(user.Email.Value);
-        result.Value.WasAlreadyVerified.Should().BeTrue();
-
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        result.Value.UserId.Should().Be(userId);
+        result.Value.Email.Should().Be("user@example.com");
     }
 
     [Fact]
-    public async Task Handle_WithCancellationToken_ShouldRespectCancellation()
+    public async Task Handle_WhenIdentityThrowsInvalidOperation_ShouldReturnGenericFailure()
     {
-        // Arrange
-        // Phase 6A.53: Token-only command
-        var command = new VerifyEmailCommand("valid-token");
-        var cancellationToken = new CancellationToken(true);
+        _identityCommands.Setup(x => x.CompleteEmailVerificationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("token mismatch"));
 
-        // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            _handler.Handle(command, cancellationToken));
-    }
+        var result = await _handler.Handle(new VerifyEmailCommand("badtoken"), CancellationToken.None);
 
-    private static User CreateTestUser(string email)
-    {
-        var userEmail = UserEmail.Create(email).Value;
-        return User.Create(userEmail, "Test", "User").Value;
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Invalid or expired verification token");
     }
 }

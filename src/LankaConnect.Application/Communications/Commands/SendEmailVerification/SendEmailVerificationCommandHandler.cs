@@ -1,33 +1,36 @@
-using LankaConnect.Modules.Identity.Contracts; // W4.6.d.2.b: IUserRepository -> IIdentityQueries/IIdentityCommands
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Modules.Identity.Contracts;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Commands.SendEmailVerification;
 
 /// <summary>
-/// Handler for sending email verification emails
-/// Phase 6A.53: Generate verification token via domain event
-/// Phase 6A.X Observability: Enhanced with comprehensive structured logging
-/// Phase 6A.100: Email is sent via MemberVerificationRequestedEvent domain event handler
+/// Handler for sending email verification emails.
+/// Wave 4.7.b (2026-06-25): swapped IUserRepository + IUnitOfWork to
+/// IIdentityCommands.InitiateEmailVerificationAsync. The Identity-side adapter
+/// owns token generation, expiry, the GenerateEmailVerificationToken state
+/// transition (raises MemberVerificationRequestedEvent inside the User
+/// aggregate), and persistence. The already-verified short-circuit + 5-minute
+/// throttle still live here because they are caller-visible response shaping.
 /// </summary>
 public class SendEmailVerificationCommandHandler : IRequestHandler<SendEmailVerificationCommand, Result<SendEmailVerificationResponse>>
 {
-    private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private static readonly TimeSpan EmailVerificationTokenLifetime = TimeSpan.FromHours(24);
+
+    private readonly IIdentityQueries _identityQueries;
+    private readonly IIdentityCommands _identityCommands;
     private readonly ILogger<SendEmailVerificationCommandHandler> _logger;
 
     public SendEmailVerificationCommandHandler(
-        LankaConnect.Domain.Users.IUserRepository userRepository,
-        IUnitOfWork unitOfWork,
+        IIdentityQueries identityQueries,
+        IIdentityCommands identityCommands,
         ILogger<SendEmailVerificationCommandHandler> logger)
     {
-        _userRepository = userRepository;
-        _unitOfWork = unitOfWork;
+        _identityQueries = identityQueries;
+        _identityCommands = identityCommands;
         _logger = logger;
     }
 
@@ -46,8 +49,7 @@ public class SendEmailVerificationCommandHandler : IRequestHandler<SendEmailVeri
 
             try
             {
-                // Get user
-                var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+                var user = await _identityQueries.GetContactInfoAsync(request.UserId, cancellationToken);
                 if (user == null)
                 {
                     stopwatch.Stop();
@@ -58,34 +60,29 @@ public class SendEmailVerificationCommandHandler : IRequestHandler<SendEmailVeri
                     return Result<SendEmailVerificationResponse>.Failure("User not found");
                 }
 
-                // Check if email is already verified
-                // FIX: Return SUCCESS (not failure) when email is already verified
-                // This prevents 400 Bad Request errors on the frontend
                 if (user.IsEmailVerified && !request.ForceResend)
                 {
                     stopwatch.Stop();
                     _logger.LogInformation(
                         "SendEmailVerification: Email already verified - UserId={UserId}, Email={Email}, Duration={ElapsedMs}ms",
                         user.Id,
-                        user.Email.Value,
+                        user.Email,
                         stopwatch.ElapsedMilliseconds);
 
                     var alreadyVerifiedResponse = new SendEmailVerificationResponse(
                         user.Id,
-                        user.Email.Value,
+                        user.Email,
                         user.EmailVerificationTokenExpiresAt ?? DateTime.UtcNow,
                         wasRecentlySent: false);
 
                     return Result<SendEmailVerificationResponse>.Success(alreadyVerifiedResponse);
                 }
 
-                // Use provided email or user's current email
-                var targetEmail = request.Email ?? user.Email.Value;
+                var targetEmail = request.Email ?? user.Email;
 
-                // Check if recently sent (within last 5 minutes) unless forcing resend
                 if (!request.ForceResend && user.EmailVerificationTokenExpiresAt.HasValue)
                 {
-                    var tokenCreatedAt = user.EmailVerificationTokenExpiresAt.Value.AddHours(-24); // Tokens expire after 24 hours
+                    var tokenCreatedAt = user.EmailVerificationTokenExpiresAt.Value.Subtract(EmailVerificationTokenLifetime);
                     if (DateTime.UtcNow.Subtract(tokenCreatedAt).TotalMinutes < 5)
                     {
                         stopwatch.Stop();
@@ -105,26 +102,49 @@ public class SendEmailVerificationCommandHandler : IRequestHandler<SendEmailVeri
                     }
                 }
 
-                // Phase 6A.53: Generate new verification token (triggers MemberVerificationRequestedEvent)
-                user.GenerateEmailVerificationToken();
+                EmailVerificationInitiatedDto? initiated;
+                try
+                {
+                    initiated = await _identityCommands.InitiateEmailVerificationAsync(
+                        request.UserId,
+                        EmailVerificationTokenLifetime,
+                        cancellationToken);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(ex,
+                        "SendEmailVerification FAILED: Identity rejected initiation - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendEmailVerificationResponse>.Failure("Failed to initiate email verification. Please try again.");
+                }
+
+                if (initiated == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "SendEmailVerification FAILED: Identity returned null - UserId={UserId}, Duration={ElapsedMs}ms",
+                        request.UserId,
+                        stopwatch.ElapsedMilliseconds);
+                    return Result<SendEmailVerificationResponse>.Failure("User not found");
+                }
 
                 _logger.LogInformation(
-                    "SendEmailVerification: Verification token generated - UserId={UserId}, Email={Email}",
-                    user.Id,
-                    targetEmail);
-
-                // Save user with new token (domain event will be dispatched and email sent automatically)
-                await _unitOfWork.CommitAsync(cancellationToken);
+                    "SendEmailVerification: Identity initiated - UserId={UserId}, Email={Email}, ExpiresAt={ExpiresAt}",
+                    initiated.UserId,
+                    initiated.Email,
+                    initiated.TokenExpiresAt);
 
                 var successResponse = new SendEmailVerificationResponse(
-                    user.Id,
+                    initiated.UserId,
                     targetEmail,
-                    user.EmailVerificationTokenExpiresAt ?? DateTime.UtcNow.AddHours(24));
+                    initiated.TokenExpiresAt);
 
                 stopwatch.Stop();
                 _logger.LogInformation(
                     "SendEmailVerification COMPLETE: UserId={UserId}, Email={Email}, Duration={ElapsedMs}ms",
-                    user.Id,
+                    initiated.UserId,
                     targetEmail,
                     stopwatch.ElapsedMilliseconds);
 

@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
+using LankaConnect.Modules.Identity.Contracts; // W4.7.b
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using Serilog.Context;
@@ -16,16 +17,16 @@ namespace LankaConnect.Application.Communications.Commands.SendWelcomeEmail;
 /// </summary>
 public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCommand, Result<SendWelcomeEmailResponse>>
 {
-    private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ITypedEmailService _typedEmailService;
     private readonly ILogger<SendWelcomeEmailCommandHandler> _logger;
 
     public SendWelcomeEmailCommandHandler(
-        LankaConnect.Domain.Users.IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ITypedEmailService typedEmailService,
         ILogger<SendWelcomeEmailCommandHandler> logger)
     {
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _typedEmailService = typedEmailService;
         _logger = logger;
     }
@@ -47,7 +48,7 @@ public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCo
             try
             {
                 // Get user
-                var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+                var user = await _identityQueries.GetContactInfoAsync(request.UserId, cancellationToken);
                 if (user == null)
                 {
                     stopwatch.Stop();
@@ -83,7 +84,7 @@ public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCo
                 _logger.LogInformation(
                     "SendWelcomeEmail: User found - UserId={UserId}, Email={Email}, Role={Role}",
                     user.Id,
-                    user.Email.Value,
+                    user.Email,
                     user.Role);
 
             // Phase 6A.100: Map command trigger type to typed params enum
@@ -99,14 +100,14 @@ public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCo
             // Phase 6A.100: Use typed email params instead of dictionary
             var emailParams = WelcomeEmailParams.Create(
                 userId: user.Id,
-                recipientEmail: user.Email.Value,
-                userName: user.FullName,
+                recipientEmail: user.Email,
+                userName: user.DisplayName,
                 firstName: user.FirstName,
-                userEmail: user.Email.Value,
+                userEmail: user.Email,
                 triggerType: triggerType,
                 userRole: user.Role.ToString(),
-                isEventOrganizer: user.Role == Domain.Users.Enums.UserRole.EventOrganizer,
-                isAdmin: user.Role == Domain.Users.Enums.UserRole.Admin || user.Role == Domain.Users.Enums.UserRole.AdminManager,
+                isEventOrganizer: user.Role == UserRoleDto.EventOrganizer,
+                isAdmin: user.Role == UserRoleDto.Admin || user.Role == UserRoleDto.AdminManager,
                 customMessage: request.CustomMessage);
 
                 // Phase 6A.100: Send welcome email using typed email service
@@ -117,7 +118,7 @@ public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCo
                     stopwatch.Stop();
                     _logger.LogWarning(
                         "SendWelcomeEmail FAILED: Email send failed - Email={Email}, TriggerType={TriggerType}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        user.Email.Value,
+                        user.Email,
                         request.TriggerType,
                         string.Join(", ", sendResult.Errors),
                         stopwatch.ElapsedMilliseconds);
@@ -126,14 +127,14 @@ public class SendWelcomeEmailCommandHandler : IRequestHandler<SendWelcomeEmailCo
 
                 var response = new SendWelcomeEmailResponse(
                     user.Id,
-                    user.Email.Value,
+                    user.Email,
                     request.TriggerType,
                     DateTime.UtcNow);
 
                 stopwatch.Stop();
                 _logger.LogInformation(
                     "SendWelcomeEmail COMPLETE: Email={Email}, UserId={UserId}, TriggerType={TriggerType}, Duration={ElapsedMs}ms",
-                    user.Email.Value,
+                    user.Email,
                     user.Id,
                     request.TriggerType,
                     stopwatch.ElapsedMilliseconds);

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Infrastructure.Common;
 using System.Diagnostics;
 using Serilog.Context;

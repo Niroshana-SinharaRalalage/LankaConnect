@@ -5,6 +5,7 @@ using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Modules.Identity.Application.Commands.Users.AdminDowngradeUser;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Support;
 using LankaConnect.Domain.Users;

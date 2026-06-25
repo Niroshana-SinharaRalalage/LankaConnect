@@ -3,6 +3,7 @@ using System.Text;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 

@@ -5,6 +5,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.3: IEmailGroupQueries replaces dbContext.Set<EmailGroup>
 using ContractsEmailGroupSummaryDto = LankaConnect.Modules.Communications.Contracts.EmailGroupSummaryDto;
 using Microsoft.Extensions.Logging;

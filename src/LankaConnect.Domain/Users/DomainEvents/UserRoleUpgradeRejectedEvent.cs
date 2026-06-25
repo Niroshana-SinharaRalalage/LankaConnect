@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users.Enums;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Domain.Users.DomainEvents;
 
 /// <summary>
 /// Domain event raised when a role upgrade request is rejected by admin

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 

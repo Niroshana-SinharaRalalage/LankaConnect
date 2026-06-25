@@ -3,6 +3,7 @@ using LankaConnect.Modules.Payments.Application.Services; // W4.4.c.4: service i
 using FluentAssertions;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;

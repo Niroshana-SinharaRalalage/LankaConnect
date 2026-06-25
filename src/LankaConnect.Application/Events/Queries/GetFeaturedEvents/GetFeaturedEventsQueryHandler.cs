@@ -4,6 +4,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

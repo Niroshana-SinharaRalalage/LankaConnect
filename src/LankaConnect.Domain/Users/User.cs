@@ -3,6 +3,7 @@ using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Domain.Users;

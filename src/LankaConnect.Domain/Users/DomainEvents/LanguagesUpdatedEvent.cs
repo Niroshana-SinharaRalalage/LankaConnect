@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users.ValueObjects;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Domain.Users.DomainEvents;
 
 /// <summary>
 /// Domain event raised when user's language preferences are updated

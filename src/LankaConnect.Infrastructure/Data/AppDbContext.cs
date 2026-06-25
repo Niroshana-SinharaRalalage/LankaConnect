@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Business;

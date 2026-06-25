@@ -5,6 +5,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;

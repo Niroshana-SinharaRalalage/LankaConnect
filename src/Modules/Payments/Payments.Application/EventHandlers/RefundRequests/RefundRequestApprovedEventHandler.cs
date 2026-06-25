@@ -2,6 +2,7 @@ using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo int
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;

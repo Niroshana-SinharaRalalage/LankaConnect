@@ -1,4 +1,5 @@
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Modules.Forms.Domain;
 using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;

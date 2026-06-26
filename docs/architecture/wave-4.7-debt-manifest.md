@@ -260,3 +260,28 @@ Per architect Option A: these files inject `IUserRepository` directly today; eac
 - ⏭️ Wave 5 opens
 
 Wave 5-6: 2 weeks. **Wave 7 (Frontend Mirror) deferred to Phase B per architect ruling (founder decision pending).**
+
+---
+
+## Wave 4.8 — Scheduling capability extraction SHIPPED (2026-06-26)
+
+Capability #7 of 9 in Wave 4 plan ✅. 5 reusable scheduling primitives defined
+in `Scheduling.Domain` + read-only projections composed onto Event aggregate
+without disturbing storage. Wave 5 Products carve-out flips storage to the VOs
+when Event becomes Products/LankaEvents-specific.
+
+### Wave 4 capability board (after 4.8)
+
+| # | Capability | Status |
+|---|---|---|
+| 1 | Notifications cleanup | ✅ W3.4 |
+| 2 | Communications | ✅ Wave 4.1 |
+| 3 | Media | ✅ (earlier) |
+| 4 | Forms | ✅ Wave 4.3 |
+| 5 | Payments | ✅ Wave 4.4 |
+| 6 | Identity | ✅ Wave 4.6 + 4.7 (physical move shipped; 14 stragglers manifest-tracked) |
+| 7 | **Scheduling** | ✅ **Wave 4.8** |
+| 8 | CulturalIntelligence | ⏭️ Next (2 sessions) |
+| 9 | Cross-cutting cleanup | ⏭️ After (5 sessions; drains 14 Identity stragglers + re-enables Rule 5) |
+
+**2 of 9 capabilities remain.** Wave 5 opens after capability #9 closes.

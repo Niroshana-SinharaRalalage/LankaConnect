@@ -28,6 +28,7 @@
   <ItemGroup>
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
+    <ProjectReference Include="..\Modules\Scheduling\Scheduling.Domain\Scheduling.Domain.csproj" />
   </ItemGroup>
 
 </Project>

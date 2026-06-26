@@ -276,6 +276,13 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         // Ignore computed property from Event.Seating.cs
         builder.Ignore(e => e.HasAssignedSeating);
 
+        // Wave 4.8.b (2026-06-26): ignore Scheduling.Domain computed projections.
+        // Storage stays on inline StartDate/EndDate/TimeZoneId/Capacity; these
+        // properties just project the inline fields into the reusable Scheduling VOs
+        // for cross-module consumers. Wave 5 Products carve-out flips storage.
+        builder.Ignore(e => e.Occurrence);
+        builder.Ignore(e => e.CapacityRule);
+
         // Configure audit fields
         builder.Property(e => e.CreatedAt)
             .IsRequired()

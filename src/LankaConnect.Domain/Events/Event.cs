@@ -53,6 +53,34 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
     public DateTime? EndDate { get; private set; }
     public Guid OrganizerId { get; private set; }
     public int Capacity { get; private set; }
+
+    /// <summary>
+    /// Wave 4.8.b (2026-06-26): cross-module reusable schedule projection. Reads compose
+    /// <see cref="StartDate"/> / <see cref="EndDate"/> / <see cref="TimeZoneId"/> into a
+    /// <see cref="LankaConnect.Modules.Scheduling.Domain.ValueObjects.ScheduledOccurrence"/>
+    /// so future products (LankaTemples puja-slot, LankaSeyla appointment) can consume the
+    /// same shape without coupling to the LankaEvents <see cref="Event"/> aggregate.
+    /// Storage stays on the inline fields; Wave 5 Products carve-out flips the storage
+    /// to <see cref="LankaConnect.Modules.Scheduling.Domain.ValueObjects.ScheduledOccurrence"/>
+    /// when <see cref="Event"/> becomes LankaEvents-specific.
+    /// </summary>
+    public LankaConnect.Modules.Scheduling.Domain.ValueObjects.ScheduledOccurrence Occurrence =>
+        LankaConnect.Modules.Scheduling.Domain.ValueObjects.ScheduledOccurrence
+            .Create(StartDate, EndDate, TimeZoneId)
+            .Value;
+
+    /// <summary>
+    /// Wave 4.8.b (2026-06-26): cross-module reusable capacity projection. Composes
+    /// <see cref="Capacity"/> into a
+    /// <see cref="LankaConnect.Modules.Scheduling.Domain.ValueObjects.CapacityRule"/> when
+    /// the integer is positive (the LankaEvents invariant); returns null during the
+    /// Planning lifecycle when Capacity has not yet been set. Storage stays on the
+    /// inline int; Wave 5 flips storage to the VO.
+    /// </summary>
+    public LankaConnect.Modules.Scheduling.Domain.ValueObjects.CapacityRule? CapacityRule =>
+        Capacity > 0
+            ? LankaConnect.Modules.Scheduling.Domain.ValueObjects.CapacityRule.Create(Capacity).Value
+            : null;
     public EventStatus Status { get; private set; }
     public string? CancellationReason { get; private set; }
     public DateTime? PublishedAt { get; private set; } // Phase 6A.46: Track when event was published for "New" label calculation

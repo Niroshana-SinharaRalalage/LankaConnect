@@ -59,7 +59,7 @@ public class EmailMappingProfile : Profile
             .ForMember(dest => dest.PreferredLanguage, opt => opt.MapFrom(src => "en-US"));
 
         // Email Verification mappings
-        CreateMap<Domain.Users.User, EmailVerificationDto>()
+        CreateMap<LankaConnect.Modules.Identity.Domain.Entities.User, EmailVerificationDto>()
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email.Value))
             .ForMember(dest => dest.IsEmailVerified, opt => opt.MapFrom(src => src.IsEmailVerified))
@@ -70,7 +70,7 @@ public class EmailMappingProfile : Profile
                 src.IsEmailVerified ? 1 : (src.EmailVerificationToken != null ? 1 : 0)));
 
         // Password Reset mappings
-        CreateMap<Domain.Users.User, PasswordResetDto>()
+        CreateMap<LankaConnect.Modules.Identity.Domain.Entities.User, PasswordResetDto>()
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email.Value))
             .ForMember(dest => dest.HasActiveResetToken, opt => opt.MapFrom(src => 

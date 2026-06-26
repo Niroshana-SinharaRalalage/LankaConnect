@@ -7,7 +7,7 @@ using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Helpers;
 using LankaConnect.Shared.Email.Services;

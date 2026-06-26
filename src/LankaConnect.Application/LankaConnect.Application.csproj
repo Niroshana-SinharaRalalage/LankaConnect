@@ -35,6 +35,7 @@
            Communications.Application in 5.4.c.1 + 5.4.c.2. -->
     <ProjectReference Include="..\Modules\Communications\Communications.Contracts\Communications.Contracts.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Contracts\Identity.Contracts.csproj" />
+    <ProjectReference Include="..\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -6,9 +6,12 @@ using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Users.ValueObjects;
+using LankaConnect.Modules.Identity.Domain.ValueObjects;
 
 namespace LankaConnect.IntegrationTests;
 

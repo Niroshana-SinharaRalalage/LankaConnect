@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Users.Enums;

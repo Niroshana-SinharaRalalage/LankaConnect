@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Users.Enums;
+namespace LankaConnect.Modules.Identity.Domain.Enums;
 
 /// <summary>
 /// User roles for the LankaConnect platform

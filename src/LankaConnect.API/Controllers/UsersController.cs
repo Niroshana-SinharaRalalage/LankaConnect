@@ -19,7 +19,7 @@ using LankaConnect.Modules.Identity.Application.Queries.Users.GetUserPreferredMe
 using LankaConnect.Modules.Identity.Application.Queries.Users.SearchUsers;
 using LankaConnect.Application.MetroAreas.Common;
 using LankaConnect.Modules.Identity.Application.DTOs;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.API.Controllers;

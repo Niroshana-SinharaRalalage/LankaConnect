@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Users.ValueObjects;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.TestUtilities.Builders;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
@@ -22,7 +25,7 @@ public class UserRepositoryTests : IDisposable
         services.AddDbContext<AppDbContext>(options =>
             options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
         
-        services.AddScoped<IUserRepository, LankaConnect.Infrastructure.Data.Repositories.UserRepository>();
+        services.AddScoped<IUserRepository, LankaConnect.Modules.Identity.Infrastructure.Repositories.UserRepository>();
         
         _serviceProvider = services.BuildServiceProvider();
         _context = _serviceProvider.GetRequiredService<AppDbContext>();

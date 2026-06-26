@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Users.ValueObjects;
+namespace LankaConnect.Modules.Identity.Domain.ValueObjects;
 
 /// <summary>
 /// Value object representing a user's location

@@ -2,7 +2,10 @@ using LankaConnect.Application.Common.Exceptions;
 using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetUserById;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Modules.Identity.Application.Tests.Queries.Users;

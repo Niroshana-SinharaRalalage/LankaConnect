@@ -1,7 +1,7 @@
 using AutoMapper;
 using LankaConnect.Application.MetroAreas.Common;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 
 namespace LankaConnect.Application.Common.Mappings;
 

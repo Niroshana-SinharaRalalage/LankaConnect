@@ -161,7 +161,7 @@ public class UserWhatsAppPreferencesConfiguration : IEntityTypeConfiguration<Use
         builder.Ignore(e => e.IsLocked);
 
         // Foreign key relationship to Users table with CASCADE delete
-        builder.HasOne<LankaConnect.Domain.Users.User>()
+        builder.HasOne<LankaConnect.Modules.Identity.Domain.Entities.User>()
             .WithMany()
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade)

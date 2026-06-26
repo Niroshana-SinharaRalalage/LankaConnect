@@ -69,7 +69,7 @@ public class UserEmailPreferencesConfiguration : IEntityTypeConfiguration<UserEm
         builder.Property(e => e.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
 
         // Foreign key relationship to Users table
-        builder.HasOne<LankaConnect.Domain.Users.User>()
+        builder.HasOne<LankaConnect.Modules.Identity.Domain.Entities.User>()
             .WithMany()
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade)

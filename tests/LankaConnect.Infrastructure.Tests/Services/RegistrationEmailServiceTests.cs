@@ -6,10 +6,12 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.ValueObjects;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Infrastructure.Services;
 using LankaConnect.Application.Common.DTOs;
 using LankaConnect.Domain.Business.ValueObjects;

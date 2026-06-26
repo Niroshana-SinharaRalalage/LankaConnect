@@ -3,7 +3,10 @@ using AutoMapper;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.MetroAreas.Common;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -85,8 +88,8 @@ public class GetUserPreferredMetroAreasQueryHandler : IQueryHandler<GetUserPrefe
                 var metroAreasCollection = efDbContext.Entry(user).Collection("_preferredMetroAreaEntities");
                 await metroAreasCollection.LoadAsync(cancellationToken);
 
-                var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<Domain.Events.MetroArea>
-                    ?? new List<Domain.Events.MetroArea>();
+                var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<LankaConnect.Domain.Events.MetroArea>
+                    ?? new List<LankaConnect.Domain.Events.MetroArea>();
 
                 // If user has no preferred metro areas, return empty list
                 if (!currentMetroAreas.Any())

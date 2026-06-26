@@ -4,9 +4,11 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Shared.WhatsApp.Contracts;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;

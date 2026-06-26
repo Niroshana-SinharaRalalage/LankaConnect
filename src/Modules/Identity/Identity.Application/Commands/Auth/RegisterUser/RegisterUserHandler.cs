@@ -7,15 +7,18 @@ using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 
 public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<RegisterUserResponse>>
 {
-    private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
+    private readonly LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository _userRepository;
     private readonly IPasswordHashingService _passwordHashingService;
     private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
     private readonly ILogger<RegisterUserHandler> _logger;

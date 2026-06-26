@@ -177,7 +177,7 @@ public class WhatsAppMessageRecordConfiguration : IEntityTypeConfiguration<Whats
         builder.Ignore(e => e.CanRetry);
 
         // Foreign key relationships
-        builder.HasOne<LankaConnect.Domain.Users.User>()
+        builder.HasOne<LankaConnect.Modules.Identity.Domain.Entities.User>()
             .WithMany()
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.SetNull)

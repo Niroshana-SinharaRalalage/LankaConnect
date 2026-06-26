@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 
-namespace LankaConnect.Domain.Users.Events;
+namespace LankaConnect.Modules.Identity.Domain.Events;
 
 /// <summary>
 /// Domain event raised when a user's subscription is activated

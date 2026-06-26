@@ -26,6 +26,7 @@
       IUnitOfWork. Mirrors W4.4.c.1 + W5.4.c.1 transitional edges.
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <ProjectReference Include="..\Identity.Domain\Identity.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

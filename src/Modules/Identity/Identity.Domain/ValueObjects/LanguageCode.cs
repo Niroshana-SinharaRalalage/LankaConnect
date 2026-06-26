@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Users.ValueObjects;
+namespace LankaConnect.Modules.Identity.Domain.ValueObjects;
 
 /// <summary>
 /// Language code value object using Enumeration Pattern with ISO 639 codes

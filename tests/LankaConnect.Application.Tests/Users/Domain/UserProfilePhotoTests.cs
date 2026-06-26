@@ -1,10 +1,12 @@
 using FluentAssertions;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Domain.Enums;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Users.Domain;

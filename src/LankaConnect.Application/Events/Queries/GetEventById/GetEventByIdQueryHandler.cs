@@ -6,7 +6,7 @@ using LankaConnect.Application.Communications.Common; // Phase 6A.32: legacy Ema
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using Microsoft.Extensions.Logging;

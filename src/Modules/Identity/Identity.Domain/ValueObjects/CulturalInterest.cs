@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Users.ValueObjects;
+namespace LankaConnect.Modules.Identity.Domain.ValueObjects;
 
 /// <summary>
 /// Cultural interest value object using Enumeration Pattern

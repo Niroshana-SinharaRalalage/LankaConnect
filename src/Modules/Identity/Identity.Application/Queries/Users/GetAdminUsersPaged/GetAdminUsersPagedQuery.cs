@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common.Models; // W4.6.c.3: PagedResultDto relocated here
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Modules.Identity.Application.DTOs;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 
 namespace LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUsersPaged;
 

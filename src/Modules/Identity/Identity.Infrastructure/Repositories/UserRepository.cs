@@ -1,12 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.Enums;
 using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.Modules.Identity.Infrastructure.Repositories;
 
 public class UserRepository : Repository<User>, IUserRepository
 {
@@ -61,7 +64,7 @@ public class UserRepository : Repository<User>, IUserRepository
                 {
                     // Access the shadow navigation using EF Core's Entry API
                     var metroAreasCollection = _context.Entry(user).Collection("_preferredMetroAreaEntities");
-                    var metroAreaEntities = metroAreasCollection.CurrentValue as IEnumerable<Domain.Events.MetroArea>;
+                    var metroAreaEntities = metroAreasCollection.CurrentValue as IEnumerable<LankaConnect.Domain.Events.MetroArea>;
 
                     if (metroAreaEntities != null)
                     {
@@ -330,7 +333,7 @@ public class UserRepository : Repository<User>, IUserRepository
                 if (entity.PreferredMetroAreaIds.Any())
                 {
                     // Load the MetroArea entities from the database based on the domain's ID list
-                    var metroAreaEntities = await _context.Set<Domain.Events.MetroArea>()
+                    var metroAreaEntities = await _context.Set<LankaConnect.Domain.Events.MetroArea>()
                         .Where(m => entity.PreferredMetroAreaIds.Contains(m.Id))
                         .ToListAsync(cancellationToken);
 

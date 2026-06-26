@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Users.Enums;
+namespace LankaConnect.Modules.Identity.Domain.Enums;
 
 /// <summary>
 /// Represents the federated social identity provider used through Azure Entra External ID

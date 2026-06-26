@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.IntegrationTests.Common;
 using LankaConnect.IntegrationTests.Fakes;
 using Microsoft.EntityFrameworkCore;

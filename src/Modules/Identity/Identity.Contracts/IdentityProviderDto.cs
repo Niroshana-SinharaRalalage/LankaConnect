@@ -1,7 +1,7 @@
 namespace LankaConnect.Modules.Identity.Contracts;
 
 /// <summary>
-/// Cross-module mirror of <c>LankaConnect.Domain.Users.Enums.IdentityProvider</c>.
+/// Cross-module mirror of <c>LankaConnect.Modules.Identity.Domain.Enums.IdentityProvider</c>.
 /// Indicates how the user was provisioned (local password vs federated SSO).
 /// </summary>
 /// <remarks>

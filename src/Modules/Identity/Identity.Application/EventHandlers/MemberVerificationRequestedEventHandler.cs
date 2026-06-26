@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Users.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using MediatR;

@@ -1,5 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.RequestRoleUpgrade;
 

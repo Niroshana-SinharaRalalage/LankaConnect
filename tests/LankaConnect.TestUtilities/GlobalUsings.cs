@@ -25,7 +25,7 @@ global using LankaConnect.Domain.Communications.ValueObjects;
 global using LankaConnect.Domain.Communications.Enums;
 global using LankaConnect.Domain.Shared.ValueObjects;
 global using LankaConnect.Domain.Shared.Enums;
-global using LankaConnect.Domain.Users.ValueObjects;
+global using LankaConnect.Modules.Identity.Domain.ValueObjects;
 global using LankaConnect.Domain.Common;
 
 // Application interfaces

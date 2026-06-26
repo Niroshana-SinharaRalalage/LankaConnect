@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\..\..\src\Modules\Identity\Identity.Application\Identity.Application.csproj" />
     <ProjectReference Include="..\..\..\..\src\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\..\..\LankaConnect.Application.Tests\LankaConnect.Application.Tests.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
   </ItemGroup>
 
 </Project>

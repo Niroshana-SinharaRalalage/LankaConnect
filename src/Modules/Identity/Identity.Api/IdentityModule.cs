@@ -36,6 +36,12 @@ public static class IdentityModule
 
         // Wave 4.6.b cross-module Contracts surface.
         services.AddScoped<IIdentityQueries, IdentityQueries>();
+
+        // Wave 4.7.e (2026-06-26): UserRepository registration moved from
+        // LankaConnect.Infrastructure.DependencyInjection alongside the
+        // physical User aggregate move to Identity.Domain / Identity.Infrastructure.
+        services.AddScoped<LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository,
+            LankaConnect.Modules.Identity.Infrastructure.Repositories.UserRepository>();
         // Wave 4.6.d.1 (2026-06-24): IIdentityCommands semantic mutators per
         // architect Risk #3 Option A. Owns hashing/throttle/lifetime/refresh-token
         // revocation. Communications.SendPasswordReset + ResetPassword handlers

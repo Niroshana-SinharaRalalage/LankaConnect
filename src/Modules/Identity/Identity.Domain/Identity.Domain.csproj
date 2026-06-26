@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Identity.Domain</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Identity.Domain</AssemblyName>
+    <Description>Identity module domain layer. Owns the User aggregate (User entity, IUserRepository, value objects, enums, domain events). Wave 4.7.e (2026-06-26) physical extraction from LankaConnect.Domain.Users per architect Option A ruling: 14 legacy LankaConnect.Application consumers continue to inject IUserRepository via an allow-listed ArchTest exception that shrinks to zero during Cross-cutting cleanup.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Wave 4.7.e: UserRepository in Identity.Infrastructure calls
+         internal User.SyncPreferredMetroAreaIdsFromEntities(). Same boundary
+         relationship the legacy LankaConnect.Domain → LankaConnect.Infrastructure
+         had pre-extraction. -->
+    <InternalsVisibleTo Include="LankaConnect.Modules.Identity.Infrastructure" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 
-namespace LankaConnect.Domain.Users.DomainEvents;
+namespace LankaConnect.Modules.Identity.Domain.DomainEvents;
 
 public record UserRoleChangedEvent(Guid UserId, string Email, UserRole OldRole, UserRole NewRole) : DomainEvent;

@@ -5,7 +5,7 @@ using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Enums; // Phase 8X: EventPaymentMode
 using LankaConnect.Domain.Events.Services; // Phase 6A.X: Revenue breakdown
 using LankaConnect.Domain.Events.ValueObjects;

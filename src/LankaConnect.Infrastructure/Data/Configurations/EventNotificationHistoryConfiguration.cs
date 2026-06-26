@@ -68,7 +68,7 @@ public class EventNotificationHistoryConfiguration : IEntityTypeConfiguration<Ev
             .OnDelete(DeleteBehavior.Cascade);
 
         // Foreign key to users table (RESTRICT delete - preserve history even if user is deleted)
-        builder.HasOne<Domain.Users.User>()
+        builder.HasOne<LankaConnect.Modules.Identity.Domain.Entities.User>()
             .WithMany()
             .HasForeignKey(h => h.SentByUserId)
             .OnDelete(DeleteBehavior.Restrict);

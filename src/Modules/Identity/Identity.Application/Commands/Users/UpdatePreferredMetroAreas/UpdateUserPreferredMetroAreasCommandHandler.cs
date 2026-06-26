@@ -1,7 +1,10 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -71,7 +74,7 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
                 // Phase 6A.9 FIX: Load MetroArea entities for EF Core persistence per ADR-009
                 // Application layer validates existence (ADR-008)
                 // Infrastructure layer provides entity references (ADR-009)
-                List<Domain.Events.MetroArea> metroAreaEntities = new();
+                List<LankaConnect.Domain.Events.MetroArea> metroAreaEntities = new();
 
                 if (command.MetroAreaIds.Any())
                 {
@@ -146,8 +149,8 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
                 var metroAreasCollection = dbContext.Entry(user).Collection("_preferredMetroAreaEntities");
                 await metroAreasCollection.LoadAsync(cancellationToken);  // Ensure tracked
 
-                var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<Domain.Events.MetroArea>
-                    ?? new List<Domain.Events.MetroArea>();
+                var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<LankaConnect.Domain.Events.MetroArea>
+                    ?? new List<LankaConnect.Domain.Events.MetroArea>();
 
                 _logger.LogInformation(
                     "UpdatePreferredMetroAreas: Shadow navigation loaded - CurrentCount={CurrentCount}",

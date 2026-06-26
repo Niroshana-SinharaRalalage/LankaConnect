@@ -95,7 +95,7 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .HasForeignKey(t => t.EventId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<LankaConnect.Domain.Users.User>()
+        builder.HasOne<LankaConnect.Modules.Identity.Domain.Entities.User>()
             .WithMany()
             .HasForeignKey(t => t.UserId)
             .OnDelete(DeleteBehavior.SetNull);

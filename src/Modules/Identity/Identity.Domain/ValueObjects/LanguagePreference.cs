@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 
-namespace LankaConnect.Domain.Users.ValueObjects;
+namespace LankaConnect.Modules.Identity.Domain.ValueObjects;
 
 /// <summary>
 /// Language preference value object combining language code and proficiency level

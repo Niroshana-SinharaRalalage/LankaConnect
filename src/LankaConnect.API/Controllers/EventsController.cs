@@ -117,7 +117,7 @@ using LankaConnect.Application.Events.Commands.ScanTicket; // Phase 6A.141
 using LankaConnect.Application.Events.Queries.GetTicketTiers;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Shared.Enums;
 

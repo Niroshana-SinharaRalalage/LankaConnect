@@ -1,8 +1,9 @@
 using LankaConnect.BuildingBlocks.Application.Abstractions;
 using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Enums;
 
-namespace LankaConnect.Domain.Users;
+namespace LankaConnect.Modules.Identity.Domain.Repositories;
 
 /// <summary>
 /// Repository for the <see cref="User"/> aggregate. W3B (2026-06-05) migrated from

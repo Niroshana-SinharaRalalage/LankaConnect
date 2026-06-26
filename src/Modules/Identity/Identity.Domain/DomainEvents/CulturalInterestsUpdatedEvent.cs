@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users.ValueObjects;
+using LankaConnect.Modules.Identity.Domain.ValueObjects;
 
-namespace LankaConnect.Domain.Users.DomainEvents;
+namespace LankaConnect.Modules.Identity.Domain.DomainEvents;
 
 /// <summary>
 /// Domain event raised when user's cultural interests are updated

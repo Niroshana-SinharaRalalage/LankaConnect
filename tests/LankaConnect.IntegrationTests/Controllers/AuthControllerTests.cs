@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.IntegrationTests.Common;
 using LankaConnect.Application.Common.Interfaces;
 

@@ -1,7 +1,10 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -10,12 +13,12 @@ namespace LankaConnect.Modules.Identity.Application.Commands.Users.CreateUser;
 
 public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Guid>
 {
-    private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
+    private readonly LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository _userRepository;
     private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateUserCommandHandler> _logger;
 
     public CreateUserCommandHandler(
-        LankaConnect.Domain.Users.IUserRepository userRepository,
+        LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository userRepository,
         LankaConnect.Domain.Common.IUnitOfWork unitOfWork,
         ILogger<CreateUserCommandHandler> logger)
     {

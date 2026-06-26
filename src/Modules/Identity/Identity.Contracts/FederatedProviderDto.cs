@@ -1,7 +1,7 @@
 namespace LankaConnect.Modules.Identity.Contracts;
 
 /// <summary>
-/// Cross-module mirror of <c>LankaConnect.Domain.Users.Enums.FederatedProvider</c>.
+/// Cross-module mirror of <c>LankaConnect.Modules.Identity.Domain.Enums.FederatedProvider</c>.
 /// Identifies the upstream OAuth/OIDC provider for SSO-provisioned accounts.
 /// </summary>
 /// <remarks>

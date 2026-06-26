@@ -14,7 +14,7 @@ using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUserDetail
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUsersPaged;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUserStatistics;
 using LankaConnect.Application.Communications.Commands.SendEmailVerification;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 
 namespace LankaConnect.API.Controllers;
 

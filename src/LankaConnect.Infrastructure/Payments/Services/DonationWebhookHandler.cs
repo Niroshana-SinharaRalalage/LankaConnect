@@ -1,7 +1,7 @@
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;

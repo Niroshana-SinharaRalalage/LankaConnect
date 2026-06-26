@@ -4,15 +4,18 @@ using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Users.ValueObjects;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 
 public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUserResponse>>
 {
-    private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
+    private readonly LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository _userRepository;
     private readonly IPasswordHashingService _passwordHashingService;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
@@ -20,7 +23,7 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
     private readonly ILogger<LoginUserHandler> _logger;
 
     public LoginUserHandler(
-        LankaConnect.Domain.Users.IUserRepository userRepository,
+        LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository userRepository,
         IPasswordHashingService passwordHashingService,
         IJwtTokenService jwtTokenService,
         LankaConnect.Domain.Common.IUnitOfWork unitOfWork,
@@ -172,7 +175,7 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
                 var refreshTokenDays = request.RememberMe ? 30 : 7;
                 var refreshTokenExpiry = DateTime.UtcNow.AddDays(refreshTokenDays);
 
-                var refreshToken = Domain.Users.ValueObjects.RefreshToken.Create(
+                var refreshToken = LankaConnect.Modules.Identity.Domain.ValueObjects.RefreshToken.Create(
                     refreshTokenResult.Value,
                     refreshTokenExpiry,
                     request.IpAddress ?? "unknown");

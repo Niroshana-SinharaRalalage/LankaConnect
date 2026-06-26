@@ -1,7 +1,7 @@
 namespace LankaConnect.Modules.Identity.Contracts;
 
 /// <summary>
-/// Cross-module mirror of <c>LankaConnect.Domain.Users.Enums.UserRole</c>.
+/// Cross-module mirror of <c>LankaConnect.Modules.Identity.Domain.Enums.UserRole</c>.
 /// Deliberately duplicated at the Contracts boundary per the W4.4 / W5.4
 /// precedent - Contracts must not pull <c>LankaConnect.Domain</c>. Mapping is
 /// 1:1 on the underlying byte value, so the projection is a pure cast at the

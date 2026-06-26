@@ -3,7 +3,7 @@ using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Modules.Identity.Application.EventHandlers;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using FluentAssertions;

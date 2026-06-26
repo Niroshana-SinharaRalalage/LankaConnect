@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 
-namespace LankaConnect.Domain.Users.DomainEvents;
+namespace LankaConnect.Modules.Identity.Domain.DomainEvents;
 
 /// <summary>
 /// Domain event raised when a user unlinks an external social provider from their account

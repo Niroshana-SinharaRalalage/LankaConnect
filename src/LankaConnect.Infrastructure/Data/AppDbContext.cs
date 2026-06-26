@@ -4,9 +4,11 @@ using Microsoft.EntityFrameworkCore;
 // extractions and the Wave 4.9.3/4.9.4 schema renames. AppDbContext does not
 // configure or reference them.
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Business;
@@ -367,7 +369,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // honored. Phase 1.2-1.10 will each add one type to this allowlist.
         var phase1RelaxedTypes = new HashSet<Type>
         {
-            typeof(LankaConnect.Domain.Users.User),                          // Phase 1.1 (Wave4.9.2.1, 2026-06-08): identity.users
+            typeof(LankaConnect.Modules.Identity.Domain.Entities.User),                          // Phase 1.1 (Wave4.9.2.1, 2026-06-08): identity.users
             typeof(LankaConnect.Domain.Tax.StateTaxRate),                    // Phase 1.2 (Wave4.9.2.2, 2026-06-08): reference_data.state_tax_rates
             typeof(LankaConnect.Domain.Badges.Badge),                        // Phase 1.3 (Wave4.9.2.3, 2026-06-08): badges.badges
             typeof(LankaConnect.Domain.Events.Entities.EventBadge),          // Phase 1.3 (Wave4.9.2.3, 2026-06-08): badges.event_badges

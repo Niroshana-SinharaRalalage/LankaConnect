@@ -101,7 +101,7 @@ public class TicketScanLogConfiguration : IEntityTypeConfiguration<TicketScanLog
         // FK to User (scanner) — Restrict for the same reason. If we ever soft-delete a
         // user, the audit log still references them by ID; the denormalized scanner_name
         // is the forensic display value.
-        builder.HasOne<LankaConnect.Domain.Users.User>()
+        builder.HasOne<LankaConnect.Modules.Identity.Domain.Entities.User>()
             .WithMany()
             .HasForeignKey(l => l.ScannerUserId)
             .OnDelete(DeleteBehavior.Restrict);

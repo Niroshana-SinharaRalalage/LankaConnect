@@ -3,7 +3,10 @@ using LankaConnect.Application.Badges.DTOs;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
 
 namespace LankaConnect.Application.Badges.Queries.GetBadges;
 

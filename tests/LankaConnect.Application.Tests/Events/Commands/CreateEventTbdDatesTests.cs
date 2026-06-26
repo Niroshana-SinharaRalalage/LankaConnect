@@ -5,11 +5,13 @@ using LankaConnect.Application.Events.Commands.CreateEvent;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services;
-using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;

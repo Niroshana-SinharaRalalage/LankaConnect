@@ -1,5 +1,5 @@
 using FluentValidation;
-using LankaConnect.Domain.Users.ValueObjects;
+using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Application.Communications.Queries.GetEmailStatus;

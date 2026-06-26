@@ -2,7 +2,6 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Communications.ValueObjects;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
 
 namespace LankaConnect.Domain.Communications.Entities;
 

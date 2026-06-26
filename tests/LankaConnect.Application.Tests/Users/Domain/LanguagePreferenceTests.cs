@@ -1,6 +1,6 @@
 using FluentAssertions;
-using LankaConnect.Domain.Users.Enums;
-using LankaConnect.Domain.Users.ValueObjects;
+using LankaConnect.Modules.Identity.Domain.Enums;
+using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Users.ValueObjects;

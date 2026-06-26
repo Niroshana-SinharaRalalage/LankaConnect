@@ -8,7 +8,7 @@ using LankaConnect.Infrastructure.Data.Repositories;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.ValueObjects;
 using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Users.ValueObjects;
+using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Domain.Common;
 using Serilog;
 using Serilog.Extensions.Logging;

@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;

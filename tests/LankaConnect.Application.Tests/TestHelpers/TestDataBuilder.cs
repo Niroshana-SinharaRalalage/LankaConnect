@@ -7,8 +7,11 @@ using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.Enums;
 using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Users.ValueObjects;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using AutoFixture;
 
@@ -121,7 +124,7 @@ public static class TestDataBuilder
     public static User CreateUserWithLocation()
     {
         var user = CreateValidUser();
-        var location = LankaConnect.Domain.Users.ValueObjects.UserLocation.Create("New York", "NY", "10001", "USA").Value;
+        var location = LankaConnect.Modules.Identity.Domain.ValueObjects.UserLocation.Create("New York", "NY", "10001", "USA").Value;
         user.UpdateLocation(location);
         return user;
     }
@@ -129,11 +132,11 @@ public static class TestDataBuilder
     public static User CreateUserWithCulturalInterests()
     {
         var user = CreateValidUser();
-        var interests = new List<LankaConnect.Domain.Users.ValueObjects.CulturalInterest>
+        var interests = new List<LankaConnect.Modules.Identity.Domain.ValueObjects.CulturalInterest>
         {
-            LankaConnect.Domain.Users.ValueObjects.CulturalInterest.SriLankanCuisine,
-            LankaConnect.Domain.Users.ValueObjects.CulturalInterest.BuddhistFestivals,
-            LankaConnect.Domain.Users.ValueObjects.CulturalInterest.CricketCulture
+            LankaConnect.Modules.Identity.Domain.ValueObjects.CulturalInterest.SriLankanCuisine,
+            LankaConnect.Modules.Identity.Domain.ValueObjects.CulturalInterest.BuddhistFestivals,
+            LankaConnect.Modules.Identity.Domain.ValueObjects.CulturalInterest.CricketCulture
         };
         user.UpdateCulturalInterests(interests);
         return user;
@@ -142,14 +145,14 @@ public static class TestDataBuilder
     public static User CreateUserWithLanguages()
     {
         var user = CreateValidUser();
-        var languages = new List<LankaConnect.Domain.Users.ValueObjects.LanguagePreference>
+        var languages = new List<LankaConnect.Modules.Identity.Domain.ValueObjects.LanguagePreference>
         {
-            LankaConnect.Domain.Users.ValueObjects.LanguagePreference.Create(
-                LankaConnect.Domain.Users.ValueObjects.LanguageCode.English,
-                LankaConnect.Domain.Users.Enums.ProficiencyLevel.Advanced).Value,
-            LankaConnect.Domain.Users.ValueObjects.LanguagePreference.Create(
-                LankaConnect.Domain.Users.ValueObjects.LanguageCode.Sinhala,
-                LankaConnect.Domain.Users.Enums.ProficiencyLevel.Native).Value
+            LankaConnect.Modules.Identity.Domain.ValueObjects.LanguagePreference.Create(
+                LankaConnect.Modules.Identity.Domain.ValueObjects.LanguageCode.English,
+                LankaConnect.Modules.Identity.Domain.Enums.ProficiencyLevel.Advanced).Value,
+            LankaConnect.Modules.Identity.Domain.ValueObjects.LanguagePreference.Create(
+                LankaConnect.Modules.Identity.Domain.ValueObjects.LanguageCode.Sinhala,
+                LankaConnect.Modules.Identity.Domain.Enums.ProficiencyLevel.Native).Value
         };
         user.UpdateLanguages(languages);
         return user;

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
-using IUserRepository = LankaConnect.Domain.Users.IUserRepository;
+using IUserRepository = LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository;
 using IUserEmailPreferencesRepository = LankaConnect.Application.Common.Interfaces.IUserEmailPreferencesRepository;
 using Serilog.Context;
 
@@ -132,7 +132,7 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
     }
 
     private async Task<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> CreateDefaultPreferencesAsync(
-        LankaConnect.Domain.Users.User user, CancellationToken cancellationToken)
+        LankaConnect.Modules.Identity.Domain.Entities.User user, CancellationToken cancellationToken)
     {
         var createResult = LankaConnect.Domain.Communications.Entities.UserEmailPreferences.Create(user.Id);
         if (!createResult.IsSuccess)
@@ -148,7 +148,7 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
         return defaultPreferences;
     }
 
-    private static DateTime? GetLastVerificationSentDate(LankaConnect.Domain.Users.User user)
+    private static DateTime? GetLastVerificationSentDate(LankaConnect.Modules.Identity.Domain.Entities.User user)
     {
         // Calculate when verification token was created (tokens expire after 24 hours)
         if (user.EmailVerificationTokenExpiresAt.HasValue)
@@ -158,7 +158,7 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
         return null;
     }
 
-    private static int GetVerificationAttempts(LankaConnect.Domain.Users.User user)
+    private static int GetVerificationAttempts(LankaConnect.Modules.Identity.Domain.Entities.User user)
     {
         // This would need to be tracked in the domain or retrieved from email logs
         // For now, return a default value

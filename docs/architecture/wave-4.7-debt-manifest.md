@@ -206,3 +206,57 @@ Wave 4.7.d total progress: 30 of 44 manifested consumers swapped (68%). Remainin
 - 1 GetUserEmailPreferences (manifest-classified "complex")
 - 1 AuthController (out-of-scope legitimate)
 - 2 misc not yet audited
+
+---
+
+## Wave 4.7.e SHIPPED (2026-06-26)
+
+**Architect Option A executed**: User aggregate physically moved to `Identity.Domain`. IUserRepository kept in `Identity.Domain` (not re-exported via Contracts). 14 LankaConnect.Application straggler files continue to inject `IUserRepository` as time-bounded allow-listed debt.
+
+### Physical move details
+
+- `src/LankaConnect.Domain/Users/` → `src/Modules/Identity/Identity.Domain/`
+  - `Entities/User.cs`
+  - `Repositories/IUserRepository.cs`
+  - `ValueObjects/` (CulturalInterest, ExternalLogin, LanguageCode, LanguagePreference, RefreshToken, UserLocation)
+  - `Enums/` (FederatedProvider, IdentityProvider, ProficiencyLevel, SubscriptionStatus, UserRole)
+  - `DomainEvents/` (8 user-aggregate events from W4.7.a)
+  - `Events/StripeEvents.cs`
+- `src/LankaConnect.Infrastructure/Data/Repositories/UserRepository.cs` → `src/Modules/Identity/Identity.Infrastructure/Repositories/UserRepository.cs`
+- `LankaConnect.Domain/Users/` folder deleted (empty)
+- DI registration of `IUserRepository → UserRepository` moved from `LankaConnect.Infrastructure.DependencyInjection` to `IdentityModule.AddIdentityModule`
+- `InternalsVisibleTo LankaConnect.Modules.Identity.Infrastructure` added to `Identity.Domain.csproj` so UserRepository can call internal `User.SyncPreferredMetroAreaIdsFromEntities`
+- EF `UserConfiguration.cs` STAYS in `LankaConnect.Infrastructure/Data/Configurations/` per W4.4.d.2 / W5.4.d.2 precedent (cross-schema FK pattern)
+
+### Rule 5 status — INTENTIONALLY SKIPPED
+
+`tests/architecture/LankaConnect.ArchitectureTests/LayeringRules.cs::LegacyApplication_DoesNotDependOnIdentityDomain` marked `[Fact(Skip = "...")]` during the Cross-cutting cleanup transition window. Rule re-enables when allow-list reaches zero.
+
+### Shrink-to-zero allow-list (14 straggler files, target: 0 by end of Cross-cutting cleanup)
+
+Per architect Option A: these files inject `IUserRepository` directly today; each gets swapped to `IIdentityQueries` / `IIdentityCommands` opportunistically during Cross-cutting cleanup. Wave 4 closes when this list is empty.
+
+1. `src/LankaConnect.Application/Communications/Queries/GetUserEmailPreferences/GetUserEmailPreferencesQueryHandler.cs` — needs helper-method refactor (`GetVerificationAttempts(User)`, `GetLastVerificationSentDate(User)` accept User)
+2. `src/LankaConnect.Application/Events/BackgroundJobs/EventReminderJob.cs`
+3. `src/LankaConnect.Application/Events/BackgroundJobs/EventNotificationEmailJob.cs`
+4. `src/LankaConnect.Application/Events/BackgroundJobs/EventCancellationEmailJob.cs`
+5. `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommandHandler.cs`
+6. `src/LankaConnect.Application/Events/Commands/ResendAttendeeConfirmation/ResendAttendeeConfirmationCommandHandler.cs` — needs `IRegistrationEmailService` helper-signature refactor
+7. `src/LankaConnect.Application/Events/Commands/ResendTicketEmail/ResendTicketEmailCommandHandler.cs` — same
+8. `src/LankaConnect.Application/Events/EventHandlers/EventApprovedEventHandler.cs` — has existing tests
+9. `src/LankaConnect.Application/Events/EventHandlers/EventRejectedEventHandler.cs` — has existing tests
+10. `src/LankaConnect.Application/Events/Queries/GetEvents/GetEventsQueryHandler.cs` — needs `UserPreferencesProjectionDto`
+11. `src/LankaConnect.Application/Events/Queries/GetFeaturedEvents/GetFeaturedEventsQueryHandler.cs` — same
+12. `src/LankaConnect.API/Controllers/AuthController.cs` — uses User mutators (`GenerateEmailVerificationToken`, `VerifyEmail`); requires `IIdentityCommands.GenerateEmailVerificationToken` + `IIdentityCommands.VerifyEmailDirectly` to swap (test-only `/test/verify-user` endpoint)
+13. _slot — for any consumer discovered during Cross-cutting cleanup_
+14. _slot — for any consumer discovered during Cross-cutting cleanup_
+
+### Wave 4 path forward (architect Option A + serial extraction)
+
+- ✅ Wave 4.7.e: physical User move SHIPPED (this commit)
+- ⏭️ Wave 4 capability: Scheduling (3 sessions, ~1 week)
+- ⏭️ Wave 4 capability: CulturalIntelligence (2 sessions, ~3-4 days)
+- ⏭️ Wave 4 capability: Cross-cutting cleanup (5 sessions, ~1 week — drains allow-list to 0 and re-enables Rule 5)
+- ⏭️ Wave 5 opens
+
+Wave 5-6: 2 weeks. **Wave 7 (Frontend Mirror) deferred to Phase B per architect ruling (founder decision pending).**

@@ -4,9 +4,12 @@ using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Domain.Shared.ValueObjects;
-using DomainUserRepository = LankaConnect.Domain.Users.IUserRepository;
+using DomainUserRepository = LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository;
 using DomainUnitOfWork = LankaConnect.Domain.Common.IUnitOfWork;
 
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LogoutUser;

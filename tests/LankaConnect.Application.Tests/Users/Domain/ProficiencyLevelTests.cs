@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Domain.Users.Enums;
+using LankaConnect.Modules.Identity.Domain.Enums;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Users.Enums;

@@ -2,10 +2,12 @@ using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo int
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Shared.Email.Helpers;

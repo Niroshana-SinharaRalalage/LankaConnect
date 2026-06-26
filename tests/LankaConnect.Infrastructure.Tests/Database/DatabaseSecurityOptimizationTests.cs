@@ -12,7 +12,7 @@ using System.Text;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Common.Notifications;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Common.Database;
 using LankaConnect.Infrastructure.Database;

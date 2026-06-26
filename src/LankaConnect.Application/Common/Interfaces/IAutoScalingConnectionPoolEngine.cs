@@ -11,7 +11,7 @@ using LankaConnect.Domain.Shared.Types;
 using LankaConnect.Domain.Infrastructure.Failover;
 using LankaConnect.Domain.Common.Enums;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events moved here
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Infrastructure;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Enterprise;

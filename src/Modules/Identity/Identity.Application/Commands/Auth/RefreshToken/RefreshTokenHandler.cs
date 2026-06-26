@@ -4,15 +4,18 @@ using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Users.ValueObjects;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RefreshToken;
 
 public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<RefreshTokenResponse>>
 {
-    private readonly LankaConnect.Domain.Users.IUserRepository _userRepository;
+    private readonly LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository _userRepository;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
     private readonly ITokenConfiguration _tokenConfiguration;
@@ -138,7 +141,7 @@ public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<R
                     // Create and add new refresh token
                     var newRefreshTokenExpiry = DateTime.UtcNow.AddDays(_tokenConfiguration.RefreshTokenExpirationDays);
 
-                    var newRefreshToken = Domain.Users.ValueObjects.RefreshToken.Create(
+                    var newRefreshToken = LankaConnect.Modules.Identity.Domain.ValueObjects.RefreshToken.Create(
                         newRefreshTokenResult.Value,
                         newRefreshTokenExpiry,
                         request.IpAddress ?? "unknown");

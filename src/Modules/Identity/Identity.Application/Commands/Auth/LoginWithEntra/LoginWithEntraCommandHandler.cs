@@ -4,9 +4,12 @@ using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Users.Enums;
-using RefreshTokenVO = LankaConnect.Domain.Users.ValueObjects.RefreshToken;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Domain.Enums;
+using RefreshTokenVO = LankaConnect.Modules.Identity.Domain.ValueObjects.RefreshToken;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;

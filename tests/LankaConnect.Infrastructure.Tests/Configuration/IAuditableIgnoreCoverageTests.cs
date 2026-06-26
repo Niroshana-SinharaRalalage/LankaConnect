@@ -108,7 +108,7 @@ public sealed class IAuditableIgnoreCoverageTests
     private static readonly HashSet<Type> Phase1RelaxedTypes = new()
     {
         // Wave4.9.2.1 Phase 1.1 (2026-06-08): identity.users
-        typeof(LankaConnect.Domain.Users.User),
+        typeof(LankaConnect.Modules.Identity.Domain.Entities.User),
         // Wave4.9.2.2 Phase 1.2 (2026-06-08): reference_data.state_tax_rates
         typeof(LankaConnect.Domain.Tax.StateTaxRate),
         // Wave4.9.2.3 Phase 1.3 (2026-06-08): badges.badges + badges.event_badges

@@ -163,7 +163,7 @@ public class NewsletterConfiguration : IEntityTypeConfiguration<Newsletter>
                 });
 
         // Foreign key to users table
-        builder.HasOne<Domain.Users.User>()
+        builder.HasOne<LankaConnect.Modules.Identity.Domain.Entities.User>()
             .WithMany()
             .HasForeignKey(n => n.CreatedByUserId)
             .OnDelete(DeleteBehavior.Restrict); // Don't cascade delete newsletters when user is deleted

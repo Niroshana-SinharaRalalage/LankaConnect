@@ -13,7 +13,10 @@ using LankaConnect.Application.Communications.Commands.ResetPassword;
 using LankaConnect.Application.Communications.Commands.VerifyEmail;
 using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.API.Filters;
-using LankaConnect.Domain.Users;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Domain.Common;
 
 namespace LankaConnect.API.Controllers;

@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Users.DomainEvents;
+namespace LankaConnect.Modules.Identity.Domain.DomainEvents;
 
 /// <summary>
 /// Raised when a member requests email verification (signup or resend).

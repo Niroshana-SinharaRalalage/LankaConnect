@@ -169,3 +169,40 @@ Same finding likely applies to Category B (15 EventHandlers) — each consumer t
 - STAGING-VERIFIED (Login 200 + GET event detail 200)
 
 Wave 4.7.b/c/d/e/f remain queued. Wave 5 still gated on full manifest drain.
+
+---
+
+## Wave 4.7.d.4 finding (2026-06-26)
+
+Attempted to swap the 3 remaining BG jobs (EventReminder / EventNotificationEmail / EventCancellationEmail) + CreateEventCommandHandler in a single batch. All 4 source-side swaps were clean (mechanical sed), but cascaded into **7 test fixture files**:
+
+- `tests/.../Events/BackgroundJobs/EventReminderJobTests.cs`
+- `tests/.../Events/BackgroundJobs/EventNotificationEmailJobTests.cs`
+- `tests/.../Events/BackgroundJobs/EventCancellationEmailJobAutoRefundTests.cs`
+- `tests/.../Events/Commands/CreateEventIsFreeTests.cs`
+- `tests/.../Events/Commands/CreateEventSecondaryLocationTests.cs`
+- `tests/.../Events/Commands/CreateEventTbdDatesTests.cs`
+- `tests/.../Events/Commands/CreateEventTimezoneTests.cs`
+
+Each needs `Mock<IUserRepository>` → `Mock<IIdentityQueries>` + the `CreateTestUser` helpers rewritten to return `UserSummaryDto`/`UserContactDto` (each test builds a real `User.Create(...).Value` aggregate, sometimes 2+ users per test). Estimated 30-45 min per file × 7 = **3.5-5 hours** of test fixture work to ship these 4 source files cleanly.
+
+The 4 source swaps were reverted at the end of 4.7.d.3 session. Deferred to Wave 4.7.d.5 as a single focused batch. Build is green at commit `3cee606e`.
+
+---
+
+## Out-of-scope discoveries
+
+These 2 consumers were initially manifested as Cat C swaps but found to be **legitimate IUserRepository users** during 4.7.d.3 execution. They will continue to inject `IUserRepository` until Wave 4.7.e physically moves it:
+
+- `src/LankaConnect.API/Controllers/AuthController.cs` — uses `user.GenerateEmailVerificationToken()` + `user.VerifyEmail(...)` mutators in a `/test/verify-user` endpoint (test-only). DTOs are read-only; can't expose mutators through the IIdentityQueries surface.
+
+These are not blockers for the physical User move because the consumer is INSIDE the API host (not a cross-module call). After 4.7.e, AuthController would either use `IIdentityCommands` (if test endpoint kept) or be deleted entirely (test-only endpoints typically don't survive the cleanup wave).
+
+Wave 4.7.d total progress: 30 of 44 manifested consumers swapped (68%). Remaining 14 split:
+- 4 BG jobs / CreateEvent (deferred to 4.7.d.5 — needs 3.5-5h test fixture batch)
+- 2 Get*Events queries (need UserPreferencesProjectionDto — Cat A cluster DTO)
+- 2 EventHandlers with existing tests (EventApproved, EventRejected)
+- 2 commands needing helper refactor (ResendAttendeeConfirmation, ResendTicketEmail → IRegistrationEmailService)
+- 1 GetUserEmailPreferences (manifest-classified "complex")
+- 1 AuthController (out-of-scope legitimate)
+- 2 misc not yet audited

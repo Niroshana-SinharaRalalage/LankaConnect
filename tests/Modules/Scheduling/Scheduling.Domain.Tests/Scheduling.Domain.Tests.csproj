@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>LankaConnect.Modules.Scheduling.Domain.Tests</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Scheduling.Domain.Tests</AssemblyName>
+    <Description>Unit tests for the Scheduling module Domain layer. Wave 4.8.a (2026-06-26) — pinning tests for the 5 reusable scheduling primitives (ScheduledOccurrence, RecurrenceRule, CapacityRule, WaitlistPolicy, RsvpIntent).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Modules\Scheduling\Scheduling.Domain\Scheduling.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

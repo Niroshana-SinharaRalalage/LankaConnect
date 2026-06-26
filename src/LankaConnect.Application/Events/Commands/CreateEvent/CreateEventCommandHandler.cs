@@ -8,10 +8,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services; // Phase 6A.X: Revenue breakdown
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
-using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Modules.Identity.Domain.Enums;
+using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -21,7 +18,7 @@ namespace LankaConnect.Application.Events.Commands.CreateEvent;
 public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Guid>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.1
     private readonly IApplicationDbContext _dbContext; // legacy injection (unused after W5.4.d.1 but kept for DI compatibility until W5.4.d.3 cleanup)
@@ -31,7 +28,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IUnitOfWork unitOfWork,
         IEmailGroupQueries emailGroupQueries, // Wave 5.4.d.1
         IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
@@ -40,7 +37,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         ILogger<CreateEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _unitOfWork = unitOfWork;
         _emailGroupQueries = emailGroupQueries;
         _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
@@ -68,7 +65,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Validate user can create events based on role
-                var user = await _userRepository.GetByIdAsync(request.OrganizerId, cancellationToken);
+                var user = await _identityQueries.GetUserByIdAsync(request.OrganizerId, cancellationToken);
                 if (user == null)
                 {
                     stopwatch.Stop();
@@ -81,7 +78,13 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 }
 
                 // Check if user has permission to create events (EventOrganizer or Admin roles)
-                if (!user.Role.CanCreateEvents())
+                // Wave 4.10.s1 (2026-06-26): UserRole.CanCreateEvents() extension lives in Identity.Domain
+                // (legitimate inline copy via UserRoleDto to keep Application layer free of Identity.Domain refs).
+                var canCreate = user.Role == UserRoleDto.EventOrganizer
+                    || user.Role == UserRoleDto.EventOrganizerAndBusinessOwner
+                    || user.Role == UserRoleDto.Admin
+                    || user.Role == UserRoleDto.AdminManager;
+                if (!canCreate)
                 {
                     stopwatch.Stop();
 

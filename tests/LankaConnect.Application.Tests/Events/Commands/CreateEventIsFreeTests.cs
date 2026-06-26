@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using FluentAssertions;
 using LankaConnect.Modules.Communications.Contracts;
 using LankaConnect.Application.Common.Interfaces;
@@ -29,7 +30,7 @@ namespace LankaConnect.Application.Tests.Events.Commands;
 public class CreateEventIsFreeTests
 {
     private readonly Mock<IEventRepository> _mockEventRepository;
-    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IIdentityQueries> _mockIdentityQueries;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IEmailGroupQueries> _mockEmailGroupRepository;
     private readonly Mock<IApplicationDbContext> _mockDbContext;
@@ -40,7 +41,7 @@ public class CreateEventIsFreeTests
     public CreateEventIsFreeTests()
     {
         _mockEventRepository = new Mock<IEventRepository>();
-        _mockUserRepository = new Mock<IUserRepository>();
+        _mockIdentityQueries = new Mock<IIdentityQueries>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockEmailGroupRepository = new Mock<IEmailGroupQueries>();
         _mockDbContext = new Mock<IApplicationDbContext>();
@@ -53,7 +54,7 @@ public class CreateEventIsFreeTests
     {
         return new CreateEventCommandHandler(
             _mockEventRepository.Object,
-            _mockUserRepository.Object,
+            _mockIdentityQueries.Object,
             _mockUnitOfWork.Object,
             _mockEmailGroupRepository.Object,
             _mockDbContext.Object,
@@ -62,20 +63,27 @@ public class CreateEventIsFreeTests
             _mockLogger.Object);
     }
 
-    private User CreateOrganizerUser(Guid userId)
+    private UserSummaryDto CreateOrganizerUser(Guid userId)
     {
-        var email = Email.Create("organizer@test.com").Value;
-        var user = User.Create(email, "Test", "Organizer", UserRole.EventOrganizer).Value;
-        typeof(User).GetProperty("Id")?.SetValue(user, userId);
-        return user;
+        return new UserSummaryDto(
+            Id: userId,
+            Email: "organizer@test.com",
+            FirstName: "Test",
+            LastName: "Organizer",
+            DisplayName: "Test Organizer",
+            Role: UserRoleDto.EventOrganizer,
+            Status: UserStatusDto.Active,
+            EmailVerified: true,
+            CreatedAt: System.DateTime.UtcNow,
+            UpdatedAt: null);
     }
 
     private void SetupStandardMocks(Guid organizerId)
     {
         var user = CreateOrganizerUser(organizerId);
 
-        _mockUserRepository
-            .Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries
+            .Setup(x => x.GetUserByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _mockTimeZoneLookupService

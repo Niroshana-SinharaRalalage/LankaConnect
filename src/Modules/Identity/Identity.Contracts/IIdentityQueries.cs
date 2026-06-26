@@ -136,6 +136,18 @@ public interface IIdentityQueries
         CancellationToken ct = default);
 
     /// <summary>
+    /// Cross-module projection of a user's location-city + location-state +
+    /// preferred-metro-area-IDs cluster. Consumed by the Events.Queries
+    /// GetEventsQueryHandler + GetFeaturedEventsQueryHandler recommendation
+    /// paths. Wave 4.10.s1 (2026-06-26). Returns <c>null</c> when no user row
+    /// exists for <paramref name="id"/>; consumers must treat null as "no
+    /// preferences" and fall back to the un-personalized event list.
+    /// </summary>
+    Task<UserPreferencesProjectionDto?> GetPreferencesAsync(
+        Guid id,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Admin user-list paging endpoint. Filter by role + active flag; search
     /// applies to email + display name. Returns the page slice + total count
     /// for the table pager.

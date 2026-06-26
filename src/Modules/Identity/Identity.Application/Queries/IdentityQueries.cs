@@ -133,6 +133,17 @@ public sealed class IdentityQueries : IIdentityQueries
         return user?.ToContactDto();
     }
 
+    public async Task<UserPreferencesProjectionDto?> GetPreferencesAsync(Guid id, CancellationToken ct = default)
+    {
+        var user = await _userRepository.GetByIdAsync(id, ct);
+        if (user is null) return null;
+        return new UserPreferencesProjectionDto(
+            UserId: user.Id,
+            PreferredMetroAreaIds: user.PreferredMetroAreaIds.ToList(),
+            LocationCity: user.Location?.City,
+            LocationState: user.Location?.State);
+    }
+
     public async Task<(IReadOnlyList<UserSummaryDto> Items, int TotalCount)> GetPagedAsync(
         int page,
         int pageSize,

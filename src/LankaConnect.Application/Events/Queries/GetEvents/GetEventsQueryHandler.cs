@@ -8,7 +8,6 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -24,7 +23,7 @@ namespace LankaConnect.Application.Events.Queries.GetEvents;
 public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList<EventDto>>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentUserService _currentUserService; // Phase 6A.133: Multi-organizer
@@ -33,7 +32,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
 
     public GetEventsQueryHandler(
         IEventRepository eventRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IRegistrationRepository registrationRepository,
         IApplicationDbContext dbContext,
         ICurrentUserService currentUserService, // Phase 6A.133: Multi-organizer
@@ -41,7 +40,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         ILogger<GetEventsQueryHandler> logger)
     {
         _eventRepository = eventRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _registrationRepository = registrationRepository;
         _dbContext = dbContext;
         _currentUserService = currentUserService;
@@ -478,7 +477,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         // PRIORITY 2: Get events from preferred metro areas (for authenticated users without explicit filter)
         else if (request.UserId.HasValue)
         {
-            var user = await _userRepository.GetByIdAsync(request.UserId.Value, cancellationToken);
+            var user = await _identityQueries.GetPreferencesAsync(request.UserId.Value, cancellationToken);
             if (user != null && user.PreferredMetroAreaIds.Any())
             {
                 var metroSortedEvents = await SortEventsByMetroAreasAsync(
@@ -492,11 +491,11 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
             }
 
             // PRIORITY 3: If user exists, sort remaining by user's home location
-            if (user != null && user.Location != null && remainingEvents.Any())
+            if (user != null && user.LocationCity != null && user.LocationState != null && remainingEvents.Any())
             {
                 var homeCoordinates = await GetMetroAreaCoordinatesByCityStateAsync(
-                    user.Location.City,
-                    user.Location.State,
+                    user.LocationCity,
+                    user.LocationState,
                     cancellationToken);
 
                 if (homeCoordinates.HasValue)

@@ -25,7 +25,7 @@ namespace LankaConnect.Application.Tests.Events.Queries;
 public class GetEventsQueryHandlerTests
 {
     private readonly Mock<IEventRepository> _mockEventRepository;
-    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IIdentityQueries> _mockIdentityQueries;
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepository;
     private readonly Mock<IApplicationDbContext> _mockDbContext;
     private readonly Mock<ICurrentUserService> _mockCurrentUserService;
@@ -36,7 +36,7 @@ public class GetEventsQueryHandlerTests
     public GetEventsQueryHandlerTests()
     {
         _mockEventRepository = new Mock<IEventRepository>();
-        _mockUserRepository = new Mock<IUserRepository>();
+        _mockIdentityQueries = new Mock<IIdentityQueries>();
         _mockRegistrationRepository = new Mock<IRegistrationRepository>();
         _mockDbContext = new Mock<IApplicationDbContext>();
         _mockCurrentUserService = new Mock<ICurrentUserService>();
@@ -45,7 +45,7 @@ public class GetEventsQueryHandlerTests
 
         _handler = new GetEventsQueryHandler(
             _mockEventRepository.Object,
-            _mockUserRepository.Object,
+            _mockIdentityQueries.Object,
             _mockRegistrationRepository.Object,
             _mockDbContext.Object,
             _mockCurrentUserService.Object,

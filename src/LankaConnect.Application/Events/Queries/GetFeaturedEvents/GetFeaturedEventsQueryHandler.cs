@@ -4,10 +4,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
-using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
-using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -22,7 +19,7 @@ namespace LankaConnect.Application.Events.Queries.GetFeaturedEvents;
 public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuery, IReadOnlyList<EventDto>>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IApplicationDbContext _dbContext;
     private readonly IMapper _mapper;
     private readonly ILogger<GetFeaturedEventsQueryHandler> _logger;
@@ -34,13 +31,13 @@ public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuer
 
     public GetFeaturedEventsQueryHandler(
         IEventRepository eventRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IApplicationDbContext dbContext,
         IMapper mapper,
         ILogger<GetFeaturedEventsQueryHandler> logger)
     {
         _eventRepository = eventRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _dbContext = dbContext;
         _mapper = mapper;
         _logger = logger;
@@ -67,7 +64,7 @@ public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuer
                 // PRIORITY 1: Get events from preferred metro areas (for authenticated users)
                 if (request.UserId.HasValue)
                 {
-                    var user = await _userRepository.GetByIdAsync(request.UserId.Value, cancellationToken);
+                    var user = await _identityQueries.GetPreferencesAsync(request.UserId.Value, cancellationToken);
 
                     _logger.LogInformation(
                         "GetFeaturedEvents: User loaded - UserId={UserId}, HasUser={HasUser}, PreferredMetroCount={PreferredMetroCount}",
@@ -110,15 +107,15 @@ public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuer
                     }
 
                     // PRIORITY 2: If not enough events from preferred metros, try user's home location
-                    if (featuredEvents.Count < MAX_RESULTS && user != null && user.Location != null)
+                    if (featuredEvents.Count < MAX_RESULTS && user != null && user.LocationCity != null && user.LocationState != null)
                     {
                         _logger.LogInformation(
                             "GetFeaturedEvents: Trying user home location - City={City}, State={State}",
-                            user.Location.City, user.Location.State);
+                            user.LocationCity, user.LocationState);
 
                         var homeCoordinates = await GetMetroAreaCoordinatesByCityStateAsync(
-                            user.Location.City,
-                            user.Location.State,
+                            user.LocationCity,
+                            user.LocationState,
                             cancellationToken);
 
                         if (homeCoordinates.HasValue)

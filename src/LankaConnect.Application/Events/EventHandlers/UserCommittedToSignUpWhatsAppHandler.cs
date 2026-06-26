@@ -49,10 +49,10 @@ public class UserCommittedToSignUpWhatsAppHandler : INotificationHandler<DomainE
             {
                 using var scope = _scopeFactory.CreateScope();
                 var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppService>();
-                var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+                var identityQueries = scope.ServiceProvider.GetRequiredService<IIdentityQueries>();
                 var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository>();
 
-                var user = await userRepository.GetByIdAsync(userId, CancellationToken.None);
+                var user = await identityQueries.GetUserByIdAsync(userId, CancellationToken.None);
                 if (user == null)
                 {
                     _logger.LogWarning("[Phase 7A] WhatsApp UserCommittedToSignUp: User not found - UserId={UserId}", userId);

@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
 using System.Diagnostics;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
@@ -9,7 +10,6 @@ using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events m
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Helpers;
 using LankaConnect.Shared.Email.Services;
@@ -29,7 +29,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
 {
     private readonly ITypedEmailService _typedEmailService;
     private readonly ITicketService _ticketService;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IFormQueries _formQueries;
@@ -39,7 +39,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
     public AttendeesAddedEventHandler(
         ITypedEmailService typedEmailService,
         ITicketService ticketService,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IFormQueries formQueries,
@@ -48,7 +48,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
     {
         _typedEmailService = typedEmailService;
         _ticketService = ticketService;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _formQueries = formQueries;
@@ -106,11 +106,11 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
 
                 if (domainEvent.UserId.HasValue)
                 {
-                    var user = await _userRepository.GetByIdAsync(domainEvent.UserId.Value, cancellationToken);
+                    var user = await _identityQueries.GetContactInfoAsync(domainEvent.UserId.Value, cancellationToken);
                     if (user != null)
                     {
                         recipientName = $"{user.FirstName} {user.LastName}";
-                        recipientEmail = user.Email.Value;
+                        recipientEmail = user.Email;
                     }
                     else
                     {

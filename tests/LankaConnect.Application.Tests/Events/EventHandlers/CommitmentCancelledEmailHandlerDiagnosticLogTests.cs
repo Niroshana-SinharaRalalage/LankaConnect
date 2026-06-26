@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Modules.Forms.Domain;
@@ -38,7 +39,7 @@ namespace LankaConnect.Application.Tests.Events.EventHandlers;
 public class CommitmentCancelledEmailHandlerDiagnosticLogTests
 {
     private readonly Mock<IServiceScopeFactory> _scopeFactory;
-    private readonly Mock<IUserRepository> _userRepository;
+    private readonly Mock<IIdentityQueries> _identityQueries;
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IFormQueries> _eventFormRepository;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
@@ -48,7 +49,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
     public CommitmentCancelledEmailHandlerDiagnosticLogTests()
     {
         _scopeFactory = new Mock<IServiceScopeFactory>();
-        _userRepository = new Mock<IUserRepository>();
+        _identityQueries = new Mock<IIdentityQueries>();
         _eventRepository = new Mock<IEventRepository>();
         _eventFormRepository = new Mock<IFormQueries>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
@@ -78,7 +79,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
 
         _handler = new CommitmentCancelledEmailHandler(
             _scopeFactory.Object,
-            _userRepository.Object,
+            _identityQueries.Object,
             _eventRepository.Object,
             _eventFormRepository.Object,
             _emailUrlHelper.Object,
@@ -102,8 +103,8 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
         var user = CreateTestUser(userId, "user@example.com", "Test", "User");
         var @event = CreateTestEvent(eventId, "Diagnostic Log Test Event");
 
-        _userRepository
-            .Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _identityQueries
+            .Setup(x => x.GetContactInfoAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _eventRepository
             .Setup(x => x.GetEventBySignUpListIdAsync(signUpListId, It.IsAny<CancellationToken>()))
@@ -149,7 +150,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
         var user = CreateTestUser(userId, "user@example.com", "Test", "User");
         var @event = CreateTestEvent(eventId, "Another Diagnostic Event");
 
-        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _identityQueries.Setup(x => x.GetContactInfoAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         _eventRepository.Setup(x => x.GetEventBySignUpListIdAsync(signUpListId, It.IsAny<CancellationToken>())).ReturnsAsync(@event);
 
         var domainEvent = new CommitmentCancelledEvent(
@@ -222,12 +223,21 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
         return eventObj;
     }
 
-    private static User CreateTestUser(Guid userId, string email, string firstName, string lastName)
+    private static UserContactDto CreateTestUser(Guid userId, string email, string firstName, string lastName)
     {
-        var userEmail = Email.Create(email).Value;
-        var user = User.Create(userEmail, firstName, lastName).Value;
-        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
-        idProperty?.SetValue(user, userId);
-        return user;
+        return new UserContactDto(
+            Id: userId,
+            Email: email,
+            FirstName: firstName,
+            LastName: lastName,
+            DisplayName: $"{firstName} {lastName}",
+            ProfilePhotoUrl: null,
+            IsActive: true,
+            IsEmailVerified: true,
+            IsAccountLocked: false,
+            Role: UserRoleDto.GeneralUser,
+            EmailVerificationTokenExpiresAt: null,
+            PhoneNumber: null);
     }
+
 }

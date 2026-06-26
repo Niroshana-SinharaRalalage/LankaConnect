@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
 using System.Diagnostics;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
@@ -30,7 +31,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEventNotification<RegistrationConfirmedEvent>>
 {
     private readonly ITypedEmailService _typedEmailService;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IFormQueries _formQueries;
@@ -39,7 +40,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
 
     public RegistrationConfirmedEventHandler(
         ITypedEmailService typedEmailService,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IFormQueries formQueries,
@@ -47,7 +48,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
         ILogger<RegistrationConfirmedEventHandler> logger)
     {
         _typedEmailService = typedEmailService;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _formQueries = formQueries;
@@ -74,7 +75,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 // Retrieve user and event data
-                var user = await _userRepository.GetByIdAsync(domainEvent.AttendeeId, cancellationToken);
+                var user = await _identityQueries.GetContactInfoAsync(domainEvent.AttendeeId, cancellationToken);
                 if (user == null)
                 {
                     stopwatch.Stop();
@@ -150,7 +151,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 eventId: @event.Id,
                 registrationId: registration.Id,
                 userName: $"{user.FirstName} {user.LastName}",
-                userEmail: user.Email.Value,
+                userEmail: user.Email,
                 eventTitle: @event.Title.Value,
                 eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: registration can't fire on TBD today (Register blocks)
                 eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
@@ -224,7 +225,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
 
             _logger.LogInformation(
                 "[Phase 6A.87] Sending free event registration email to {Email}",
-                user.Email.Value);
+                user.Email);
 
             // Phase 6A.100: Send via typed email service
             var typedResult = await _typedEmailService.SendEmailAsync(
@@ -241,13 +242,13 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             {
                 _logger.LogInformation(
                     "[Phase 6A.100] RegistrationConfirmed COMPLETE: Email sent to {Email}, AttendeeCount={AttendeeCount}, Duration={ElapsedMs}ms",
-                    user.Email.Value, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
+                    user.Email, domainEvent.Quantity, stopwatch.ElapsedMilliseconds);
             }
             else
             {
                 _logger.LogError(
                     "[Phase 6A.87] RegistrationConfirmed FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
-                    user.Email.Value, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
+                    user.Email, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
             }
         }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

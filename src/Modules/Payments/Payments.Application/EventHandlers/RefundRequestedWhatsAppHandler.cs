@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Communications.Enums;
@@ -56,10 +57,10 @@ public class RefundRequestedWhatsAppHandler : INotificationHandler<DomainEventNo
             {
                 using var scope = _scopeFactory.CreateScope();
                 var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppService>();
-                var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+                var identityQueries = scope.ServiceProvider.GetRequiredService<IIdentityQueries>();
                 var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository>();
 
-                var user = await userRepository.GetByIdAsync(capturedUserId, CancellationToken.None);
+                var user = await identityQueries.GetUserByIdAsync(capturedUserId, CancellationToken.None);
                 if (user == null)
                 {
                     _logger.LogWarning("[Phase 7A] WhatsApp RefundRequested: User not found - UserId={UserId}", capturedUserId);

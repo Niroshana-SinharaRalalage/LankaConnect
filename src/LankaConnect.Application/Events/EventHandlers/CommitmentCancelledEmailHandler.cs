@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
 using LankaConnect.Application.Common;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common.Helpers;
@@ -33,7 +34,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventNotification<CommitmentCancelledEvent>>
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEventRepository _eventRepository;
     private readonly IFormQueries _formQueries;
     private readonly IEmailUrlHelper _emailUrlHelper;
@@ -41,14 +42,14 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
 
     public CommitmentCancelledEmailHandler(
         IServiceScopeFactory scopeFactory,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEventRepository eventRepository,
         IFormQueries formQueries,
         IEmailUrlHelper emailUrlHelper,
         ILogger<CommitmentCancelledEmailHandler> logger)
     {
         _scopeFactory = scopeFactory;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _eventRepository = eventRepository;
         _formQueries = formQueries;
         _emailUrlHelper = emailUrlHelper;
@@ -70,7 +71,7 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 domainEvent.UserId, domainEvent.CommitmentId, domainEvent.SignUpItemId, domainEvent.ItemDescription, quantity, quantityType);
 
             // Get user details
-            var user = await _userRepository.GetByIdAsync(domainEvent.UserId, cancellationToken);
+            var user = await _identityQueries.GetContactInfoAsync(domainEvent.UserId, cancellationToken);
             if (user == null)
             {
                 _logger.LogWarning(
@@ -122,7 +123,7 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
             var emailParams = SignupCommitmentEmailParams.CreateCancellation(
                 userId: user.Id,
                 userName: user.FirstName,
-                userEmail: user.Email.Value,
+                userEmail: user.Email,
                 eventId: @event.Id,
                 eventTitle: @event.Title?.Value ?? "Untitled Event",
                 signupItem: domainEvent.ItemDescription,
@@ -181,7 +182,7 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 domainEvent.UserId, @event.Id);
 
             var capturedParams = emailParams;
-            var capturedEmail = user.Email.Value;
+            var capturedEmail = user.Email;
             var capturedEventId = @event.Id;
             var capturedScopeFactory = _scopeFactory;
             _ = Task.Run(async () =>

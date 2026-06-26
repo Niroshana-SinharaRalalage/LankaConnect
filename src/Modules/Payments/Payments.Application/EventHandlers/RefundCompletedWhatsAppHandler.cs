@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
@@ -59,7 +60,7 @@ public class RefundCompletedWhatsAppHandler : INotificationHandler<DomainEventNo
             {
                 using var scope = _scopeFactory.CreateScope();
                 var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppService>();
-                var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+                var identityQueries = scope.ServiceProvider.GetRequiredService<IIdentityQueries>();
                 var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository>();
                 // Phase 6A.148.W5.6.A — workflow-aware total (parity with email handler).
                 var totalCalculator = scope.ServiceProvider.GetRequiredService<IRefundTotalCalculator>();
@@ -67,7 +68,7 @@ public class RefundCompletedWhatsAppHandler : INotificationHandler<DomainEventNo
                 var refundAmount = await totalCalculator.ComputeAttendeeFacingTotalAsync(
                     domainEvent.StripeRefundId, legacyFallbackTotal, CancellationToken.None);
 
-                var user = await userRepository.GetByIdAsync(capturedUserId, CancellationToken.None);
+                var user = await identityQueries.GetUserByIdAsync(capturedUserId, CancellationToken.None);
                 if (user == null)
                 {
                     _logger.LogWarning("[Phase 7A] WhatsApp RefundCompleted: User not found - UserId={UserId}", capturedUserId);

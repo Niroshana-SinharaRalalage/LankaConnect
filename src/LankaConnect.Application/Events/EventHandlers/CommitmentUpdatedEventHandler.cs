@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
 using System.Diagnostics;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
@@ -28,7 +29,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNotification<CommitmentUpdatedEvent>>
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEventRepository _eventRepository;
     private readonly IFormQueries _formQueries;
     private readonly IEmailUrlHelper _emailUrlHelper;
@@ -36,14 +37,14 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
 
     public CommitmentUpdatedEventHandler(
         IServiceScopeFactory scopeFactory,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEventRepository eventRepository,
         IFormQueries formQueries,
         IEmailUrlHelper emailUrlHelper,
         ILogger<CommitmentUpdatedEventHandler> logger)
     {
         _scopeFactory = scopeFactory;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _eventRepository = eventRepository;
         _formQueries = formQueries;
         _emailUrlHelper = emailUrlHelper;
@@ -75,7 +76,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Get user details
-                var user = await _userRepository.GetByIdAsync(domainEvent.UserId, cancellationToken);
+                var user = await _identityQueries.GetContactInfoAsync(domainEvent.UserId, cancellationToken);
                 if (user == null)
                 {
                     stopwatch.Stop();
@@ -105,7 +106,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                 var emailParams = SignupCommitmentEmailParams.CreateUpdate(
                     userId: user.Id,
                     userName: user.FirstName,
-                    userEmail: user.Email.Value,
+                    userEmail: user.Email,
                     eventId: @event.Id,
                     eventTitle: @event.Title?.Value ?? "Untitled Event",
                     signupItem: domainEvent.ItemDescription,
@@ -162,7 +163,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                 // The HTTP request scope (and its DbContext) is disposed by the time Task.Run executes,
                 // causing ObjectDisposedException in EmailTemplateRepository.GetByNameAsync().
                 var capturedParams = emailParams;
-                var capturedEmail = user.Email.Value;
+                var capturedEmail = user.Email;
                 var capturedEventId = @event.Id;
                 var capturedScopeFactory = _scopeFactory;
                 _ = Task.Run(async () =>

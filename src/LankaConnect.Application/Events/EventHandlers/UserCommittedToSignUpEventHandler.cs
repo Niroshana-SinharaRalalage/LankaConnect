@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
 using System.Diagnostics;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
@@ -9,7 +10,6 @@ using LankaConnect.Domain.Users.DomainEvents; // W4.7.a: user-aggregate events m
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
 using LankaConnect.Shared.Email.Services;
@@ -28,7 +28,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEventNotification<UserCommittedToSignUpEvent>>
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEventRepository _eventRepository;
     private readonly IFormQueries _formQueries;
     private readonly IEmailUrlHelper _emailUrlHelper;
@@ -36,14 +36,14 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
 
     public UserCommittedToSignUpEventHandler(
         IServiceScopeFactory scopeFactory,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEventRepository eventRepository,
         IFormQueries formQueries,
         IEmailUrlHelper emailUrlHelper,
         ILogger<UserCommittedToSignUpEventHandler> logger)
     {
         _scopeFactory = scopeFactory;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _eventRepository = eventRepository;
         _formQueries = formQueries;
         _emailUrlHelper = emailUrlHelper;
@@ -78,12 +78,12 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                 // this caused fail-silent skip → anonymous committers got zero confirmation
                 // email. We now fall back to the form-submitted ContactEmail / ContactName
                 // carried on the domain event itself.
-                var user = await _userRepository.GetByIdAsync(domainEvent.UserId, cancellationToken);
+                var user = await _identityQueries.GetContactInfoAsync(domainEvent.UserId, cancellationToken);
 
                 // Resolve the recipient and greeting name for the email. For member commits
                 // (smart-resolved real UserId) `user` is non-null and wins. For pure-anonymous
                 // commits `user` is null but the event payload carries the typed-in contact.
-                string? resolvedEmail = user?.Email.Value ?? domainEvent.ContactEmail;
+                string? resolvedEmail = user?.Email ?? domainEvent.ContactEmail;
                 string resolvedGreetingName = user?.FirstName ?? domainEvent.ContactName ?? "there";
                 Guid resolvedUserIdForEmailParams = user?.Id ?? Guid.Empty;
 

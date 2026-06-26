@@ -47,6 +47,7 @@
       into BuildingBlocks or a dedicated Communications.Templates module.
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
+    <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

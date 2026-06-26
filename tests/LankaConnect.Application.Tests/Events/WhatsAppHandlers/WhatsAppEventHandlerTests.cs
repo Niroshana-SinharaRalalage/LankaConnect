@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Modules.Forms.Domain;
 using LankaConnect.Modules.Forms.Domain.Entities;
@@ -34,6 +35,7 @@ public class WhatsAppEventHandlerTests
     private readonly Mock<IServiceScope> _mockScope;
     private readonly Mock<IServiceProvider> _mockServiceProvider;
     private readonly Mock<IWhatsAppService> _mockWhatsAppService;
+    private readonly Mock<IIdentityQueries> _mockIdentityQueries;
     private readonly Mock<IUserRepository> _mockUserRepo;
     private readonly Mock<IEventRepository> _mockEventRepo;
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepo;
@@ -51,6 +53,7 @@ public class WhatsAppEventHandlerTests
         _mockScope = new Mock<IServiceScope>();
         _mockServiceProvider = new Mock<IServiceProvider>();
         _mockWhatsAppService = new Mock<IWhatsAppService>();
+        _mockIdentityQueries = new Mock<IIdentityQueries>();
         _mockUserRepo = new Mock<IUserRepository>();
         _mockEventRepo = new Mock<IEventRepository>();
         _mockRegistrationRepo = new Mock<IRegistrationRepository>();
@@ -74,6 +77,9 @@ public class WhatsAppEventHandlerTests
         _mockServiceProvider
             .Setup(sp => sp.GetService(typeof(IUserRepository)))
             .Returns(_mockUserRepo.Object);
+        _mockServiceProvider
+            .Setup(sp => sp.GetService(typeof(IIdentityQueries)))
+            .Returns(_mockIdentityQueries.Object);
         _mockServiceProvider
             .Setup(sp => sp.GetService(typeof(IEventRepository)))
             .Returns(_mockEventRepo.Object);
@@ -117,12 +123,19 @@ public class WhatsAppEventHandlerTests
     // ─── Helper factories ──────────────────────────────────────────────────────
 
     /// <summary>Creates a real User domain object with a specific Id set via reflection.</summary>
-    private static User CreateRealUser(Guid userId, string firstName = "Niro", string lastName = "Perera")
+    private static UserSummaryDto CreateRealUser(Guid userId, string firstName = "Niro", string lastName = "Perera")
     {
-        var email = LankaConnect.Domain.Shared.ValueObjects.Email.Create($"{userId}@test.com").Value;
-        var user = User.Create(email, firstName, lastName).Value;
-        SetEntityId(user, userId);
-        return user;
+        return new UserSummaryDto(
+            Id: userId,
+            Email: $"{userId}@test.com",
+            FirstName: firstName,
+            LastName: lastName,
+            DisplayName: $"{firstName} {lastName}",
+            Role: UserRoleDto.GeneralUser,
+            Status: UserStatusDto.Active,
+            EmailVerified: true,
+            CreatedAt: System.DateTime.UtcNow,
+            UpdatedAt: null);
     }
 
     /// <summary>Creates a real Event domain object with a specific Id set via reflection.</summary>
@@ -238,8 +251,8 @@ public class WhatsAppEventHandlerTests
         var handler = new RegistrationConfirmedWhatsAppHandler(_mockScopeFactory.Object, logger.Object);
 
         var attendeeId = Guid.NewGuid();
-        _mockUserRepo.Setup(r => r.GetByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         var domainEvent = new RegistrationConfirmedEvent(Guid.NewGuid(), attendeeId, 1, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<RegistrationConfirmedEvent>(domainEvent), CancellationToken.None);
@@ -260,7 +273,7 @@ public class WhatsAppEventHandlerTests
         var attendeeId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(attendeeId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Event?)null);
@@ -284,7 +297,7 @@ public class WhatsAppEventHandlerTests
         var attendeeId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(attendeeId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealEvent(eventId));
@@ -329,8 +342,8 @@ public class WhatsAppEventHandlerTests
             _mockScopeFactory.Object, CreateLogger<PaymentCompletedWhatsAppHandler>().Object);
 
         var userId = Guid.NewGuid();
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         var domainEvent = new PaymentCompletedEvent(
             Guid.NewGuid(), Guid.NewGuid(), userId, "user@test.com",
@@ -354,7 +367,7 @@ public class WhatsAppEventHandlerTests
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Event?)null);
@@ -382,7 +395,7 @@ public class WhatsAppEventHandlerTests
         var eventId = Guid.NewGuid();
         var registrationId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealEvent(eventId));
@@ -481,8 +494,8 @@ public class WhatsAppEventHandlerTests
             _mockScopeFactory.Object, CreateLogger<RegistrationCancelledWhatsAppHandler>().Object);
 
         var attendeeId = Guid.NewGuid();
-        _mockUserRepo.Setup(r => r.GetByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         var domainEvent = new RegistrationCancelledEvent(Guid.NewGuid(), attendeeId, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<RegistrationCancelledEvent>(domainEvent), CancellationToken.None);
@@ -503,7 +516,7 @@ public class WhatsAppEventHandlerTests
         var attendeeId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(attendeeId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Event?)null);
@@ -527,7 +540,7 @@ public class WhatsAppEventHandlerTests
         var attendeeId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(attendeeId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealEvent(eventId));
@@ -566,8 +579,8 @@ public class WhatsAppEventHandlerTests
             _mockScopeFactory.Object, CreateLogger<UserCommittedToSignUpWhatsAppHandler>().Object);
 
         var userId = Guid.NewGuid();
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         var domainEvent = new UserCommittedToSignUpEvent(
             Guid.NewGuid(), userId, "Food plates", 5, null, DateTime.UtcNow);
@@ -589,7 +602,7 @@ public class WhatsAppEventHandlerTests
         var userId = Guid.NewGuid();
         var signUpListId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetEventBySignUpListIdAsync(signUpListId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Event?)null);
@@ -615,7 +628,7 @@ public class WhatsAppEventHandlerTests
         var signUpListId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
 
         _mockEventRepo.Setup(r => r.GetEventBySignUpListIdAsync(signUpListId, It.IsAny<CancellationToken>()))
@@ -658,8 +671,8 @@ public class WhatsAppEventHandlerTests
             _mockScopeFactory.Object, CreateLogger<CommitmentUpdatedWhatsAppHandler>().Object);
 
         var userId = Guid.NewGuid();
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         var domainEvent = new CommitmentUpdatedEvent(
             Guid.NewGuid(), userId, 5, 8, null, null, "Food plates", DateTime.UtcNow);
@@ -681,7 +694,7 @@ public class WhatsAppEventHandlerTests
         var userId = Guid.NewGuid();
         var signUpItemId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetEventBySignUpItemIdAsync(signUpItemId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Event?)null);
@@ -707,7 +720,7 @@ public class WhatsAppEventHandlerTests
         var signUpItemId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetEventBySignUpItemIdAsync(signUpItemId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealEvent(eventId));
@@ -747,8 +760,8 @@ public class WhatsAppEventHandlerTests
             _mockScopeFactory.Object, CreateLogger<CommitmentCancelledWhatsAppHandler>().Object);
 
         var userId = Guid.NewGuid();
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         var domainEvent = new CommitmentCancelledEvent(
             Guid.NewGuid(), Guid.NewGuid(), userId, Guid.NewGuid(), "Food plates", 5, null);
@@ -770,7 +783,7 @@ public class WhatsAppEventHandlerTests
         var userId = Guid.NewGuid();
         var signUpListId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetEventBySignUpListIdAsync(signUpListId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Event?)null);
@@ -796,7 +809,7 @@ public class WhatsAppEventHandlerTests
         var signUpListId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetEventBySignUpListIdAsync(signUpListId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealEvent(eventId));
@@ -841,8 +854,8 @@ public class WhatsAppEventHandlerTests
             _mockScopeFactory.Object, CreateLogger<RefundRequestedWhatsAppHandler>().Object);
 
         var userId = Guid.NewGuid();
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         var domainEvent = new RefundRequestedEvent(
             Guid.NewGuid(), Guid.NewGuid(), userId, "user@test.com",
@@ -867,7 +880,7 @@ public class WhatsAppEventHandlerTests
         var eventId = Guid.NewGuid();
         var registrationId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealEvent(eventId));
@@ -895,7 +908,7 @@ public class WhatsAppEventHandlerTests
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Event?)null);
@@ -944,8 +957,8 @@ public class WhatsAppEventHandlerTests
             _mockScopeFactory.Object, CreateLogger<RefundCompletedWhatsAppHandler>().Object);
 
         var userId = Guid.NewGuid();
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         var domainEvent = new RefundCompletedEvent(
             Guid.NewGuid(), Guid.NewGuid(), userId, "user@test.com",
@@ -970,7 +983,7 @@ public class WhatsAppEventHandlerTests
         var eventId = Guid.NewGuid();
         var registrationId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealEvent(eventId));
@@ -1209,7 +1222,7 @@ public class WhatsAppEventHandlerTests
         var attendeeId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(attendeeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(attendeeId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealEvent(eventId));
@@ -1264,7 +1277,7 @@ public class WhatsAppEventHandlerTests
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(userId));
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealEvent(eventId));
@@ -1387,7 +1400,7 @@ public class WhatsAppEventHandlerTests
 
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(evt);
-        _mockUserRepo.Setup(r => r.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(organizerId));
 
         var domainEvent = new EventApprovedEvent(eventId, Guid.NewGuid(), DateTime.UtcNow);
@@ -1429,7 +1442,7 @@ public class WhatsAppEventHandlerTests
 
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(evt);
-        _mockUserRepo.Setup(r => r.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
+        _mockIdentityQueries.Setup(r => r.GetUserByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealUser(organizerId));
 
         var domainEvent = new EventRejectedEvent(eventId, Guid.NewGuid(), "Policy violation", DateTime.UtcNow);

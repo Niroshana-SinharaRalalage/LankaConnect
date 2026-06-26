@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
 using System.Diagnostics;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
@@ -26,7 +27,7 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class RegistrationCancelledEventHandler : INotificationHandler<DomainEventNotification<RegistrationCancelledEvent>>
 {
     private readonly ITypedEmailService _typedEmailService;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository; // Phase 7E.4: Load reg for HeadCount
     private readonly IFormQueries _formQueries;
@@ -35,7 +36,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
 
     public RegistrationCancelledEventHandler(
         ITypedEmailService typedEmailService,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IFormQueries formQueries,
@@ -43,7 +44,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
         ILogger<RegistrationCancelledEventHandler> logger)
     {
         _typedEmailService = typedEmailService;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _formQueries = formQueries;
@@ -71,7 +72,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Retrieve user and event data
-                var user = await _userRepository.GetByIdAsync(domainEvent.AttendeeId, cancellationToken);
+                var user = await _identityQueries.GetContactInfoAsync(domainEvent.AttendeeId, cancellationToken);
                 if (user == null)
                 {
                     stopwatch.Stop();
@@ -96,7 +97,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                 var emailParams = RegistrationCancellationEmailParams.Create(
                     userId: user.Id,
                     userName: $"{user.FirstName} {user.LastName}",
-                    userEmail: user.Email.Value,
+                    userEmail: user.Email,
                     registrationId: Guid.Empty,  // Phase 6A.97: RegistrationId is optional - domain event doesn't include it
                     eventId: @event.Id,
                     eventTitle: @event.Title.Value,
@@ -170,13 +171,13 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                 {
                     _logger.LogError(
                         "RegistrationCancelled FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        user.Email.Value, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
+                        user.Email, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
                     _logger.LogInformation(
                         "[Phase 6A.100] RegistrationCancelled COMPLETE: Email sent - Email={Email}, Duration={ElapsedMs}ms",
-                        user.Email.Value, stopwatch.ElapsedMilliseconds);
+                        user.Email, stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

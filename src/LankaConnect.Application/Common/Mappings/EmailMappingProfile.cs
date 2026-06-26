@@ -58,30 +58,12 @@ public class EmailMappingProfile : Profile
             .ForMember(dest => dest.AllowTransactional, opt => opt.MapFrom(src => src.ReceivePasswordAlerts || src.ReceiveSystemAlerts))
             .ForMember(dest => dest.PreferredLanguage, opt => opt.MapFrom(src => "en-US"));
 
-        // Email Verification mappings
-        CreateMap<LankaConnect.Modules.Identity.Domain.Entities.User, EmailVerificationDto>()
-            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email.Value))
-            .ForMember(dest => dest.IsEmailVerified, opt => opt.MapFrom(src => src.IsEmailVerified))
-            .ForMember(dest => dest.VerificationTokenExpiresAt, opt => opt.MapFrom(src => src.EmailVerificationTokenExpiresAt))
-            .ForMember(dest => dest.LastVerificationSentAt, opt => opt.MapFrom(src => 
-                src.EmailVerificationTokenExpiresAt.HasValue ? src.EmailVerificationTokenExpiresAt.Value.AddHours(-24) : (DateTime?)null))
-            .ForMember(dest => dest.VerificationAttempts, opt => opt.MapFrom(src => 
-                src.IsEmailVerified ? 1 : (src.EmailVerificationToken != null ? 1 : 0)));
-
-        // Password Reset mappings
-        CreateMap<LankaConnect.Modules.Identity.Domain.Entities.User, PasswordResetDto>()
-            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email.Value))
-            .ForMember(dest => dest.HasActiveResetToken, opt => opt.MapFrom(src => 
-                !string.IsNullOrEmpty(src.PasswordResetToken) && 
-                src.PasswordResetTokenExpiresAt.HasValue && 
-                src.PasswordResetTokenExpiresAt.Value > DateTime.UtcNow))
-            .ForMember(dest => dest.ResetTokenExpiresAt, opt => opt.MapFrom(src => src.PasswordResetTokenExpiresAt))
-            .ForMember(dest => dest.LastResetRequestAt, opt => opt.MapFrom(src => 
-                src.PasswordResetTokenExpiresAt.HasValue ? src.PasswordResetTokenExpiresAt.Value.AddHours(-1) : (DateTime?)null))
-            .ForMember(dest => dest.ResetAttempts, opt => opt.MapFrom(src => 
-                !string.IsNullOrEmpty(src.PasswordResetToken) ? 1 : 0));
+        // Wave 4.10.s1c (2026-06-26): the User -> EmailVerificationDto + User -> PasswordResetDto
+        // AutoMapper profiles previously here were never consumed (no _mapper.Map<EmailVerificationDto>
+        // or _mapper.Map<PasswordResetDto> call site in the codebase). Removed to drop
+        // EmailMappingProfile's dependency on LankaConnect.Modules.Identity.Domain.Entities.User.
+        // EmailVerificationDto is now populated directly in GetUserEmailPreferencesQueryHandler
+        // via the IIdentityQueries.GetContactInfoAsync projection.
     }
 
     private static EmailTemplateCategory MapEmailTemplateCategory(LankaConnect.Domain.Communications.Enums.EmailType emailType)

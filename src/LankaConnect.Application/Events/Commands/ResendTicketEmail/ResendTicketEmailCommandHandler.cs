@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using System.Diagnostics;
 using System.Globalization;
 using LankaConnect.Application.Common;
@@ -8,8 +9,6 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Helpers;
@@ -32,7 +31,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
     private readonly IRegistrationRepository _registrationRepository;
     private readonly ITicketService _ticketService;
     private readonly ITypedEmailService _typedEmailService;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IEmailMetrics _emailMetrics; // Phase 6A.99: For recording pre-send failures
     private readonly ILogger<ResendTicketEmailCommandHandler> _logger;
@@ -44,7 +43,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
         IRegistrationRepository registrationRepository,
         ITicketService ticketService,
         ITypedEmailService typedEmailService,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEmailUrlHelper emailUrlHelper,
         IEmailMetrics emailMetrics, // Phase 6A.99
         ILogger<ResendTicketEmailCommandHandler> logger)
@@ -53,7 +52,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
         _registrationRepository = registrationRepository;
         _ticketService = ticketService;
         _typedEmailService = typedEmailService;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _emailUrlHelper = emailUrlHelper;
         _emailMetrics = emailMetrics;
         _logger = logger;
@@ -291,8 +290,8 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                     ticket.Id, pdfResult.Value.Length);
 
                 // 7. Get user details
-                var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
-                var recipientEmail = registration.Contact?.Email ?? user?.Email.Value ?? "";
+                var user = await _identityQueries.GetContactInfoAsync(request.UserId, cancellationToken);
+                var recipientEmail = registration.Contact?.Email ?? user?.Email ?? "";
                 var recipientName = user != null
                     ? $"{user.FirstName} {user.LastName}"
                     : (registration.HasDetailedAttendees() && registration.Attendees.Any()

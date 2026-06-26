@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using System.Text;
 using LankaConnect.Modules.Forms.Domain;
 using LankaConnect.Modules.Forms.Domain.Entities;
@@ -13,7 +14,6 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Shared.Email.Contracts;
@@ -54,7 +54,7 @@ public class RegistrationEmailService : IRegistrationEmailService
     public async Task<Result> SendFreeEventConfirmationEmailAsync(
         Registration registration,
         Event @event,
-        User? user,
+        UserContactDto? user,
         CancellationToken cancellationToken = default)
     {
         try
@@ -185,7 +185,7 @@ public class RegistrationEmailService : IRegistrationEmailService
         Event @event,
         Ticket ticket,
         byte[] ticketPdf,
-        User? user,
+        UserContactDto? user,
         CancellationToken cancellationToken = default)
     {
         try
@@ -370,12 +370,12 @@ public class RegistrationEmailService : IRegistrationEmailService
     /// For member registrations, uses user email and name.
     /// For anonymous registrations, uses contact info and first attendee name.
     /// </summary>
-    private (string Email, string Name) GetRecipientInfo(Registration registration, User? user)
+    private (string Email, string Name) GetRecipientInfo(Registration registration, UserContactDto? user)
     {
         if (user != null)
         {
             // Member registration
-            return (user.Email.Value, $"{user.FirstName} {user.LastName}");
+            return (user.Email, $"{user.FirstName} {user.LastName}");
         }
 
         // Anonymous registration

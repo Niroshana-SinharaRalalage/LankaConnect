@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
@@ -6,8 +7,6 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
@@ -24,20 +23,20 @@ namespace LankaConnect.Application.Events.EventHandlers;
 public class EventApprovedEventHandler : INotificationHandler<DomainEventNotification<EventApprovedEvent>>
 {
     private readonly ITypedEmailService _typedEmailService;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEventRepository _eventRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<EventApprovedEventHandler> _logger;
 
     public EventApprovedEventHandler(
         ITypedEmailService typedEmailService,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEventRepository eventRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<EventApprovedEventHandler> logger)
     {
         _typedEmailService = typedEmailService;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _eventRepository = eventRepository;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
@@ -87,7 +86,7 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                 }
 
                 // Retrieve organizer's user details
-                var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
+                var organizer = await _identityQueries.GetUserByIdAsync(@event.OrganizerId, cancellationToken);
                 if (organizer == null)
                 {
                     stopwatch.Stop();
@@ -111,7 +110,7 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                 var emailParams = EventApprovalEmailParams.Create(
                     organizerId: organizer.Id,
                     organizerName: organizerName,
-                    organizerEmail: organizer.Email.Value,
+                    organizerEmail: organizer.Email,
                     eventId: @event.Id,
                     eventTitle: @event.Title.Value,
                     // Phase 8YA.2: early-returned above when StartDate was null.
@@ -130,7 +129,7 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
 
                 _logger.LogInformation(
                     "EventApproved: Sending approval email - To={Email}, EventId={EventId}, EventTitle={EventTitle}",
-                    organizer.Email.Value, domainEvent.EventId, @event.Title.Value);
+                    organizer.Email, domainEvent.EventId, @event.Title.Value);
 
                 // Phase 6A.100: Use typed email service
                 var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
@@ -141,13 +140,13 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                 {
                     _logger.LogInformation(
                         "EventApproved COMPLETE: Email sent successfully - Email={Email}, EventId={EventId}, Duration={ElapsedMs}ms, CorrelationId={CorrelationId}",
-                        organizer.Email.Value, domainEvent.EventId, stopwatch.ElapsedMilliseconds, result.CorrelationId);
+                        organizer.Email, domainEvent.EventId, stopwatch.ElapsedMilliseconds, result.CorrelationId);
                 }
                 else
                 {
                     _logger.LogError(
                         "EventApproved FAILED: Email sending failed - Email={Email}, EventId={EventId}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        organizer.Email.Value, domainEvent.EventId, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
+                        organizer.Email, domainEvent.EventId, string.Join(", ", result.Errors), stopwatch.ElapsedMilliseconds);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

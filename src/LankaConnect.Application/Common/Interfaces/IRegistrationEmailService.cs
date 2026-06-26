@@ -1,17 +1,17 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
-using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
-using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Contracts;
 
 namespace LankaConnect.Application.Common.Interfaces;
 
 /// <summary>
-/// Phase 6A.X: Shared service for sending registration confirmation emails.
+/// Shared service for sending registration confirmation emails.
 /// Extracts common email logic to eliminate duplication across handlers.
 /// Supports both free and paid event registrations.
+/// Wave 4.10.s1c (2026-06-26): User parameter switched from User aggregate to
+/// UserContactDto so consumers (ResendAttendeeConfirmation + ResendTicketEmail)
+/// can drop their IUserRepository injection in favor of IIdentityQueries.
 /// </summary>
 public interface IRegistrationEmailService
 {
@@ -20,13 +20,13 @@ public interface IRegistrationEmailService
     /// </summary>
     /// <param name="registration">The registration entity</param>
     /// <param name="event">The event entity</param>
-    /// <param name="user">The user entity (null for anonymous registrations)</param>
+    /// <param name="user">The user contact projection (null for anonymous registrations)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Result indicating success or failure</returns>
     Task<Result> SendFreeEventConfirmationEmailAsync(
         Registration registration,
         Event @event,
-        User? user,
+        UserContactDto? user,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -36,7 +36,7 @@ public interface IRegistrationEmailService
     /// <param name="event">The event entity</param>
     /// <param name="ticket">The ticket entity</param>
     /// <param name="ticketPdf">The ticket PDF bytes for attachment</param>
-    /// <param name="user">The user entity (null for anonymous registrations)</param>
+    /// <param name="user">The user contact projection (null for anonymous registrations)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Result indicating success or failure</returns>
     Task<Result> SendPaidEventConfirmationEmailAsync(
@@ -44,6 +44,6 @@ public interface IRegistrationEmailService
         Event @event,
         Ticket ticket,
         byte[] ticketPdf,
-        User? user,
+        UserContactDto? user,
         CancellationToken cancellationToken = default);
 }

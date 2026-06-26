@@ -12,8 +12,6 @@ using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;

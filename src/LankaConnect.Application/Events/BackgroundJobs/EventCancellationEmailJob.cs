@@ -11,8 +11,6 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Shared.Email.Contracts;
 using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;

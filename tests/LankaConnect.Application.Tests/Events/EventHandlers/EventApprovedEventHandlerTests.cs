@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.EventHandlers;
@@ -27,7 +28,7 @@ namespace LankaConnect.Application.Tests.Events.EventHandlers;
 public class EventApprovedEventHandlerTests
 {
     private readonly Mock<ITypedEmailService> _typedEmailService;
-    private readonly Mock<IUserRepository> _userRepository;
+    private readonly Mock<IIdentityQueries> _userRepository;
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<ILogger<EventApprovedEventHandler>> _logger;
@@ -36,7 +37,7 @@ public class EventApprovedEventHandlerTests
     public EventApprovedEventHandlerTests()
     {
         _typedEmailService = new Mock<ITypedEmailService>();
-        _userRepository = new Mock<IUserRepository>();
+        _userRepository = new Mock<IIdentityQueries>();
         _eventRepository = new Mock<IEventRepository>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _logger = new Mock<ILogger<EventApprovedEventHandler>>();
@@ -74,7 +75,7 @@ public class EventApprovedEventHandlerTests
 
         _eventRepository.Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockEvent);
-        _userRepository.Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
+        _userRepository.Setup(x => x.GetUserByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(organizer);
         _typedEmailService.Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(TypedEmailSendResult.Ok("test-correlation-id", 100));
@@ -110,7 +111,7 @@ public class EventApprovedEventHandlerTests
 
         _eventRepository.Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockEvent);
-        _userRepository.Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
+        _userRepository.Setup(x => x.GetUserByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(organizer);
         _typedEmailService.Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(TypedEmailSendResult.Ok("test-correlation-id", 100));
@@ -148,7 +149,7 @@ public class EventApprovedEventHandlerTests
         _typedEmailService.Verify(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
             It.IsAny<CancellationToken>()), Times.Never);
-        _userRepository.Verify(x => x.GetByIdAsync(
+        _userRepository.Verify(x => x.GetUserByIdAsync(
             It.IsAny<Guid>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -167,8 +168,8 @@ public class EventApprovedEventHandlerTests
 
         _eventRepository.Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockEvent);
-        _userRepository.Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _userRepository.Setup(x => x.GetUserByIdAsync(organizerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         // Act
         await _handler.Handle(notification, CancellationToken.None);
@@ -194,7 +195,7 @@ public class EventApprovedEventHandlerTests
 
         _eventRepository.Setup(x => x.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockEvent);
-        _userRepository.Setup(x => x.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
+        _userRepository.Setup(x => x.GetUserByIdAsync(organizerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(organizer);
         _typedEmailService.Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(TypedEmailSendResult.Fail("test-correlation-id", new List<string> { "Email service error" }));
@@ -244,15 +245,18 @@ public class EventApprovedEventHandlerTests
         return eventObj;
     }
 
-    private static User CreateTestUser(Guid userId, string email, string firstName, string lastName)
+    private static UserSummaryDto CreateTestUser(Guid userId, string email, string firstName, string lastName)
     {
-        var userEmail = Email.Create(email).Value;
-        var user = User.Create(userEmail, firstName, lastName).Value;
-
-        // Set the Id using reflection
-        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
-        idProperty?.SetValue(user, userId);
-
-        return user;
+        return new UserSummaryDto(
+            Id: userId,
+            Email: email,
+            FirstName: firstName,
+            LastName: lastName,
+            DisplayName: $"{firstName} {lastName}",
+            Role: UserRoleDto.GeneralUser,
+            Status: UserStatusDto.Active,
+            EmailVerified: true,
+            CreatedAt: System.DateTime.UtcNow,
+            UpdatedAt: null);
     }
 }

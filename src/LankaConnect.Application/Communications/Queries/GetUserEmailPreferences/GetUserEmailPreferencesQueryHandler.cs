@@ -1,10 +1,10 @@
+using LankaConnect.Modules.Identity.Contracts;
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
-using IUserRepository = LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository;
 using IUserEmailPreferencesRepository = LankaConnect.Application.Common.Interfaces.IUserEmailPreferencesRepository;
 using Serilog.Context;
 
@@ -15,16 +15,16 @@ namespace LankaConnect.Application.Communications.Queries.GetUserEmailPreference
 /// </summary>
 public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailPreferencesQuery, Result<GetUserEmailPreferencesResponse>>
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IUserEmailPreferencesRepository _preferencesRepository;
     private readonly ILogger<GetUserEmailPreferencesQueryHandler> _logger;
 
     public GetUserEmailPreferencesQueryHandler(
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IUserEmailPreferencesRepository preferencesRepository,
         ILogger<GetUserEmailPreferencesQueryHandler> logger)
     {
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _preferencesRepository = preferencesRepository;
         _logger = logger;
     }
@@ -56,7 +56,7 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
                 }
 
                 // Validate user exists
-                var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+                var user = await _identityQueries.GetContactInfoAsync(request.UserId, cancellationToken);
                 if (user == null)
                 {
                     stopwatch.Stop();
@@ -73,7 +73,7 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
                 var createdDefaults = false;
                 if (preferences == null)
                 {
-                    preferences = await CreateDefaultPreferencesAsync(user, cancellationToken);
+                    preferences = await CreateDefaultPreferencesAsync(user.Id, cancellationToken);
                     createdDefaults = true;
                 }
 
@@ -81,7 +81,7 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
                 var preferencesDto = new UserEmailPreferencesDto
                 {
                     UserId = user.Id,
-                    Email = user.Email.Value,
+                    Email = user.Email,
                     ReceiveWelcomeEmails = preferences.AllowTransactional, // Welcome emails are transactional
                     ReceiveBusinessNotifications = preferences.AllowNotifications,
                     ReceiveMarketingEmails = preferences.AllowMarketing,
@@ -95,11 +95,11 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
                 var verificationDto = new EmailVerificationDto
                 {
                     UserId = user.Id,
-                    Email = user.Email.Value,
+                    Email = user.Email,
                     IsEmailVerified = user.IsEmailVerified,
                     VerificationTokenExpiresAt = user.EmailVerificationTokenExpiresAt,
-                    LastVerificationSentAt = GetLastVerificationSentDate(user),
-                    VerificationAttempts = GetVerificationAttempts(user)
+                    LastVerificationSentAt = GetLastVerificationSentDate(user.EmailVerificationTokenExpiresAt),
+                    VerificationAttempts = GetVerificationAttempts(user.IsEmailVerified, user.EmailVerificationTokenExpiresAt)
                 };
 
                 // Get email subscriptions
@@ -132,37 +132,41 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
     }
 
     private async Task<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> CreateDefaultPreferencesAsync(
-        LankaConnect.Modules.Identity.Domain.Entities.User user, CancellationToken cancellationToken)
+        Guid userId, CancellationToken cancellationToken)
     {
-        var createResult = LankaConnect.Domain.Communications.Entities.UserEmailPreferences.Create(user.Id);
+        var createResult = LankaConnect.Domain.Communications.Entities.UserEmailPreferences.Create(userId);
         if (!createResult.IsSuccess)
         {
             throw new InvalidOperationException($"Failed to create default preferences: {createResult.Error}");
         }
-        
+
         var defaultPreferences = createResult.Value;
         await _preferencesRepository.AddAsync(defaultPreferences, cancellationToken);
-        
-        _logger.LogInformation("Created default email preferences for user {UserId}", user.Id);
-        
+
+        _logger.LogInformation("Created default email preferences for user {UserId}", userId);
+
         return defaultPreferences;
     }
 
-    private static DateTime? GetLastVerificationSentDate(LankaConnect.Modules.Identity.Domain.Entities.User user)
+    private static DateTime? GetLastVerificationSentDate(DateTime? emailVerificationTokenExpiresAt)
     {
-        // Calculate when verification token was created (tokens expire after 24 hours)
-        if (user.EmailVerificationTokenExpiresAt.HasValue)
+        // Calculate when verification token was created (tokens expire after 24 hours).
+        // Wave 4.10.s1c (2026-06-26): refactored to accept primitive instead of User aggregate
+        // so the Application layer doesn't need the User type.
+        if (emailVerificationTokenExpiresAt.HasValue)
         {
-            return user.EmailVerificationTokenExpiresAt.Value.AddHours(-24);
+            return emailVerificationTokenExpiresAt.Value.AddHours(-24);
         }
         return null;
     }
 
-    private static int GetVerificationAttempts(LankaConnect.Modules.Identity.Domain.Entities.User user)
+    private static int GetVerificationAttempts(bool isEmailVerified, DateTime? emailVerificationTokenExpiresAt)
     {
-        // This would need to be tracked in the domain or retrieved from email logs
-        // For now, return a default value
-        return user.IsEmailVerified ? 1 : (user.EmailVerificationToken != null ? 1 : 0);
+        // This would need to be tracked in the domain or retrieved from email logs.
+        // For now, return a default value based on whether a verification flow has happened.
+        // (Token presence is equivalent to ExpiresAt presence — both set together by the
+        // User aggregate's GenerateEmailVerificationToken method.)
+        return isEmailVerified ? 1 : (emailVerificationTokenExpiresAt.HasValue ? 1 : 0);
     }
 
     private static List<EmailSubscriptionDto> GetEmailSubscriptions(LankaConnect.Domain.Communications.Entities.UserEmailPreferences preferences)

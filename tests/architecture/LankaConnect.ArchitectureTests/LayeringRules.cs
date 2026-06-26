@@ -1146,22 +1146,24 @@ public sealed class LayeringRules
     /// trivially today and becomes load-bearing when 4.6.d.2 ships).
     /// </summary>
     /// <summary>
-    /// Wave 4.7.e (2026-06-26): physical User aggregate move shipped. Per architect
-    /// Option A ruling, the 14 remaining IUserRepository-injecting consumers in
-    /// LankaConnect.Application are allow-listed as time-bounded stylistic debt
-    /// that drains during Cross-cutting cleanup (Wave 4 final 5-session block).
+    /// Wave 4.10.s1c (2026-06-26): the original 14-file manifest of straggler
+    /// consumers has been DRAINED to 0. Two foundational types remain that depend on
+    /// Identity.Domain and require a larger surface refactor to remove:
     ///
-    /// Rule 5 enforcement is intentionally relaxed during this transition window —
-    /// LankaConnect.Application legitimately depends on Identity.Domain.Entities.User
-    /// (via the 14 stragglers) and Identity.Domain.DomainEvents (legitimate cross-module
-    /// event subscription). The shrink-to-zero criterion is tracked in
-    /// docs/architecture/wave-4.7-debt-manifest.md.
+    ///  1. IApplicationDbContext.Users (DbSet&lt;User&gt;) — needed by ~30+ handlers for
+    ///     direct EF queries. Removing requires splitting DbContexts (an IIdentityDbContext
+    ///     under Identity.Application owning the Users DbSet).
+    ///  2. IJwtTokenService.GenerateAccessTokenAsync(User) — needed by login handlers
+    ///     that pass the authenticated User aggregate. Removing requires either passing
+    ///     primitives (Guid + email + role) or moving IJwtTokenService into the Identity
+    ///     module (then Identity itself owns access-token issuance, which is the correct
+    ///     long-term home anyway).
     ///
-    /// Re-enable during Cross-cutting cleanup when the allow-list reaches 0 entries,
-    /// at which point this rule + a companion `IUserRepository_OnlyInIdentityModule`
-    /// rule pin the boundary permanently.
+    /// Both refactors are scheduled for Wave 5 Products carve-out OR Wave 6 ArchTest
+    /// hardening, whichever picks up the IApplicationDbContext split first. Until then,
+    /// this rule stays skipped — re-enable when the 2 foundational types are addressed.
     /// </summary>
-    [Fact(Skip = "Wave 4.7.e: relaxed during Cross-cutting cleanup transition; see wave-4.7-debt-manifest.md shrink criterion")]
+    [Fact(Skip = "Wave 4.10: 14-file manifest DRAINED; 2 foundational refs (IApplicationDbContext.Users + IJwtTokenService) remain pending Wave 5/6 surface refactor")]
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnIdentityDomain()
     {

@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
@@ -5,7 +6,6 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.Extensions.Logging;
 
@@ -20,7 +20,7 @@ public class ResendAttendeeConfirmationCommandHandler : ICommandHandler<ResendAt
 {
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ITicketService _ticketService;
     private readonly IRegistrationEmailService _registrationEmailService;
     private readonly ILogger<ResendAttendeeConfirmationCommandHandler> _logger;
@@ -28,14 +28,14 @@ public class ResendAttendeeConfirmationCommandHandler : ICommandHandler<ResendAt
     public ResendAttendeeConfirmationCommandHandler(
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ITicketService ticketService,
         IRegistrationEmailService registrationEmailService,
         ILogger<ResendAttendeeConfirmationCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _ticketService = ticketService;
         _registrationEmailService = registrationEmailService;
         _logger = logger;
@@ -104,10 +104,10 @@ public class ResendAttendeeConfirmationCommandHandler : ICommandHandler<ResendAt
             }
 
             // 6. Get user (if authenticated registration)
-            LankaConnect.Modules.Identity.Domain.Entities.User? user = null;
+            UserContactDto? user = null;
             if (registration.UserId.HasValue)
             {
-                user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
+                user = await _identityQueries.GetContactInfoAsync(registration.UserId.Value, cancellationToken);
                 _logger.LogInformation(
                     "ResendAttendeeConfirmation: User retrieved - UserId={UserId}, RegistrationId={RegistrationId}",
                     registration.UserId.Value, request.RegistrationId);

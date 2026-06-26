@@ -10,8 +10,6 @@ using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

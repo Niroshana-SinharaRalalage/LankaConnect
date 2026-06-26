@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using System.Diagnostics;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
@@ -35,7 +36,7 @@ public class EventNotificationEmailJob
     private readonly IFormQueries _formQueries;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventNotificationRecipientService _recipientService;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly INewsletterSubscriberRepository _newsletterSubscriberRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
@@ -48,7 +49,7 @@ public class EventNotificationEmailJob
         IFormQueries formQueries,
         IRegistrationRepository registrationRepository,
         IEventNotificationRecipientService recipientService,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         INewsletterSubscriberRepository newsletterSubscriberRepository,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
@@ -60,7 +61,7 @@ public class EventNotificationEmailJob
         _formQueries = formQueries;
         _registrationRepository = registrationRepository;
         _recipientService = recipientService;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _newsletterSubscriberRepository = newsletterSubscriberRepository;
         _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
@@ -142,7 +143,7 @@ public class EventNotificationEmailJob
                     .Distinct()
                     .ToList();
 
-                var userEmails = await _userRepository.GetEmailsByUserIdsAsync(userIds, cancellationToken);
+                var userEmails = await _identityQueries.GetEmailsByUserIdsAsync(userIds, cancellationToken);
 
                 _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Bulk fetched {Count} user emails",
                     correlationId, userEmails.Count);
@@ -197,7 +198,7 @@ public class EventNotificationEmailJob
                     // Phase 6A.83 Part 3: Get personalized UserName for recipient
                     var emailResult = Domain.Shared.ValueObjects.Email.Create(email);
                     var user = emailResult.IsSuccess
-                        ? await _userRepository.GetByEmailAsync(emailResult.Value, cancellationToken)
+                        ? await _identityQueries.GetByEmailAsync(emailResult.Value.Value, cancellationToken)
                         : null;
                     var userName = user != null ? $"{user.FirstName} {user.LastName}" : "Valued Guest";
 

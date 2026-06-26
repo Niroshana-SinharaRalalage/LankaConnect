@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Application.Events.Repositories;
@@ -25,7 +26,7 @@ namespace LankaConnect.Application.Tests.Events.BackgroundJobs;
 public class EventReminderJobTests
 {
     private readonly Mock<IEventRepository> _eventRepository;
-    private readonly Mock<IUserRepository> _userRepository;
+    private readonly Mock<IIdentityQueries> _userRepository;
     private readonly Mock<ITypedEmailService> _typedEmailService;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<IEventReminderRepository> _eventReminderRepository;
@@ -36,7 +37,7 @@ public class EventReminderJobTests
     public EventReminderJobTests()
     {
         _eventRepository = new Mock<IEventRepository>();
-        _userRepository = new Mock<IUserRepository>();
+        _userRepository = new Mock<IIdentityQueries>();
         _typedEmailService = new Mock<ITypedEmailService>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _eventReminderRepository = new Mock<IEventReminderRepository>();
@@ -95,7 +96,7 @@ public class EventReminderJobTests
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Event> { mockEvent });
 
-        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+        _userRepository.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         // Act
@@ -178,8 +179,8 @@ public class EventReminderJobTests
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Event> { mockEvent });
 
-        _userRepository.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+        _userRepository.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummaryDto?)null);
 
         // Act - Should not throw
         var act = async () => await _job.ExecuteAsync();
@@ -211,9 +212,9 @@ public class EventReminderJobTests
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Event> { mockEvent });
 
-        _userRepository.Setup(x => x.GetByIdAsync(userId1, It.IsAny<CancellationToken>()))
+        _userRepository.Setup(x => x.GetUserByIdAsync(userId1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user1);
-        _userRepository.Setup(x => x.GetByIdAsync(userId2, It.IsAny<CancellationToken>()))
+        _userRepository.Setup(x => x.GetUserByIdAsync(userId2, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user2);
 
         // Phase 6A.87: First email fails, second should still be sent
@@ -343,14 +344,18 @@ public class EventReminderJobTests
         return eventObj;
     }
 
-    private static User CreateTestUser(Guid userId, string email, string firstName, string lastName)
+    private static UserSummaryDto CreateTestUser(Guid userId, string email, string firstName, string lastName)
     {
-        var userEmail = Email.Create(email).Value;
-        var user = User.Create(userEmail, firstName, lastName).Value;
-
-        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
-        idProperty?.SetValue(user, userId);
-
-        return user;
+        return new UserSummaryDto(
+            Id: userId,
+            Email: email,
+            FirstName: firstName,
+            LastName: lastName,
+            DisplayName: $"{firstName} {lastName}",
+            Role: UserRoleDto.GeneralUser,
+            Status: UserStatusDto.Active,
+            EmailVerified: true,
+            CreatedAt: System.DateTime.UtcNow,
+            UpdatedAt: null);
     }
 }

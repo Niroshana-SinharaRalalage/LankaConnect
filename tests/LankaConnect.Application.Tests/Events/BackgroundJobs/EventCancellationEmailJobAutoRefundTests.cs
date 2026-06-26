@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using FluentAssertions;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
@@ -32,7 +33,7 @@ public class EventCancellationEmailJobAutoRefundTests
     private readonly Mock<IEventRepository> _mockEventRepository;
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepository;
     private readonly Mock<IEventNotificationRecipientService> _mockRecipientService;
-    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IIdentityQueries> _mockUserRepository;
     private readonly Mock<ITypedEmailService> _mockTypedEmailService;
     private readonly Mock<IApplicationUrlsService> _mockUrlsService;
     private readonly Mock<IRegistrationRefundService> _mockRefundService;
@@ -46,7 +47,7 @@ public class EventCancellationEmailJobAutoRefundTests
         _mockEventRepository = new Mock<IEventRepository>();
         _mockRegistrationRepository = new Mock<IRegistrationRepository>();
         _mockRecipientService = new Mock<IEventNotificationRecipientService>();
-        _mockUserRepository = new Mock<IUserRepository>();
+        _mockUserRepository = new Mock<IIdentityQueries>();
         _mockTypedEmailService = new Mock<ITypedEmailService>();
         _mockUrlsService = new Mock<IApplicationUrlsService>();
         _mockRefundService = new Mock<IRegistrationRefundService>();

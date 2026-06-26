@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using System.Diagnostics;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Helpers;
@@ -45,7 +46,7 @@ public class EventCancellationEmailJob
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventNotificationRecipientService _recipientService;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationUrlsService _urlsService;
     private readonly IRegistrationRefundService _refundService;
@@ -57,7 +58,7 @@ public class EventCancellationEmailJob
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IEventNotificationRecipientService recipientService,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ITypedEmailService typedEmailService,
         IApplicationUrlsService urlsService,
         IRegistrationRefundService refundService,
@@ -68,7 +69,7 @@ public class EventCancellationEmailJob
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _recipientService = recipientService;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _typedEmailService = typedEmailService;
         _urlsService = urlsService;
         _refundService = refundService;
@@ -141,7 +142,7 @@ public class EventCancellationEmailJob
                     .ToList();
 
                 var bulkQueryStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                var userEmails = await _userRepository.GetEmailsByUserIdsAsync(userIds, CancellationToken.None);
+                var userEmails = await _identityQueries.GetEmailsByUserIdsAsync(userIds, CancellationToken.None);
 
                 _logger.LogInformation(
                     "[Phase 6A.64] Bulk fetched {Count} user emails in {ElapsedMs}ms",
@@ -174,7 +175,7 @@ public class EventCancellationEmailJob
                 if (signUpUserIds.Any())
                 {
                     var signUpEmailsStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                    var signUpUserEmails = await _userRepository.GetEmailsByUserIdsAsync(signUpUserIds, CancellationToken.None);
+                    var signUpUserEmails = await _identityQueries.GetEmailsByUserIdsAsync(signUpUserIds, CancellationToken.None);
 
                     _logger.LogInformation(
                         "[Phase 6A.75] Bulk fetched {Count} sign-up user emails in {ElapsedMs}ms",
@@ -260,7 +261,7 @@ public class EventCancellationEmailJob
                     // Get user info if available (for personalization)
                     var emailResult = Email.Create(email);
                     var user = emailResult.IsSuccess
-                        ? await _userRepository.GetByEmailAsync(emailResult.Value, CancellationToken.None)
+                        ? await _identityQueries.GetByEmailAsync(emailResult.Value.Value, CancellationToken.None)
                         : null;
                     var userName = user != null ? $"{user.FirstName} {user.LastName}" : "Valued Guest";
 

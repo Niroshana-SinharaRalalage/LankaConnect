@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using FluentAssertions;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
@@ -38,7 +39,7 @@ public class EventNotificationEmailJobTests
     private readonly Mock<IFormQueries> _mockFormQueries;
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepository;
     private readonly Mock<IEventNotificationRecipientService> _mockRecipientService;
-    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IIdentityQueries> _mockUserRepository;
     private readonly Mock<INewsletterSubscriberRepository> _mockNewsletterSubscriberRepository;
     private readonly Mock<ITypedEmailService> _mockTypedEmailService;
     private readonly Mock<IEmailUrlHelper> _mockEmailUrlHelper;
@@ -53,7 +54,7 @@ public class EventNotificationEmailJobTests
         _mockFormQueries = new Mock<IFormQueries>();
         _mockRegistrationRepository = new Mock<IRegistrationRepository>();
         _mockRecipientService = new Mock<IEventNotificationRecipientService>();
-        _mockUserRepository = new Mock<IUserRepository>();
+        _mockUserRepository = new Mock<IIdentityQueries>();
         _mockNewsletterSubscriberRepository = new Mock<INewsletterSubscriberRepository>();
         _mockTypedEmailService = new Mock<ITypedEmailService>();
         _mockEmailUrlHelper = new Mock<IEmailUrlHelper>();
@@ -106,17 +107,19 @@ public class EventNotificationEmailJobTests
         return @event;
     }
 
-    private User CreateTestUser(Guid id, string email, string firstName, string lastName)
+    private UserSummaryDto CreateTestUser(Guid id, string email, string firstName, string lastName)
     {
-        var emailVO = Email.Create(email).Value;
-        var user = User.Create(emailVO, firstName, lastName).Value;
-
-        // Set ID using reflection
-        var idField = typeof(User).BaseType?.GetField("<Id>k__BackingField",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        idField?.SetValue(user, id);
-
-        return user;
+        return new UserSummaryDto(
+            Id: id,
+            Email: email,
+            FirstName: firstName,
+            LastName: lastName,
+            DisplayName: $"{firstName} {lastName}",
+            Role: UserRoleDto.GeneralUser,
+            Status: UserStatusDto.Active,
+            EmailVerified: true,
+            CreatedAt: System.DateTime.UtcNow,
+            UpdatedAt: null);
     }
 
     #region Success Cases
@@ -163,11 +166,11 @@ public class EventNotificationEmailJobTests
             .ReturnsAsync(new List<Registration> { registration1, registration2 });
 
         _mockUserRepository
-            .Setup(x => x.GetByIdAsync(userId1, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetUserByIdAsync(userId1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user1);
 
         _mockUserRepository
-            .Setup(x => x.GetByIdAsync(userId2, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetUserByIdAsync(userId2, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user2);
 
         // Phase 6A.61+ Fix: Add mock for bulk user email fetch

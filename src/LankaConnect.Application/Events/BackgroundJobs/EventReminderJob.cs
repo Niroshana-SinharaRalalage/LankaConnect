@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using System.Diagnostics;
 using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
@@ -28,7 +29,7 @@ namespace LankaConnect.Application.Events.BackgroundJobs;
 public class EventReminderJob
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IEventReminderRepository _eventReminderRepository;
@@ -38,7 +39,7 @@ public class EventReminderJob
 
     public EventReminderJob(
         IEventRepository eventRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
         IEventReminderRepository eventReminderRepository,
@@ -47,7 +48,7 @@ public class EventReminderJob
         IWhatsAppService? whatsAppService = null)
     {
         _eventRepository = eventRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
         _eventReminderRepository = eventReminderRepository;
@@ -182,10 +183,10 @@ public class EventReminderJob
 
                         if (registration.UserId.HasValue)
                         {
-                            var user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
+                            var user = await _identityQueries.GetUserByIdAsync(registration.UserId.Value, cancellationToken);
                             if (user != null)
                             {
-                                toEmail = user.Email.Value;
+                                toEmail = user.Email;
                                 toName = $"{user.FirstName} {user.LastName}";
                             }
                             else
@@ -427,10 +428,10 @@ public class EventReminderJob
 
                     if (registration.UserId.HasValue)
                     {
-                        var user = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
+                        var user = await _identityQueries.GetUserByIdAsync(registration.UserId.Value, cancellationToken);
                         if (user != null)
                         {
-                            toEmail = user.Email.Value;
+                            toEmail = user.Email;
                             toName = $"{user.FirstName} {user.LastName}";
                         }
                         else

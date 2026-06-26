@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts;
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.SendAlbumNotification;
@@ -31,7 +32,7 @@ public class SendAlbumNotificationCommandHandlerTests
     private readonly Mock<IPhotoAlbumRepository> _albumRepo;
     private readonly Mock<IRegistrationRepository> _registrationRepo;
     private readonly Mock<IEventRepository> _eventRepo;
-    private readonly Mock<IUserRepository> _userRepo;
+    private readonly Mock<IIdentityQueries> _userRepo;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<IServiceScopeFactory> _scopeFactory;
     private readonly SendAlbumNotificationCommandHandler _handler;
@@ -45,7 +46,7 @@ public class SendAlbumNotificationCommandHandlerTests
         _albumRepo        = new Mock<IPhotoAlbumRepository>();
         _registrationRepo = new Mock<IRegistrationRepository>();
         _eventRepo        = new Mock<IEventRepository>();
-        _userRepo         = new Mock<IUserRepository>();
+        _userRepo         = new Mock<IIdentityQueries>();
         _emailUrlHelper   = new Mock<IEmailUrlHelper>();
         _scopeFactory     = new Mock<IServiceScopeFactory>();
 
@@ -272,7 +273,7 @@ public class SendAlbumNotificationCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         // User repo NOT called when event is null (no sign-up lists to process)
         _userRepo.Verify(
-            r => r.GetEmailsByUserIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()),
+            r => r.GetEmailsByUserIdsAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -299,7 +300,7 @@ public class SendAlbumNotificationCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _userRepo.Verify(
-            r => r.GetEmailsByUserIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()),
+            r => r.GetEmailsByUserIdsAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()),
             Times.Never,
             "Event with no sign-up lists must not query user repo for sign-up emails");
     }

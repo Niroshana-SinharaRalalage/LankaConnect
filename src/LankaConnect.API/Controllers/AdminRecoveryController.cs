@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.3
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
@@ -36,20 +37,20 @@ public class AdminRecoveryController : ControllerBase
     private readonly IPublisher _publisher;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ILogger<AdminRecoveryController> _logger;
 
     public AdminRecoveryController(
         IPublisher publisher,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         ILogger<AdminRecoveryController> logger)
     {
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _logger = logger;
     }
 
@@ -130,8 +131,8 @@ public class AdminRecoveryController : ControllerBase
             string contactEmail;
             if (registration.UserId.HasValue)
             {
-                var user = await _userRepository.GetByIdAsync(registration.UserId.Value);
-                contactEmail = user?.Email.Value ?? registration.Contact?.Email ?? string.Empty;
+                var user = await _identityQueries.GetContactInfoAsync(registration.UserId.Value);
+                contactEmail = user?.Email ?? registration.Contact?.Email ?? string.Empty;
             }
             else
             {

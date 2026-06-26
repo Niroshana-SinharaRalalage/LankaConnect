@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.3
 using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +27,7 @@ public class PaymentsController : ControllerBase
     private readonly IStripeClient _stripeClient;
     private readonly IStripeCustomerRepository _customerRepository;
     private readonly IStripeWebhookEventRepository _webhookEventRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IRegistrationWebhookHandler _registrationWebhookHandler;
     private readonly IAdditionWebhookHandler _additionWebhookHandler;
     private readonly IDonationWebhookHandler _donationWebhookHandler;
@@ -47,7 +48,7 @@ public class PaymentsController : ControllerBase
         IStripeClient stripeClient,
         IStripeCustomerRepository customerRepository,
         IStripeWebhookEventRepository webhookEventRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IRegistrationWebhookHandler registrationWebhookHandler,
         IAdditionWebhookHandler additionWebhookHandler,
         IDonationWebhookHandler donationWebhookHandler,
@@ -62,7 +63,7 @@ public class PaymentsController : ControllerBase
         _stripeClient = stripeClient;
         _customerRepository = customerRepository;
         _webhookEventRepository = webhookEventRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _registrationWebhookHandler = registrationWebhookHandler;
         _additionWebhookHandler = additionWebhookHandler;
         _donationWebhookHandler = donationWebhookHandler;
@@ -98,7 +99,7 @@ public class PaymentsController : ControllerBase
             _logger.LogInformation("Creating checkout session for user {UserId}", userId);
 
             // Get or create Stripe customer
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _identityQueries.GetContactInfoAsync(userId);
             if (user == null)
             {
                 _logger.LogWarning("User {UserId} not found", userId);
@@ -113,8 +114,8 @@ public class PaymentsController : ControllerBase
                 var customerService = new CustomerService(_stripeClient);
                 var customerOptions = new CustomerCreateOptions
                 {
-                    Email = user.Email.Value,
-                    Name = user.FullName,
+                    Email = user.Email,
+                    Name = user.DisplayName,
                     Metadata = new Dictionary<string, string>
                     {
                         ["user_id"] = userId.ToString()
@@ -128,8 +129,8 @@ public class PaymentsController : ControllerBase
                 await _customerRepository.SaveStripeCustomerAsync(
                     userId,
                     customer.Id,
-                    user.Email.Value,
-                    user.FullName,
+                    user.Email,
+                    user.DisplayName,
                     customer.Created);
 
                 _logger.LogInformation("Created Stripe customer {CustomerId} for user {UserId}", customer.Id, userId);

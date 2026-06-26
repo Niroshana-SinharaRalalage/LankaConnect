@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.3
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
@@ -27,7 +28,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
     private readonly IEventRepository _eventRepository;
     private readonly IDonationRepository _donationRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IUserRepository _userRepository;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     // Phase 6A.137F: Add-on, collection, and sponsor repositories for bundled checkout
@@ -46,7 +47,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         IEventRepository eventRepository,
         IDonationRepository donationRepository,
         IUnitOfWork unitOfWork,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
         // Phase 6A.137F: Inject bundling dependencies
@@ -61,7 +62,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         _eventRepository = eventRepository;
         _donationRepository = donationRepository;
         _unitOfWork = unitOfWork;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
         _addOnDefinitionRepository = addOnDefinitionRepository;
@@ -108,7 +109,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                     "RegisterAnonymousAttendee: Email validated - Email={Email}",
                     request.Email);
 
-                var emailExists = await _userRepository.ExistsWithEmailAsync(emailResult.Value, cancellationToken);
+                var emailExists = await _identityQueries.ExistsWithEmailAsync(emailResult.Value.Value, cancellationToken);
                 if (emailExists)
                 {
                     stopwatch.Stop();

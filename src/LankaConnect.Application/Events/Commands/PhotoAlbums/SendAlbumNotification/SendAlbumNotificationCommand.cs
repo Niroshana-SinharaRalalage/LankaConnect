@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.3
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
@@ -43,7 +44,7 @@ public class SendAlbumNotificationCommandHandler : ICommandHandler<SendAlbumNoti
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventRepository _eventRepository;        // Phase 7B: sign-up list participants
-    private readonly IUserRepository _userRepository;          // Phase 7B: bulk email + name lookup
+    private readonly IIdentityQueries _identityQueries;          // Phase 7B: bulk email + name lookup
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SendAlbumNotificationCommandHandler> _logger;
@@ -52,7 +53,7 @@ public class SendAlbumNotificationCommandHandler : ICommandHandler<SendAlbumNoti
         IPhotoAlbumRepository photoAlbumRepository,
         IRegistrationRepository registrationRepository,
         IEventRepository eventRepository,
-        IUserRepository userRepository,
+        IIdentityQueries identityQueries,
         IEmailUrlHelper emailUrlHelper,
         IServiceScopeFactory scopeFactory,
         ILogger<SendAlbumNotificationCommandHandler> logger)
@@ -60,7 +61,7 @@ public class SendAlbumNotificationCommandHandler : ICommandHandler<SendAlbumNoti
         _photoAlbumRepository = photoAlbumRepository;
         _registrationRepository = registrationRepository;
         _eventRepository = eventRepository;
-        _userRepository = userRepository;
+        _identityQueries = identityQueries;
         _emailUrlHelper = emailUrlHelper;
         _scopeFactory = scopeFactory;
         _logger = logger;
@@ -140,8 +141,8 @@ public class SendAlbumNotificationCommandHandler : ICommandHandler<SendAlbumNoti
                     if (signUpUserIds.Any())
                     {
                         // Bulk-fetch emails and names in parallel to avoid N+1
-                        var emailsTask = _userRepository.GetEmailsByUserIdsAsync(signUpUserIds, cancellationToken);
-                        var namesTask  = _userRepository.GetUserNamesAsync(signUpUserIds, cancellationToken);
+                        var emailsTask = _identityQueries.GetEmailsByUserIdsAsync(signUpUserIds, cancellationToken);
+                        var namesTask  = _identityQueries.GetUserNamesAsync(signUpUserIds, cancellationToken);
                         await Task.WhenAll(emailsTask, namesTask);
 
                         var signUpEmails = emailsTask.Result;

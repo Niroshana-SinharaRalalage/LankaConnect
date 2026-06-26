@@ -285,3 +285,37 @@ when Event becomes Products/LankaEvents-specific.
 | 9 | Cross-cutting cleanup | ⏭️ After (5 sessions; drains 14 Identity stragglers + re-enables Rule 5) |
 
 **2 of 9 capabilities remain.** Wave 5 opens after capability #9 closes.
+
+---
+
+## Wave 4.9 — CulturalIntelligence capability extraction SHIPPED (2026-06-26)
+
+Capability #8 of 9 ✅. 2 stub services + 2 DI registrations relocated.
+
+### Files moved
+
+- `src/LankaConnect.Infrastructure/CulturalIntelligence/StubUserPreferences.cs` → `src/Modules/CulturalIntelligence/CulturalIntelligence.Infrastructure/StubUserPreferences.cs`
+- `src/LankaConnect.Infrastructure/CulturalIntelligence/StubGeographicProximityService.cs` → `src/Modules/CulturalIntelligence/CulturalIntelligence.Infrastructure/StubGeographicProximityService.cs`
+- `src/LankaConnect.Infrastructure/CulturalIntelligence/` directory deleted (empty)
+- Namespace: `LankaConnect.Infrastructure.CulturalIntelligence` → `LankaConnect.Modules.CulturalIntelligence.Infrastructure`
+
+### DI relocation
+
+- 2 registrations removed from `LankaConnect.Infrastructure.DependencyInjection`
+- Added to `Modules.CulturalIntelligence.Api.CulturalIntelligenceModule.AddCulturalIntelligenceModule()` alongside the existing StubCulturalCalendar registration. All 3 cultural service stubs now resolve from the module's composition seam.
+
+### Wave 4 capability board (after 4.9)
+
+| # | Capability | Status |
+|---|---|---|
+| 1 | Notifications cleanup | ✅ W3.4 |
+| 2 | Communications | ✅ Wave 4.1 |
+| 3 | Media | ✅ |
+| 4 | Forms | ✅ Wave 4.3 |
+| 5 | Payments | ✅ Wave 4.4 |
+| 6 | Identity | ✅ Wave 4.6 + 4.7 |
+| 7 | Scheduling | ✅ Wave 4.8 |
+| 8 | **CulturalIntelligence** | ✅ **Wave 4.9** |
+| 9 | Cross-cutting cleanup | ⏭️ Next (5 sessions; drains 14 Identity stragglers + re-enables Rule 5) |
+
+**Wave 4 ONE capability remaining.** Wave 5 opens after Cross-cutting cleanup closes.

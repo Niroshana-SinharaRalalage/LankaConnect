@@ -416,8 +416,6 @@ public static class DependencyInjection
         // W4.7 (2026-06-06): ICulturalCalendar / StubCulturalCalendar registration moved
         // to CulturalIntelligenceModule.AddCulturalIntelligenceModule (called from
         // LankaConnect.API/Program.cs).
-        services.AddScoped<LankaConnect.Domain.Events.Services.IUserPreferences, LankaConnect.Infrastructure.CulturalIntelligence.StubUserPreferences>();
-        services.AddScoped<LankaConnect.Domain.Events.Services.IGeographicProximityService, LankaConnect.Infrastructure.CulturalIntelligence.StubGeographicProximityService>();
         services.AddScoped<LankaConnect.Domain.Events.Services.IEventRecommendationEngine, LankaConnect.Domain.Events.Services.EventRecommendationEngine>();
 
         // Add GeoLocation Service for distance calculations

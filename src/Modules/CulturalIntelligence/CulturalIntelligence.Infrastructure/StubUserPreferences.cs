@@ -4,7 +4,7 @@ using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects.Recommendations;
 using CulturalSensitivityLevel = LankaConnect.Domain.Events.ValueObjects.Recommendations.CulturalSensitivityLevel;
 
-namespace LankaConnect.Infrastructure.CulturalIntelligence;
+namespace LankaConnect.Modules.CulturalIntelligence.Infrastructure;
 
 /// <summary>
 /// Stub implementation of IUserPreferences for MVP

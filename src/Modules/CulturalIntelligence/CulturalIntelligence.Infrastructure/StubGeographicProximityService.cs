@@ -3,7 +3,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects.Recommendations;
 
-namespace LankaConnect.Infrastructure.CulturalIntelligence;
+namespace LankaConnect.Modules.CulturalIntelligence.Infrastructure;
 
 /// <summary>
 /// Stub implementation of IGeographicProximityService for MVP

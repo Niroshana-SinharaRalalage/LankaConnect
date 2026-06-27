@@ -13,11 +13,14 @@ namespace LankaConnect.Modules.Identity.Contracts.Tests;
 public sealed class IIdentityQueriesShapeTests
 {
     [Fact]
-    public void IIdentityQueries_Has_SeventeenMethods()
+    public void IIdentityQueries_Has_EighteenMethods()
     {
         // W4.6.d.2.a (2026-06-24): expanded from 14 -> 17 with SearchUsersAsync,
         // GetUserSummariesByEmailsAsync, GetContactInfoAsync per architect ruling
         // to cover the d.2.b 44-consumer sweep.
+        // W4.10.s1a (2026-06-26): added GetPreferencesAsync (#18) so
+        // GetEventsQueryHandler + GetFeaturedEventsQueryHandler can swap from
+        // IUserRepository to IIdentityQueries via UserPreferencesProjectionDto.
         var methods = typeof(IIdentityQueries).GetMethods(BindingFlags.Public | BindingFlags.Instance);
 
         methods.Select(m => m.Name).Should().BeEquivalentTo(new[]
@@ -32,6 +35,7 @@ public sealed class IIdentityQueriesShapeTests
             "SearchUsersAsync",
             "GetUserSummariesByEmailsAsync",
             "GetContactInfoAsync",
+            "GetPreferencesAsync",
             "GetPagedAsync",
             "GetUsersWithPendingRoleUpgradesAsync",
             "CountAsync",

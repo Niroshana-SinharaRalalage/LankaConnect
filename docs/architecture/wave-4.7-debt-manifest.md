@@ -319,3 +319,45 @@ Capability #8 of 9 ✅. 2 stub services + 2 DI registrations relocated.
 | 9 | Cross-cutting cleanup | ⏭️ Next (5 sessions; drains 14 Identity stragglers + re-enables Rule 5) |
 
 **Wave 4 ONE capability remaining.** Wave 5 opens after Cross-cutting cleanup closes.
+
+---
+
+## Wave 4.10 Session 3 attempt — finding (2026-06-26)
+
+Session 3 (Communications per-capability migration) was attempted via bulk
+`git mv` of `LankaConnect.Application/Communications/*` → `Modules/Communications/Communications.Application/`. **Reverted** after hitting a 2-layer architectural blocker:
+
+### Blocker #1 — Cross-folder Common DTOs
+
+`LankaConnect.Application/Communications/Common/EmailGroupSummaryDto.cs` is referenced by `LankaConnect.Application/Events/Common/EventDto.cs` (legacy Events code still in the layered monolith). Moving the Common DTO into `Modules.Communications.Application.Common` forces `LankaConnect.Application` → `Modules.Communications.Application` ProjectReference, which creates a cycle with the existing `Modules.Communications.Application` → `LankaConnect.Application` transitional edge (for ICommand / IUnitOfWork / etc.).
+
+### Blocker #2 — BB.Application elevation prerequisite
+
+Architect ruled (2026-06-26) that **BuildingBlocks.Application must own the ICommand / ICommandHandler / IQuery / IQueryHandler primitives BEFORE per-capability migration ships**. This cuts the Modules → LankaConnect.Application transitional edges so Blocker #1's cycle is unreachable.
+
+Elevation attempted but found:
+1. `BuildingBlocks.Abstractions.ICommand<out TResponse>` already exists under the same namespace `LankaConnect.BuildingBlocks.Application.Abstractions` — would conflict with a new shorthand `ICommand : IRequest<Result>`.
+2. Two different `Result` types exist (`LankaConnect.Domain.Common.Result` vs `LankaConnect.BuildingBlocks.Domain.Result`) with incompatible APIs (string error vs Error class).
+3. Adding `BuildingBlocks.Application → LankaConnect.Domain` ProjectReference to resolve `Result` is the wrong architectural direction.
+
+### Resolution: defer to Wave 6 with explicit Result-unification subtask
+
+The proper sequence is:
+1. **Wave 6 ArchTest hardening — Phase 1**: Result unification. Pick BB.Domain.Result as the canonical type. Convert all ~200 handler return types from `LankaConnect.Domain.Common.Result` → `BB.Domain.Result`. Add a one-time compatibility shim if needed.
+2. **Wave 6 — Phase 2**: BB.Application owns `ICommand : IRequest<Result>` shorthand (now uses BB.Domain.Result). Modules use it directly. Cut Modules → LankaConnect.Application transitional edges.
+3. **Wave 6 — Phase 3**: Per-capability migrations from `LankaConnect.Application/<Module>/` → `Modules/<Module>/<Module>.Application/` happen cleanly without the cycle.
+4. **Wave 6 — Phase 4**: Delete unused `LankaConnect.Domain.Common.*` types (now drained by the Result migration).
+
+### Wave 4.10 final state (locked at 2026-06-26)
+
+✅ Stragglers DRAINED 14/14 — Identity boundary clean at the per-handler level
+✅ Identity physical move shipped (Wave 4.7.e — User aggregate in Identity.Domain)
+✅ Scheduling capability shipped (Wave 4.8)
+✅ CulturalIntelligence capability shipped (Wave 4.9)
+🟡 Per-capability Application migration DEFERRED to Wave 6 (blocked on Result unification)
+🟡 `LankaConnect.Domain.Common.*` DELETE DEFERRED to Wave 6 Phase 4
+🟡 Rule 5 ArchTest re-enable DEFERRED to Wave 6 (blocked on IApplicationDbContext + IJwtTokenService surface refactor)
+
+**Wave 4 closes here** with 3 explicit Wave 6 prerequisites carrying forward. This is a HONEST architectural status — the cleanup hits load-bearing layered-monolith primitives that need their own sequenced rework, not a bulk move.
+
+**Wave 5 (Products carve-out) is unblocked**. The Identity physical move + Scheduling capability + Cultural extraction are sufficient for Wave 5 to begin. Wave 6 then sweeps up the residual layered-monolith primitives (Result unification + capability migration + Domain.Common drain + Rule 5).

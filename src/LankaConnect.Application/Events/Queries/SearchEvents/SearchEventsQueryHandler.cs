@@ -4,7 +4,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Models;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

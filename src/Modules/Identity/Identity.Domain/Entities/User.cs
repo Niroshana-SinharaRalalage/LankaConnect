@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
@@ -60,7 +60,7 @@ public class User : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnec
     // Domain layer does NOT modify this - see UpdateUserPreferredMetroAreasCommandHandler
     // Per ADR-009: Shadow navigation accessed via ChangeTracker API in infrastructure layer
 #pragma warning disable CS0169 // Field is used by EF Core via reflection
-    private ICollection<LankaConnect.Domain.Events.MetroArea>? _preferredMetroAreaEntities;
+    private ICollection<LankaConnect.Products.LankaEvents.Domain.MetroArea>? _preferredMetroAreaEntities;
 #pragma warning restore CS0169
 
     // Authentication properties

@@ -2,10 +2,10 @@ using LankaConnect.Modules.Identity.Contracts; // W4.6.d.2.b: IUserRepository ->
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;

@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Events.Services;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -100,12 +100,12 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
 
                 // Phase 8X.4b — ExternalPaid events have no internal registration path. The
                 // architect-locked guard message points the buyer at the organiser-supplied URL
-                // (matches LankaConnect.Domain.Events.Event.ExternalRegistrationGuardMessage).
+                // (matches LankaConnect.Products.LankaEvents.Domain.Event.ExternalRegistrationGuardMessage).
                 // This check fires BEFORE the NoRegistration mode check below so the more-specific
                 // ExternalPaid message wins (ExternalPaid events are forced to NoRegistration mode
                 // by SetExternalPayment, which would otherwise return the generic NoRegistration
                 // message).
-                if (@event.PaymentMode == LankaConnect.Domain.Events.Enums.EventPaymentMode.ExternalPaid)
+                if (@event.PaymentMode == LankaConnect.Products.LankaEvents.Domain.Enums.EventPaymentMode.ExternalPaid)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
@@ -119,7 +119,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 // detection. NoRegistration → 400 (no Registration row to anchor RSVP against).
                 // Head-count modes (B1-B4) → dedicated head-count flow. DetailedAttendees → existing
                 // per-attendee flow below (no behaviour change for legacy events).
-                if (@event.RegistrationMode == LankaConnect.Domain.Events.Enums.RegistrationMode.NoRegistration)
+                if (@event.RegistrationMode == LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.NoRegistration)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
@@ -130,7 +130,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                         "add-on purchases / collections are still accepted via their own endpoints.");
                 }
 
-                if (@event.RegistrationMode != LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees)
+                if (@event.RegistrationMode != LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.DetailedAttendees)
                 {
                     _logger.LogInformation(
                         "RsvpToEvent: Using head-count format - EventId={EventId}, Mode={Mode}",
@@ -213,7 +213,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         {
             // Phase 8: Resolve tier name if TicketTierId is provided
             string? tierName = null;
-            if (attendeeDto.TicketTierId.HasValue && @event.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered)
+            if (attendeeDto.TicketTierId.HasValue && @event.TicketingMode == LankaConnect.Products.LankaEvents.Domain.Enums.TicketingMode.Tiered)
             {
                 var tier = @event.GetTicketTier(attendeeDto.TicketTierId.Value);
                 if (tier == null)
@@ -229,7 +229,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 }
                 tierName = tier.Name;
             }
-            else if (@event.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered && !attendeeDto.TicketTierId.HasValue)
+            else if (@event.TicketingMode == LankaConnect.Products.LankaEvents.Domain.Enums.TicketingMode.Tiered && !attendeeDto.TicketTierId.HasValue)
             {
                 return Result<string?>.Failure($"Ticket tier is required for attendee '{attendeeDto.Name}' (event uses tiered ticketing)");
             }
@@ -311,7 +311,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         // If user already has a Preliminary registration (payment not completed), reuse it
         var existingPreliminary = @event.Registrations.FirstOrDefault(r =>
             r.UserId == request.UserId &&
-            r.Status == Domain.Events.Enums.RegistrationStatus.Preliminary);
+            r.Status == LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationStatus.Preliminary);
 
         if (existingPreliminary != null && !@event.IsFree())
         {
@@ -371,7 +371,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         // SetPendingSeatAssignments would refuse — S8.2.C handles the free
         // event sync conversion path. We only stash for Preliminary (paid) here.
         if (pendingSeatAssignments is not null
-            && registration.Status == Domain.Events.Enums.RegistrationStatus.Preliminary)
+            && registration.Status == LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationStatus.Preliminary)
         {
             var stashResult = registration.SetPendingSeatAssignments(
                 request.SeatSessionId!,
@@ -694,7 +694,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
 
             // Phase 8: Always use line items for tiered events (per-tier breakdown)
             // Also use line items when donation, add-ons, collection, or sponsor are bundled
-            var isTiered = @event.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered;
+            var isTiered = @event.TicketingMode == LankaConnect.Products.LankaEvents.Domain.Enums.TicketingMode.Tiered;
             var hasLineItems = isTiered || bundledDonation != null || bundledAddOns.Count > 0
                 || bundledCollection != null || bundledSponsor != null;
             if (hasLineItems)
@@ -714,8 +714,8 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                         var tier = @event.GetTicketTier(group.Key.TicketTierId!.Value);
                         if (tier == null) continue;
 
-                        var adultCount = group.Count(a => a.AgeCategory == Domain.Events.Enums.AgeCategory.Adult);
-                        var childCount = group.Count(a => a.AgeCategory == Domain.Events.Enums.AgeCategory.Child);
+                        var adultCount = group.Count(a => a.AgeCategory == LankaConnect.Products.LankaEvents.Domain.Enums.AgeCategory.Adult);
+                        var childCount = group.Count(a => a.AgeCategory == LankaConnect.Products.LankaEvents.Domain.Enums.AgeCategory.Child);
                         var tierTotal = group.Sum(a => tier.CalculatePriceForAttendee(a.AgeCategory).Amount);
 
                         var descParts = new List<string>();
@@ -1223,7 +1223,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         if (string.IsNullOrWhiteSpace(request.Email))
             return Result<string?>.Failure("Email is required");
 
-        var contactResult = LankaConnect.Domain.Events.ValueObjects.RegistrationContact.Create(
+        var contactResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.RegistrationContact.Create(
             request.Email!,
             request.PhoneNumber ?? string.Empty,
             request.Address);
@@ -1234,11 +1234,11 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         // For 7E.3c the optional TierCounts list flows through; the factory validates the sum
         // invariant against Total. For 7E.3a (no tiers in scope), TierCounts will be null.
         var hc = request.HeadCount;
-        IReadOnlyList<LankaConnect.Domain.Events.ValueObjects.TierCount>? tierCounts = null;
+        IReadOnlyList<LankaConnect.Products.LankaEvents.Domain.ValueObjects.TierCount>? tierCounts = null;
         if (hc.TierCounts != null && hc.TierCounts.Count > 0)
         {
             // Resolve tier names from event tiers (snapshotted onto each TierCount VO).
-            var resolvedTiers = new List<LankaConnect.Domain.Events.ValueObjects.TierCount>();
+            var resolvedTiers = new List<LankaConnect.Products.LankaEvents.Domain.ValueObjects.TierCount>();
             foreach (var tcDto in hc.TierCounts)
             {
                 var tier = @event.TicketTiers.FirstOrDefault(t => t.Id == tcDto.TierId);
@@ -1248,7 +1248,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 // optional per-tier 4-leaf demographic split. Domain factory enforces
                 // all-or-nothing + sum-match invariants on both axes; cross-axis agreement
                 // (age split derived from 4-leaf) auto-fills for back-compat.
-                var tcResult = LankaConnect.Domain.Events.ValueObjects.TierCount.Create(
+                var tcResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.TierCount.Create(
                     tier.Id, tier.Name, tcDto.Count,
                     tcDto.AdultCount, tcDto.ChildCount,
                     tcDto.AdultMaleCount, tcDto.AdultFemaleCount,
@@ -1260,32 +1260,32 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             tierCounts = resolvedTiers;
         }
 
-        Result<LankaConnect.Domain.Events.ValueObjects.HeadCountBreakdown> hcResult;
+        Result<LankaConnect.Products.LankaEvents.Domain.ValueObjects.HeadCountBreakdown> hcResult;
         switch (@event.RegistrationMode)
         {
-            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountOnly:
+            case LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.HeadCountOnly:
                 if (!hc.Total.HasValue)
                     return Result<string?>.Failure("Total head-count is required for HeadCountOnly mode.");
-                hcResult = LankaConnect.Domain.Events.ValueObjects.HeadCountBreakdown.ForTotalOnly(hc.Total.Value, tierCounts);
+                hcResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.HeadCountBreakdown.ForTotalOnly(hc.Total.Value, tierCounts);
                 break;
-            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountByAge:
+            case LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.HeadCountByAge:
                 if (!hc.Adults.HasValue || !hc.Children.HasValue)
                     return Result<string?>.Failure("Adults and Children counts are required for HeadCountByAge mode.");
-                hcResult = LankaConnect.Domain.Events.ValueObjects.HeadCountBreakdown.ForByAge(
+                hcResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.HeadCountBreakdown.ForByAge(
                     hc.Adults.Value, hc.Children.Value, tierCounts);
                 break;
-            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountByGender:
+            case LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.HeadCountByGender:
                 if (!hc.Males.HasValue || !hc.Females.HasValue)
                     return Result<string?>.Failure("Males and Females counts are required for HeadCountByGender mode.");
-                hcResult = LankaConnect.Domain.Events.ValueObjects.HeadCountBreakdown.ForByGender(
+                hcResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.HeadCountBreakdown.ForByGender(
                     hc.Males.Value, hc.Females.Value, tierCounts);
                 break;
-            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountByAgeAndGender:
+            case LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.HeadCountByAgeAndGender:
                 if (!hc.AdultMales.HasValue || !hc.AdultFemales.HasValue ||
                     !hc.ChildMales.HasValue || !hc.ChildFemales.HasValue)
                     return Result<string?>.Failure(
                         "AdultMales, AdultFemales, ChildMales, and ChildFemales counts are required for HeadCountByAgeAndGender mode.");
-                hcResult = LankaConnect.Domain.Events.ValueObjects.HeadCountBreakdown.ForByAgeAndGender(
+                hcResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.HeadCountBreakdown.ForByAgeAndGender(
                     hc.AdultMales.Value, hc.AdultFemales.Value, hc.ChildMales.Value, hc.ChildFemales.Value,
                     tierCounts);
                 break;

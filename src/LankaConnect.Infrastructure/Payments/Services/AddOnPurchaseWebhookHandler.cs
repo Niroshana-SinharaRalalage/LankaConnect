@@ -1,8 +1,8 @@
 using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Infrastructure.Payments.Services;
@@ -236,7 +236,7 @@ public class AddOnPurchaseWebhookHandler : IAddOnPurchaseWebhookHandler
             {
                 workflowReferenceId = await _refundRequestRepository
                     .GetWorkflowLineReferenceIdAsync(
-                        Domain.Events.Enums.RefundLineItemType.AddOn,
+                        LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.AddOn,
                         refundId,
                         ct);
             }

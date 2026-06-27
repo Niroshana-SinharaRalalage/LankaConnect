@@ -1,7 +1,7 @@
 using FluentValidation;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using MediatR;
 

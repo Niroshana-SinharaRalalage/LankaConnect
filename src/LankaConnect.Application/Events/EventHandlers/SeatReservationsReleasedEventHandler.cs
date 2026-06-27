@@ -1,8 +1,8 @@
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

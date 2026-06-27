@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common.Options;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Services;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Options;
 using Serilog;

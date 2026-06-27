@@ -2,9 +2,9 @@ using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 

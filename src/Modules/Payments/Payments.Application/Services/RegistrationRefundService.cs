@@ -2,10 +2,10 @@ using LankaConnect.Application.Events.Services; // W4.4.c.4: interfaces stay in 
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 

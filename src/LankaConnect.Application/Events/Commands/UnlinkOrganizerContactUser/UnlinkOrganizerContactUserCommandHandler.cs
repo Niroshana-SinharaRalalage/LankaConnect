@@ -2,7 +2,7 @@ using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService mo
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

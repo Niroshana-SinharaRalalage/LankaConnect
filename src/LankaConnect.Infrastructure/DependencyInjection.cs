@@ -21,7 +21,7 @@ using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
@@ -48,8 +48,8 @@ using LankaConnect.Shared.Email.Extensions;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Infrastructure.Payments.Services;
 using LankaConnect.Infrastructure.Services.Tickets;
-using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Events.Services;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Domain.Tax.Repositories;
 using LankaConnect.Domain.Support;
 using LankaConnect.Application.Events.Services;
@@ -416,16 +416,16 @@ public static class DependencyInjection
         // W4.7 (2026-06-06): ICulturalCalendar / StubCulturalCalendar registration moved
         // to CulturalIntelligenceModule.AddCulturalIntelligenceModule (called from
         // LankaConnect.API/Program.cs).
-        services.AddScoped<LankaConnect.Domain.Events.Services.IEventRecommendationEngine, LankaConnect.Domain.Events.Services.EventRecommendationEngine>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IEventRecommendationEngine, LankaConnect.Products.LankaEvents.Domain.Services.EventRecommendationEngine>();
 
         // Add GeoLocation Service for distance calculations
-        services.AddScoped<LankaConnect.Domain.Events.Services.IGeoLocationService, LankaConnect.Domain.Events.Services.GeoLocationService>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IGeoLocationService, LankaConnect.Products.LankaEvents.Domain.Services.GeoLocationService>();
 
         // Phase 6A.97: Timezone Lookup Service for consistent event date/time display
-        services.AddScoped<LankaConnect.Domain.Events.Services.ITimeZoneLookupService, LankaConnect.Infrastructure.Services.TimeZoneLookupService>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.ITimeZoneLookupService, LankaConnect.Infrastructure.Services.TimeZoneLookupService>();
 
         // Add Event Notification Recipient Service (Phase 6A Event Notifications)
-        services.AddScoped<LankaConnect.Domain.Events.Services.IEventNotificationRecipientService, LankaConnect.Application.Events.Services.EventNotificationRecipientService>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IEventNotificationRecipientService, LankaConnect.Application.Events.Services.EventNotificationRecipientService>();
 
         // Phase 6A.74: Newsletter Recipient Service
         services.AddScoped<LankaConnect.Application.Communications.Services.INewsletterRecipientService, LankaConnect.Infrastructure.Services.NewsletterRecipientService>();
@@ -529,7 +529,7 @@ public static class DependencyInjection
         services.AddSingleton<ITicketSignatureService, HmacTicketSignatureService>();
 
         // Phase 6A.141: Ticket-scan audit log repository.
-        services.AddScoped<LankaConnect.Domain.Events.Repositories.ITicketScanLogRepository,
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketScanLogRepository,
             LankaConnect.Infrastructure.Data.Repositories.TicketScanLogRepository>();
 
         // Wave 4.4.d.2 (2026-06-23): IRefundRequestRepository registration relocated

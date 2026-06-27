@@ -8,8 +8,8 @@ using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Communications.Entities;
@@ -60,10 +60,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<EventTemplate> EventTemplates => Set<EventTemplate>(); // Phase 6A.8
 
     // Phase 7F-B: registration-mode conversion audit
-    public DbSet<LankaConnect.Domain.Events.Entities.RegistrationModeConversion> RegistrationModeConversions
-        => Set<LankaConnect.Domain.Events.Entities.RegistrationModeConversion>();
-    public DbSet<LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow> RegistrationModeConversionRows
-        => Set<LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow>();
+    public DbSet<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversion> RegistrationModeConversions
+        => Set<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversion>();
+    public DbSet<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow> RegistrationModeConversionRows
+        => Set<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow>();
 
     // Business Entity Sets
     public DbSet<Business> Businesses => Set<Business>();
@@ -80,7 +80,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
     public DbSet<Newsletter> Newsletters => Set<Newsletter>(); // Phase 6A.74: Newsletter/News Alert Feature
     public DbSet<NewsletterEmailHistory> NewsletterEmailHistories => Set<NewsletterEmailHistory>(); // Phase 6A.74 Part 13 Issue #1: Newsletter email send history
-    public DbSet<LankaConnect.Domain.Events.Entities.EventNotificationHistory> EventNotificationHistories => Set<LankaConnect.Domain.Events.Entities.EventNotificationHistory>(); // Phase 6A.61: Event notification history tracking
+    public DbSet<LankaConnect.Products.LankaEvents.Domain.Entities.EventNotificationHistory> EventNotificationHistories => Set<LankaConnect.Products.LankaEvents.Domain.Entities.EventNotificationHistory>(); // Phase 6A.61: Event notification history tracking
     public DbSet<EmailMetricRecord> EmailMetricRecords => Set<EmailMetricRecord>(); // Phase 6A.89: Email metrics persistence
     public DbSet<EmailFailureDetail> EmailFailureDetails => Set<EmailFailureDetail>(); // Phase 6A.99: Email failure details persistence
 
@@ -372,7 +372,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Modules.Identity.Domain.Entities.User),                          // Phase 1.1 (Wave4.9.2.1, 2026-06-08): identity.users
             typeof(LankaConnect.Domain.Tax.StateTaxRate),                    // Phase 1.2 (Wave4.9.2.2, 2026-06-08): reference_data.state_tax_rates
             typeof(LankaConnect.Domain.Badges.Badge),                        // Phase 1.3 (Wave4.9.2.3, 2026-06-08): badges.badges
-            typeof(LankaConnect.Domain.Events.Entities.EventBadge),          // Phase 1.3 (Wave4.9.2.3, 2026-06-08): badges.event_badges
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge),          // Phase 1.3 (Wave4.9.2.3, 2026-06-08): badges.event_badges
             typeof(LankaConnect.Domain.Business.Business),                   // Phase 1.4 (Wave4.9.2.4, 2026-06-08): business.businesses
             typeof(LankaConnect.Domain.Business.Service),                    // Phase 1.4 (Wave4.9.2.4, 2026-06-08): business.services
             typeof(LankaConnect.Domain.Business.Review),                     // Phase 1.4 (Wave4.9.2.4, 2026-06-08): business.reviews
@@ -386,7 +386,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Communications.Entities.EmailMessage),
             typeof(LankaConnect.Domain.Communications.Entities.EmailMetricRecord),
             typeof(LankaConnect.Domain.Communications.Entities.EmailTemplate),
-            typeof(LankaConnect.Domain.Events.Entities.EventNotificationHistory),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventNotificationHistory),
             typeof(LankaConnect.Domain.Communications.Entities.UserEmailPreferences),
             // Phase 1.8 (Wave4.9.2.8, 2026-06-09): communications newsletter subset
             typeof(LankaConnect.Domain.Communications.Entities.Newsletter),
@@ -398,40 +398,40 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Communications.Entities.WhatsAppTemplate),
             typeof(LankaConnect.Domain.Communications.Entities.WhatsAppWebhookEvent),
             // Phase 1.10a (Wave4.9.2.10a, 2026-06-09): events schema - Event aggregate proper (10 entities)
-            typeof(LankaConnect.Domain.Events.Event),
-            typeof(LankaConnect.Domain.Events.Registration),
-            typeof(LankaConnect.Domain.Events.Sponsor),
-            typeof(LankaConnect.Domain.Events.SponsorshipPackage),
-            typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact),
-            typeof(LankaConnect.Domain.Events.Entities.EventSlugAlias),
-            typeof(LankaConnect.Domain.Events.EventTemplate),
-            typeof(LankaConnect.Domain.Events.EventImage),
-            typeof(LankaConnect.Domain.Events.EventVideo),
-            typeof(LankaConnect.Domain.Events.MetroArea),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Event),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Registration),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Sponsor),
+            typeof(LankaConnect.Products.LankaEvents.Domain.SponsorshipPackage),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventOrganizerContact),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventSlugAlias),
+            typeof(LankaConnect.Products.LankaEvents.Domain.EventTemplate),
+            typeof(LankaConnect.Products.LankaEvents.Domain.EventImage),
+            typeof(LankaConnect.Products.LankaEvents.Domain.EventVideo),
+            typeof(LankaConnect.Products.LankaEvents.Domain.MetroArea),
             // Phase 1.10b (Wave4.9.2.10b, 2026-06-09): events signups + seats + venue (10 entities)
-            typeof(LankaConnect.Domain.Events.Entities.SignUpList),
-            typeof(LankaConnect.Domain.Events.Entities.SignUpItem),
-            typeof(LankaConnect.Domain.Events.Entities.SignUpCommitment),
-            typeof(LankaConnect.Domain.Events.Entities.Seat),
-            typeof(LankaConnect.Domain.Events.Entities.SeatHold),
-            typeof(LankaConnect.Domain.Events.Entities.SeatReservation),
-            typeof(LankaConnect.Domain.Events.Entities.VenueLayout),
-            typeof(LankaConnect.Domain.Events.Entities.VenueZone),
-            typeof(LankaConnect.Domain.Events.Entities.VenueTable),
-            typeof(LankaConnect.Domain.Events.Entities.VenueDecoration),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.SignUpList),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.SignUpItem),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.SignUpCommitment),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.Seat),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.SeatHold),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.SeatReservation),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.VenueLayout),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.VenueZone),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.VenueTable),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.VenueDecoration),
             // Phase 1.10c.c (Wave4.9.2.10c.c, 2026-06-09): events.tickets (1 entity)
-            typeof(LankaConnect.Domain.Events.Entities.Ticket),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.Ticket),
             // Phase 1.10d (Wave4.9.2.10d, 2026-06-09): events donations + refunds + addons (10 entities)
-            typeof(LankaConnect.Domain.Events.Donation),
-            typeof(LankaConnect.Domain.Events.Entities.RefundRequest),
-            typeof(LankaConnect.Domain.Events.Entities.RefundRequestLineItem),
-            typeof(LankaConnect.Domain.Events.RegistrationAddition),
-            typeof(LankaConnect.Domain.Events.RegistrationPayment),
-            typeof(LankaConnect.Domain.Events.AddOnDefinition),
-            typeof(LankaConnect.Domain.Events.AddOnPurchase),
-            typeof(LankaConnect.Domain.Events.Collection),
-            typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversion),
-            typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Donation),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequest),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequestLineItem),
+            typeof(LankaConnect.Products.LankaEvents.Domain.RegistrationAddition),
+            typeof(LankaConnect.Products.LankaEvents.Domain.RegistrationPayment),
+            typeof(LankaConnect.Products.LankaEvents.Domain.AddOnDefinition),
+            typeof(LankaConnect.Products.LankaEvents.Domain.AddOnPurchase),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Collection),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversion),
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow),
         };
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())
@@ -594,9 +594,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(AddOnDefinition), // Purchasable add-on items (Financial Features)
             typeof(AddOnPurchase), // Add-on purchases (Financial Features)
             typeof(SponsorshipPackage), // Phase 6A.156: organizer-defined sponsorship packages (Gold/Silver/Bronze)
-            typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact), // Multiple Organizer Contacts
-            typeof(LankaConnect.Domain.Events.Entities.EventSlugAlias), // Phase 6A.154: retired vanity slug aliases (permanent 301 sources)
-            typeof(LankaConnect.Domain.Events.Entities.EventEmailGroupLink), // Wave 5.4.c.0: explicit junction CLR type replacing the Phase 6A.32 typed M2M nav
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventOrganizerContact), // Multiple Organizer Contacts
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventSlugAlias), // Phase 6A.154: retired vanity slug aliases (permanent 301 sources)
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventEmailGroupLink), // Wave 5.4.c.0: explicit junction CLR type replacing the Phase 6A.32 typed M2M nav
             typeof(LankaConnect.Domain.Communications.Entities.NewsletterEmailGroupLink), // Wave 5.4.d.1b: mirror of EventEmailGroupLink for Newsletter side
             // W4.2: PhotoAlbum + AlbumPhoto moved to MediaDbContext.
             typeof(WhatsAppMessageRecord), // Phase 7A: WhatsApp Integration
@@ -612,8 +612,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(SeatHold), // Phase 2: Seat Booking
             typeof(SeatReservation), // Phase 2: Seat Booking
             typeof(TierAssignment), // Slice 4 Release N: polymorphic tier→zone/table mapping
-            typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversion), // Phase 7F-B: mode-conversion audit
-            typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow), // Phase 7F-B: per-row audit detail
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversion), // Phase 7F-B: mode-conversion audit
+            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow), // Phase 7F-B: per-row audit detail
             typeof(RefundRequest), // Phase 6A.148: refund approval workflow aggregate-internal entity
             typeof(RefundRequestLineItem) // Phase 6A.148: per-bucket refund line item
         };

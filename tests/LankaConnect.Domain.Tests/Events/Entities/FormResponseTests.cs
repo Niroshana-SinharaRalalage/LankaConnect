@@ -4,8 +4,8 @@ using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events.Entities;

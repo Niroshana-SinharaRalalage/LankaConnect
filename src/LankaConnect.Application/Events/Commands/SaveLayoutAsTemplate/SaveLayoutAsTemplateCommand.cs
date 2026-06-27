@@ -10,7 +10,7 @@ namespace LankaConnect.Application.Events.Commands.SaveLayoutAsTemplate;
 /// <c>CreatedByUserId == NewOwnerUserId</c>, and a fresh server-side ID.
 /// Zones, tables, decorations, canvas, and per-seat <c>IsEnabled</c> /
 /// <c>IsAccessible</c> flags round-trip via
-/// <see cref="Domain.Events.Entities.VenueLayout.CloneAsTemplate"/>.
+/// <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.VenueLayout.CloneAsTemplate"/>.
 /// Tier mappings live on the <c>TicketTier</c> aggregate (owned by the
 /// source's event) and are deliberately dropped — templates are tier-free.
 ///

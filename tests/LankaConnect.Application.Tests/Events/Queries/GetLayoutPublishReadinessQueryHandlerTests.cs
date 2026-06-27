@@ -1,11 +1,11 @@
 using FluentAssertions;
 using LankaConnect.Application.Events.Queries.GetLayoutPublishReadiness;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
@@ -130,8 +130,8 @@ public class GetLayoutPublishReadinessQueryHandlerTests
 
     private static Event CreateEventWithTier(Guid eventId, Guid organiserId, TicketTier tier)
     {
-        var title = LankaConnect.Domain.Events.ValueObjects.EventTitle.Create("Test Event").Value;
-        var description = LankaConnect.Domain.Events.ValueObjects.EventDescription
+        var title = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventTitle.Create("Test Event").Value;
+        var description = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventDescription
             .Create("Description").Value;
         var @event = Event.Create(
             title, description,

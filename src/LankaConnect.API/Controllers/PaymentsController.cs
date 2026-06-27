@@ -10,7 +10,7 @@ using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Application.Events.Services;
 
 namespace LankaConnect.API.Controllers;
@@ -747,22 +747,22 @@ public class PaymentsController : ControllerBase
 
             switch (workflowLine.Type)
             {
-                case LankaConnect.Domain.Events.Enums.RefundLineItemType.AddOn:
+                case LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.AddOn:
                     await _addOnPurchaseWebhookHandler.HandleChargeRefundedAsync(
                         charge.PaymentIntentId, refund.Id, correlationId);
                     return;
 
-                case LankaConnect.Domain.Events.Enums.RefundLineItemType.Sponsor:
+                case LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.Sponsor:
                     await _sponsorWebhookHandler.HandleChargeRefundedAsync(
                         charge.PaymentIntentId, refund.Id, correlationId);
                     return;
 
-                case LankaConnect.Domain.Events.Enums.RefundLineItemType.Collection:
+                case LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.Collection:
                     await _collectionWebhookHandler.HandleChargeRefundedAsync(
                         charge.PaymentIntentId, refund.Id, correlationId);
                     return;
 
-                case LankaConnect.Domain.Events.Enums.RefundLineItemType.Ticket:
+                case LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.Ticket:
                     await _registrationWebhookHandler.HandleChargeRefundedAsync(
                         charge.Id, charge.PaymentIntentId, refund.Id,
                         refund.Amount, refundMetadata, correlationId);

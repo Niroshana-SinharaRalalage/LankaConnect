@@ -1,10 +1,10 @@
 using FluentAssertions;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Infrastructure.Payments.Services;

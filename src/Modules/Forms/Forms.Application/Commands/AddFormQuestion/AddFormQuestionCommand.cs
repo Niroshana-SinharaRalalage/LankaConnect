@@ -4,7 +4,7 @@ using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
 namespace LankaConnect.Modules.Forms.Application.Commands.AddFormQuestion;
 

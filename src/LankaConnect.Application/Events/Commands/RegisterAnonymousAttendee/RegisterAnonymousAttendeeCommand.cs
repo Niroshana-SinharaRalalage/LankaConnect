@@ -1,6 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
 namespace LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 

@@ -1,5 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
 namespace LankaConnect.Application.Events.Commands.UpdateDecoration;
 

@@ -5,7 +5,7 @@ using LankaConnect.Application.Events.Queries.ExportCollections;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventCollections;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

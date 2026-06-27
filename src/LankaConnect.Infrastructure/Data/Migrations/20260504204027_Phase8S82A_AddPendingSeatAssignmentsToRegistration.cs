@@ -9,9 +9,9 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     /// Phase 8 S8.2.A — adds two nullable columns to <c>events.registrations</c>:
     /// <list type="bullet">
     ///   <item><c>pending_seat_assignments</c> (jsonb) — owned-collection
-    ///   stash backing <see cref="LankaConnect.Domain.Events.Registration.PendingSeatAssignments"/>.</item>
+    ///   stash backing <see cref="LankaConnect.Products.LankaEvents.Domain.Registration.PendingSeatAssignments"/>.</item>
     ///   <item><c>pending_seat_session_id</c> (varchar(100)) — backing
-    ///   <see cref="LankaConnect.Domain.Events.Registration.PendingSeatSessionId"/>.</item>
+    ///   <see cref="LankaConnect.Products.LankaEvents.Domain.Registration.PendingSeatSessionId"/>.</item>
     /// </list>
     ///
     /// Both columns are nullable so existing rows are unaffected — the stash

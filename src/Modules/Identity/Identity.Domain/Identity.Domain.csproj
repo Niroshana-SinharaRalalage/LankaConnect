@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

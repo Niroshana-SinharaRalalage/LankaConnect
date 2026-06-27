@@ -2,12 +2,12 @@ using AutoMapper;
 using LankaConnect.Application.Badges.DTOs;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Badges;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Services;
-using LankaConnect.Domain.Events.ValueObjects;
-using DonationConfiguration = LankaConnect.Domain.Events.ValueObjects.DonationConfiguration;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using DonationConfiguration = LankaConnect.Products.LankaEvents.Domain.ValueObjects.DonationConfiguration;
 
 namespace LankaConnect.Application.Common.Mappings;
 
@@ -88,7 +88,7 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.HasDualPricing, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.HasChildPricing))
             // Phase 6D: Group tiered pricing mapping
             .ForMember(dest => dest.PricingType, opt => opt.MapFrom(src => src.Pricing != null ? src.Pricing.Type.ToString() : (string?)null))
-            .ForMember(dest => dest.GroupPricingTiers, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.HasGroupTiers ? src.Pricing.GroupTiers : new List<Domain.Events.ValueObjects.GroupPricingTier>()))
+            .ForMember(dest => dest.GroupPricingTiers, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.HasGroupTiers ? src.Pricing.GroupTiers : new List<LankaConnect.Products.LankaEvents.Domain.ValueObjects.GroupPricingTier>()))
             .ForMember(dest => dest.HasGroupPricing, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.HasGroupTiers))
             // Media galleries (Epic 2 Phase 2)
             .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
@@ -115,7 +115,7 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.TicketingMode, opt => opt.MapFrom(src => src.TicketingMode))
             .ForMember(dest => dest.HasTicketTiers, opt => opt.MapFrom(src => src.HasTicketTiers))
             .ForMember(dest => dest.TicketTiers, opt => opt.MapFrom(src =>
-                src.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered
+                src.TicketingMode == LankaConnect.Products.LankaEvents.Domain.Enums.TicketingMode.Tiered
                     ? src.GetActiveTiers().Select(t => new TicketTierDto
                     {
                         Id = t.Id,

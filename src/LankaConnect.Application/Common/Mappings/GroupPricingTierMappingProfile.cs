@@ -1,6 +1,6 @@
 using AutoMapper;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 namespace LankaConnect.Application.Common.Mappings;
 

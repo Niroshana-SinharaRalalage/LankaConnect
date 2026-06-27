@@ -1,8 +1,8 @@
 using System;
 using FluentValidation;
 using LankaConnect.Application.Events.Commands.CreateEvent;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Commands.UpdateEvent;
@@ -10,8 +10,8 @@ namespace LankaConnect.Application.Events.Commands.UpdateEvent;
 /// <summary>
 /// Phase 8X.4a — Validator for <see cref="UpdateEventCommand"/>. Mirrors
 /// <see cref="CreateEventCommandValidator"/>'s ExternalPaid rules. Active-registration
-/// guards live in the domain (<see cref="LankaConnect.Domain.Events.Event.SetPaymentMode"/>
-/// / <see cref="LankaConnect.Domain.Events.Event.SetExternalPayment"/>) and surface from
+/// guards live in the domain (<see cref="LankaConnect.Products.LankaEvents.Domain.Event.SetPaymentMode"/>
+/// / <see cref="LankaConnect.Products.LankaEvents.Domain.Event.SetExternalPayment"/>) and surface from
 /// the handler as 400 with the domain's error message.
 /// </summary>
 public class UpdateEventCommandValidator : AbstractValidator<UpdateEventCommand>
@@ -89,7 +89,7 @@ public class UpdateEventCommandValidator : AbstractValidator<UpdateEventCommand>
 
             // Phase 8X.11 — RegistrationMode must be null or External.
             RuleFor(x => x.RegistrationMode)
-                .Must(mode => mode == null || mode == Domain.Events.Enums.RegistrationMode.External)
+                .Must(mode => mode == null || mode == LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.External)
                 .WithMessage("ExternalPaid events must use RegistrationMode = External (or null — handler will coerce). " +
                     "Other registration modes capture internal attendee data which doesn't apply to external-paid events.");
 

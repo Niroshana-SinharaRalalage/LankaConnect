@@ -1,9 +1,9 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Commands.HoldSeats;

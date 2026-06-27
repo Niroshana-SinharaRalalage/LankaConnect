@@ -4,11 +4,11 @@ using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -29,8 +29,8 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CancelRsvpCommandHandler> _logger;
     // Phase 6A.148: Refund approval workflow integration
-    private readonly LankaConnect.Domain.Events.Repositories.ITicketRepository _ticketRepository;
-    private readonly LankaConnect.Domain.Events.Repositories.IAddOnPurchaseRepository _addOnPurchaseRepository;
+    private readonly LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketRepository _ticketRepository;
+    private readonly LankaConnect.Products.LankaEvents.Domain.Repositories.IAddOnPurchaseRepository _addOnPurchaseRepository;
     private readonly IRegistrationPaymentRepository _registrationPaymentRepository;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
@@ -47,8 +47,8 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
         IUnitOfWork unitOfWork,
         ILogger<CancelRsvpCommandHandler> logger,
         // Phase 6A.148: Refund approval workflow integration
-        LankaConnect.Domain.Events.Repositories.ITicketRepository ticketRepository,
-        LankaConnect.Domain.Events.Repositories.IAddOnPurchaseRepository addOnPurchaseRepository,
+        LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketRepository ticketRepository,
+        LankaConnect.Products.LankaEvents.Domain.Repositories.IAddOnPurchaseRepository addOnPurchaseRepository,
         IRegistrationPaymentRepository registrationPaymentRepository,
         Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
@@ -675,7 +675,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                 }
 
                 // Build line items from bucket selections.
-                var lineItems = new List<LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput>();
+                var lineItems = new List<LankaConnect.Products.LankaEvents.Domain.ValueObjects.RefundRequestLineItemInput>();
 
                 if (request.RefundTicket)
                 {
@@ -683,8 +683,8 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                         .GetInitialPaymentAsync(registration.Id, cancellationToken);
                     if (initialPayment is not null && initialPayment.Amount is not null && initialPayment.Amount.Amount > 0)
                     {
-                        lineItems.Add(new LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput(
-                            LankaConnect.Domain.Events.Enums.RefundLineItemType.Ticket,
+                        lineItems.Add(new LankaConnect.Products.LankaEvents.Domain.ValueObjects.RefundRequestLineItemInput(
+                            LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.Ticket,
                             initialPayment.Id,
                             initialPayment.Amount));
                     }
@@ -705,8 +705,8 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                             "[6A.148.c] Ticket line via legacy fallback (no RegistrationPayment row): " +
                             "RegId={RegId} StripePaymentIntentId={Pii} Amount=${Amount}",
                             registration.Id, registration.StripePaymentIntentId, registration.TotalPrice.Amount);
-                        lineItems.Add(new LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput(
-                            LankaConnect.Domain.Events.Enums.RefundLineItemType.Ticket,
+                        lineItems.Add(new LankaConnect.Products.LankaEvents.Domain.ValueObjects.RefundRequestLineItemInput(
+                            LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.Ticket,
                             registration.Id,
                             registration.TotalPrice));
                     }
@@ -717,14 +717,14 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                     var purchases = await _addOnPurchaseRepository.GetByUserIdAndEventIdAsync(
                         request.UserId, request.EventId, cancellationToken);
                     foreach (var p in purchases.Where(p =>
-                        p.Status == LankaConnect.Domain.Events.Enums.AddOnPurchaseStatus.Completed &&
+                        p.Status == LankaConnect.Products.LankaEvents.Domain.Enums.AddOnPurchaseStatus.Completed &&
                         !string.IsNullOrWhiteSpace(p.StripePaymentIntentId) &&
                         p.TotalAmount is not null &&
                         p.TotalAmount.Amount > 0 &&
                         (p.RegistrationId == null || p.RegistrationId == registration.Id)))
                     {
-                        lineItems.Add(new LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput(
-                            LankaConnect.Domain.Events.Enums.RefundLineItemType.AddOn,
+                        lineItems.Add(new LankaConnect.Products.LankaEvents.Domain.ValueObjects.RefundRequestLineItemInput(
+                            LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.AddOn,
                             p.Id,
                             p.TotalAmount));
                     }
@@ -735,13 +735,13 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                     var collections = await _collectionRepository.GetByUserIdAndEventIdAsync(
                         request.UserId, request.EventId, cancellationToken);
                     foreach (var c in collections.Where(c =>
-                        c.Status == LankaConnect.Domain.Events.Enums.CollectionStatus.Completed &&
+                        c.Status == LankaConnect.Products.LankaEvents.Domain.Enums.CollectionStatus.Completed &&
                         !string.IsNullOrWhiteSpace(c.StripePaymentIntentId) &&
                         c.Amount is not null &&
                         c.Amount.Amount > 0))
                     {
-                        lineItems.Add(new LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput(
-                            LankaConnect.Domain.Events.Enums.RefundLineItemType.Collection,
+                        lineItems.Add(new LankaConnect.Products.LankaEvents.Domain.ValueObjects.RefundRequestLineItemInput(
+                            LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.Collection,
                             c.Id,
                             c.Amount));
                     }
@@ -752,13 +752,13 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                     var sponsors = await _sponsorRepository.GetByUserIdAndEventIdAsync(
                         request.UserId, request.EventId, cancellationToken);
                     foreach (var s in sponsors.Where(s =>
-                        s.Status == LankaConnect.Domain.Events.Enums.SponsorStatus.Completed &&
+                        s.Status == LankaConnect.Products.LankaEvents.Domain.Enums.SponsorStatus.Completed &&
                         !string.IsNullOrWhiteSpace(s.StripePaymentIntentId) &&
                         s.Amount is not null &&
                         s.Amount.Amount > 0))
                     {
-                        lineItems.Add(new LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput(
-                            LankaConnect.Domain.Events.Enums.RefundLineItemType.Sponsor,
+                        lineItems.Add(new LankaConnect.Products.LankaEvents.Domain.ValueObjects.RefundRequestLineItemInput(
+                            LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.Sponsor,
                             s.Id,
                             s.Amount!));
                     }

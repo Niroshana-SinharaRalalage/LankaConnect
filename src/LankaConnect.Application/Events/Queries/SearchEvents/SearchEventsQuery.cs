@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Models;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
 namespace LankaConnect.Application.Events.Queries.SearchEvents;
 

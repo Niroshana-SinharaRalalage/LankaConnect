@@ -204,7 +204,7 @@ public class CsvExportService : ICsvExportService
 #pragma warning disable CS0618 // Type or member is obsolete
             var groupedItems = signUpLists
                 .SelectMany(list => list.Items
-                    .Where(item => item.ItemCategory != Domain.Events.Enums.SignUpItemCategory.Preferred)  // Exclude Preferred category
+                    .Where(item => item.ItemCategory != LankaConnect.Products.LankaEvents.Domain.Enums.SignUpItemCategory.Preferred)  // Exclude Preferred category
                     .Select(item => new
                     {
                         SignUpList = list,

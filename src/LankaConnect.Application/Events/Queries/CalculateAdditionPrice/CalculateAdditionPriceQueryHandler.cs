@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Domain.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -255,9 +255,9 @@ public class CalculateAdditionPriceQueryHandler
     }
 
     private (decimal TotalPrice, List<AttendeePrice> Breakdown) CalculateNewTotalPrice(
-        Domain.Events.ValueObjects.TicketPricing? pricing,
+        LankaConnect.Products.LankaEvents.Domain.ValueObjects.TicketPricing? pricing,
         Domain.Shared.ValueObjects.Money? ticketPrice,
-        List<Domain.Events.ValueObjects.AttendeeDetails> existingAttendees,
+        List<LankaConnect.Products.LankaEvents.Domain.ValueObjects.AttendeeDetails> existingAttendees,
         List<NewAttendeeDto> newAttendees,
         int totalAttendeeCount)
     {

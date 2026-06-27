@@ -9,7 +9,7 @@ using LankaConnect.Application.Events.Common;
 using LankaConnect.Modules.Forms.Application.Mappings;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 

@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -75,7 +75,7 @@ public class AddSignUpItemCommandHandler : ICommandHandler<AddSignUpItemCommand,
                     signUpList.Id, signUpList.Category, signUpList.Items.Count);
 
                 // Phase 6A.121: Add item using dual-field approach (quantity-based or slot-based)
-                Result<LankaConnect.Domain.Events.Entities.SignUpItem> itemResult;
+                Result<LankaConnect.Products.LankaEvents.Domain.Entities.SignUpItem> itemResult;
                 if (request.ItemType == SignUpItemType.Slot)
                 {
                     itemResult = signUpList.AddSlotBasedItem(

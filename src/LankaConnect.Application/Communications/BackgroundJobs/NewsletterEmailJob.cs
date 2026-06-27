@@ -6,7 +6,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Helpers;
@@ -434,7 +434,7 @@ public class NewsletterEmailJob
     /// <summary>
     /// Safely extracts event location string with defensive null handling.
     /// </summary>
-    private static string GetEventLocationString(Domain.Events.Event @event)
+    private static string GetEventLocationString(LankaConnect.Products.LankaEvents.Domain.Event @event)
     {
         if (@event.Location?.Address == null)
             return "Online Event";

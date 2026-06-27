@@ -1,10 +1,10 @@
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Infrastructure.Payments.Services;
@@ -596,7 +596,7 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
                     correlationId, donationId);
 
                 var donation = await _donationRepository.GetByDonationIdAsync(donationId);
-                if (donation != null && donation.Status == Domain.Events.Enums.DonationStatus.Pending)
+                if (donation != null && donation.Status == LankaConnect.Products.LankaEvents.Domain.Enums.DonationStatus.Pending)
                 {
                     donation.MarkAsAbandoned();
                     _donationRepository.Update(donation);

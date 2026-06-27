@@ -6,7 +6,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;

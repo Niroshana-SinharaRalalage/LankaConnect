@@ -64,7 +64,7 @@ public class UserRepository : Repository<User>, IUserRepository
                 {
                     // Access the shadow navigation using EF Core's Entry API
                     var metroAreasCollection = _context.Entry(user).Collection("_preferredMetroAreaEntities");
-                    var metroAreaEntities = metroAreasCollection.CurrentValue as IEnumerable<LankaConnect.Domain.Events.MetroArea>;
+                    var metroAreaEntities = metroAreasCollection.CurrentValue as IEnumerable<LankaConnect.Products.LankaEvents.Domain.MetroArea>;
 
                     if (metroAreaEntities != null)
                     {
@@ -333,7 +333,7 @@ public class UserRepository : Repository<User>, IUserRepository
                 if (entity.PreferredMetroAreaIds.Any())
                 {
                     // Load the MetroArea entities from the database based on the domain's ID list
-                    var metroAreaEntities = await _context.Set<LankaConnect.Domain.Events.MetroArea>()
+                    var metroAreaEntities = await _context.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
                         .Where(m => entity.PreferredMetroAreaIds.Contains(m.Id))
                         .ToListAsync(cancellationToken);
 

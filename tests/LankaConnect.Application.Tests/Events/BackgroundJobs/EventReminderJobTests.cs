@@ -6,11 +6,11 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
@@ -57,7 +57,7 @@ public class EventReminderJobTests
         // Phase 6A.83 Part 3: Setup ITicketRepository mock to return null by default (most events are free)
         _ticketRepository
             .Setup(x => x.GetByRegistrationIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((LankaConnect.Domain.Events.Entities.Ticket?)null);
+            .ReturnsAsync((LankaConnect.Products.LankaEvents.Domain.Entities.Ticket?)null);
 
         // Phase 6A.87: Setup ITypedEmailService mock to return success by default
         _typedEmailService

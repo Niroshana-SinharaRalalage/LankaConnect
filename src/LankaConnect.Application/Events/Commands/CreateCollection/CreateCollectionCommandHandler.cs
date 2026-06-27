@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Events.Services;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
@@ -62,7 +62,7 @@ public class CreateCollectionCommandHandler : ICommandHandler<CreateCollectionCo
                     return Result<string>.Failure("Event not found");
 
                 // 2. Validate event is Published
-                if (@event.Status != Domain.Events.Enums.EventStatus.Published)
+                if (@event.Status != LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published)
                     return Result<string>.Failure("Collections are only available for published events");
 
                 // 3. Validate collections are enabled

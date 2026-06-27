@@ -6,7 +6,7 @@ namespace LankaConnect.Modules.Payments.Contracts;
 /// </summary>
 /// <remarks>
 /// Wave 4.4.a (2026-06-23). Field surface tracks the
-/// <c>LankaConnect.Domain.Events.Entities.RefundRequest</c> public state as of
+/// <c>LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequest</c> public state as of
 /// Phase 6A.148. <see cref="LineItemCount"/> is provided for list-page rendering
 /// without forcing a detail fetch; callers needing the full line-item array
 /// request <see cref="RefundRequestDetailDto"/> via

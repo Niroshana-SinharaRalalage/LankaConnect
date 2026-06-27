@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LankaConnect.Application.Events.Queries.GetLayoutPresets;
-using LankaConnect.Domain.Events.Presets;
+using LankaConnect.Products.LankaEvents.Domain.Presets;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;

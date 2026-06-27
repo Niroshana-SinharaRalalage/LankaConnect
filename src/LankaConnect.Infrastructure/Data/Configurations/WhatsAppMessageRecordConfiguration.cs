@@ -183,7 +183,7 @@ public class WhatsAppMessageRecordConfiguration : IEntityTypeConfiguration<Whats
             .OnDelete(DeleteBehavior.SetNull)
             .HasConstraintName("FK_WhatsAppMessages_Users_UserId");
 
-        builder.HasOne<LankaConnect.Domain.Events.Event>()
+        builder.HasOne<LankaConnect.Products.LankaEvents.Domain.Event>()
             .WithMany()
             .HasForeignKey(e => e.EventId)
             .OnDelete(DeleteBehavior.SetNull)

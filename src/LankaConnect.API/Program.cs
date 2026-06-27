@@ -132,7 +132,7 @@ try
     // RefundRequestRepository) stay registered by AddInfrastructure until
     // Wave 4.4.d.2 physical move. Per architect Risk #1 Option A ruling,
     // RefundRequest stays a Registration aggregate child in
-    // LankaConnect.Domain.Events.Entities -- no Payments.Domain skeleton yet.
+    // LankaConnect.Products.LankaEvents.Domain.Entities -- no Payments.Domain skeleton yet.
     builder.Services.AddPaymentsModule(builder.Configuration);
 
     // Wave 4.6.b (2026-06-24) — Identity module composition. Registers the

@@ -5,7 +5,7 @@ using LankaConnect.Application.Communications.Services;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 
@@ -508,7 +508,7 @@ public class NewsletterRecipientService : INewsletterRecipientService
             foreach (var registration in @event.Registrations)
             {
                 // Only include confirmed registrations
-                if (registration.Status != Domain.Events.Enums.RegistrationStatus.Confirmed)
+                if (registration.Status != LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationStatus.Confirmed)
                     continue;
 
                 // New format: Registration with Contact

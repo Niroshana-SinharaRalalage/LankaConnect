@@ -2,11 +2,11 @@ using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Services; // Phase 6A.X: Revenue breakdown
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Services; // Phase 6A.X: Revenue breakdown
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
@@ -326,7 +326,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             ?? (effectivePaymentMode == EventPaymentMode.ExternalPaid
                 ? RegistrationMode.External
                 : RegistrationMode.DetailedAttendees);
-        var registrationModeContext = new LankaConnect.Domain.Events.Services.RegistrationModeContext
+        var registrationModeContext = new LankaConnect.Products.LankaEvents.Domain.Services.RegistrationModeContext
         {
             // Free attendance iff: caller said IsFree=true, OR no pricing/ticket price was provided.
             IsFreeAttendance = request.IsFree == true || (pricing == null && ticketPrice == null),
@@ -341,7 +341,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             // flow, we treat them as absent by default. Phase 7F will revisit if create-time
             // shape becomes richer.
         };
-        var modeCompatibilityResult = LankaConnect.Domain.Events.Services
+        var modeCompatibilityResult = LankaConnect.Products.LankaEvents.Domain.Services
             .RegistrationModeCompatibility.Check(requestedRegistrationMode, registrationModeContext);
         if (modeCompatibilityResult.IsFailure)
         {
@@ -662,7 +662,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         // status lock + alias bookkeeping; VO factory enforces shape.
         if (!string.IsNullOrWhiteSpace(request.VanitySlug))
         {
-            var slugResult = LankaConnect.Domain.Events.ValueObjects.EventVanitySlug.Create(request.VanitySlug);
+            var slugResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventVanitySlug.Create(request.VanitySlug);
             if (slugResult.IsFailure)
             {
                 _logger.LogWarning(

@@ -59,7 +59,7 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
                     _repoLogger.LogDebug("Loading {Count} metro area entities for shadow navigation", entity.MetroAreaIds.Count);
 
                     // Load the MetroArea entities from the database based on the domain's ID list
-                    var metroAreaEntities = await _context.Set<Domain.Events.MetroArea>()
+                    var metroAreaEntities = await _context.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
                         .Where(m => entity.MetroAreaIds.Contains(m.Id))
                         .ToListAsync(cancellationToken);
 
@@ -167,7 +167,7 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
 
                 // Phase 6A.74 Enhancement 1: Sync metro area IDs from shadow navigation to domain
                 var metroAreasCollection = _context.Entry(newsletter).Collection("_metroAreaEntities");
-                var metroAreaEntities = metroAreasCollection.CurrentValue as IEnumerable<Domain.Events.MetroArea>;
+                var metroAreaEntities = metroAreasCollection.CurrentValue as IEnumerable<LankaConnect.Products.LankaEvents.Domain.MetroArea>;
 
                 if (metroAreaEntities != null)
                 {

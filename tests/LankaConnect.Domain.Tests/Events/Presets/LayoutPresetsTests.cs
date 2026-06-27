@@ -1,7 +1,7 @@
 using FluentAssertions;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Presets;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Presets;
 
 namespace LankaConnect.Domain.Tests.Events.Presets;
 

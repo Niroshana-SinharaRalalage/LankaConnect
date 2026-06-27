@@ -361,3 +361,49 @@ The proper sequence is:
 **Wave 4 closes here** with 3 explicit Wave 6 prerequisites carrying forward. This is a HONEST architectural status — the cleanup hits load-bearing layered-monolith primitives that need their own sequenced rework, not a bulk move.
 
 **Wave 5 (Products carve-out) is unblocked**. The Identity physical move + Scheduling capability + Cultural extraction are sufficient for Wave 5 to begin. Wave 6 then sweeps up the residual layered-monolith primitives (Result unification + capability migration + Domain.Common drain + Rule 5).
+
+---
+
+## Wave 5.0 SHIPPED + W5.1 deeper-than-blueprint finding (2026-06-26)
+
+### Wave 5.0 (commit 916aab0b) — Products/LankaEvents skeleton
+
+5 new csprojs + DI seam wired. Build green, all tests pass. Empty seam today; the Event family migrates in W5.1+.
+
+### W5.1 attempt + architect re-audit finding
+
+Tried bulk move of Event Enums + ValueObjects (~73 leaf files). Build broke on 9 cross-aggregate references in LankaConnect.Domain itself:
+
+**Cat 1 — Cultural-intelligence files MISCLASSIFIED as Communications (5 files)**
+- `src/LankaConnect.Domain/Communications/Services/IMultiCulturalCalendarEngine.cs`
+- `src/LankaConnect.Domain/Communications/Services/MultiCulturalCalendarEngine.cs`
+- `src/LankaConnect.Domain/Communications/Services/MultiCulturalCalendarEngineSimple.cs`
+- `src/LankaConnect.Domain/Communications/ValueObjects/CrossCulturalEvent.cs`
+- `src/LankaConnect.Domain/Communications/ValueObjects/CulturalEvent.cs`
+
+All use `LankaConnect.Domain.Events.ValueObjects.EventCulturalConflict` via typed alias. Belong in CulturalIntelligence.Domain — Wave 4.9 only extracted Infrastructure stubs; the Domain layer of that capability is still empty.
+
+**Cat 2 — Newsletter↔Event typed nav (2 files)**
+- `Communications/Entities/Newsletter.cs`
+- `Communications/Entities/NewsletterEmailGroupLink.cs`
+Audit pending: do they reference Event VOs or just Event ID?
+
+**Cat 3 — Infrastructure in Domain (1 file)**
+- `src/LankaConnect.Domain/Infrastructure/Failover/CulturalIntelligenceFailoverOrchestrator.cs` — wrong layer; should be in CulturalIntelligence.Infrastructure.
+
+**Cat 4 — Support→Event ref (1 file)**
+- `src/LankaConnect.Domain/Support/SupportTicket.cs` — audit pending.
+
+### Architect's revised W5 plan (~2 extra sessions)
+
+- **W5.0.5 (pre-surgery)**: Move Cat 1 (5 cultural files) → `CulturalIntelligence.Domain/`. Move Cat 3 → `CulturalIntelligence.Infrastructure/`. Audit + refactor Cat 2/Cat 4 if needed. This requires `EventCulturalConflict` Event-specific VO to either be refactored to a non-Event type OR exported via Contracts.
+- **W5.1 (revised atomic)**: Move ENTIRE `LankaConnect.Domain/Events/` subtree (~190 files: Enums + VOs + DomainEvents + Entities + Services + Repositories) → `Products/LankaEvents.Domain/` in ONE commit. Per architect: "leaves only" was the wrong cut line — Event family is too interconnected to slice apart.
+- **W5.2 onwards**: shifted up by ~2 sessions. Total Wave 5: 12-14 sessions (~4 weeks at current pace).
+
+### Status
+
+✅ Wave 5.0 skeleton SHIPPED at `916aab0b`. Empty `AddLankaEventsModule()` registered.
+🟡 Wave 5.0.5 (cultural file relocation) NEXT — requires `EventCulturalConflict` deep refactor or accepted transitional edge.
+🟡 Wave 5.1 (atomic Events subtree move) NEXT after W5.0.5.
+
+Wave 5 honest timeline: **3-4 weeks of focused work** (12-14 sessions) given the cross-aggregate cascade. Velocity gate is the per-step architect review, not the bulk-move execution.

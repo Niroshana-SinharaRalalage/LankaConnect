@@ -1,4 +1,4 @@
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Application.Events.Common;
 
@@ -31,7 +31,7 @@ public record VenueLayoutDto
     /// <summary>
     /// Slice 5 Chunk 12: canvas rendering configuration (width/height/scale/background)
     /// projected so the Slice 8 canvas editor can restore the authoring viewport and
-    /// integration tests can observe <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.VenueLayout.UpdateCanvas"/>
+    /// integration tests can observe <see cref="Domain.Events.Entities.VenueLayout.UpdateCanvas"/>
     /// effects via GET. Defaults to <c>CanvasConfig.Default</c> when the layout hasn't
     /// been customized yet.
     /// </summary>
@@ -49,7 +49,7 @@ public record VenueLayoutDto
 }
 
 /// <summary>
-/// Slice 5 Chunk 12: flat projection of <see cref="LankaConnect.Products.LankaEvents.Domain.ValueObjects.CanvasConfig"/>
+/// Slice 5 Chunk 12: flat projection of <see cref="Domain.Events.ValueObjects.CanvasConfig"/>
 /// for the layout GET response. Matches the canvas editor save payload so the
 /// round-trip (save → reload) is symmetric.
 /// </summary>
@@ -79,7 +79,7 @@ public record VenueZoneDto
     /// <summary>
     /// Slice 5 Chunk 12: zone shape (Rect | Curve | Polygon), projected so the
     /// canvas editor can re-render the zone and integration tests can assert
-    /// <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.VenueZone.UpdateShapeAndGeometry"/> effects via GET.
+    /// <see cref="Domain.Events.Entities.VenueZone.UpdateShapeAndGeometry"/> effects via GET.
     /// </summary>
     public string Shape { get; init; } = "Rect";
 

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Domain.Events.Entities;
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 

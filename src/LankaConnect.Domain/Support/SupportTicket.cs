@@ -1,5 +1,5 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Support.DomainEvents;
+using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Support.Enums;
 using LankaConnect.Domain.Support.ValueObjects;

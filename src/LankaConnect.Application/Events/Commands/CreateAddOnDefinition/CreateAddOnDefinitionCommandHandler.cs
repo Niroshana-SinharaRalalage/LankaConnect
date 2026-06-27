@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
@@ -53,7 +53,7 @@ public class CreateAddOnDefinitionCommandHandler : ICommandHandler<CreateAddOnDe
                 if (@event == null)
                     return Result<Guid>.Failure("Event not found");
 
-                if (@event.Status != LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published)
+                if (@event.Status != Domain.Events.Enums.EventStatus.Published)
                     return Result<Guid>.Failure("Add-on definitions can only be created for published events");
 
                 // 2. Validate add-ons are enabled

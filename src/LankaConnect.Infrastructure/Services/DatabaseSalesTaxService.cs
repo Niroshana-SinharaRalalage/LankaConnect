@@ -1,6 +1,6 @@
 using LankaConnect.Application.Common.Options;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Tax.Repositories;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;

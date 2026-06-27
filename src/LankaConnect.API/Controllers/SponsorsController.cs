@@ -12,8 +12,8 @@ using LankaConnect.Application.Events.Queries.ExportSponsors;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventSponsors;
 using LankaConnect.Application.Events.Queries.GetPublicEventSponsors;  // Phase 6A.150
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Application.Common.Interfaces;
 using MediatR;
@@ -294,7 +294,7 @@ public class SponsorsController : BaseController<SponsorsController>
     ///
     /// PATCH semantics: every field is optional; null = leave unchanged. The
     /// domain layer enforces the state-edit matrix per-field — see
-    /// <see cref="LankaConnect.Products.LankaEvents.Domain.Sponsor"/> for the cell-by-cell
+    /// <see cref="LankaConnect.Domain.Events.Sponsor"/> for the cell-by-cell
     /// rules. Image edits flow through the existing POST/DELETE
     /// `/sponsors/{id}/image` endpoints (DELETE authz was extended in H9 above).
     /// </summary>

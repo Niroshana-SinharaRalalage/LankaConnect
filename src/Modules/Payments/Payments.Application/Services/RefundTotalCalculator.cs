@@ -1,7 +1,7 @@
 using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
 using LankaConnect.Application.Events.Services; // W4.4.c.4: interfaces stay in legacy (4 cross-module consumers; circular ref otherwise)
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Modules.Payments.Application.Services;

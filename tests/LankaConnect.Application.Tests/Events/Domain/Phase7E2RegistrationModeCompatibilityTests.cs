@@ -1,6 +1,6 @@
 using FluentAssertions;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
@@ -15,9 +15,9 @@ namespace LankaConnect.Application.Tests.Events.Domain;
 /// table stays exhaustive by construction.
 ///
 /// Out of the 14 plan rows, the ones we can fully exercise with axes representable on today's
-/// <see cref="LankaConnect.Products.LankaEvents.Domain.Event"/> aggregate are the ones below. The "named seating"
+/// <see cref="LankaConnect.Domain.Events.Event"/> aggregate are the ones below. The "named seating"
 /// / "identity-bound add-on" / "matrix pricing" / "names required per ticket" axes require fields
-/// not yet on <see cref="LankaConnect.Products.LankaEvents.Domain.Event"/>; they are tested via the
+/// not yet on <see cref="LankaConnect.Domain.Events.Event"/>; they are tested via the
 /// <see cref="RegistrationModeContext"/> fields which default to <c>false</c> in callers today
 /// and will be exercised end-to-end when those fields are introduced (Phase 7F).
 /// </summary>

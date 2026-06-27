@@ -1,6 +1,6 @@
 using FluentAssertions;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.ValueObjects;
 using Xunit;
 
 namespace LankaConnect.Domain.UnitTests.Events.ValueObjects;

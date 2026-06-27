@@ -2,16 +2,16 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Presets;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Presets;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Commands.CreateLayoutFromPreset;
 
 /// <summary>
-/// Slice 6 Chunk S6.3: builds a new <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.VenueLayout"/>
+/// Slice 6 Chunk S6.3: builds a new <see cref="Domain.Events.Entities.VenueLayout"/>
 /// from the supplied preset ID, persists it, and emits
 /// <c>layout.preset_selected</c> + <c>layout.created (from_preset=true)</c> metrics.
 ///

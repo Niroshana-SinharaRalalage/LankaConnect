@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Domain.Events.Entities;
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
@@ -62,7 +62,7 @@ public class EventNotificationHistoryConfiguration : IEntityTypeConfiguration<Ev
         builder.Property(h => h.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
 
         // Foreign key to events table (CASCADE delete - if event is deleted, history should be deleted)
-        builder.HasOne<LankaConnect.Products.LankaEvents.Domain.Event>()
+        builder.HasOne<Domain.Events.Event>()
             .WithMany()
             .HasForeignKey(h => h.EventId)
             .OnDelete(DeleteBehavior.Cascade);

@@ -1,8 +1,8 @@
 using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Payments.Application.Queries;

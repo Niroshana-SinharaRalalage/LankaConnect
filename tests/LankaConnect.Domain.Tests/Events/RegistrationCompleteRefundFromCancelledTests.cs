@@ -1,9 +1,9 @@
 using FluentAssertions;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Xunit;
@@ -179,7 +179,7 @@ public class RegistrationCompleteRefundFromCancelledTests
 
         reg.CompleteRefundFromCancelled(Sri).IsSuccess.Should().BeTrue();
 
-        reg.DomainEvents.OfType<LankaConnect.Products.LankaEvents.Domain.DomainEvents.SeatReservationsReleasedEvent>()
+        reg.DomainEvents.OfType<LankaConnect.Domain.Events.DomainEvents.SeatReservationsReleasedEvent>()
             .Should().ContainSingle()
             .Which.Reason.Should().Be("refund_completed_from_cancelled");
     }

@@ -481,7 +481,7 @@ public class CreateRefundRequest
     /// Callers in the 6A.148 workflow path should use
     /// <c>$"refund_line_{lineId:N}"</c> (or
     /// <c>$"refund_line_{lineId:N}_{attemptCounter}"</c> when the line has been
-    /// re-attempted after a <see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemStatus.Failed"/>
+    /// re-attempted after a <see cref="LankaConnect.Domain.Events.Enums.RefundLineItemStatus.Failed"/>
     /// state). Stable per-line key means reconciler re-dispatch is automatically safe.
     ///
     /// When null, <c>StripePaymentService</c> falls back to its legacy default

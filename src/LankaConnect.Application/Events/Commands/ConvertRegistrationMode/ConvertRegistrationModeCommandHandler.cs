@@ -2,12 +2,12 @@ using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService mo
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Events.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -175,8 +175,8 @@ public class ConvertRegistrationModeCommandHandler
 
     private async Task<Guid> PersistAuditAsync(
         Guid eventId, Guid organiserId,
-        LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode fromMode,
-        LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode toMode,
+        LankaConnect.Domain.Events.Enums.RegistrationMode fromMode,
+        LankaConnect.Domain.Events.Enums.RegistrationMode toMode,
         DateTime startedAt, DateTime completedAt,
         ConversionReport report, CancellationToken ct)
     {

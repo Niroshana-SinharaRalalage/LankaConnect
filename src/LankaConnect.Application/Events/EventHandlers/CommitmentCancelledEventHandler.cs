@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Domain.Events.DomainEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

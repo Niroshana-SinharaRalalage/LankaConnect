@@ -4,9 +4,9 @@ using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -161,17 +161,17 @@ public class RefundExecutionServiceIdempotencyTests
     // Helpers — build entities via reflection so tests don't pin private setters
     // ========================================================================
 
-    private static LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequestLineItem BuildApprovedSponsorLine(
+    private static LankaConnect.Domain.Events.Entities.RefundRequestLineItem BuildApprovedSponsorLine(
         Guid lineId, Guid sponsorRefId, decimal amount)
     {
-        var line = (LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequestLineItem)
+        var line = (LankaConnect.Domain.Events.Entities.RefundRequestLineItem)
             System.Runtime.CompilerServices.RuntimeHelpers
-                .GetUninitializedObject(typeof(LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequestLineItem));
+                .GetUninitializedObject(typeof(LankaConnect.Domain.Events.Entities.RefundRequestLineItem));
         SetProp(line, nameof(line.Id), lineId);
         SetProp(line, nameof(line.RefundRequestId), Guid.NewGuid());
-        SetProp(line, nameof(line.Type), LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.Sponsor);
+        SetProp(line, nameof(line.Type), LankaConnect.Domain.Events.Enums.RefundLineItemType.Sponsor);
         SetProp(line, nameof(line.ReferenceId), sponsorRefId);
-        SetProp(line, nameof(line.Status), LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemStatus.Approved);
+        SetProp(line, nameof(line.Status), LankaConnect.Domain.Events.Enums.RefundLineItemStatus.Approved);
         var money = new LankaConnect.Domain.Shared.ValueObjects.Money(
             amount, LankaConnect.Domain.Shared.Enums.Currency.USD);
         SetProp(line, nameof(line.RequestedAmount), money);
@@ -179,9 +179,9 @@ public class RefundExecutionServiceIdempotencyTests
         return line;
     }
 
-    private static LankaConnect.Products.LankaEvents.Domain.Sponsor BuildCompletedSponsor(Guid id, string paymentIntentId)
+    private static LankaConnect.Domain.Events.Sponsor BuildCompletedSponsor(Guid id, string paymentIntentId)
     {
-        var sponsor = LankaConnect.Products.LankaEvents.Domain.Sponsor.CreateMoneySponsor(
+        var sponsor = LankaConnect.Domain.Events.Sponsor.CreateMoneySponsor(
             eventId: Guid.NewGuid(),
             sponsorUserId: Guid.NewGuid(),
             sponsorName: "Test Sponsor",

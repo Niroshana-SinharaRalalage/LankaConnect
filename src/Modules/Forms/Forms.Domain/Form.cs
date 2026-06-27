@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Domain.Events.ValueObjects;
 
 namespace LankaConnect.Modules.Forms.Domain;
 

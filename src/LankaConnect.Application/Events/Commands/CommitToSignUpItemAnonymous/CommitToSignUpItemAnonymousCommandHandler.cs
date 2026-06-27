@@ -4,7 +4,7 @@ using System.Text;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Queries.CheckEventRegistration;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -185,7 +185,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                         "CommitToSignUpItemAnonymous: Updating existing commitment - CommitmentId={CommitmentId}, ItemType={ItemType}",
                         existingCommitment.Id, itemTypeStr);
 
-                    if (signUpItem.ItemType == LankaConnect.Products.LankaEvents.Domain.Enums.SignUpItemType.Slot)
+                    if (signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Slot)
                     {
                         commitResult = signUpItem.UpdateSlotCommitment(
                             resolvedUserId,
@@ -213,7 +213,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                         "CommitToSignUpItemAnonymous: Adding new commitment - ItemType={ItemType}",
                         itemTypeStr);
 
-                    if (signUpItem.ItemType == LankaConnect.Products.LankaEvents.Domain.Enums.SignUpItemType.Slot)
+                    if (signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Slot)
                     {
                         commitResult = signUpItem.AddSlotCommitment(
                             resolvedUserId,

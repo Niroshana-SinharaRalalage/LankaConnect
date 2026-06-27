@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Events.Repositories;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Domain.Events.Entities;
 using System.Diagnostics;
 using Serilog.Context;
 

@@ -17,7 +17,7 @@ namespace LankaConnect.Modules.Payments.Contracts;
 /// <para>
 /// Per architect ruling 2026-06-23 (Risk #1 Option A), <c>RefundRequest</c> +
 /// <c>RefundRequestLineItem</c> + <c>RegistrationPayment</c> remain Registration
-/// aggregate children in <c>LankaConnect.Products.LankaEvents.Domain.Entities</c>. The
+/// aggregate children in <c>LankaConnect.Domain.Events.Entities</c>. The
 /// transitional <c>Payments.Domain -&gt; LankaConnect.Domain</c> ProjectReference
 /// is a permanent structural compromise for this wave. The DTOs on this surface
 /// are projections of those legacy types - safe for cross-module consumption

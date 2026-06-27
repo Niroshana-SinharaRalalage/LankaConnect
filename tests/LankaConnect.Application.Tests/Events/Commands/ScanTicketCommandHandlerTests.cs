@@ -3,12 +3,12 @@ using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Commands.ScanTicket;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -59,8 +59,8 @@ public class ScanTicketCommandHandlerTests
         // Default to _scannerUserId as the organizer so the handler's auth check passes
         // in the happy-path tests. Tests that exercise the forbidden path can pass an
         // explicit organizerId.
-        var t = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventTitle.Create(title).Value;
-        var d = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventDescription.Create("desc").Value;
+        var t = LankaConnect.Domain.Events.ValueObjects.EventTitle.Create(title).Value;
+        var d = LankaConnect.Domain.Events.ValueObjects.EventDescription.Create("desc").Value;
         var ev = Event.Create(t, d, DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2),
             organizerId: organizerId ?? _scannerUserId, capacity: 100).Value;
         typeof(LegacyBaseEntity).GetProperty("Id")!.SetValue(ev, eventId);

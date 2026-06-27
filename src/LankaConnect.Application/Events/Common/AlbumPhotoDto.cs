@@ -1,4 +1,4 @@
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;

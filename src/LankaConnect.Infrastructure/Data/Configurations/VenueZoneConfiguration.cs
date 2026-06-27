@@ -1,4 +1,4 @@
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Domain.Events.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -50,7 +50,7 @@ public class VenueZoneConfiguration : IEntityTypeConfiguration<VenueZone>
             .HasConversion<string>()
             .HasMaxLength(20)
             .IsRequired()
-            .HasDefaultValue(LankaConnect.Products.LankaEvents.Domain.Enums.ZoneShape.Rect);
+            .HasDefaultValue(LankaConnect.Domain.Events.Enums.ZoneShape.Rect);
 
         // Geometry is an immutable raw JSONB string — no ValueComparer needed.
         builder.Property(z => z.Geometry)

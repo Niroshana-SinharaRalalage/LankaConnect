@@ -3,7 +3,7 @@ using LankaConnect.Application.Events.Services; // W4.4.c.4: interfaces stay in 
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

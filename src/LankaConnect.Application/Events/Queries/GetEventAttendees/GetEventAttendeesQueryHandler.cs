@@ -3,10 +3,10 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Options;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -208,7 +208,7 @@ public class GetEventAttendeesQueryHandler
         var bModeRows = await _context.Registrations
             .AsNoTracking()
             .Where(r => r.EventId == request.EventId &&
-                        r.RegistrationMode != LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.DetailedAttendees &&
+                        r.RegistrationMode != Domain.Events.Enums.RegistrationMode.DetailedAttendees &&
                         (r.Status == RegistrationStatus.Confirmed ||
                          r.Status == RegistrationStatus.Waitlisted ||
                          r.Status == RegistrationStatus.CheckedIn ||

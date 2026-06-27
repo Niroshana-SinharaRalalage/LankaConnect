@@ -2,9 +2,9 @@ using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;

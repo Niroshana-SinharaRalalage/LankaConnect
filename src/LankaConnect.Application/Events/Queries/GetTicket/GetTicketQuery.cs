@@ -1,9 +1,9 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Repositories;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -96,7 +96,7 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
                 request.RegistrationId);
 
             // Check if payment is complete before generating
-            if (registrationInfo.PaymentStatus != LankaConnect.Products.LankaEvents.Domain.Enums.PaymentStatus.Completed)
+            if (registrationInfo.PaymentStatus != Domain.Events.Enums.PaymentStatus.Completed)
             {
                 _logger.LogWarning("Cannot generate ticket - payment not completed for registration {RegistrationId}",
                     request.RegistrationId);

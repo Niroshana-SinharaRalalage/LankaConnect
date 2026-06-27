@@ -4,7 +4,7 @@ using LankaConnect.Application.Events.Common;
 namespace LankaConnect.Application.Events.Queries.GetUserTemplates;
 
 /// <summary>
-/// Slice 8 S8.10: lists every <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.VenueLayout"/>
+/// Slice 8 S8.10: lists every <see cref="Domain.Events.Entities.VenueLayout"/>
 /// where <c>IsTemplate == true</c> and <c>CreatedByUserId == UserId</c>, ordered
 /// most-recent-first (matches the repo's <c>OrderByDescending(CreatedAt)</c>).
 /// Powers the canvas editor's "My Templates" picker tab. Tier assignments are

@@ -8,7 +8,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Modules.Forms.Application.Mappings;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 

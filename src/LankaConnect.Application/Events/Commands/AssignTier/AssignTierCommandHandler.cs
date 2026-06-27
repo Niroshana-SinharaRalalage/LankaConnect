@@ -1,10 +1,10 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -17,8 +17,8 @@ namespace LankaConnect.Application.Events.Commands.AssignTier;
 ///   <item>Compare <c>If-Match</c> (ExpectedRowVersion) against the loaded layout's <c>RowVersion</c> in memory.</item>
 ///   <item>Validate the target zone/table exists on this layout (prevents orphan assignments).</item>
 ///   <item>Load the ticket tier with its current <c>Assignments</c> collection.</item>
-///   <item>Call <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier.AssignToZone"/> or
-///         <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier.AssignToTable"/> — idempotent.</item>
+///   <item>Call <see cref="Domain.Events.Entities.TicketTier.AssignToZone"/> or
+///         <see cref="Domain.Events.Entities.TicketTier.AssignToTable"/> — idempotent.</item>
 ///   <item>Commit.</item>
 /// </list>
 /// </summary>

@@ -4,10 +4,10 @@ using LankaConnect.Application.Common.Options;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.GetEventAttendees;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -127,7 +127,7 @@ public class ExportEventAttendeesQueryHandler
                     ItemDescription = i.ItemDescription,
                     // Phase 6A.121: SignUpItem now uses dual nullable fields (TargetQuantity or AvailableSlots)
                     Quantity = i.TargetQuantity ?? i.AvailableSlots ?? 0,
-                    RemainingQuantity = i.ItemType == LankaConnect.Products.LankaEvents.Domain.Enums.SignUpItemType.Quantity ? i.GetRemainingQuantity() : i.GetRemainingSlots(),
+                    RemainingQuantity = i.ItemType == Domain.Events.Enums.SignUpItemType.Quantity ? i.GetRemainingQuantity() : i.GetRemainingSlots(),
                     ItemCategory = i.ItemCategory,
                     CreatedByUserId = i.CreatedByUserId,
                     Commitments = i.Commitments.Select(c => new SignUpCommitmentDto
@@ -174,8 +174,8 @@ public class ExportEventAttendeesQueryHandler
             // so the two export endpoints produce disjoint outputs and a volunteer export on an event without
             // volunteer lists returns a clear error rather than an empty zip.
             var filteredSignUpLists = isVolunteerExport
-                ? eventWithSignUps.SignUpLists.Where(s => s.Kind == LankaConnect.Products.LankaEvents.Domain.Enums.SignUpKind.Volunteers).ToList()
-                : eventWithSignUps.SignUpLists.Where(s => s.Kind == LankaConnect.Products.LankaEvents.Domain.Enums.SignUpKind.Items).ToList();
+                ? eventWithSignUps.SignUpLists.Where(s => s.Kind == Domain.Events.Enums.SignUpKind.Volunteers).ToList()
+                : eventWithSignUps.SignUpLists.Where(s => s.Kind == Domain.Events.Enums.SignUpKind.Items).ToList();
 
             if (!filteredSignUpLists.Any())
             {
@@ -202,7 +202,7 @@ public class ExportEventAttendeesQueryHandler
                     ItemDescription = i.ItemDescription,
                     // Phase 6A.121: SignUpItem now uses dual nullable fields (TargetQuantity or AvailableSlots)
                     Quantity = i.TargetQuantity ?? i.AvailableSlots ?? 0,
-                    RemainingQuantity = i.ItemType == LankaConnect.Products.LankaEvents.Domain.Enums.SignUpItemType.Quantity ? i.GetRemainingQuantity() : i.GetRemainingSlots(),
+                    RemainingQuantity = i.ItemType == Domain.Events.Enums.SignUpItemType.Quantity ? i.GetRemainingQuantity() : i.GetRemainingSlots(),
                     ItemCategory = i.ItemCategory,
                     CreatedByUserId = i.CreatedByUserId,
                     Commitments = i.Commitments.Select(c => new SignUpCommitmentDto

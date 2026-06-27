@@ -1,5 +1,5 @@
 using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Modules.Payments.Application.Mappings;
 using LankaConnect.Modules.Payments.Contracts;
 
@@ -13,7 +13,7 @@ namespace LankaConnect.Modules.Payments.Application.Queries;
 /// </summary>
 /// <remarks>
 /// Per architect Risk #1 Option A ruling (2026-06-23), the wrapped Refund repository
-/// signature continues returning <c>LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequest</c>
+/// signature continues returning <c>LankaConnect.Domain.Events.Entities.RefundRequest</c>
 /// indefinitely. The transitional <c>Payments.Application -&gt; LankaConnect.Domain</c>
 /// ProjectReference in Payments.Application.csproj is what makes this wiring compile;
 /// it is PERMANENT structural compromise for this wave, not transitional.

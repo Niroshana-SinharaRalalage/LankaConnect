@@ -1,11 +1,11 @@
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
+using LankaConnect.Domain.Events.ValueObjects.Recommendations;
 using System.Diagnostics;
-using DomainEventRecommendation = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations.EventRecommendation;
+using DomainEventRecommendation = LankaConnect.Domain.Events.ValueObjects.Recommendations.EventRecommendation;
 
 namespace LankaConnect.Application.CulturalIntelligence.Events.Queries.GetEventRecommendations;
 

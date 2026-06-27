@@ -58,7 +58,7 @@ public interface IRefundReconciliationService
 
     /// <summary>
     /// Phase 6A.148 (architect F11): re-dispatches refund requests that are stuck in
-    /// <see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RefundRequestStatus.Approved"/>.
+    /// <see cref="LankaConnect.Domain.Events.Enums.RefundRequestStatus.Approved"/>.
     /// This state happens when the approve transaction commits but the post-commit
     /// <c>RefundExecutionService.DispatchAsync</c> call crashed before any line item
     /// reached Stripe (process restart, container OOM, etc.).
@@ -76,7 +76,7 @@ public interface IRefundReconciliationService
 
     /// <summary>
     /// Phase 6A.148.W5.5.D6.5 — heals registrations stuck in
-    /// <see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationStatus.Cancelled"/>
+    /// <see cref="LankaConnect.Domain.Events.Enums.RegistrationStatus.Cancelled"/>
     /// whose workflow ticket-line refund has already settled at Stripe
     /// (<c>RefundRequestLineItem.Type=Ticket</c>, <c>Status=Refunded</c>,
     /// <c>StripeRefundId NOT NULL</c>) but whose registration row was never advanced
@@ -89,7 +89,7 @@ public interface IRefundReconciliationService
     /// W5.5.D4 fixes the routing for future webhooks. This method is the durable
     /// safety net for any rows that slip through despite the fix, AND backfills any
     /// rows that accumulated during the bug window before deploy. Calls
-    /// <see cref="LankaConnect.Products.LankaEvents.Domain.Registration.CompleteRefundFromCancelled"/>
+    /// <see cref="LankaConnect.Domain.Events.Registration.CompleteRefundFromCancelled"/>
     /// per stuck row (the W5.D4 domain transition that permits Cancelled → Refunded).
     /// Idempotent — second runs on already-Refunded rows are no-ops via the domain
     /// method's same-SRI guard.

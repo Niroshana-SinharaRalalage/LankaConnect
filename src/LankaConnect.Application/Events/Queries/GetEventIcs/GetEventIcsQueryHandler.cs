@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -179,7 +179,7 @@ public class GetEventIcsQueryHandler : IQueryHandler<GetEventIcsQuery, string>
     /// <summary>
     /// Builds location text from EventLocation value object
     /// </summary>
-    private string BuildLocationText(LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventLocation location)
+    private string BuildLocationText(Domain.Events.ValueObjects.EventLocation location)
     {
         var parts = new List<string>();
 
@@ -220,14 +220,14 @@ public class GetEventIcsQueryHandler : IQueryHandler<GetEventIcsQuery, string>
     /// <summary>
     /// Maps EventStatus to ICS status values
     /// </summary>
-    private string MapEventStatus(LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus status)
+    private string MapEventStatus(Domain.Events.Enums.EventStatus status)
     {
         return status switch
         {
-            LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published => "CONFIRMED",
-            LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Active => "CONFIRMED",
-            LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Cancelled => "CANCELLED",
-            LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Postponed => "TENTATIVE",
+            Domain.Events.Enums.EventStatus.Published => "CONFIRMED",
+            Domain.Events.Enums.EventStatus.Active => "CONFIRMED",
+            Domain.Events.Enums.EventStatus.Cancelled => "CANCELLED",
+            Domain.Events.Enums.EventStatus.Postponed => "TENTATIVE",
             _ => "TENTATIVE"
         };
     }

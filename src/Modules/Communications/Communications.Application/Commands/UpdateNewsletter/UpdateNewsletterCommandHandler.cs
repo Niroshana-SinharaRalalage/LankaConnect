@@ -7,7 +7,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.ValueObjects;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -284,7 +284,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                 {
                     var distinctMetroIds = request.MetroAreaIds.Distinct().ToList();
 
-                    var metroAreaEntities = await dbContext2.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
+                    var metroAreaEntities = await dbContext2.Set<LankaConnect.Domain.Events.MetroArea>()
                         .Where(m => distinctMetroIds.Contains(m.Id))
                         .ToListAsync(cancellationToken);
 
@@ -299,7 +299,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                 {
                     // Clear metro areas if none provided
                     var metroAreasCollection = dbContext2.Entry(newsletter).Collection("_metroAreaEntities");
-                    metroAreasCollection.CurrentValue = new List<LankaConnect.Products.LankaEvents.Domain.MetroArea>();
+                    metroAreasCollection.CurrentValue = new List<LankaConnect.Domain.Events.MetroArea>();
 
                     _logger.LogInformation("UpdateNewsletter: [HOTFIX] Cleared metro areas shadow navigation");
                 }

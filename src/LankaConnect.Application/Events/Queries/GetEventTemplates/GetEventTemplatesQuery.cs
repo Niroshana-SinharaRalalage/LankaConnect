@@ -1,6 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Application.Events.Queries.GetEventTemplates;
 

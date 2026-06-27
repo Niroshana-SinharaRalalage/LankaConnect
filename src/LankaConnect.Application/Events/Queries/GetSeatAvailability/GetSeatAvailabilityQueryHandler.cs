@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Queries.GetSeatAvailability;

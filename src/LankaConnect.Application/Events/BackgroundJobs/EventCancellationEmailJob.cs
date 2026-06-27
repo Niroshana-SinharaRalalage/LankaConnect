@@ -6,10 +6,10 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Shared.Email.Contracts;
@@ -160,8 +160,8 @@ public class EventCancellationEmailJob
             {
                 // Extract all unique user IDs from sign-up commitments
                 var signUpUserIds = @event.SignUpLists
-                    .SelectMany(sl => sl.Items ?? Enumerable.Empty<LankaConnect.Products.LankaEvents.Domain.Entities.SignUpItem>())
-                    .SelectMany(item => item.Commitments ?? Enumerable.Empty<LankaConnect.Products.LankaEvents.Domain.Entities.SignUpCommitment>())
+                    .SelectMany(sl => sl.Items ?? Enumerable.Empty<Domain.Events.Entities.SignUpItem>())
+                    .SelectMany(item => item.Commitments ?? Enumerable.Empty<Domain.Events.Entities.SignUpCommitment>())
                     .Select(c => c.UserId)
                     .Distinct()
                     .ToList();

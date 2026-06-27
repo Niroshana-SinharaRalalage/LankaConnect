@@ -1,9 +1,9 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Events.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

@@ -17,7 +17,6 @@
       deferred to a future cross-cutting cleanup wave).
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
-    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
 
 </Project>

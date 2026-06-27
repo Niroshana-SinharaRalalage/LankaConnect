@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Modules.Identity.Contracts;
 
 namespace LankaConnect.Application.Common.Interfaces;

@@ -1,5 +1,5 @@
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
-using DomainEventRecommendation = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations.EventRecommendation;
+using LankaConnect.Domain.Events.ValueObjects.Recommendations;
+using DomainEventRecommendation = LankaConnect.Domain.Events.ValueObjects.Recommendations.EventRecommendation;
 
 namespace LankaConnect.Application.CulturalIntelligence.Events.Queries.GetEventRecommendations;
 

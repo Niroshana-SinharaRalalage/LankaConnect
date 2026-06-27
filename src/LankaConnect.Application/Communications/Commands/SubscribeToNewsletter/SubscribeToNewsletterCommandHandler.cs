@@ -6,7 +6,7 @@ using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Shared.Email.Contracts;

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Events.Queries.GetEventTemplates;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.API.Controllers;
 

@@ -1,7 +1,7 @@
 using System;
 using FluentValidation;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Commands.CreateEvent;
@@ -118,7 +118,7 @@ public class CreateEventCommandValidator : AbstractValidator<CreateEventCommand>
 
             // Phase 8X.11 — RegistrationMode must be null or External (was: null or NoRegistration).
             RuleFor(x => x.RegistrationMode)
-                .Must(mode => mode == null || mode == LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.External)
+                .Must(mode => mode == null || mode == Domain.Events.Enums.RegistrationMode.External)
                 .WithMessage("ExternalPaid events must use RegistrationMode = External (or null — handler will coerce). " +
                     "Other registration modes capture internal attendee data which doesn't apply to external-paid events.");
 

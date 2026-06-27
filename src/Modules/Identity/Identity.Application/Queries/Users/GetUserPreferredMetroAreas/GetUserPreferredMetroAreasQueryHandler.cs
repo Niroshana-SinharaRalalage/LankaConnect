@@ -88,8 +88,8 @@ public class GetUserPreferredMetroAreasQueryHandler : IQueryHandler<GetUserPrefe
                 var metroAreasCollection = efDbContext.Entry(user).Collection("_preferredMetroAreaEntities");
                 await metroAreasCollection.LoadAsync(cancellationToken);
 
-                var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<LankaConnect.Products.LankaEvents.Domain.MetroArea>
-                    ?? new List<LankaConnect.Products.LankaEvents.Domain.MetroArea>();
+                var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<LankaConnect.Domain.Events.MetroArea>
+                    ?? new List<LankaConnect.Domain.Events.MetroArea>();
 
                 // If user has no preferred metro areas, return empty list
                 if (!currentMetroAreas.Any())

@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Entities;

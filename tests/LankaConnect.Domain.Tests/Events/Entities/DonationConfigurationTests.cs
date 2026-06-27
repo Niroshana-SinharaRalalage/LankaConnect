@@ -1,4 +1,4 @@
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Domain.Events.ValueObjects;
 
 namespace LankaConnect.Domain.Tests.Events.Entities;
 

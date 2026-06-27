@@ -207,7 +207,7 @@ public class EventAnalyticsRepository : Repository<EventAnalytics>, IEventAnalyt
             try
             {
                 // Get all events for the organizer
-                var events = await _context.Set<LankaConnect.Products.LankaEvents.Domain.Event>()
+                var events = await _context.Set<Domain.Events.Event>()
                     .AsNoTracking()
                     .Where(e => e.OrganizerId == organizerId)
                     .Select(e => new { e.Id, e.Title, e.StartDate })
@@ -243,7 +243,7 @@ public class EventAnalyticsRepository : Repository<EventAnalytics>, IEventAnalyt
                 }
 
                 // Get registrations count for all events
-                var registrations = await _context.Set<LankaConnect.Products.LankaEvents.Domain.Registration>()
+                var registrations = await _context.Set<Domain.Events.Registration>()
                     .AsNoTracking()
                     .Where(r => eventIds.Contains(r.EventId))
                     .GroupBy(r => r.EventId)

@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -82,7 +82,7 @@ public class PurchaseAddOnCartCommandHandler : ICommandHandler<PurchaseAddOnCart
                 if (@event == null)
                     return Result<string>.Failure("Event not found");
 
-                if (@event.Status != LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published)
+                if (@event.Status != Domain.Events.Enums.EventStatus.Published)
                     return Result<string>.Failure("Add-on purchases are only available for published events");
 
                 if (!@event.AreAddOnsEnabled())

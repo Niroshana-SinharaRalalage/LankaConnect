@@ -1,6 +1,6 @@
 using FluentAssertions;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events.Entities;
@@ -167,11 +167,11 @@ public class SignUpListVolunteerTests
         var commitResult = item.AddSlotCommitment(
             userId: Guid.NewGuid(),
             slotsClaimed: 1,
-            kind: LankaConnect.Products.LankaEvents.Domain.Enums.SignUpKind.Volunteers);
+            kind: LankaConnect.Domain.Events.Enums.SignUpKind.Volunteers);
 
         commitResult.IsSuccess.Should().BeTrue();
-        var evt = item.DomainEvents.OfType<LankaConnect.Products.LankaEvents.Domain.DomainEvents.UserCommittedToSignUpEvent>().Single();
-        evt.Kind.Should().Be(LankaConnect.Products.LankaEvents.Domain.Enums.SignUpKind.Volunteers,
+        var evt = item.DomainEvents.OfType<LankaConnect.Domain.Events.DomainEvents.UserCommittedToSignUpEvent>().Single();
+        evt.Kind.Should().Be(LankaConnect.Domain.Events.Enums.SignUpKind.Volunteers,
             "Kind must propagate to the domain event so downstream handlers route to the volunteer template");
         evt.SlotsClaimed.Should().Be(1);
     }
@@ -196,8 +196,8 @@ public class SignUpListVolunteerTests
         var commitResult = item.AddCommitment(userId: Guid.NewGuid(), commitQuantity: 2);
 
         commitResult.IsSuccess.Should().BeTrue();
-        var evt = item.DomainEvents.OfType<LankaConnect.Products.LankaEvents.Domain.DomainEvents.UserCommittedToSignUpEvent>().Single();
-        evt.Kind.Should().Be(LankaConnect.Products.LankaEvents.Domain.Enums.SignUpKind.Items,
+        var evt = item.DomainEvents.OfType<LankaConnect.Domain.Events.DomainEvents.UserCommittedToSignUpEvent>().Single();
+        evt.Kind.Should().Be(LankaConnect.Domain.Events.Enums.SignUpKind.Items,
             "default Items kind preserves back-compat when no kind is passed");
     }
 

@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Domain.Events.ValueObjects;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -59,7 +59,7 @@ public class UpdateRsvpCommandHandler : ICommandHandler<UpdateRsvpCommand>
                 // Phase 7E.3a: UpdateRsvp currently only handles Quantity-based updates (Mode A's legacy
                 // path). Head-count updates (Mode B) need a different command shape (HeadCountDto delta)
                 // — deferred to a follow-up. For Mode C, there's no Registration to update at all.
-                if (@event.RegistrationMode == LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.NoRegistration)
+                if (@event.RegistrationMode == LankaConnect.Domain.Events.Enums.RegistrationMode.NoRegistration)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
@@ -69,7 +69,7 @@ public class UpdateRsvpCommandHandler : ICommandHandler<UpdateRsvpCommand>
                         "This event does not require registration. There is nothing to update.");
                 }
 
-                if (@event.RegistrationMode != LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.DetailedAttendees)
+                if (@event.RegistrationMode != LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(

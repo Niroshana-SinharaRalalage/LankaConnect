@@ -17,7 +17,6 @@
       to W4.8 Cross-cutting cleanup alongside the LegacyBaseEntity retirement.
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
-    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
 
 </Project>

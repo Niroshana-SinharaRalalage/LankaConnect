@@ -21,7 +21,6 @@
          this project also references legacy LankaConnect.Domain so handlers can still
          compose Domain types that haven't moved yet. Cut at the end of W5.7. -->
     <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
-    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Cultural\SharedKernel.Cultural.csproj" />
   </ItemGroup>
 
 </Project>

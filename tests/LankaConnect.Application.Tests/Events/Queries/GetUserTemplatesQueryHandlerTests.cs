@@ -1,9 +1,9 @@
 using FluentAssertions;
 using LankaConnect.Application.Events.Queries.GetUserTemplates;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;

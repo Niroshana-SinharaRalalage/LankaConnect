@@ -15,7 +15,7 @@ namespace LankaConnect.Application.Events.Commands.UpdateSponsor;
 ///
 /// State matrix enforcement lives inside the <c>Sponsor</c> aggregate
 /// (UpdateContactFields / UpdateName / UpdateAmount / UpdateItemDetails) — the
-/// handler is the orchestrator. See <see cref="LankaConnect.Products.LankaEvents.Domain.Sponsor"/>
+/// handler is the orchestrator. See <see cref="LankaConnect.Domain.Events.Sponsor"/>
 /// for the cell-by-cell rules.
 ///
 /// Returns the updated <see cref="SponsorDto"/> so the FE can refresh state

@@ -8,11 +8,11 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
@@ -299,7 +299,7 @@ public class EventNotificationEmailJob
             _logger.LogInformation("[Phase 6A.61][{CorrelationId}] Clearing ChangeTracker to detach EmailMessage entities before commit",
                 correlationId);
 
-            await _unitOfWork.ClearChangeTrackerExceptAsync<LankaConnect.Products.LankaEvents.Domain.Entities.EventNotificationHistory>(cancellationToken);
+            await _unitOfWork.ClearChangeTrackerExceptAsync<Domain.Events.Entities.EventNotificationHistory>(cancellationToken);
 
             try
             {
@@ -376,7 +376,7 @@ public class EventNotificationEmailJob
         }
     }
 
-    private Dictionary<string, object> BuildTemplateData(LankaConnect.Products.LankaEvents.Domain.Event @event)
+    private Dictionary<string, object> BuildTemplateData(Domain.Events.Event @event)
     {
         var isFree = @event.IsFree();
 
@@ -461,7 +461,7 @@ public class EventNotificationEmailJob
     /// Phase 6A.61+: Safely extracts event location string with defensive null handling.
     /// Matches EventPublishedEventHandler pattern for consistency.
     /// </summary>
-    private string GetEventLocationString(LankaConnect.Products.LankaEvents.Domain.Event @event)
+    private string GetEventLocationString(Domain.Events.Event @event)
     {
         if (@event.Location?.Address == null)
             return "Online Event";

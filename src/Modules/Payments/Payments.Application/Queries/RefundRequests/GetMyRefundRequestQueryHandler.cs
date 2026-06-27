@@ -1,8 +1,8 @@
 using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 

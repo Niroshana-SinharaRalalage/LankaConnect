@@ -1,4 +1,4 @@
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Domain.Events.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -93,7 +93,7 @@ public class TicketScanLogConfiguration : IEntityTypeConfiguration<TicketScanLog
 
         // FK to Event — Restrict (events shouldn't get deleted often; if they do, we
         // want to fail loudly rather than silently orphan the audit trail).
-        builder.HasOne<LankaConnect.Products.LankaEvents.Domain.Event>()
+        builder.HasOne<LankaConnect.Domain.Events.Event>()
             .WithMany()
             .HasForeignKey(l => l.EventId)
             .OnDelete(DeleteBehavior.Restrict);

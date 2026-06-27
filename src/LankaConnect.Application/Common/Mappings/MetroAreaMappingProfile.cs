@@ -1,6 +1,6 @@
 using AutoMapper;
 using LankaConnect.Application.MetroAreas.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 
 namespace LankaConnect.Application.Common.Mappings;

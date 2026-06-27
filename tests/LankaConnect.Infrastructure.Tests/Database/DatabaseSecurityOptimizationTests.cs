@@ -11,7 +11,7 @@ using System.Security.Cryptography;
 using System.Text;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Common.Notifications;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Common.Database;

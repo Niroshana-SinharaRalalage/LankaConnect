@@ -1,4 +1,4 @@
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Modules.Forms.Contracts;
 
 namespace LankaConnect.Application.Events.Common;

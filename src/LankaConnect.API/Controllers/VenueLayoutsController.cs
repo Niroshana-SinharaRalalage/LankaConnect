@@ -25,7 +25,7 @@ using LankaConnect.Application.Events.Commands.DeleteTable;
 using LankaConnect.Application.Events.Commands.AddDecoration;
 using LankaConnect.Application.Events.Commands.AssignTier;
 using LankaConnect.Application.Events.Commands.RemoveTierAssignment;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Application.Events.Commands.UpdateDecoration;
 using LankaConnect.Application.Events.Commands.DeleteDecoration;
 using LankaConnect.Application.Events.Queries.GetVenueLayout;

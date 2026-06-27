@@ -3,13 +3,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Domain.Events.Entities;
 
 namespace LankaConnect.Infrastructure.BackgroundServices;
 

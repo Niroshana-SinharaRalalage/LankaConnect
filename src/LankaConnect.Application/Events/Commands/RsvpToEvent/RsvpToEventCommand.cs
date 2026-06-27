@@ -1,5 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Application.Events.Commands.RsvpToEvent;
 
@@ -96,7 +96,7 @@ public record AddOnSelectionDto(
 
 /// <summary>
 /// Phase 7E.3a: Head-count payload for B-mode RSVPs. Mode-specific factories on
-/// <see cref="LankaConnect.Products.LankaEvents.Domain.ValueObjects.HeadCountBreakdown"/> validate which fields
+/// <see cref="LankaConnect.Domain.Events.ValueObjects.HeadCountBreakdown"/> validate which fields
 /// are required; this DTO accepts everything optional so a single DTO can be sent regardless of mode.
 ///
 /// Field requirements by event mode:

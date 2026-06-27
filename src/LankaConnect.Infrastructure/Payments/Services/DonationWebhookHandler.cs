@@ -1,8 +1,8 @@
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Configuration;
@@ -79,7 +79,7 @@ public class DonationWebhookHandler : IDonationWebhookHandler
                 correlationId, donationId, donation.Status, donation.Amount.Amount);
 
             // Verify the donation is still pending (idempotency check)
-            if (donation.Status != LankaConnect.Products.LankaEvents.Domain.Enums.DonationStatus.Pending)
+            if (donation.Status != Domain.Events.Enums.DonationStatus.Pending)
             {
                 _logger.LogWarning(
                     "[Donation] [Webhook-Donation-WARN] Donation not in Pending status (idempotent skip) - CorrelationId: {CorrelationId}, DonationId: {DonationId}, CurrentStatus: {Status}",
@@ -154,7 +154,7 @@ public class DonationWebhookHandler : IDonationWebhookHandler
                 return;
             }
 
-            if (donation.Status != LankaConnect.Products.LankaEvents.Domain.Enums.DonationStatus.Pending)
+            if (donation.Status != Domain.Events.Enums.DonationStatus.Pending)
             {
                 _logger.LogWarning(
                     "[Donation] [Webhook-Expired-Standalone-WARN] Donation not in Pending status - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Status: {Status}",

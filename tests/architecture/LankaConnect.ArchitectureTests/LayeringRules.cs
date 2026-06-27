@@ -596,7 +596,7 @@ public sealed class LayeringRules
     /// transitional <c>Payments.Application -&gt; LankaConnect.Domain</c>
     /// ProjectReference is PERMANENT (architect Risk #1 Option A) because
     /// RefundRequest + RefundRequestLineItem + RegistrationPayment stay as
-    /// Registration aggregate children in LankaConnect.Products.LankaEvents.Domain.Entities.
+    /// Registration aggregate children in LankaConnect.Domain.Events.Entities.
     /// So LankaConnect.Domain is NOT in the ban list.
     /// Wave 4.4.c.1 (2026-06-23) — additionally relaxed
     /// <c>LankaConnect.Application</c> because the 7 moved RefundRequest
@@ -1050,7 +1050,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void LegacyDomain_DoesNotDependOnCommunicationsDomain()
     {
-        var assembly = typeof(LankaConnect.Products.LankaEvents.Domain.Event).Assembly;
+        var assembly = typeof(LankaConnect.Domain.Events.Event).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()
@@ -1084,7 +1084,7 @@ public sealed class LayeringRules
     /// there is NO companion LegacyDomain_DoesNotDependOnPaymentsDomain rule
     /// because Risk #1 Option A keeps RefundRequest + RefundRequestLineItem +
     /// RegistrationPayment as Registration aggregate children in
-    /// LankaConnect.Products.LankaEvents.Domain.Entities -- AND the Payments.Domain ProjectReference
+    /// LankaConnect.Domain.Events.Entities -- AND the Payments.Domain ProjectReference
     /// to LankaConnect.Domain (added at Wave 4.4.b) is the PERMANENT structural
     /// compromise for this wave. The inverse edge (LankaConnect.Domain ->
     /// Payments.Domain) does not exist today, but adding a Rule 6 to pin its
@@ -1213,7 +1213,7 @@ public sealed class LayeringRules
     {
         // W4.7 transitional (2026-06-06): mirrors the W4.2 Media / W4.3 Forms transitional
         // pattern. LankaConnect.Domain edge intentionally allowed because StubCulturalCalendar
-        // implements LankaConnect.Products.LankaEvents.Domain.Services.ICulturalCalendar — interface stays
+        // implements LankaConnect.Domain.Events.Services.ICulturalCalendar — interface stays
         // in legacy Events.Services until Wave 5 Products carves Events into Products/LankaEvents.
         // LankaConnect.Application + LankaConnect.Infrastructure excluded to avoid NetArchTest
         // prefix-match false positives against BB.Application + BB.Infrastructure.

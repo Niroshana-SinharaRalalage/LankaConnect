@@ -1,10 +1,10 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Services;
@@ -108,7 +108,7 @@ public class LayoutAuthorizationService : ILayoutAuthorizationService
         }
 
         // Branch 2: Event-attached layout — check Event.IsOrganizer (covers primary + co-organizers).
-        LankaConnect.Products.LankaEvents.Domain.Event? @event;
+        Domain.Events.Event? @event;
         try
         {
             @event = await _eventRepository.GetByIdAsync(layout.EventId.Value, cancellationToken);

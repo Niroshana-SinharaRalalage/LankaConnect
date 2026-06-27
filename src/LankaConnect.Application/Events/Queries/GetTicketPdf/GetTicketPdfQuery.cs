@@ -1,8 +1,8 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Repositories;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -74,7 +74,7 @@ public class GetTicketPdfQueryHandler : IRequestHandler<GetTicketPdfQuery, Resul
                 request.RegistrationId);
 
             // Check if payment is complete before generating
-            if (registration.PaymentStatus != LankaConnect.Products.LankaEvents.Domain.Enums.PaymentStatus.Completed)
+            if (registration.PaymentStatus != Domain.Events.Enums.PaymentStatus.Completed)
             {
                 _logger.LogWarning("Cannot generate ticket PDF - payment not completed for registration {RegistrationId}",
                     request.RegistrationId);

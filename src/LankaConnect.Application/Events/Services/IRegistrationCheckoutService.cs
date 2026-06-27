@@ -1,5 +1,5 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 
 namespace LankaConnect.Application.Events.Services;
@@ -23,7 +23,7 @@ public interface IRegistrationCheckoutService
 {
     /// <summary>
     /// Creates a Stripe Checkout session for the registration's <c>TotalPrice</c>, sets the
-    /// session ID on the registration via <see cref="LankaConnect.Products.LankaEvents.Domain.Registration.SetStripeCheckoutSession"/>,
+    /// session ID on the registration via <see cref="Domain.Events.Registration.SetStripeCheckoutSession"/>,
     /// and returns the redirect URL.
     /// </summary>
     /// <param name="event">The event the registration belongs to.</param>

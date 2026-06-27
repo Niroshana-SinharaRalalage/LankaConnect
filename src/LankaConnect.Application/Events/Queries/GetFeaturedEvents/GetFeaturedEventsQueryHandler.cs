@@ -3,7 +3,7 @@ using AutoMapper;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -226,7 +226,7 @@ public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuer
         var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
             ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
 
-        var metroArea = await dbContext.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
+        var metroArea = await dbContext.Set<Domain.Events.MetroArea>()
             .FindAsync(new object[] { metroAreaId }, cancellationToken);
 
         if (metroArea != null)
@@ -253,7 +253,7 @@ public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuer
             ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
 
         // Find metro area matching the city name and state
-        var metroArea = await dbContext.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
+        var metroArea = await dbContext.Set<Domain.Events.MetroArea>()
             .FirstOrDefaultAsync(m => m.Name.ToLower() == city.ToLower()
                                    && m.State.ToLower() == state.ToLower(),
                                    cancellationToken);
@@ -287,7 +287,7 @@ public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuer
         // Filter for published and upcoming events only.
         // Phase 8YA.4 (Q3=A): explicit HasValue keeps TBD events out of Featured.
         return nearestEvents
-            .Where(e => e.Status == LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published
+            .Where(e => e.Status == Domain.Events.Enums.EventStatus.Published
                      && e.StartDate.HasValue
                      && e.StartDate.Value > now)
             .Take(maxResults)

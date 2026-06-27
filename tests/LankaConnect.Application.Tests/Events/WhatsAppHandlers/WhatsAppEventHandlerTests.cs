@@ -11,11 +11,11 @@ using LankaConnect.Modules.Payments.Application.EventHandlers; // W4.4.c.3: Paym
 using LankaConnect.Modules.Forms.Application.EventHandlers; // W5.3d.2: FormResponseWhatsAppHandler moved here
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
@@ -143,8 +143,8 @@ public class WhatsAppEventHandlerTests
     /// <summary>Creates a real Event domain object with a specific Id set via reflection.</summary>
     private static Event CreateRealEvent(Guid eventId, string title = "Test Event")
     {
-        var eventTitle = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventTitle.Create(title).Value;
-        var eventDesc = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventDescription.Create("Test description").Value;
+        var eventTitle = LankaConnect.Domain.Events.ValueObjects.EventTitle.Create(title).Value;
+        var eventDesc = LankaConnect.Domain.Events.ValueObjects.EventDescription.Create("Test description").Value;
 
         var evt = Event.Create(
             eventTitle,
@@ -154,7 +154,7 @@ public class WhatsAppEventHandlerTests
             Guid.NewGuid(),
             100,
             null,
-            LankaConnect.Products.LankaEvents.Domain.Enums.EventCategory.Community).Value;
+            LankaConnect.Domain.Events.Enums.EventCategory.Community).Value;
 
         evt.SetAsFreeEvent();
         SetEntityId(evt, eventId);
@@ -172,14 +172,14 @@ public class WhatsAppEventHandlerTests
     /// Creates a Registration via EF Core's private parameterless constructor and leaves Contact null.
     /// Used to simulate the "no phone number" path in AnonymousRegistrationWhatsAppHandler.
     /// </summary>
-    private static LankaConnect.Products.LankaEvents.Domain.Registration CreateRealRegistrationWithNoContact(Guid eventId)
+    private static LankaConnect.Domain.Events.Registration CreateRealRegistrationWithNoContact(Guid eventId)
     {
-        var regType = typeof(LankaConnect.Products.LankaEvents.Domain.Registration);
+        var regType = typeof(LankaConnect.Domain.Events.Registration);
         var ctor = regType.GetConstructor(
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
             null, Type.EmptyTypes, null);
 
-        var registration = (LankaConnect.Products.LankaEvents.Domain.Registration)ctor!.Invoke(null);
+        var registration = (LankaConnect.Domain.Events.Registration)ctor!.Invoke(null);
         // Contact property has private setter — leave null (default)
         SetPrivateProperty(registration, "EventId", eventId);
         return registration;
@@ -188,30 +188,30 @@ public class WhatsAppEventHandlerTests
     /// <summary>
     /// Creates a Registration with a real RegistrationContact (with a valid phone number).
     /// </summary>
-    private static LankaConnect.Products.LankaEvents.Domain.Registration CreateRealRegistrationWithPhone(
+    private static LankaConnect.Domain.Events.Registration CreateRealRegistrationWithPhone(
         Guid eventId, string email, string phoneNumber,
         string? whatsAppPhoneNumber = null, bool whatsAppOptedIn = false)
     {
-        var regType = typeof(LankaConnect.Products.LankaEvents.Domain.Registration);
+        var regType = typeof(LankaConnect.Domain.Events.Registration);
         var ctor = regType.GetConstructor(
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
             null, Type.EmptyTypes, null);
 
-        var registration = (LankaConnect.Products.LankaEvents.Domain.Registration)ctor!.Invoke(null);
+        var registration = (LankaConnect.Domain.Events.Registration)ctor!.Invoke(null);
         SetPrivateProperty(registration, "EventId", eventId);
 
         // Phase 7A.6D: Pass WhatsApp phone + opt-in flag to RegistrationContact
-        var contact = LankaConnect.Products.LankaEvents.Domain.ValueObjects.RegistrationContact
+        var contact = LankaConnect.Domain.Events.ValueObjects.RegistrationContact
             .Create(email, phoneNumber, null, whatsAppPhoneNumber, whatsAppOptedIn).Value;
         SetPrivateProperty(registration, "Contact", contact);
 
-        var attendee = LankaConnect.Products.LankaEvents.Domain.ValueObjects.AttendeeDetails
-            .Create("Guest User", LankaConnect.Products.LankaEvents.Domain.Enums.AgeCategory.Adult, null).Value;
+        var attendee = LankaConnect.Domain.Events.ValueObjects.AttendeeDetails
+            .Create("Guest User", LankaConnect.Domain.Events.Enums.AgeCategory.Adult, null).Value;
 
         // _attendees is a private List<AttendeeDetails> field
         var attendeesField = regType.GetField("_attendees",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var attendeesList = (System.Collections.Generic.List<LankaConnect.Products.LankaEvents.Domain.ValueObjects.AttendeeDetails>)
+        var attendeesList = (System.Collections.Generic.List<LankaConnect.Domain.Events.ValueObjects.AttendeeDetails>)
             attendeesField!.GetValue(registration)!;
         attendeesList.Add(attendee);
 
@@ -1201,7 +1201,7 @@ public class WhatsAppEventHandlerTests
             .ReturnsAsync(CreateRealEvent(eventId));
         _mockRegistrationRepo
             .Setup(r => r.GetAnonymousByEventAndEmailAsync(eventId, email, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((LankaConnect.Products.LankaEvents.Domain.Registration?)null);
+            .ReturnsAsync((LankaConnect.Domain.Events.Registration?)null);
 
         var domainEvent = new AnonymousRegistrationConfirmedEvent(eventId, email, 1, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<AnonymousRegistrationConfirmedEvent>(domainEvent), CancellationToken.None);

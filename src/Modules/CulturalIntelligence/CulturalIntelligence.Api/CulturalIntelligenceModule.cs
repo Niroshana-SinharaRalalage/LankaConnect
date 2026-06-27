@@ -8,7 +8,7 @@ namespace LankaConnect.Modules.CulturalIntelligence.Api;
 /// Wave 4.9 (2026-06-26): registers all 3 cultural service stubs
 /// (<see cref="StubCulturalCalendar"/>, <see cref="StubUserPreferences"/>,
 /// <see cref="StubGeographicProximityService"/>). The service interfaces stay
-/// in legacy <c>LankaConnect.Products.LankaEvents.Domain.Services</c> until Wave 5 Products
+/// in legacy <c>LankaConnect.Domain.Events.Services</c> until Wave 5 Products
 /// carve-out moves the EventRecommendationEngine consumer.
 /// </summary>
 public static class CulturalIntelligenceModule
@@ -18,9 +18,9 @@ public static class CulturalIntelligenceModule
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.ICulturalCalendar, StubCulturalCalendar>();
-        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IUserPreferences, StubUserPreferences>();
-        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IGeographicProximityService, StubGeographicProximityService>();
+        services.AddScoped<LankaConnect.Domain.Events.Services.ICulturalCalendar, StubCulturalCalendar>();
+        services.AddScoped<LankaConnect.Domain.Events.Services.IUserPreferences, StubUserPreferences>();
+        services.AddScoped<LankaConnect.Domain.Events.Services.IGeographicProximityService, StubGeographicProximityService>();
 
         return services;
     }

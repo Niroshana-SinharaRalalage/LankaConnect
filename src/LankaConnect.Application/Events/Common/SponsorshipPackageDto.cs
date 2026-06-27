@@ -1,7 +1,7 @@
 namespace LankaConnect.Application.Events.Common;
 
 /// <summary>
-/// Phase 6A.156 — read-only projection of a <see cref="LankaConnect.Products.LankaEvents.Domain.SponsorshipPackage"/>.
+/// Phase 6A.156 — read-only projection of a <see cref="LankaConnect.Domain.Events.SponsorshipPackage"/>.
 /// Mirrors the shape used for AddOnDefinitionDto so the FE can render a package
 /// card with the same layout primitives as an add-on card.
 ///

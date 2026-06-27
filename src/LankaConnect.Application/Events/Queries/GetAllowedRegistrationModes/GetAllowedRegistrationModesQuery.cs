@@ -1,5 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Application.Events.Queries.GetAllowedRegistrationModes;
 
@@ -12,7 +12,7 @@ namespace LankaConnect.Application.Events.Queries.GetAllowedRegistrationModes;
 /// Shape parameters describe a draft event the organiser is building or editing. All are
 /// optional and default to <c>false</c> (= safest: most modes allowed).
 ///
-/// The handler delegates to <see cref="LankaConnect.Products.LankaEvents.Domain.Services.RegistrationModeCompatibility.AllowedModes"/>
+/// The handler delegates to <see cref="Domain.Events.Services.RegistrationModeCompatibility.AllowedModes"/>
 /// — single source of truth shared with <c>CreateEventCommandHandler</c> + <c>UpdateEventCommandHandler</c>.
 /// </summary>
 public record GetAllowedRegistrationModesQuery(

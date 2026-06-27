@@ -4,7 +4,7 @@ namespace LankaConnect.Application.Events.Services;
 /// Phase 6A.148.W5.6.A — single source of truth for the attendee-facing GRAND TOTAL
 /// shown in the post-refund completion email + WhatsApp message.
 ///
-/// Why this exists: <see cref="LankaConnect.Products.LankaEvents.Domain.DomainEvents.RefundCompletedEvent"/>
+/// Why this exists: <see cref="LankaConnect.Domain.Events.DomainEvents.RefundCompletedEvent"/>
 /// carries <c>RefundAmount</c> (Registration.TotalPrice = ticket portion) +
 /// <c>AddOnRefundAmount</c> (legacy Registration column that the 6A.148 workflow path
 /// never populates). For workflow refunds this undercounts by the Sponsor + Collection
@@ -15,7 +15,7 @@ namespace LankaConnect.Application.Events.Services;
 /// <list type="number">
 ///   <item>Look up the workflow line by Stripe refund id (cheap indexed read).</item>
 ///   <item>If a workflow line exists, load the parent <c>RefundRequest</c> and SUM all
-///     <see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemStatus.Refunded"/>
+///     <see cref="LankaConnect.Domain.Events.Enums.RefundLineItemStatus.Refunded"/>
 ///     line items' <c>ApprovedAmount</c> — the authoritative truth for the consolidated
 ///     email (matches what the Decision email already shows via the per-item table).</item>
 ///   <item>If no workflow line exists, the refund originated from the legacy
@@ -27,7 +27,7 @@ namespace LankaConnect.Application.Events.Services;
 /// </list>
 ///
 /// Timing guarantee (W5.5.D5 dispatcher contract): per-line dispatcher executes
-/// serially, ticket line LAST. By the time <see cref="LankaConnect.Products.LankaEvents.Domain.Registration.CompleteRefundFromCancelled"/>
+/// serially, ticket line LAST. By the time <see cref="LankaConnect.Domain.Events.Registration.CompleteRefundFromCancelled"/>
 /// raises <c>RefundCompletedEvent</c> on the ticket webhook, every sibling line item
 /// is already terminal in the DB. The SUM here is therefore the true settled total,
 /// not a running partial. (If a sibling fails the Stripe call, its line stays in

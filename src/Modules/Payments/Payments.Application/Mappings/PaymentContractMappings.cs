@@ -1,5 +1,5 @@
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Modules.Payments.Contracts;
 
 namespace LankaConnect.Modules.Payments.Application.Mappings;
@@ -9,7 +9,7 @@ namespace LankaConnect.Modules.Payments.Application.Mappings;
 /// Mirrors the W5.4.b <c>EmailGroupContractMappings</c> pattern. Lives in
 /// Payments.Application because the source types
 /// (<see cref="RefundRequest"/>, <see cref="RefundRequestLineItem"/>) live in
-/// <c>LankaConnect.Products.LankaEvents.Domain.Entities</c> per the architect Risk #1
+/// <c>LankaConnect.Domain.Events.Entities</c> per the architect Risk #1
 /// Option A ruling. The transitional <c>Payments.Application -&gt; LankaConnect.Domain</c>
 /// ProjectReference is what makes this wiring compile.
 /// </summary>

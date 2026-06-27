@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -53,7 +53,7 @@ public class CreateItemSponsorCommandHandler : ICommandHandler<CreateItemSponsor
                     return Result<Guid>.Failure("Event not found");
 
                 // 2. Validate event is Published
-                if (@event.Status != LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published)
+                if (@event.Status != Domain.Events.Enums.EventStatus.Published)
                     return Result<Guid>.Failure("Sponsorships are only available for published events");
 
                 // 3. Validate sponsors are enabled AND item sponsors are accepted

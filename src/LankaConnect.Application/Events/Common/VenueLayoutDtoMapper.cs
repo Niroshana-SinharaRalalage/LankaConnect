@@ -1,4 +1,4 @@
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Domain.Events.Entities;
 
 namespace LankaConnect.Application.Events.Common;
 

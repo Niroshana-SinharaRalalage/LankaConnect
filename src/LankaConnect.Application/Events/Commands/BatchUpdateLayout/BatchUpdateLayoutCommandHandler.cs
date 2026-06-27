@@ -1,12 +1,12 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Events.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -28,7 +28,7 @@ namespace LankaConnect.Application.Events.Commands.BatchUpdateLayout;
 ///      decorations, then layout-level Name + Canvas. Each mutation goes through a
 ///      domain method so invariants stay in the domain layer.
 ///   6. (S8.8c) Reconcile <c>TierAssignments</c> against the loaded
-///      <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier"/>s for the event. Resolves
+///      <see cref="Domain.Events.Entities.TicketTier"/>s for the event. Resolves
 ///      newly-added zone/table client-Guids → server-Guids via the
 ///      <c>ClientId</c> fields on <see cref="BatchZone"/> / <see cref="BatchTable"/>.
 ///      Diffs current vs desired and calls <c>AssignToZone</c> / <c>AssignToTable</c> /
@@ -37,7 +37,7 @@ namespace LankaConnect.Application.Events.Commands.BatchUpdateLayout;
 ///      don't manage tiers).
 ///   7. <see cref="IVenueLayoutRepository.SetOriginalRowVersion"/> + commit.
 ///      <see cref="DbUpdateConcurrencyException"/> → 409. Domain mutations on the
-///      <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier"/> aggregates flush in the
+///      <see cref="Domain.Events.Entities.TicketTier"/> aggregates flush in the
 ///      same <c>SaveChanges</c>.
 /// </summary>
 public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayoutCommand>

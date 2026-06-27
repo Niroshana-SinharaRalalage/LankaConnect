@@ -448,7 +448,7 @@ public class AdminController : BaseController<AdminController>
                 .AsNoTracking()
                 .Include(e => e.Registrations)
                 .Where(e => e.StartDate >= sevenDayStart && e.StartDate <= sevenDayEnd)
-                .Where(e => e.Status == LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published || e.Status == LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Active)
+                .Where(e => e.Status == Domain.Events.Enums.EventStatus.Published || e.Status == Domain.Events.Enums.EventStatus.Active)
                 .Select(e => new { e.Id, Title = e.Title.Value, e.StartDate, RegistrationCount = e.Registrations.Count })
                 .ToListAsync();
 
@@ -459,7 +459,7 @@ public class AdminController : BaseController<AdminController>
                 .AsNoTracking()
                 .Include(e => e.Registrations)
                 .Where(e => e.StartDate >= twoDayStart && e.StartDate <= twoDayEnd)
-                .Where(e => e.Status == LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published || e.Status == LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Active)
+                .Where(e => e.Status == Domain.Events.Enums.EventStatus.Published || e.Status == Domain.Events.Enums.EventStatus.Active)
                 .Select(e => new { e.Id, Title = e.Title.Value, e.StartDate, RegistrationCount = e.Registrations.Count })
                 .ToListAsync();
 
@@ -470,7 +470,7 @@ public class AdminController : BaseController<AdminController>
                 .AsNoTracking()
                 .Include(e => e.Registrations)
                 .Where(e => e.StartDate >= oneDayStart && e.StartDate <= oneDayEnd)
-                .Where(e => e.Status == LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published || e.Status == LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Active)
+                .Where(e => e.Status == Domain.Events.Enums.EventStatus.Published || e.Status == Domain.Events.Enums.EventStatus.Active)
                 .Select(e => new { e.Id, Title = e.Title.Value, e.StartDate, RegistrationCount = e.Registrations.Count })
                 .ToListAsync();
 

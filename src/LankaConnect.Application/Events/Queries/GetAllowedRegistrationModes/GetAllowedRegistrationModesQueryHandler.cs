@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Queries.GetAllowedRegistrationModes;

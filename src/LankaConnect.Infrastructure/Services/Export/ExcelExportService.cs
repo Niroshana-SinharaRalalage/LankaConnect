@@ -6,7 +6,7 @@ using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Infrastructure.Services.Export;

@@ -1,4 +1,4 @@
-using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Domain.Events.Services;
 using Serilog;
 
 namespace LankaConnect.Infrastructure.Services;

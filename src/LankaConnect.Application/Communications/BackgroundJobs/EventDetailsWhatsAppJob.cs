@@ -1,6 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Shared.Email.Helpers;
 using LankaConnect.Shared.WhatsApp.Contracts;

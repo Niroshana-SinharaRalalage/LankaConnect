@@ -1,0 +1,21 @@
+
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Products.LankaEvents.Api</RootNamespace>
+    <AssemblyName>LankaConnect.Products.LankaEvents.Api</AssemblyName>
+    <Description>LankaEvents product — Api layer. Controllers + composition-root DI extension (LankaEventsModule.AddLankaEventsModule). Wave 5.0 skeleton (2026-06-26); controllers move from LankaConnect.API/Controllers/Events*Controller.cs in W5.9.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <ProjectReference Include="..\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />
+    <ProjectReference Include="..\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

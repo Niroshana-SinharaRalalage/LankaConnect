@@ -1,0 +1,20 @@
+
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Products.LankaEvents.Infrastructure</RootNamespace>
+    <AssemblyName>LankaConnect.Products.LankaEvents.Infrastructure</AssemblyName>
+    <Description>LankaEvents product — Infrastructure layer. Repositories + integrations. Wave 5.0 skeleton (2026-06-26). EF Configurations for the Event family STAY in LankaConnect.Infrastructure per the W4.4.d.2 / W5.4.d.2 / W4.7.e cross-schema FK precedent.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LankaEvents.Domain\LankaEvents.Domain.csproj" />
+    <ProjectReference Include="..\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+
+    <!-- Transitional: legacy LankaConnect.Infrastructure hosts AppDbContext + Repository<T> base
+         + EF Configurations for the Event family. Cut alongside Wave 6 cleanup. -->
+    <ProjectReference Include="..\..\..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

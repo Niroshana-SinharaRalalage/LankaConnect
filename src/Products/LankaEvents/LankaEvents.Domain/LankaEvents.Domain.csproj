@@ -1,0 +1,26 @@
+
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Products.LankaEvents.Domain</RootNamespace>
+    <AssemblyName>LankaConnect.Products.LankaEvents.Domain</AssemblyName>
+    <Description>LankaEvents product — Domain layer. Owns the Event aggregate + Registration + Ticket + EventPass + TicketTier + Sponsor + VenueLayout + SignUpList + ~30 related sub-aggregates. Wave 5.0 skeleton (2026-06-26); types physically move from LankaConnect.Domain.Events over Wave 5.1 through 5.7 in dependency order (leaves first).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Wave 5.0 (2026-06-26): Products may depend on Capability Contracts + BuildingBlocks + SharedKernel.
+         Forbidden: other Products, Capability Domain/Application/Infrastructure (only Contracts). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Scheduling\Scheduling.Domain\Scheduling.Domain.csproj" />
+    <!-- Identity/Communications/Media/Payments/Forms are consumed via Contracts only, but
+         Event types compose Scheduling primitives (ScheduledOccurrence, CapacityRule, etc.)
+         which are Domain-layer VOs. Scheduling.Domain is therefore a valid Products edge. -->
+
+    <!-- Wave 5.0 TRANSITIONAL (2026-06-26): until Event family is fully moved (W5.7),
+         this project also references legacy LankaConnect.Domain so handlers can still
+         compose Domain types that haven't moved yet. Cut at the end of W5.7. -->
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

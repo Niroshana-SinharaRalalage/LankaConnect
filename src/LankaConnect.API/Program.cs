@@ -1,3 +1,4 @@
+using LankaConnect.Products.LankaEvents.Api;
 using Hangfire;
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
@@ -146,6 +147,11 @@ try
     // W4.7 (2026-06-06) — CulturalIntelligence module composition. Registers
     // ICulturalCalendar (StubCulturalCalendar impl).
     builder.Services.AddCulturalIntelligenceModule();
+
+    // Wave 5.0 (2026-06-26) — LankaEvents product composition. Empty seam today;
+    // populates as the Event family migrates from LankaConnect.Domain.Events
+    // in W5.1 through W5.7.
+    builder.Services.AddLankaEventsModule();
 
     // Add JWT Authentication and Authorization
     builder.Services.AddJwtAuthentication(builder.Configuration);

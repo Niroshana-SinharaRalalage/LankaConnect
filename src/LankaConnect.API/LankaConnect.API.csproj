@@ -46,6 +46,7 @@
     <ProjectReference Include="..\Modules\CulturalIntelligence\CulturalIntelligence.Api\CulturalIntelligence.Api.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Api\Identity.Api.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
+    <ProjectReference Include="..\Products\LankaEvents\LankaEvents.Api\LankaEvents.Api.csproj" />
   </ItemGroup>
 
   <!-- Phase 6A.34: Link Infrastructure email templates to API publish output -->

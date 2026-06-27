@@ -1,0 +1,34 @@
+
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Products.LankaEvents.Application</RootNamespace>
+    <AssemblyName>LankaConnect.Products.LankaEvents.Application</AssemblyName>
+    <Description>LankaEvents product — Application layer. Command/Query handlers + background jobs + application services. Wave 5.0 skeleton (2026-06-26); handlers move from LankaConnect.Application/Events/ in W5.8.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LankaEvents.Domain\LankaEvents.Domain.csproj" />
+    <ProjectReference Include="..\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+
+    <!-- Capabilities depended on via Contracts only (per Wave 5 architectural ruling) -->
+    <ProjectReference Include="..\..\..\Modules\Identity\Identity.Contracts\Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Communications\Communications.Contracts\Communications.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Forms\Forms.Contracts\Forms.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Payments\Payments.Contracts\Payments.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Scheduling\Scheduling.Contracts\Scheduling.Contracts.csproj" />
+
+    <!-- Wave 5.0 TRANSITIONAL (2026-06-26): until the per-capability Application migration
+         (Wave 6) cuts the Modules → LankaConnect.Application edges, LankaEvents handlers
+         also need access to ICommand / ICommandHandler / IUnitOfWork etc. that live in
+         the legacy LankaConnect.Application namespace. Mirror Identity 4.6.d.1 pattern. -->
+    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+</Project>

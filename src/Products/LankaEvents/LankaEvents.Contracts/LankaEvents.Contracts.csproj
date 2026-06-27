@@ -1,0 +1,14 @@
+
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Products.LankaEvents.Contracts</RootNamespace>
+    <AssemblyName>LankaConnect.Products.LankaEvents.Contracts</AssemblyName>
+    <Description>LankaEvents product — Contracts layer. Cross-product / cross-host read DTOs + integration event shapes. Wave 5.0 skeleton (2026-06-26).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

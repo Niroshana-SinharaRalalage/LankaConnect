@@ -32,20 +32,19 @@ public class PassPurchaseConfiguration : IEntityTypeConfiguration<PassPurchase>
             .HasColumnName("quantity")
             .IsRequired();
 
-        // Configure TotalPrice as owned Money value object using ComplexProperty
-        builder.ComplexProperty(pp => pp.TotalPrice, price =>
-        {
-            price.Property(p => p.Amount)
-                .HasColumnName("total_price_amount")
-                .HasPrecision(18, 2)
-                .IsRequired();
+        // Wave 5.1.a-α (2026-06-27): Money decomposed into scalar TotalPriceAmount +
+        // TotalPriceCurrency. See EventPassConfiguration.cs for rationale. Columns
+        // unchanged: total_price_amount + total_price_currency.
+        builder.Property(pp => pp.TotalPriceAmount)
+            .HasColumnName("total_price_amount")
+            .HasPrecision(18, 2)
+            .IsRequired();
 
-            price.Property(p => p.Currency)
-                .HasColumnName("total_price_currency")
-                .HasConversion<string>()
-                .HasMaxLength(3)
-                .IsRequired();
-        });
+        builder.Property(pp => pp.TotalPriceCurrency)
+            .HasColumnName("total_price_currency")
+            .HasConversion<string>()
+            .HasMaxLength(3)
+            .IsRequired();
 
         builder.Property(pp => pp.Status)
             .HasColumnName("status")

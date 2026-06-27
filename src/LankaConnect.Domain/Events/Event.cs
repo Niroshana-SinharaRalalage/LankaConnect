@@ -96,7 +96,17 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
     public string? TimeZoneId { get; private set; }
 
     public EventCategory Category { get; private set; } // Epic 2 Phase 2: Event category classification
-    public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support (legacy - single price)
+    public Money? TicketPrice { get; private set; } // Epic 2 Phase 2: Ticket pricing support (legacy - single price); persists as JSONB via ToJson, no shared-type collision.
+
+    // Wave 5.1.a-α (2026-06-27): TicketPrice retained as direct Money? property
+    // because EventConfiguration maps it via OwnsOne+ToJson (single JSONB column),
+    // which does NOT trigger the cross-assembly shared-type-entity collision that
+    // forced EventPass.Price + PassPurchase.TotalPrice (multi-column OwnsOne) into
+    // the scalar+facade pattern. ToJson maps the entire Money composite to one
+    // opaque column, so EF never registers Money as a complex/owned entity type
+    // in the model graph. Verified empirically — pre-rollback the failing
+    // dbcontext-info errored only on EventPass.Price, not Event.TicketPrice.
+    private void SetTicketPriceInternal(Money? price) => TicketPrice = price;
     public TicketPricing? Pricing { get; private set; } // Session 21: Dual ticket pricing (adult/child) with age limit
     public RevenueBreakdown? RevenueBreakdown { get; private set; } // Phase 6A.X: Detailed revenue breakdown for paid events
 
@@ -252,7 +262,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         Status = (startDate.HasValue && endDate.HasValue) ? EventStatus.Draft : EventStatus.Planning;
         Location = location;
         Category = category;
-        TicketPrice = ticketPrice;
+        SetTicketPriceInternal(ticketPrice);
         // Phase 6A.86: Set IsFreeEvent flag based on ticket price
         // Only explicit $0 price means free event
         // NULL ticket price defaults to PAID for security (Phase 6A.81 security fix)
@@ -1193,7 +1203,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         var zeroPrice = Money.Create(0m, Shared.Enums.Currency.USD);
         if (zeroPrice.IsSuccess)
         {
-            TicketPrice = zeroPrice.Value;
+            SetTicketPriceInternal(zeroPrice.Value);
         }
 
 
@@ -1210,7 +1220,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         if (ticketPrice == null)
             return Result.Failure("Ticket price cannot be null. Use SetAsFreeEvent() for free events.");
 
-        TicketPrice = ticketPrice;
+        SetTicketPriceInternal(ticketPrice);
         IsFreeEvent = ticketPrice.IsZero;
 
 
@@ -1250,7 +1260,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
             var copyResult = Money.Create(pricing.AdultPrice.Amount, pricing.AdultPrice.Currency);
             if (copyResult.IsSuccess)
             {
-                TicketPrice = copyResult.Value;
+                SetTicketPriceInternal(copyResult.Value);
             }
         }
 
@@ -1280,7 +1290,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         IsFreeEvent = pricing.GroupTiers.All(tier => tier.PricePerPerson.IsZero);
 
         // Set TicketPrice to null for group pricing (not applicable)
-        TicketPrice = null;
+        SetTicketPriceInternal(null);
 
 
         // Raise domain event
@@ -2717,7 +2727,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
             // Clear stale legacy pricing when caller explicitly passes null —
             // organiser intent is "no on-platform price for this ExternalPaid event".
             Pricing = null;
-            TicketPrice = null;
+            SetTicketPriceInternal(null);
         }
 
         ExternalRegistration = externalReg;
@@ -2778,7 +2788,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
             // Clear pricing — Free events don't carry a non-zero ticket price.
             Pricing = null;
             var zeroResult = Money.Create(0m, Shared.Enums.Currency.USD);
-            TicketPrice = zeroResult.IsSuccess ? zeroResult.Value : null;
+            SetTicketPriceInternal(zeroResult.IsSuccess ? zeroResult.Value : null);
         }
 
         SyncLegacyIsFree();

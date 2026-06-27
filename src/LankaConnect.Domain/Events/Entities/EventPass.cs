@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Events.Entities;
@@ -21,7 +23,17 @@ public class EventPass : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaC
 
     public PassName Name { get; private set; }
     public PassDescription Description { get; private set; }
-    public Money Price { get; private set; }
+
+    // Wave 5.1.a-α (2026-06-27): Money decomposed into 2 scalar columns + [NotMapped]
+    // facade. Architect ruling Option A: removes Money from EF's model graph for this
+    // aggregate so the cross-assembly shared-type-entity collision (W5.1 rollback)
+    // dissolves when EventPass moves to Products.LankaEvents.Domain in W5.1.a-α.3.
+    public decimal PriceAmount { get; private set; }
+    public Currency PriceCurrency { get; private set; }
+
+    [NotMapped]
+    public Money Price => Money.Create(PriceAmount, PriceCurrency).Value;
+
     public int TotalQuantity { get; private set; }
     public int ReservedQuantity { get; private set; }
 
@@ -32,7 +44,6 @@ public class EventPass : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaC
     {
         Name = null!;
         Description = null!;
-        Price = null!;
     }
 
     private EventPass(PassName name, PassDescription description, Money price, int totalQuantity)
@@ -42,7 +53,8 @@ public class EventPass : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaC
         CreatedAt = DateTime.UtcNow;
         Name = name;
         Description = description;
-        Price = price;
+        PriceAmount = price.Amount;
+        PriceCurrency = price.Currency;
         TotalQuantity = totalQuantity;
         ReservedQuantity = 0;
     }
@@ -119,7 +131,8 @@ public class EventPass : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaC
 
         Name = name;
         Description = description;
-        Price = price;
+        PriceAmount = price.Amount;
+        PriceCurrency = price.Currency;
 
         return Result.Success();
     }

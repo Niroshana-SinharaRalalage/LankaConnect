@@ -33,20 +33,22 @@ public class EventPassConfiguration : IEntityTypeConfiguration<EventPass>
                 .IsRequired();
         });
 
-        // Configure Price as owned Money value object using ComplexProperty
-        builder.ComplexProperty(ep => ep.Price, price =>
-        {
-            price.Property(p => p.Amount)
-                .HasColumnName("price_amount")
-                .HasPrecision(18, 2)
-                .IsRequired();
+        // Wave 5.1.a-α (2026-06-27): Money decomposed into scalar PriceAmount +
+        // PriceCurrency. Direct Property mapping replaces ComplexProperty/OwnsOne
+        // to remove Money from EF's model graph (Architect Option A) so cross-
+        // assembly shared-type-entity collision dissolves when EventPass moves
+        // to Products.LankaEvents.Domain in W5.1.a-α.3. Columns unchanged:
+        // price_amount (numeric) + price_currency (varchar(3)).
+        builder.Property(ep => ep.PriceAmount)
+            .HasColumnName("price_amount")
+            .HasPrecision(18, 2)
+            .IsRequired();
 
-            price.Property(p => p.Currency)
-                .HasColumnName("price_currency")
-                .HasConversion<string>()
-                .HasMaxLength(3)
-                .IsRequired();
-        });
+        builder.Property(ep => ep.PriceCurrency)
+            .HasColumnName("price_currency")
+            .HasConversion<string>()
+            .HasMaxLength(3)
+            .IsRequired();
 
         builder.Property(ep => ep.TotalQuantity)
             .HasColumnName("total_quantity")

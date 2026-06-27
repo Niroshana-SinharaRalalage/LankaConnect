@@ -1,6 +1,8 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Events.Entities;
@@ -15,7 +17,15 @@ public class PassPurchase : LegacyBaseEntity
     public Guid EventId { get; private set; }
     public Guid EventPassId { get; private set; }
     public int Quantity { get; private set; }
-    public Money TotalPrice { get; private set; }
+
+    // Wave 5.1.a-α (2026-06-27): Money decomposed into 2 scalar columns + [NotMapped]
+    // facade. See EventPass.cs for rationale (architect-mandated cross-assembly fix).
+    public decimal TotalPriceAmount { get; private set; }
+    public Currency TotalPriceCurrency { get; private set; }
+
+    [NotMapped]
+    public Money TotalPrice => Money.Create(TotalPriceAmount, TotalPriceCurrency).Value;
+
     public PassPurchaseStatus Status { get; private set; }
     public string QRCode { get; private set; }
     public DateTime? ConfirmedAt { get; private set; }
@@ -24,7 +34,6 @@ public class PassPurchase : LegacyBaseEntity
     // EF Core constructor
     private PassPurchase()
     {
-        TotalPrice = null!;
         QRCode = null!;
     }
 
@@ -39,7 +48,9 @@ public class PassPurchase : LegacyBaseEntity
         EventId = eventId;
         EventPassId = eventPassId;
         Quantity = quantity;
-        TotalPrice = unitPrice.Multiply(quantity).Value; // Multiply returns Result<Money>
+        var total = unitPrice.Multiply(quantity).Value; // Multiply returns Result<Money>
+        TotalPriceAmount = total.Amount;
+        TotalPriceCurrency = total.Currency;
         Status = PassPurchaseStatus.Pending;
         QRCode = GenerateQRCode();
     }

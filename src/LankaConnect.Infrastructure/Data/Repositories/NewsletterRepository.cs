@@ -105,11 +105,13 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
             try
             {
                 // Wave 5.4.d.1b (2026-06-22). _emailGroupEntities Include swapped for
-                // _emailGroupLinks via the public navigation property. _metroAreaEntities
-                // unchanged because MetroArea is not in scope for Wave 5.4.
+                // _emailGroupLinks via the public navigation property.
+                // Wave 5.2.d-hotfix2 follow-up (2026-06-28): _metroAreaEntities shadow nav
+                // was removed in favour of NewsletterMetroAreaLink junction CLR; Include
+                // now uses the public MetroAreaLinks navigation. Mirrors EmailGroupLinks.
                 IQueryable<Newsletter> query = _dbSet
                     .Include(n => n.EmailGroupLinks)
-                    .Include("_metroAreaEntities");
+                    .Include(n => n.MetroAreaLinks);
 
                 // Apply tracking behavior based on parameter
                 // Command handlers need tracked entities (trackChanges: true) for EF Core change detection
@@ -145,18 +147,13 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
                 _repoLogger.LogDebug("Synced {EmailGroupCount} email group IDs from junction links to domain entity",
                     newsletter.EmailGroupIds.Count);
 
-                // Phase 6A.74 Enhancement 1: Sync metro area IDs from shadow navigation to domain
-                var metroAreasCollection = _context.Entry(newsletter).Collection("_metroAreaEntities");
-                var metroAreaEntities = metroAreasCollection.CurrentValue as IEnumerable<LankaConnect.Products.LankaEvents.Domain.MetroArea>;
-
-                if (metroAreaEntities != null)
-                {
-                    var metroAreaIds = metroAreaEntities.Select(m => m.Id).ToList();
-                    newsletter.SyncMetroAreaIdsFromEntities(metroAreaIds);
-
-                    _repoLogger.LogDebug("Synced {MetroAreaCount} metro area IDs to domain entity",
-                        metroAreaIds.Count);
-                }
+                // Wave 5.2.d-hotfix2 follow-up (2026-06-28): metro area IDs sync now uses
+                // the MetroAreaLinks junction CLR collection directly (mirrors
+                // SyncEmailGroupIdsFromLinks above). No shadow-nav round-trip needed.
+                var metroAreaIds = newsletter.MetroAreaLinks.Select(l => l.MetroAreaId).ToList();
+                newsletter.SyncMetroAreaIdsFromEntities(metroAreaIds);
+                _repoLogger.LogDebug("Synced {MetroAreaCount} metro area IDs from junction links to domain entity",
+                    metroAreaIds.Count);
 
                 stopwatch.Stop();
 

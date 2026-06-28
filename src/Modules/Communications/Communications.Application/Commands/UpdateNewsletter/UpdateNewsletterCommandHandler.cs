@@ -279,30 +279,12 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                 var dbContext2 = _dbContext as DbContext
                     ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
 
-                // Sync metro areas shadow navigation
-                if (request.MetroAreaIds != null && request.MetroAreaIds.Any())
-                {
-                    var distinctMetroIds = request.MetroAreaIds.Distinct().ToList();
-
-                    var metroAreaEntities = await dbContext2.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
-                        .Where(m => distinctMetroIds.Contains(m.Id))
-                        .ToListAsync(cancellationToken);
-
-                    var metroAreasCollection = dbContext2.Entry(newsletter).Collection("_metroAreaEntities");
-                    metroAreasCollection.CurrentValue = metroAreaEntities;
-
-                    _logger.LogInformation(
-                        "UpdateNewsletter: [HOTFIX] Synced {Count} metro areas to shadow navigation",
-                        metroAreaEntities.Count);
-                }
-                else
-                {
-                    // Clear metro areas if none provided
-                    var metroAreasCollection = dbContext2.Entry(newsletter).Collection("_metroAreaEntities");
-                    metroAreasCollection.CurrentValue = new List<LankaConnect.Products.LankaEvents.Domain.MetroArea>();
-
-                    _logger.LogInformation("UpdateNewsletter: [HOTFIX] Cleared metro areas shadow navigation");
-                }
+                // Wave 5.2.d-hotfix2 follow-up (2026-06-28): the manual _metroAreaEntities
+                // shadow-nav sync that lived here is no longer needed. Newsletter.Update()
+                // (called above) now mints NewsletterMetroAreaLink junction-CLR rows directly
+                // into _metroAreaLinks, mirroring the _emailGroupLinks pattern. EF persists
+                // them as part of the standard insert pipeline on CommitAsync. No DB
+                // round-trip to load MetroArea entities required.
 
                 // Commit changes
                 await _unitOfWork.CommitAsync(cancellationToken);

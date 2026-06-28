@@ -26,7 +26,8 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
     private readonly List<EventImage> _images = new(); // Epic 2 Phase 2: Event images support
     private readonly List<EventVideo> _videos = new(); // Epic 2 Phase 2: Event videos support
     private readonly List<WaitingListEntry> _waitingList = new(); // Epic 2: Waiting List support
-    private readonly List<EventPass> _passes = new(); // Event passes/tickets support
+    // W5.2.a-fix (2026-06-28): EventPass collection removed per founder ruling -- feature
+    // superseded by TicketTier in production. See docs/architecture/W52A_TABLE_DRIFT_INVESTIGATION.md.
     private readonly List<SignUpList> _signUpLists = new(); // Sign-up lists for volunteers/items
     private readonly List<EventBadge> _badges = new(); // Phase 6A.25: Event badges for promotional overlays
     // Wave 5.4.c.0 (2026-06-13). Replaced Phase 6A.32 `_emailGroupIds: List<Guid>`
@@ -204,7 +205,6 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
     public IReadOnlyList<EventImage> Images => _images.AsReadOnly(); // Epic 2 Phase 2: Read-only image collection
     public IReadOnlyList<EventVideo> Videos => _videos.AsReadOnly(); // Epic 2 Phase 2: Read-only video collection
     public IReadOnlyList<WaitingListEntry> WaitingList => _waitingList.AsReadOnly(); // Epic 2: Read-only waiting list collection
-    public IReadOnlyList<EventPass> Passes => _passes.AsReadOnly(); // Read-only pass collection
     public IReadOnlyList<SignUpList> SignUpLists => _signUpLists.AsReadOnly(); // Read-only sign-up lists collection
     public IReadOnlyList<EventBadge> Badges => _badges.AsReadOnly(); // Phase 6A.25: Read-only badge collection
     // Wave 5.4.c.0 (2026-06-13). EmailGroupIds derives from the single junction
@@ -1858,64 +1858,11 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
 
     #endregion
 
-    #region Pass Management
-
-    /// <summary>
-    /// Adds a pass/ticket type to the event
-    /// </summary>
-    public Result AddPass(EventPass eventPass)
-    {
-        if (eventPass == null)
-            return Result.Failure("Event pass cannot be null");
-
-        // Check for duplicate pass names
-        if (_passes.Any(p => p.Name.Value.Equals(eventPass.Name.Value, StringComparison.OrdinalIgnoreCase)))
-            return Result.Failure($"A pass with the name '{eventPass.Name}' already exists");
-
-        _passes.Add(eventPass);
-
-        // Raise domain event
-        RaiseDomainEvent(new PassAddedToEventDomainEvent(Id, eventPass.Id, eventPass.Name, DateTime.UtcNow));
-
-        return Result.Success();
-    }
-
-    /// <summary>
-    /// Removes a pass from the event
-    /// Cannot remove if there are existing reservations
-    /// </summary>
-    public Result RemovePass(Guid passId)
-    {
-        var pass = _passes.FirstOrDefault(p => p.Id == passId);
-        if (pass == null)
-            return Result.Failure($"Pass with ID {passId} not found");
-
-        // Business rule: Cannot remove pass with existing reservations
-        if (pass.ReservedQuantity > 0)
-            return Result.Failure("Cannot remove pass with existing reservations");
-
-        _passes.Remove(pass);
-
-        // Raise domain event
-        RaiseDomainEvent(new PassRemovedFromEventDomainEvent(Id, passId, DateTime.UtcNow));
-
-        return Result.Success();
-    }
-
-    /// <summary>
-    /// Gets a pass by ID
-    /// </summary>
-    public EventPass? GetPass(Guid passId)
-    {
-        return _passes.FirstOrDefault(p => p.Id == passId);
-    }
-
-    /// <summary>
-    /// Checks if event has any passes configured
-    /// </summary>
-    public bool HasPasses() => _passes.Any();
-
-    #endregion
+    // W5.2.a-fix (2026-06-28): Pass Management region removed. EventPass + PassPurchase
+    // feature was superseded by TicketTier (multi-tier ticketing with seat assignments,
+    // OnPlatform payment). Per founder confirmation: EventPass was half-finished early
+    // exploration, never wired to a UI, never created passes in production. See
+    // docs/architecture/W52A_TABLE_DRIFT_INVESTIGATION.md for full investigation lineage.
 
     #region Sign-Up List Management
 

@@ -189,17 +189,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new TicketTierConfiguration()); // Multi-tier ticketing (must be before EventConfiguration to avoid shared-type Money conflict)
-        // Wave 5.1.a-α.3 (2026-06-27): EventPass + PassPurchase configs were defined in
-        // Phase 6AX but never registered here — dead files. Pre-W5.1.a-α.3 this was masked
-        // because EF auto-discovered EventPass via Event.Passes navigation with default
-        // conventions (which somehow matched the legacy event_passes table well enough to
-        // serve reads). The W5.1.a-α.3 move to Products surfaces the issue: EF auto-
-        // discovery now generates a NEW PascalCase "EventPass" table in the model
-        // snapshot instead of using event_passes. Registering the configs explicitly
-        // brings the model in line with the actual DB schema. This is NOT a HasMany
-        // fix (that's the architect-deferred Wave 5.2 work).
-        modelBuilder.ApplyConfiguration(new EventPassConfiguration());
-        modelBuilder.ApplyConfiguration(new PassPurchaseConfiguration());
+        // W5.2.a-fix (2026-06-28): EventPassConfiguration + PassPurchaseConfiguration
+        // ApplyConfiguration calls removed -- feature deleted per founder ruling.
+        // See docs/architecture/W52A_TABLE_DRIFT_INVESTIGATION.md.
         modelBuilder.ApplyConfiguration(new EventConfiguration());
         // Wave 5.4.c.0 (2026-06-13). Junction CLR entity for the Event <-> EmailGroup M2M
         // that replaced the typed-nav configuration in EventConfiguration. Entity-level
@@ -626,9 +618,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversion), // Phase 7F-B: mode-conversion audit
             typeof(LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow), // Phase 7F-B: per-row audit detail
             typeof(RefundRequest), // Phase 6A.148: refund approval workflow aggregate-internal entity
-            typeof(RefundRequestLineItem), // Phase 6A.148: per-bucket refund line item
-            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventPass), // Wave 5.1.a-α.3: EventPass now lives in Products
-            typeof(LankaConnect.Products.LankaEvents.Domain.Entities.PassPurchase) // Wave 5.1.a-α.3: PassPurchase now lives in Products
+            typeof(RefundRequestLineItem) // Phase 6A.148: per-bucket refund line item
+            // W5.2.a-fix (2026-06-28): EventPass + PassPurchase removed from whitelist
+            // -- feature deleted. See docs/architecture/W52A_TABLE_DRIFT_INVESTIGATION.md.
         };
 
         // Wave 5.1.a-α.3 (2026-06-27): Event aggregate family moved to Products.LankaEvents.Domain.
@@ -636,7 +628,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // [NotMapped] facades, etc.) are properly identified as ValueObjects and skipped from
         // auto-discovery as entity types. Without this, EF Core 8 tries to bind them as
         // shared-type entities and fails on private ctor / missing primary key.
-        var productsAssembly = typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventPass).Assembly;
+        var productsAssembly = typeof(LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier).Assembly;
         var domainAssembly = typeof(LegacyBaseEntity).Assembly;
         var valueObjectType = typeof(ValueObject);
         var bbValueObjectType = typeof(LankaConnect.BuildingBlocks.Domain.ValueObject);

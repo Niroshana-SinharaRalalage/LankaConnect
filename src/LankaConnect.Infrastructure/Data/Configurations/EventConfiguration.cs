@@ -302,25 +302,9 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         // loadable + manageable end-to-end.
 
         // Configure relationships
-        // Wave 5.2.a (2026-06-28): EventPass + PassPurchase navigations explicitly
-        // configured. Pre-W5.2.a the EventConfiguration relied on EF auto-discovery
-        // through Event._passes navigation, which (per Phase 6AX) did NOT register
-        // the parent-child relationship correctly: AddPassToEvent persisted the
-        // pass to Event.Passes in-memory but UnitOfWork.CommitAsync reported 0
-        // changes committed -- the bug logged in 47e14ef9 KNOWN-DEFECT-DEFERRED.
-        // The architect-approved fix is this explicit HasMany().WithOne().HasForeignKey
-        // pair matching the existing event_passes.event_id shadow FK column from
-        // migration 20251123163612. Same pattern for pass_purchases.event_id.
-        builder.HasMany(e => e.Passes)
-            .WithOne()
-            .HasForeignKey("EventId")
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // CRITICAL: Use backing field "_passes" for EF Core change tracking
-        // (mirrors the same pattern as Registrations/Images/Videos/SignUpLists)
-        builder.Navigation(e => e.Passes)
-            .UsePropertyAccessMode(PropertyAccessMode.Field);
-
+        // W5.2.a-fix (2026-06-28): HasMany<EventPass> + Navigation(e.Passes) removed
+        // -- EventPass feature deleted per founder ruling. See
+        // docs/architecture/W52A_TABLE_DRIFT_INVESTIGATION.md.
         builder.HasMany(e => e.Registrations)
             .WithOne()
             .HasForeignKey("EventId")

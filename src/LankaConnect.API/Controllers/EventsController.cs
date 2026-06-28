@@ -62,12 +62,11 @@ using LankaConnect.Application.Events.Commands.RemoveFromWaitingList;
 using LankaConnect.Application.Events.Commands.PromoteFromWaitingList;
 using LankaConnect.Application.Events.Queries.GetWaitingList;
 using LankaConnect.Application.Events.Queries.GetEventIcs;
-using LankaConnect.Application.Events.Commands.AddPassToEvent;
-using LankaConnect.Application.Events.Commands.RemovePassFromEvent;
+// W5.2.a-fix (2026-06-28): AddPassToEvent + RemovePassFromEvent usings removed -- feature deleted.
 using LankaConnect.Application.Events.Queries.GetEventAttendees;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Modules.Forms.Application.Queries.ExportFormResponses;
-using LankaConnect.Application.Events.Queries.GetEventPasses;
+// W5.2.a-fix (2026-06-28): GetEventPasses using removed -- feature deleted.
 using LankaConnect.Application.Events.Commands.RemoveSignUpListFromEvent;
 using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
 using LankaConnect.Application.Events.Commands.CreateSignUpListWithItems;
@@ -2145,72 +2144,11 @@ public class EventsController : BaseController<EventsController>
 
     #region Event Pass Management
 
-    /// <summary>
-    /// Get all passes/tickets for an event
-    /// </summary>
-    [HttpGet("{id:guid}/passes")]
-    [ProducesResponseType(typeof(IReadOnlyList<EventPassDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetEventPasses(Guid id)
-    {
-        Logger.LogInformation("Getting passes for event {EventId}", id);
-
-        var query = new GetEventPassesQuery(id);
-        var result = await Mediator.Send(query);
-
-        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
-        {
-            return NotFound();
-        }
-
-        return HandleResult(result);
-    }
-
-    /// <summary>
-    /// Add a new pass/ticket type to an event (Event Organizer/Admin only)
-    /// </summary>
-    [HttpPost("{id:guid}/passes")]
-    [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> AddPassToEvent(Guid id, [FromBody] AddPassRequest request)
-    {
-        Logger.LogInformation("Adding pass '{PassName}' to event {EventId}", request.PassName, id);
-
-        var command = new AddPassToEventCommand(
-            id,
-            request.PassName,
-            request.PassDescription,
-            request.PriceAmount,
-            request.PriceCurrency,
-            request.TotalQuantity);
-
-        var result = await Mediator.Send(command);
-
-        return HandleResult(result);
-    }
-
-    /// <summary>
-    /// Remove a pass/ticket type from an event (Event Organizer/Admin only)
-    /// </summary>
-    [HttpDelete("{eventId:guid}/passes/{passId:guid}")]
-    [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RemovePassFromEvent(Guid eventId, Guid passId)
-    {
-        Logger.LogInformation("Removing pass {PassId} from event {EventId}", passId, eventId);
-
-        var command = new RemovePassFromEventCommand(eventId, passId);
-        var result = await Mediator.Send(command);
-
-        return HandleResult(result);
-    }
+    // W5.2.a-fix (2026-06-28): GetEventPasses + AddPassToEvent + RemovePassFromEvent
+    // endpoints removed. EventPass feature was superseded by TicketTier (multi-tier
+    // ticketing). Per founder ruling on 2026-06-28, EventPass tables never existed in
+    // staging DB, were never wired to a UI, and the feature is dead code from early
+    // exploration. See docs/architecture/W52A_TABLE_DRIFT_INVESTIGATION.md.
 
     #endregion
 
@@ -4128,12 +4066,7 @@ public record ApproveEventRequest(Guid ApprovedByAdminId);
 public record RejectEventRequest(Guid RejectedByAdminId, string Reason);
 public record EventReorderImagesRequest(Dictionary<Guid, int> NewOrders); // Epic 2 Phase 2
 public record RecordShareRequest(string? Platform = null); // Epic 2: Social sharing tracking
-public record AddPassRequest(
-    string PassName,
-    string PassDescription,
-    decimal PriceAmount,
-    Currency PriceCurrency,
-    int TotalQuantity); // Event Pass management
+// W5.2.a-fix (2026-06-28): AddPassRequest removed -- EventPass feature deleted.
 
 public record AddSignUpListRequest(
     string Category,

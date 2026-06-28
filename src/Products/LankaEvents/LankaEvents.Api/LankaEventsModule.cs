@@ -38,6 +38,16 @@ public static class LankaEventsModule
         // their own registration sweep -- AddValidatorsFromAssembly is per-assembly.
         services.AddValidatorsFromAssembly(assembly);
 
+        // Wave 5.2.d-fix (2026-06-28): AutoMapper profile scan for the moved
+        // EventMappingProfile + GroupPricingTierMappingProfile (now in
+        // Products.LankaEvents.Application.Common). Without this, every Query that
+        // calls IMapper.Map<EventDto>(event) throws AutoMapperMappingException at
+        // runtime -- read endpoints return 500 (POST works because CreateEvent
+        // command returns just the Guid; reads use AutoMapper). This is the third
+        // assembly-scan system the architect warned about for W5.2 -- MediatR +
+        // FluentValidation + AutoMapper each scan a single assembly.
+        services.AddAutoMapper(assembly);
+
         // Wave 5.2.d (2026-06-28): Event-specific service registrations relocated from
         // LankaConnect.Application.DependencyInjection.AddApplication(). These were
         // scoped service interfaces in LankaConnect.Application.Events.Services that

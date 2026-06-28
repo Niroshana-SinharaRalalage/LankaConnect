@@ -14,9 +14,9 @@ using LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.SetAlbu
 using LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.DeletePhotoAlbum;
 using LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.SendAlbumNotification;
 using LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.UploadAlbumVideo;
-using LankaConnect.Application.Events.Queries.PhotoAlbums.GetAlbumByEventId;
-using LankaConnect.Application.Events.Queries.PhotoAlbums.GetAlbumPhotos;
-using LankaConnect.Application.Events.Queries.PhotoAlbums.DownloadAlbumZip;
+using LankaConnect.Products.LankaEvents.Application.Queries.PhotoAlbums.GetAlbumByEventId;
+using LankaConnect.Products.LankaEvents.Application.Queries.PhotoAlbums.GetAlbumPhotos;
+using LankaConnect.Products.LankaEvents.Application.Queries.PhotoAlbums.DownloadAlbumZip;
 using LankaConnect.Application.Events.Common;
 
 namespace LankaConnect.API.Controllers;

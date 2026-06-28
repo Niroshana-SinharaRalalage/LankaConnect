@@ -1,10 +1,10 @@
 using LankaConnect.API.Extensions;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateCollection;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Application.Events.Queries.ExportCollections;
-using LankaConnect.Application.Events.Queries.ExportEventAttendees;
-using LankaConnect.Application.Events.Queries.GetEventById;
-using LankaConnect.Application.Events.Queries.GetEventCollections;
+using LankaConnect.Products.LankaEvents.Application.Queries.ExportCollections;
+using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventCollections;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

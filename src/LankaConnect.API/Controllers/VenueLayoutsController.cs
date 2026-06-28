@@ -9,7 +9,7 @@ using LankaConnect.Products.LankaEvents.Application.Commands.ApplyTemplateToEven
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateLayoutFromPreset;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateLayoutFromTemplate;
 using LankaConnect.Products.LankaEvents.Application.Commands.SaveLayoutAsTemplate;
-using LankaConnect.Application.Events.Queries.GetUserTemplates;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetUserTemplates;
 using LankaConnect.Products.LankaEvents.Application.Commands.GenerateSeats;
 using LankaConnect.Products.LankaEvents.Application.Commands.HoldSeats;
 using LankaConnect.Products.LankaEvents.Application.Commands.ReleaseSeats;
@@ -28,10 +28,10 @@ using LankaConnect.Products.LankaEvents.Application.Commands.RemoveTierAssignmen
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateDecoration;
 using LankaConnect.Products.LankaEvents.Application.Commands.DeleteDecoration;
-using LankaConnect.Application.Events.Queries.GetVenueLayout;
-using LankaConnect.Application.Events.Queries.GetSeatAvailability;
-using LankaConnect.Application.Events.Queries.GetLayoutPresets;
-using LankaConnect.Application.Events.Queries.GetLayoutPublishReadiness;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetVenueLayout;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetSeatAvailability;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetLayoutPresets;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetLayoutPublishReadiness;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.API.Extensions;
 

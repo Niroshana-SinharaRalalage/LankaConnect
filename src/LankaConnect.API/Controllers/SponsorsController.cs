@@ -7,11 +7,11 @@ using LankaConnect.Products.LankaEvents.Application.Commands.CreateSponsor;
 using LankaConnect.Products.LankaEvents.Application.Commands.SetSponsorImage;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateSponsor;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Application.Events.Queries.ExportEventAttendees;
-using LankaConnect.Application.Events.Queries.ExportSponsors;
-using LankaConnect.Application.Events.Queries.GetEventById;
-using LankaConnect.Application.Events.Queries.GetEventSponsors;
-using LankaConnect.Application.Events.Queries.GetPublicEventSponsors;  // Phase 6A.150
+using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
+using LankaConnect.Products.LankaEvents.Application.Queries.ExportSponsors;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventSponsors;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetPublicEventSponsors;  // Phase 6A.150
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Domain.Shared.Enums;

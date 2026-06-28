@@ -4,7 +4,7 @@ using LankaConnect.Modules.Communications.Contracts;
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Mappings;
-using LankaConnect.Application.Events.Queries.GetEventById;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Products.LankaEvents.Domain;

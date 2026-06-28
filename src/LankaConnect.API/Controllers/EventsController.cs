@@ -30,22 +30,22 @@ using LankaConnect.Products.LankaEvents.Application.Commands.RegisterAnonymousAt
 using LankaConnect.Products.LankaEvents.Application.Commands.AdminApproval;
 using LankaConnect.Products.LankaEvents.Application.Commands.SendEventNotification;
 using LankaConnect.Products.LankaEvents.Application.Commands.SendEventReminder;
-using LankaConnect.Application.Events.Queries.GetAllowedRegistrationModes;
-using LankaConnect.Application.Events.Queries.GetEventById;
-using LankaConnect.Application.Events.Queries.GetEvents;
-using LankaConnect.Application.Events.Queries.GetEventsByOrganizer;
-using LankaConnect.Application.Events.Queries.GetMyRegisteredEvents;
-using LankaConnect.Application.Events.Queries.GetNearbyEvents;
-using LankaConnect.Application.Events.Queries.GetUserRsvps;
-using LankaConnect.Application.Events.Queries.GetUserRegistrationForEvent;
-using LankaConnect.Application.Events.Queries.GetRegistrationById;
-using LankaConnect.Application.Events.Queries.GetEventRegistrationByEmail;
-using LankaConnect.Application.Events.Queries.GetUpcomingEventsForUser;
-using LankaConnect.Application.Events.Queries.GetPendingEventsForApproval;
-using LankaConnect.Application.Events.Queries.SearchEvents;
-using LankaConnect.Application.Events.Queries.GetFeaturedEvents;
-using LankaConnect.Application.Events.Queries.GetEventNotificationHistory;
-using LankaConnect.Application.Events.Queries.GetEventReminderHistory;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetAllowedRegistrationModes;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEvents;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventsByOrganizer;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetMyRegisteredEvents;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetNearbyEvents;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetUserRsvps;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetUserRegistrationForEvent;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetRegistrationById;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventRegistrationByEmail;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetUpcomingEventsForUser;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetPendingEventsForApproval;
+using LankaConnect.Products.LankaEvents.Application.Queries.SearchEvents;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetFeaturedEvents;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventNotificationHistory;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventReminderHistory;
 using LankaConnect.Application.Common.Models;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddImageToEvent;
 using LankaConnect.Products.LankaEvents.Application.Commands.DeleteEventImage;
@@ -60,15 +60,15 @@ using LankaConnect.Application.Analytics.Commands.RecordEventShare;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddToWaitingList;
 using LankaConnect.Products.LankaEvents.Application.Commands.RemoveFromWaitingList;
 using LankaConnect.Products.LankaEvents.Application.Commands.PromoteFromWaitingList;
-using LankaConnect.Application.Events.Queries.GetWaitingList;
-using LankaConnect.Application.Events.Queries.GetEventIcs;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetWaitingList;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventIcs;
 // W5.2.a-fix (2026-06-28): AddPassToEvent + RemovePassFromEvent usings removed -- feature deleted.
-using LankaConnect.Application.Events.Queries.GetEventAttendees;
-using LankaConnect.Application.Events.Queries.ExportEventAttendees;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventAttendees;
+using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
 using LankaConnect.Modules.Forms.Application.Queries.ExportFormResponses;
 // W5.2.a-fix (2026-06-28): GetEventPasses using removed -- feature deleted.
 using LankaConnect.Products.LankaEvents.Application.Commands.RemoveSignUpListFromEvent;
-using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventSignUpLists;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateSignUpListWithItems;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateSignUpList;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddSignUpItem;
@@ -81,11 +81,11 @@ using LankaConnect.Products.LankaEvents.Application.Commands.AddOpenSignUpItem;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddOpenSignUpItemAnonymous;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateOpenSignUpItem;
 using LankaConnect.Products.LankaEvents.Application.Commands.CancelOpenSignUpItem;
-using LankaConnect.Application.Events.Queries.CheckEventRegistration;
-using LankaConnect.Application.Events.Queries.GetTicket;
-using LankaConnect.Application.Events.Queries.GetTicketPdf;
-using LankaConnect.Application.Events.Queries.CalculateAdditionPrice;
-using LankaConnect.Application.Events.Queries.GetPendingAddition;
+using LankaConnect.Products.LankaEvents.Application.Queries.CheckEventRegistration;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetTicket;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetTicketPdf;
+using LankaConnect.Products.LankaEvents.Application.Queries.CalculateAdditionPrice;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetPendingAddition;
 using LankaConnect.Modules.Forms.Application.Commands.CreateEventForm;
 using LankaConnect.Modules.Forms.Application.Commands.UpdateEventForm;
 using LankaConnect.Modules.Forms.Application.Commands.DeleteEventForm;
@@ -113,7 +113,7 @@ using LankaConnect.Products.LankaEvents.Application.Commands.RemoveTicketTier;
 using LankaConnect.Products.LankaEvents.Application.Commands.SetTicketingMode;
 using LankaConnect.Products.LankaEvents.Application.Commands.SetSeatingMode;
 using LankaConnect.Products.LankaEvents.Application.Commands.ScanTicket; // Phase 6A.141
-using LankaConnect.Application.Events.Queries.GetTicketTiers;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetTicketTiers;
 using LankaConnect.API.Extensions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -225,10 +225,10 @@ public class EventsController : BaseController<EventsController>
     /// </summary>
     [HttpGet("check-slug")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(LankaConnect.Application.Events.Queries.CheckVanitySlugAvailability.VanitySlugAvailabilityResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LankaConnect.Products.LankaEvents.Application.Queries.CheckVanitySlugAvailability.VanitySlugAvailabilityResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> CheckVanitySlugAvailability([FromQuery] string slug)
     {
-        var query = new LankaConnect.Application.Events.Queries.CheckVanitySlugAvailability.CheckVanitySlugAvailabilityQuery(slug ?? string.Empty);
+        var query = new LankaConnect.Products.LankaEvents.Application.Queries.CheckVanitySlugAvailability.CheckVanitySlugAvailabilityQuery(slug ?? string.Empty);
         var result = await Mediator.Send(query);
         return HandleResult(result);
     }
@@ -243,7 +243,7 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetEventByVanitySlug(string slug)
     {
-        var query = new LankaConnect.Application.Events.Queries.GetEventByVanitySlug.GetEventByVanitySlugQuery(slug);
+        var query = new LankaConnect.Products.LankaEvents.Application.Queries.GetEventByVanitySlug.GetEventByVanitySlugQuery(slug);
         var result = await Mediator.Send(query);
         if (result.IsSuccess && result.Value == null) return NotFound();
         return HandleResult(result);
@@ -3378,7 +3378,7 @@ public class EventsController : BaseController<EventsController>
         }
 
         // Get attendees
-        var query = new LankaConnect.Application.Events.Queries.GetEventAttendees.GetEventAttendeesQuery(eventId);
+        var query = new LankaConnect.Products.LankaEvents.Application.Queries.GetEventAttendees.GetEventAttendeesQuery(eventId);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
@@ -3428,16 +3428,16 @@ public class EventsController : BaseController<EventsController>
         // Phase 7D.1 Step 17: Added volunteerszip / volunteersexcel for Kind=Volunteers exports
         var exportFormat = format.ToLower() switch
         {
-            "csv" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Csv,
-            "signuplistszip" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.SignUpListsZip,
-            "signuplistsexcel" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.SignUpListsExcel,
-            "volunteerszip" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.VolunteersZip,
-            "volunteersexcel" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.VolunteersExcel,
-            _ => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Excel
+            "csv" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.Csv,
+            "signuplistszip" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.SignUpListsZip,
+            "signuplistsexcel" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.SignUpListsExcel,
+            "volunteerszip" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.VolunteersZip,
+            "volunteersexcel" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.VolunteersExcel,
+            _ => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.Excel
         };
 
         // Export attendees
-        var query = new LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportEventAttendeesQuery(
+        var query = new LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportEventAttendeesQuery(
             eventId,
             exportFormat);
         var result = await Mediator.Send(query);
@@ -3501,12 +3501,12 @@ public class EventsController : BaseController<EventsController>
 
         var exportFormat = format.ToLowerInvariant() switch
         {
-            "csv" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Csv,
-            _ => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Excel
+            "csv" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.Csv,
+            _ => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.Excel
         };
 
         var result = await Mediator.Send(
-            new LankaConnect.Application.Events.Queries.ExportAllFinancials.ExportAllFinancialsQuery(
+            new LankaConnect.Products.LankaEvents.Application.Queries.ExportAllFinancials.ExportAllFinancialsQuery(
                 eventId, exportFormat));
 
         if (result.IsFailure)

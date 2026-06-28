@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Application.Events.Queries.GetUserTemplates;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetUserTemplates;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;

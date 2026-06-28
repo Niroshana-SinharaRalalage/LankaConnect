@@ -21,6 +21,7 @@
       the transition window (see LayeringRules.cs).
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
   </ItemGroup>
 
 </Project>

@@ -6,9 +6,9 @@ using LankaConnect.Products.LankaEvents.Application.Commands.DeleteSponsorshipPa
 using LankaConnect.Products.LankaEvents.Application.Commands.SetSponsorshipPackageImage;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateSponsorshipPackage;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Application.Events.Queries.GetActiveSponsorshipPackages;
-using LankaConnect.Application.Events.Queries.GetEventById;
-using LankaConnect.Application.Events.Queries.GetEventSponsorshipPackages;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetActiveSponsorshipPackages;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventSponsorshipPackages;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

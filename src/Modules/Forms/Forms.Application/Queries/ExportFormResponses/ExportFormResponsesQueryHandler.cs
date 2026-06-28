@@ -7,7 +7,7 @@ using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Modules.Forms.Application.Mappings;
-using LankaConnect.Application.Events.Queries.ExportEventAttendees;
+using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;

@@ -4,7 +4,7 @@ using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
-using LankaConnect.Application.Events.Queries.ExportEventAttendees;
+using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
 
 namespace LankaConnect.Modules.Forms.Application.Queries.ExportFormResponses;
 

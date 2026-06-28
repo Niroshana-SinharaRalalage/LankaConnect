@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Application.Events.Queries.GetLayoutPublishReadiness;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetLayoutPublishReadiness;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

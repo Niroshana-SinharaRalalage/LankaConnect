@@ -6,11 +6,11 @@ using LankaConnect.Products.LankaEvents.Application.Commands.UpdateAddOnDefiniti
 using LankaConnect.Products.LankaEvents.Application.Commands.PurchaseAddOn;
 using LankaConnect.Products.LankaEvents.Application.Commands.PurchaseAddOnCart;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Application.Events.Queries.ExportAddOnPurchases;
-using LankaConnect.Application.Events.Queries.ExportEventAttendees;
-using LankaConnect.Application.Events.Queries.GetEventById;
-using LankaConnect.Application.Events.Queries.GetEventAddOnPurchases;
-using LankaConnect.Application.Events.Queries.GetMyAddOnPurchases;
+using LankaConnect.Products.LankaEvents.Application.Queries.ExportAddOnPurchases;
+using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventAddOnPurchases;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetMyAddOnPurchases;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

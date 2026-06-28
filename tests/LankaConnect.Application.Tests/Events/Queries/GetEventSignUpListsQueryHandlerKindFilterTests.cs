@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
+using LankaConnect.Products.LankaEvents.Application.Queries.GetEventSignUpLists;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

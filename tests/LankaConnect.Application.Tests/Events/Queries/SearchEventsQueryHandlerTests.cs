@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Moq;
-using LankaConnect.Application.Events.Queries.SearchEvents;
+using LankaConnect.Products.LankaEvents.Application.Queries.SearchEvents;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Common.Models;
 using LankaConnect.Products.LankaEvents.Domain;

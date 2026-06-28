@@ -1,7 +1,7 @@
 using AutoMapper;
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEvents;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventsByOrganizer;
 using LankaConnect.Domain.Common;

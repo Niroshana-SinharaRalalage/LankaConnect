@@ -29,10 +29,10 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     // Phase 7E.3b (architect edit #2): Mode-B paid checkout shared between auth + anon handlers.
-    private readonly LankaConnect.Application.Events.Services.IRegistrationCheckoutService _checkoutService;
+    private readonly LankaConnect.Products.LankaEvents.Application.Services.IRegistrationCheckoutService _checkoutService;
     // Phase 8 S8.2.B: Validates assigned-seating seat selections + builds the
     // pending-seat-assignment list that gets stashed on the registration.
-    private readonly LankaConnect.Application.Events.Services.ISeatAssignmentValidator _seatAssignmentValidator;
+    private readonly LankaConnect.Products.LankaEvents.Application.Services.ISeatAssignmentValidator _seatAssignmentValidator;
     private readonly ILogger<RsvpToEventCommandHandler> _logger;
 
     public RsvpToEventCommandHandler(
@@ -45,8 +45,8 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         IUnitOfWork unitOfWork,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
-        LankaConnect.Application.Events.Services.IRegistrationCheckoutService checkoutService,
-        LankaConnect.Application.Events.Services.ISeatAssignmentValidator seatAssignmentValidator,
+        LankaConnect.Products.LankaEvents.Application.Services.IRegistrationCheckoutService checkoutService,
+        LankaConnect.Products.LankaEvents.Application.Services.ISeatAssignmentValidator seatAssignmentValidator,
         ILogger<RsvpToEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;

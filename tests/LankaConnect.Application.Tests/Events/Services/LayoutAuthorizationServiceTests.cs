@@ -1,7 +1,7 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Services;
+using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Options;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -237,7 +237,7 @@ public class GetEventAttendeesQueryHandler
                                      + (demo.ChildFemales ?? 0);
 
                     // Reuse the shared formatter for consistent wording across emails + dashboard.
-                    dto.HeadCountBreakdownLine = LankaConnect.Application.Events.Common
+                    dto.HeadCountBreakdownLine = LankaConnect.Products.LankaEvents.Application.Common
                         .HeadCountEmailFormatter.FormatDemographicLine(demo);
 
                     // GenderDistribution column for Mode B mirrors the demographic line so the

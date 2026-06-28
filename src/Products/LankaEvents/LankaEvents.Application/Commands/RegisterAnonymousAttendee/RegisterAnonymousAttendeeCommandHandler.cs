@@ -37,10 +37,10 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
     private readonly ICollectionRepository _collectionRepository;
     private readonly ISponsorRepository _sponsorRepository;
     // Phase 7E.3b (architect edit #2): Mode-B paid checkout shared with the auth handler.
-    private readonly LankaConnect.Application.Events.Services.IRegistrationCheckoutService _checkoutService;
+    private readonly LankaConnect.Products.LankaEvents.Application.Services.IRegistrationCheckoutService _checkoutService;
     // Phase 8 S8.2.B: Same validator the auth handler uses — guarantees identical
     // semantics + error messages across both RSVP paths.
-    private readonly LankaConnect.Application.Events.Services.ISeatAssignmentValidator _seatAssignmentValidator;
+    private readonly LankaConnect.Products.LankaEvents.Application.Services.ISeatAssignmentValidator _seatAssignmentValidator;
     private readonly ILogger<RegisterAnonymousAttendeeCommandHandler> _logger;
 
     public RegisterAnonymousAttendeeCommandHandler(
@@ -55,8 +55,8 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         IAddOnPurchaseRepository addOnPurchaseRepository,
         ICollectionRepository collectionRepository,
         ISponsorRepository sponsorRepository,
-        LankaConnect.Application.Events.Services.IRegistrationCheckoutService checkoutService,
-        LankaConnect.Application.Events.Services.ISeatAssignmentValidator seatAssignmentValidator,
+        LankaConnect.Products.LankaEvents.Application.Services.IRegistrationCheckoutService checkoutService,
+        LankaConnect.Products.LankaEvents.Application.Services.ISeatAssignmentValidator seatAssignmentValidator,
         ILogger<RegisterAnonymousAttendeeCommandHandler> logger)
     {
         _eventRepository = eventRepository;

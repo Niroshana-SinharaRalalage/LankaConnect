@@ -17,7 +17,7 @@ using LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.UploadA
 using LankaConnect.Products.LankaEvents.Application.Queries.PhotoAlbums.GetAlbumByEventId;
 using LankaConnect.Products.LankaEvents.Application.Queries.PhotoAlbums.GetAlbumPhotos;
 using LankaConnect.Products.LankaEvents.Application.Queries.PhotoAlbums.DownloadAlbumZip;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 
 namespace LankaConnect.API.Controllers;
 

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.Application.Common;
-using LankaConnect.Application.Events.Services;
+using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

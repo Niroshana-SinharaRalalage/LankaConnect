@@ -4,7 +4,7 @@ using Xunit;
 using FluentAssertions;
 using LankaConnect.Infrastructure;
 using LankaConnect.Application;
-using LankaConnect.Application.Events.BackgroundJobs;
+using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 using LankaConnect.Application.Communications.BackgroundJobs;
 
 namespace LankaConnect.Infrastructure.Tests.Integration;

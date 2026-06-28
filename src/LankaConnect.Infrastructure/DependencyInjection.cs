@@ -1,3 +1,4 @@
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using Azure.Storage.Blobs;
 using LankaConnect.Modules.Communications.Domain.Repositories;
@@ -52,7 +53,7 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Domain.Tax.Repositories;
 using LankaConnect.Domain.Support;
-using LankaConnect.Application.Events.Services;
+using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.Infrastructure.WhatsApp.Configuration;
 using LankaConnect.Infrastructure.WhatsApp.Services;
 using LankaConnect.Domain.Communications.Enums;
@@ -239,10 +240,10 @@ public static class DependencyInjection
         services.AddScoped<IMetroAreaRepository, MetroAreaRepository>();
 
         // Phase 6A.71: Event Reminder Tracking Repository
-        services.AddScoped<LankaConnect.Application.Events.Repositories.IEventReminderRepository, EventReminderRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventReminderRepository, EventReminderRepository>();
 
         // Phase 6A.61: Event Notification History Repository
-        services.AddScoped<LankaConnect.Application.Events.Repositories.IEventNotificationHistoryRepository, EventNotificationHistoryRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventNotificationHistoryRepository, EventNotificationHistoryRepository>();
 
         // Add Analytics Repositories (Epic 2 Phase 3)
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
@@ -425,7 +426,7 @@ public static class DependencyInjection
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.ITimeZoneLookupService, LankaConnect.Infrastructure.Services.TimeZoneLookupService>();
 
         // Add Event Notification Recipient Service (Phase 6A Event Notifications)
-        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IEventNotificationRecipientService, LankaConnect.Application.Events.Services.EventNotificationRecipientService>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IEventNotificationRecipientService, LankaConnect.Products.LankaEvents.Application.Services.EventNotificationRecipientService>();
 
         // Phase 6A.74: Newsletter Recipient Service
         services.AddScoped<LankaConnect.Application.Communications.Services.INewsletterRecipientService, LankaConnect.Infrastructure.Services.NewsletterRecipientService>();
@@ -441,7 +442,7 @@ public static class DependencyInjection
         services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.EventDetailsWhatsAppJob>();
 
         // Phase 6A.61: Event Notification Background Jobs
-        services.AddTransient<LankaConnect.Application.Events.BackgroundJobs.EventNotificationEmailJob>();
+        services.AddTransient<LankaConnect.Products.LankaEvents.Application.BackgroundJobs.EventNotificationEmailJob>();
 
         // Add Cultural Intelligence Cache Service
         services.AddSingleton<IConnectionMultiplexer>(provider =>
@@ -504,8 +505,8 @@ public static class DependencyInjection
         // Phase 7E.3b: Mode-B paid RSVP checkout-session creator (architect edit #2 — single
         // test surface for the money path, used by both auth + anonymous head-count handlers).
         services.AddScoped<
-            LankaConnect.Application.Events.Services.IRegistrationCheckoutService,
-            LankaConnect.Application.Events.Services.RegistrationCheckoutService>();
+            LankaConnect.Products.LankaEvents.Application.Services.IRegistrationCheckoutService,
+            LankaConnect.Products.LankaEvents.Application.Services.RegistrationCheckoutService>();
 
         // Phase 0: Register webhook handler services (extracted from PaymentsController)
         services.AddScoped<IRegistrationWebhookHandler, RegistrationWebhookHandler>();

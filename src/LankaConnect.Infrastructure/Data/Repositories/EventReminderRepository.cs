@@ -1,5 +1,5 @@
-using LankaConnect.Application.Events.Common;
-using LankaConnect.Application.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.Products.LankaEvents.Application.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;

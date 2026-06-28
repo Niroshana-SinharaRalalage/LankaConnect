@@ -2,7 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventTemplates;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 
 namespace LankaConnect.API.Controllers;

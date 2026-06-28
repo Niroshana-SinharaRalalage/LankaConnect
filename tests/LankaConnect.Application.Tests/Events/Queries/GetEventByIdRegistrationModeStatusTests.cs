@@ -3,7 +3,7 @@ using AutoMapper;
 using LankaConnect.Modules.Communications.Contracts;
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Common.Mappings;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
@@ -28,7 +28,7 @@ namespace LankaConnect.Application.Tests.Events.Queries;
 /// handler builds an <see cref="EventDto"/> via <see cref="IMapper.Map{T}"/> AND then
 /// re-emits a <c>with</c>-expression that could silently overwrite the new field if a future
 /// edit isn't careful. This test wires the real <see cref="EventMappingProfile"/> through a
-/// real <see cref="MapperConfiguration"/> and asserts that <see cref="LankaConnect.Application.Events.Common.EventDto.RegistrationModeStatus"/>
+/// real <see cref="MapperConfiguration"/> and asserts that <see cref="LankaConnect.Products.LankaEvents.Application.Common.EventDto.RegistrationModeStatus"/>
 /// round-trips end-to-end through <see cref="GetEventByIdQueryHandler"/>.
 /// </summary>
 public class GetEventByIdRegistrationModeStatusTests

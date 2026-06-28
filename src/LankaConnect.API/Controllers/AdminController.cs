@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Seeders;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.BackgroundJobs;
+using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 
 namespace LankaConnect.API.Controllers;
 

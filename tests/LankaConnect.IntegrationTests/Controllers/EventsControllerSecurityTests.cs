@@ -20,7 +20,7 @@ using LankaConnect.Products.LankaEvents.Application.Commands.CancelRsvp;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetUserRsvps;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetUpcomingEventsForUser;
 using LankaConnect.Application.Common.Models;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Domain.Common;
 
 namespace LankaConnect.IntegrationTests.Controllers;

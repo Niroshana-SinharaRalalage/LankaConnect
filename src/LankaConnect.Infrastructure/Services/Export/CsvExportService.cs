@@ -9,7 +9,7 @@ using System.Text;
 using CsvHelper;
 using CsvHelper.Configuration;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 
 namespace LankaConnect.Infrastructure.Services.Export;
 

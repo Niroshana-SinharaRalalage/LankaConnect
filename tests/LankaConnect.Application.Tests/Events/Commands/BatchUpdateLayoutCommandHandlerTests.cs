@@ -2,7 +2,7 @@ using System.Reflection;
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.BatchUpdateLayout;
-using LankaConnect.Application.Events.Services;
+using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

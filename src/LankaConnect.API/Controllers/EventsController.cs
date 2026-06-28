@@ -54,7 +54,7 @@ using LankaConnect.Products.LankaEvents.Application.Commands.SetPrimaryImage;
 using LankaConnect.Products.LankaEvents.Application.Commands.ReplaceEventImage;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddVideoToEvent;
 using LankaConnect.Products.LankaEvents.Application.Commands.DeleteEventVideo;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Application.Analytics.Commands.RecordEventView;
 using LankaConnect.Application.Analytics.Commands.RecordEventShare;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddToWaitingList;

@@ -6,7 +6,7 @@ using LankaConnect.API.Infrastructure;
 using LankaConnect.API.Filters;
 using LankaConnect.Application;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.BackgroundJobs;
+using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 using LankaConnect.Application.Badges.BackgroundJobs;
 using LankaConnect.Application.Communications.BackgroundJobs;
 using LankaConnect.BuildingBlocks.Web.Telemetry;

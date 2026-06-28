@@ -6,7 +6,7 @@ using LankaConnect.Products.LankaEvents.Application.Commands.CreateOffPlatformSp
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateSponsor;
 using LankaConnect.Products.LankaEvents.Application.Commands.SetSponsorImage;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateSponsor;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
 using LankaConnect.Products.LankaEvents.Application.Queries.ExportSponsors;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;

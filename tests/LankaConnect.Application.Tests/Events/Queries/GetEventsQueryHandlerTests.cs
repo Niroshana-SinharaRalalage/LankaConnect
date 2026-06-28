@@ -2,7 +2,7 @@ using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService mo
 using AutoMapper;
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEvents;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain;

@@ -48,6 +48,7 @@
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
     <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

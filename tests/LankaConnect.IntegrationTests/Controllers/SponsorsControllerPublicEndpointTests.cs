@@ -1,7 +1,7 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using LankaConnect.API.Controllers;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using Xunit;
 
 namespace LankaConnect.IntegrationTests.Controllers;

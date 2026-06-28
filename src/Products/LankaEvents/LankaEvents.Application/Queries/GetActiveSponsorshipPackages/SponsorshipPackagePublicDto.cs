@@ -3,7 +3,7 @@ namespace LankaConnect.Products.LankaEvents.Application.Queries.GetActiveSponsor
 /// <summary>
 /// Phase 6A.157 — public-facing DTO for buyer-visible sponsorship package
 /// listings. Strips organizer-only fields from the full
-/// <see cref="LankaConnect.Application.Events.Common.SponsorshipPackageDto"/>:
+/// <see cref="LankaConnect.Products.LankaEvents.Application.Common.SponsorshipPackageDto"/>:
 ///   - Removed: <c>QuantitySold</c> (internal accounting), <c>QuantityLimit</c>
 ///     (only show <c>RemainingStock</c> to buyers), <c>ImageBlobName</c>
 ///     (Azure internal), <c>CreatedAt</c>/<c>UpdatedAt</c> (no buyer reason

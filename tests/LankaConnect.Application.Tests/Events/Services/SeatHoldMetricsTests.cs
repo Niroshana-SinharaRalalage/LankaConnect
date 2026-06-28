@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Application.Events.Services;
+using LankaConnect.Products.LankaEvents.Application.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;

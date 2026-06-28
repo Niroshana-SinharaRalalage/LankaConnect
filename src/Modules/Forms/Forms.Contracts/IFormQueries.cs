@@ -2,7 +2,7 @@ namespace LankaConnect.Modules.Forms.Contracts;
 
 /// <summary>
 /// Cross-module read-only API for the Forms module. Consumers outside Forms
-/// (e.g. <c>LankaConnect.Application.Events.EventHandlers.*</c>) inject this
+/// (e.g. <c>LankaConnect.Products.LankaEvents.Application.EventHandlers.*</c>) inject this
 /// interface instead of <c>Forms.Domain.Repositories.IFormRepository</c>,
 /// preserving the ArchTest module boundary
 /// <c>LegacyApplication_DoesNotDependOnFormsDomain</c> (Wave 5.3e).

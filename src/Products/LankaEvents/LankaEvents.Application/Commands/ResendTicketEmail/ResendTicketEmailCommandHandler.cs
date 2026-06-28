@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -378,11 +378,11 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 // email still sends without the breakdown card.
                 try
                 {
-                    var breakdown = LankaConnect.Application.Events.Common
+                    var breakdown = LankaConnect.Products.LankaEvents.Application.Common
                         .TicketPdfRegistrationBreakdownAssembler.Build(registration);
                     var breakdownHtml = breakdown is null
                         ? string.Empty
-                        : LankaConnect.Application.Events.Common
+                        : LankaConnect.Products.LankaEvents.Application.Common
                             .RegistrationBreakdownEmailRenderer.Render(breakdown, registration.LeadAttendeeName);
                     typedParams.WithRegistrationBreakdownHtml(breakdownHtml);
                 }

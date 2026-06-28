@@ -1,7 +1,7 @@
 using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.BackgroundJobs;
-using LankaConnect.Application.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
+using LankaConnect.Products.LankaEvents.Application.Repositories;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;

@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventDonations;
 using LankaConnect.Domain.Common;

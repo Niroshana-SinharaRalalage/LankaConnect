@@ -5,7 +5,7 @@ using LankaConnect.Products.LankaEvents.Application.Commands.CreateSponsorshipPa
 using LankaConnect.Products.LankaEvents.Application.Commands.DeleteSponsorshipPackage;
 using LankaConnect.Products.LankaEvents.Application.Commands.SetSponsorshipPackageImage;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateSponsorshipPackage;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetActiveSponsorshipPackages;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventSponsorshipPackages;

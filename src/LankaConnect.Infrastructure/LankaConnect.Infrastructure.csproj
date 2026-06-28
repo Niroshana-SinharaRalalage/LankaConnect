@@ -26,6 +26,7 @@
     <ProjectReference Include="..\Modules\Payments\Payments.Domain\Payments.Domain.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Contracts\Identity.Contracts.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
+    <ProjectReference Include="..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,7 +5,7 @@ using LankaConnect.Products.LankaEvents.Application.Commands.SetAddOnDefinitionI
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateAddOnDefinition;
 using LankaConnect.Products.LankaEvents.Application.Commands.PurchaseAddOn;
 using LankaConnect.Products.LankaEvents.Application.Commands.PurchaseAddOnCart;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Queries.ExportAddOnPurchases;
 using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;

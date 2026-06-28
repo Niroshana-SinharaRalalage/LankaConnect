@@ -6,7 +6,11 @@ using FluentValidation;
 using LankaConnect.Application.Common.Behaviors;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Common.Options;
-using LankaConnect.Application.Events.Services;
+// W5.2.d (2026-06-28): Events.Services moved to Products.LankaEvents.Application.Services.
+// The 5 Event-specific service registrations (LayoutAuthorizationService,
+// StructuralEditGuard, SeatAssignmentValidator, LayoutMetrics, SeatHoldMetrics)
+// move from this file to LankaEventsModule.AddLankaEventsModule(). No using directive
+// needed here for those types anymore.
 using LankaConnect.Application.ReferenceData.Services;
 
 namespace LankaConnect.Application;
@@ -63,22 +67,12 @@ public static class DependencyInjection
         //   - IRefundLineDispatcher -> RefundLineDispatcher (singleton)
         //   - IRefundTotalCalculator -> RefundTotalCalculator
 
-        // Slice 5 Chunk 2: Two-branch authorization for VenueLayout CRUD endpoints.
-        services.AddScoped<ILayoutAuthorizationService, LayoutAuthorizationService>();
-
-        // Slice 5 Chunk 3: Blocks destructive layout edits when seats are held/reserved.
-        services.AddScoped<IStructuralEditGuard, StructuralEditGuard>();
-
-        // Phase 8 S8.2.B: Validates that requested seat IDs are eligible for stash
-        // on the registration before Stripe Checkout (held in session, not reserved,
-        // belong to event's layout). Reusable across the auth + anonymous RSVP paths.
-        services.AddScoped<ISeatAssignmentValidator, SeatAssignmentValidator>();
-
-        // Slice 5 Chunk 13: Named-metric emission (layout.created, layout.structural_edit_rejected).
-        services.AddScoped<ILayoutMetrics, LayoutMetrics>();
-
-        // Phase 7H: Seat-hold lifecycle metrics (architect §S6 dashboard).
-        services.AddScoped<ISeatHoldMetrics, SeatHoldMetrics>();
+        // W5.2.d (2026-06-28): Event-specific service registrations
+        // (LayoutAuthorizationService, StructuralEditGuard, SeatAssignmentValidator,
+        // LayoutMetrics, SeatHoldMetrics) moved to LankaEventsModule.AddLankaEventsModule()
+        // because the service implementations + interfaces are now in
+        // LankaConnect.Products.LankaEvents.Application.Services and this assembly
+        // doesn't reference Products (would cycle).
 
         // Register email-related services (implementations will be provided by Infrastructure layer)
         // These are registered as transient since they will be injected by the Infrastructure layer

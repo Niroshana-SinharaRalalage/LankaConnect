@@ -1,0 +1,24 @@
+using AutoMapper;
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+
+namespace LankaConnect.Products.LankaEvents.Application.Common;
+
+/// <summary>
+/// Phase 6D: AutoMapper profile for GroupPricingTier domain object to GroupPricingTierDto
+/// </summary>
+public class GroupPricingTierMappingProfile : Profile
+{
+    public GroupPricingTierMappingProfile()
+    {
+        CreateMap<GroupPricingTier, GroupPricingTierDto>()
+            .ForMember(dest => dest.PricePerPerson, opt => opt.MapFrom(src => src.PricePerPerson.Amount))
+            .ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.PricePerPerson.Currency))
+            .ForMember(dest => dest.TierRange, opt => opt.MapFrom(src =>
+                src.IsUnlimitedTier
+                    ? $"{src.MinAttendees}+"
+                    : src.MinAttendees == src.MaxAttendees
+                        ? $"{src.MinAttendees}"
+                        : $"{src.MinAttendees}-{src.MaxAttendees}"));
+    }
+}

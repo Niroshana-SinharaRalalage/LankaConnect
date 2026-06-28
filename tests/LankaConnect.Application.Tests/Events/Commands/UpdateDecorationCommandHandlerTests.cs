@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateDecoration;
-using LankaConnect.Application.Events.Services;
+using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;

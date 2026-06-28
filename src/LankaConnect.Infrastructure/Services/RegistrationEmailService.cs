@@ -6,7 +6,7 @@ using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -270,11 +270,11 @@ public class RegistrationEmailService : IRegistrationEmailService
             // faults fall through to empty string — email still sends without the card.
             try
             {
-                var breakdown = LankaConnect.Application.Events.Common
+                var breakdown = LankaConnect.Products.LankaEvents.Application.Common
                     .TicketPdfRegistrationBreakdownAssembler.Build(registration);
                 var breakdownHtml = breakdown is null
                     ? string.Empty
-                    : LankaConnect.Application.Events.Common
+                    : LankaConnect.Products.LankaEvents.Application.Common
                         .RegistrationBreakdownEmailRenderer.Render(breakdown, registration.LeadAttendeeName);
                 emailParams.WithRegistrationBreakdownHtml(breakdownHtml);
             }

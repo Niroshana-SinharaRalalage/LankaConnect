@@ -6,7 +6,7 @@ using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.EventHandlers;
+using LankaConnect.Products.LankaEvents.Application.EventHandlers;
 using LankaConnect.Modules.Payments.Application.EventHandlers; // W4.4.c.3: PaymentCompletedWhatsAppHandler moved here
 using LankaConnect.Modules.Forms.Application.EventHandlers; // W5.3d.2: FormResponseWhatsAppHandler moved here
 using LankaConnect.Domain.Common;
@@ -47,7 +47,7 @@ public class WhatsAppEventHandlerTests
     // Phase 6A.148.W5.6.A: WhatsApp RefundCompleted handler now resolves IRefundTotalCalculator
     // inside its Task.Run scope. Default mock returns the legacy fallback verbatim so existing
     // tests' expected dollar values stay valid.
-    private readonly Mock<LankaConnect.Application.Events.Services.IRefundTotalCalculator> _mockRefundTotalCalculator;
+    private readonly Mock<LankaConnect.Products.LankaEvents.Application.Services.IRefundTotalCalculator> _mockRefundTotalCalculator;
 
     public WhatsAppEventHandlerTests()
     {
@@ -62,7 +62,7 @@ public class WhatsAppEventHandlerTests
         _mockAddOnRepo = new Mock<IAddOnDefinitionRepository>();
         _mockFormResponseRepo = new Mock<IFormResponseRepository>();
         _mockEventFormRepo = new Mock<IFormRepository>();
-        _mockRefundTotalCalculator = new Mock<LankaConnect.Application.Events.Services.IRefundTotalCalculator>();
+        _mockRefundTotalCalculator = new Mock<LankaConnect.Products.LankaEvents.Application.Services.IRefundTotalCalculator>();
         _mockRefundTotalCalculator
             .Setup(c => c.ComputeAttendeeFacingTotalAsync(
                 It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
@@ -98,7 +98,7 @@ public class WhatsAppEventHandlerTests
             .Setup(sp => sp.GetService(typeof(IFormRepository)))
             .Returns(_mockEventFormRepo.Object);
         _mockServiceProvider
-            .Setup(sp => sp.GetService(typeof(LankaConnect.Application.Events.Services.IRefundTotalCalculator)))
+            .Setup(sp => sp.GetService(typeof(LankaConnect.Products.LankaEvents.Application.Services.IRefundTotalCalculator)))
             .Returns(_mockRefundTotalCalculator.Object);
 
         // Default WhatsApp success responses

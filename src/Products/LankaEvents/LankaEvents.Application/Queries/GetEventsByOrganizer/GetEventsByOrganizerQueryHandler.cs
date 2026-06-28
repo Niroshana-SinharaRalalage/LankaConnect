@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using AutoMapper;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEvents;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;

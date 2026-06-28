@@ -1,5 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetNearbyEvents;

@@ -2,8 +2,8 @@ using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService mo
 using System.Diagnostics;
 using Hangfire;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.BackgroundJobs;
-using LankaConnect.Application.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
+using LankaConnect.Products.LankaEvents.Application.Repositories;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

@@ -1,0 +1,225 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
+using LankaConnect.Application.Common;
+using LankaConnect.Modules.Forms.Contracts;
+using LankaConnect.Application.Common.Helpers;
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.Application.Interfaces;
+using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Shared.Email.Contracts;
+using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
+using LankaConnect.Shared.Email.Services;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace LankaConnect.Products.LankaEvents.Application.EventHandlers;
+
+/// <summary>
+/// Phase 6A.51+: Handles CommitmentCancelledEvent to send cancellation confirmation email to user.
+///
+/// NOTE: This handler is separate from CommitmentCancelledEventHandler which handles EF Core deletion.
+/// Multiple handlers can listen to the same domain event for different responsibilities:
+/// - CommitmentCancelledEventHandler: Handles database deletion (Phase 6A.28)
+/// - CommitmentCancelledEmailHandler: Sends confirmation email (Phase 6A.51)
+///
+/// Phase 6A.51+ Fix: Uses data from the domain event (ItemDescription, Quantity) instead of
+/// querying the database, since entities may be deleted by the time this handler runs.
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
+/// </summary>
+public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventNotification<CommitmentCancelledEvent>>
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IIdentityQueries _identityQueries;
+    private readonly IEventRepository _eventRepository;
+    private readonly IFormQueries _formQueries;
+    private readonly IEmailUrlHelper _emailUrlHelper;
+    private readonly ILogger<CommitmentCancelledEmailHandler> _logger;
+
+    public CommitmentCancelledEmailHandler(
+        IServiceScopeFactory scopeFactory,
+        IIdentityQueries identityQueries,
+        IEventRepository eventRepository,
+        IFormQueries formQueries,
+        IEmailUrlHelper emailUrlHelper,
+        ILogger<CommitmentCancelledEmailHandler> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _identityQueries = identityQueries;
+        _eventRepository = eventRepository;
+        _formQueries = formQueries;
+        _emailUrlHelper = emailUrlHelper;
+        _logger = logger;
+    }
+
+    public async Task Handle(DomainEventNotification<CommitmentCancelledEvent> notification, CancellationToken cancellationToken)
+    {
+        var domainEvent = notification.DomainEvent;
+
+        try
+        {
+            // Phase 6A.121: Support dual nullable fields (PhysicalQuantity or SlotsClaimed)
+            var quantity = domainEvent.CancelledPhysicalQuantity ?? domainEvent.CancelledSlotsClaimed ?? 0;
+            var quantityType = domainEvent.CancelledPhysicalQuantity.HasValue ? "units" : "slots";
+
+            _logger.LogInformation(
+                "[Phase 6A.51+] Processing CommitmentCancelledEvent: User {UserId} cancelled commitment {CommitmentId} for SignUpItem {SignUpItemId}, Item='{ItemDescription}', Qty={Quantity} {QuantityType}",
+                domainEvent.UserId, domainEvent.CommitmentId, domainEvent.SignUpItemId, domainEvent.ItemDescription, quantity, quantityType);
+
+            // Get user details
+            var user = await _identityQueries.GetContactInfoAsync(domainEvent.UserId, cancellationToken);
+            if (user == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.51+] User {UserId} not found for commitment cancellation email",
+                    domainEvent.UserId);
+                return; // Fail-silent
+            }
+
+            // Phase 6A.51+ Fix: Use data from event directly (entities may be deleted by now)
+            // Phase 6A.121: Event contains ItemDescription and dual quantity fields (PhysicalQuantity or SlotsClaimed)
+            _logger.LogInformation(
+                "[Phase 6A.51+] Using event data for cancellation email: Item='{ItemDescription}', Qty={Quantity} {QuantityType}",
+                domainEvent.ItemDescription, quantity, quantityType);
+
+            // Get event details via repository navigation method using SignUpListId
+            var @event = await _eventRepository.GetEventBySignUpListIdAsync(domainEvent.SignUpListId, cancellationToken);
+            if (@event == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.51+] Event not found for SignUpListId {SignUpListId}",
+                    domainEvent.SignUpListId);
+                return; // Fail-silent
+            }
+
+            // Phase 7C.2: Project event's primary + optional secondary location into the
+            // 8 decomposed email keys. Fixes GPS-coordinate leak from @event.Location?.ToString().
+            var locationProjection = @event.ProjectEmailLocation();
+
+            // Phase 7C.2b (Chunk 0): Emit one structured diagnostic line capturing the
+            // resolved event id, title, and projected location fields so operators can grep
+            // Azure container logs to confirm which event's data actually ended up in the
+            // rendered cancellation email — disambiguates Symptom 2 of the 2026-04-22 inbox
+            // report (wrong event's address apparently appearing in a cancellation email).
+            _logger.LogInformation(
+                "CommitmentCancelled DIAGNOSTIC: EventId={EventId}, EventTitle={EventTitle}, HasLocationName={HasLocationName}, LocationName={LocationName}, LocationAddress={LocationAddress}, HasSecondaryLocation={HasSecondaryLocation}, SecondaryLocationName={SecondaryLocationName}, UserId={UserId}, CommitmentId={CommitmentId}, SignUpListId={SignUpListId}",
+                @event.Id,
+                @event.Title?.Value ?? string.Empty,
+                locationProjection.HasLocationName,
+                locationProjection.LocationName,
+                locationProjection.LocationAddress,
+                locationProjection.HasSecondaryLocation,
+                locationProjection.SecondaryLocationName,
+                domainEvent.UserId,
+                domainEvent.CommitmentId,
+                domainEvent.SignUpListId);
+
+            // Phase 6A.87: Use typed email parameters for compile-time safety
+            // Phase 6A.121: Use whichever quantity field is populated (PhysicalQuantity or SlotsClaimed)
+            var emailParams = SignupCommitmentEmailParams.CreateCancellation(
+                userId: user.Id,
+                userName: user.FirstName,
+                userEmail: user.Email,
+                eventId: @event.Id,
+                eventTitle: @event.Title?.Value ?? "Untitled Event",
+                signupItem: domainEvent.ItemDescription,
+                quantity: quantity,  // Phase 6A.121: Calculated from dual fields above
+                eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: param class should accept DateTime?
+                timeZoneId: @event.TimeZoneId,
+                eventLocation: locationProjection.LegacyFlatString,
+                eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
+            );
+
+            // Phase 7C.2: Populate decomposed LocationName / LocationAddress / secondary block fields.
+            emailParams.WithLocationDetails(locationProjection);
+
+            // Phase 7D.1: Route to volunteer-specific cancellation template when the
+            // signup list is a volunteer list. Look up Kind from the loaded event
+            // (no change needed to CommitmentCancelledEvent).
+            var cancelledList = @event.SignUpLists?.FirstOrDefault(l => l.Id == domainEvent.SignUpListId);
+            if (cancelledList?.Kind == SignUpKind.Volunteers)
+            {
+                emailParams.AsVolunteerCancellation();
+            }
+
+            // Phase 6A.103: Add event image if available
+            var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+            emailParams.WithEventImage(primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "");
+
+            // Phase 6A.87+ Fix: Populate organizer contact if available
+            if (@event.HasOrganizerContact())
+            {
+                emailParams.WithOrganizerContacts(
+                    @event.OrganizerContacts
+                        .OrderBy(c => c.SortOrder)
+                        .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                        .ToList());
+            }
+
+            // Phase 6A.87+ Fix: Populate signup lists URL if event has signup lists
+            if (@event.SignUpLists?.Count > 0)
+            {
+                emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
+            }
+
+            // Phase 6A.129: Add signup forms URL if event has active forms
+            var forms = await _formQueries.GetByOwnerAsync(FormOwnerEntityTypeDto.Event, @event.Id, cancellationToken);
+            var hasActiveForms = forms.Any(f => f.Status == FormStatusDto.Active);
+            if (hasActiveForms)
+            {
+                emailParams.WithSignupForms($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");
+            }
+
+            // Phase 6A.122: Fire-and-forget email - don't block HTTP response waiting for email
+            // Root cause of slow signup operations: Azure Communication Services takes 2-16 seconds
+            // Phase 6A.127: Create new DI scope — HTTP request scope is disposed by the time Task.Run executes
+            _logger.LogInformation(
+                "CommitmentCancelled COMPLETE: Cancellation confirmed, dispatching email async - UserId={UserId}, EventId={EventId}",
+                domainEvent.UserId, @event.Id);
+
+            var capturedParams = emailParams;
+            var capturedEmail = user.Email;
+            var capturedEventId = @event.Id;
+            var capturedScopeFactory = _scopeFactory;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = capturedScopeFactory.CreateScope();
+                    var emailService = scope.ServiceProvider.GetRequiredService<ITypedEmailService>();
+                    var emailResult = await emailService.SendEmailAsync(capturedParams, CancellationToken.None);
+                    if (emailResult.Success)
+                    {
+                        _logger.LogInformation(
+                            "CommitmentCancelled EMAIL SENT: Email={Email}, EventId={EventId}",
+                            capturedEmail, capturedEventId);
+                    }
+                    else
+                    {
+                        _logger.LogError(
+                            "CommitmentCancelled EMAIL FAILED: Email={Email}, Errors={Errors}",
+                            capturedEmail, string.Join(", ", emailResult.Errors));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "CommitmentCancelled EMAIL EXCEPTION: Email={Email}, EventId={EventId}",
+                        capturedEmail, capturedEventId);
+                }
+            }, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            // Fail-silent: Log error but don't throw to prevent transaction rollback
+            _logger.LogError(ex,
+                "[Phase 6A.51+] Error sending commitment cancellation email for User {UserId}, Commitment {CommitmentId}",
+                domainEvent.UserId, domainEvent.CommitmentId);
+        }
+    }
+}

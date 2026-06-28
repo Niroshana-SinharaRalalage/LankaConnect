@@ -1,7 +1,7 @@
 using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.EventHandlers;
+using LankaConnect.Products.LankaEvents.Application.EventHandlers;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;

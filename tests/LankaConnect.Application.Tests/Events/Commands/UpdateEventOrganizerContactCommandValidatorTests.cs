@@ -1,5 +1,5 @@
 using FluentValidation.TestHelper;
-using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateEventOrganizerContact;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Commands;

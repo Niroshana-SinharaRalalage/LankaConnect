@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Application.Events.Commands.CreateLayoutFromPreset;
+using LankaConnect.Products.LankaEvents.Application.Commands.CreateLayoutFromPreset;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;

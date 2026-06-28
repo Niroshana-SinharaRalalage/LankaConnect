@@ -1,7 +1,7 @@
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Commands.RsvpToEvent;
-using LankaConnect.Application.Events.Commands.UpdateRegistrationDetails;
+using LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateRegistrationDetails;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

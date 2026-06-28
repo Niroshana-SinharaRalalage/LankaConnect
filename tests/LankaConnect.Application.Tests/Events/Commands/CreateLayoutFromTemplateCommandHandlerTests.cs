@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Commands.CreateLayoutFromTemplate;
+using LankaConnect.Products.LankaEvents.Application.Commands.CreateLayoutFromTemplate;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;

@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Commands.CancelEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.CancelEvent;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;

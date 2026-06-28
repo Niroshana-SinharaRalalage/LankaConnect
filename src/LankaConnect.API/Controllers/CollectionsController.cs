@@ -1,5 +1,5 @@
 using LankaConnect.API.Extensions;
-using LankaConnect.Application.Events.Commands.CreateCollection;
+using LankaConnect.Products.LankaEvents.Application.Commands.CreateCollection;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.ExportCollections;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;

@@ -1,7 +1,7 @@
 using LankaConnect.API.Extensions;
-using LankaConnect.Application.Events.Commands.UpdateCollectionConfig;
-using LankaConnect.Application.Events.Commands.UpdateSponsorConfig;
-using LankaConnect.Application.Events.Commands.UpdateAddOnConfig;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateCollectionConfig;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateSponsorConfig;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateAddOnConfig;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

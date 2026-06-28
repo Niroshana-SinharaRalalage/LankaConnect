@@ -3,33 +3,33 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Events.Commands.CreateEvent;
-using LankaConnect.Application.Events.Commands.UpdateEvent;
-using LankaConnect.Application.Events.Commands.DeleteEvent;
-using LankaConnect.Application.Events.Commands.PublishEvent;
-using LankaConnect.Application.Events.Commands.UnpublishEvent;
-using LankaConnect.Application.Events.Commands.CancelEvent;
-using LankaConnect.Application.Events.Commands.PostponeEvent;
-using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
-using LankaConnect.Application.Events.Commands.RsvpToEvent;
-using LankaConnect.Application.Events.Commands.CancelRsvp;
+using LankaConnect.Products.LankaEvents.Application.Commands.CreateEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.DeleteEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.PublishEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.UnpublishEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.CancelEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.PostponeEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.SubmitEventForApproval;
+using LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.CancelRsvp;
 // Wave 4.4.c.1 (2026-06-23): refund command handlers moved to Payments.Application.
 using LankaConnect.Modules.Payments.Application.Commands.WithdrawRefundRequest;
 using LankaConnect.Modules.Payments.Application.Commands.ForceCancelStuckRefund;
 using LankaConnect.Modules.Payments.Application.Commands.RefundRequests;
 using LankaConnect.Modules.Payments.Application.Queries.RefundRequests; // Wave 4.4.c.2 (2026-06-23)
-using LankaConnect.Application.Events.Commands.UpdateRsvp;
-using LankaConnect.Application.Events.Commands.ResendTicketEmail;
-using LankaConnect.Application.Events.Commands.ResendAttendeeConfirmation;
-using LankaConnect.Application.Events.Commands.UpdateRegistrationDetails;
-using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
-using LankaConnect.Application.Events.Commands.BatchLinkOrganizerContacts;
-using LankaConnect.Application.Events.Commands.UnlinkOrganizerContactUser;
-using LankaConnect.Application.Events.Commands.UpdateMaxAttendeesPerRegistration;
-using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
-using LankaConnect.Application.Events.Commands.AdminApproval;
-using LankaConnect.Application.Events.Commands.SendEventNotification;
-using LankaConnect.Application.Events.Commands.SendEventReminder;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateRsvp;
+using LankaConnect.Products.LankaEvents.Application.Commands.ResendTicketEmail;
+using LankaConnect.Products.LankaEvents.Application.Commands.ResendAttendeeConfirmation;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateRegistrationDetails;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateEventOrganizerContact;
+using LankaConnect.Products.LankaEvents.Application.Commands.BatchLinkOrganizerContacts;
+using LankaConnect.Products.LankaEvents.Application.Commands.UnlinkOrganizerContactUser;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateMaxAttendeesPerRegistration;
+using LankaConnect.Products.LankaEvents.Application.Commands.RegisterAnonymousAttendee;
+using LankaConnect.Products.LankaEvents.Application.Commands.AdminApproval;
+using LankaConnect.Products.LankaEvents.Application.Commands.SendEventNotification;
+using LankaConnect.Products.LankaEvents.Application.Commands.SendEventReminder;
 using LankaConnect.Application.Events.Queries.GetAllowedRegistrationModes;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEvents;
@@ -47,19 +47,19 @@ using LankaConnect.Application.Events.Queries.GetFeaturedEvents;
 using LankaConnect.Application.Events.Queries.GetEventNotificationHistory;
 using LankaConnect.Application.Events.Queries.GetEventReminderHistory;
 using LankaConnect.Application.Common.Models;
-using LankaConnect.Application.Events.Commands.AddImageToEvent;
-using LankaConnect.Application.Events.Commands.DeleteEventImage;
-using LankaConnect.Application.Events.Commands.ReorderEventImages;
-using LankaConnect.Application.Events.Commands.SetPrimaryImage;
-using LankaConnect.Application.Events.Commands.ReplaceEventImage;
-using LankaConnect.Application.Events.Commands.AddVideoToEvent;
-using LankaConnect.Application.Events.Commands.DeleteEventVideo;
+using LankaConnect.Products.LankaEvents.Application.Commands.AddImageToEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.DeleteEventImage;
+using LankaConnect.Products.LankaEvents.Application.Commands.ReorderEventImages;
+using LankaConnect.Products.LankaEvents.Application.Commands.SetPrimaryImage;
+using LankaConnect.Products.LankaEvents.Application.Commands.ReplaceEventImage;
+using LankaConnect.Products.LankaEvents.Application.Commands.AddVideoToEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.DeleteEventVideo;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Analytics.Commands.RecordEventView;
 using LankaConnect.Application.Analytics.Commands.RecordEventShare;
-using LankaConnect.Application.Events.Commands.AddToWaitingList;
-using LankaConnect.Application.Events.Commands.RemoveFromWaitingList;
-using LankaConnect.Application.Events.Commands.PromoteFromWaitingList;
+using LankaConnect.Products.LankaEvents.Application.Commands.AddToWaitingList;
+using LankaConnect.Products.LankaEvents.Application.Commands.RemoveFromWaitingList;
+using LankaConnect.Products.LankaEvents.Application.Commands.PromoteFromWaitingList;
 using LankaConnect.Application.Events.Queries.GetWaitingList;
 using LankaConnect.Application.Events.Queries.GetEventIcs;
 // W5.2.a-fix (2026-06-28): AddPassToEvent + RemovePassFromEvent usings removed -- feature deleted.
@@ -67,20 +67,20 @@ using LankaConnect.Application.Events.Queries.GetEventAttendees;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Modules.Forms.Application.Queries.ExportFormResponses;
 // W5.2.a-fix (2026-06-28): GetEventPasses using removed -- feature deleted.
-using LankaConnect.Application.Events.Commands.RemoveSignUpListFromEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.RemoveSignUpListFromEvent;
 using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
-using LankaConnect.Application.Events.Commands.CreateSignUpListWithItems;
-using LankaConnect.Application.Events.Commands.UpdateSignUpList;
-using LankaConnect.Application.Events.Commands.AddSignUpItem;
-using LankaConnect.Application.Events.Commands.UpdateSignUpItem;
-using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
-using LankaConnect.Application.Events.Commands.ReorderSignUpItems;
-using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
-using LankaConnect.Application.Events.Commands.CommitToSignUpItemAnonymous;
-using LankaConnect.Application.Events.Commands.AddOpenSignUpItem;
-using LankaConnect.Application.Events.Commands.AddOpenSignUpItemAnonymous;
-using LankaConnect.Application.Events.Commands.UpdateOpenSignUpItem;
-using LankaConnect.Application.Events.Commands.CancelOpenSignUpItem;
+using LankaConnect.Products.LankaEvents.Application.Commands.CreateSignUpListWithItems;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateSignUpList;
+using LankaConnect.Products.LankaEvents.Application.Commands.AddSignUpItem;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateSignUpItem;
+using LankaConnect.Products.LankaEvents.Application.Commands.RemoveSignUpItem;
+using LankaConnect.Products.LankaEvents.Application.Commands.ReorderSignUpItems;
+using LankaConnect.Products.LankaEvents.Application.Commands.CommitToSignUpItem;
+using LankaConnect.Products.LankaEvents.Application.Commands.CommitToSignUpItemAnonymous;
+using LankaConnect.Products.LankaEvents.Application.Commands.AddOpenSignUpItem;
+using LankaConnect.Products.LankaEvents.Application.Commands.AddOpenSignUpItemAnonymous;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateOpenSignUpItem;
+using LankaConnect.Products.LankaEvents.Application.Commands.CancelOpenSignUpItem;
 using LankaConnect.Application.Events.Queries.CheckEventRegistration;
 using LankaConnect.Application.Events.Queries.GetTicket;
 using LankaConnect.Application.Events.Queries.GetTicketPdf;
@@ -105,14 +105,14 @@ using LankaConnect.Modules.Forms.Application.Queries.GetFormResponses;
 using LankaConnect.Modules.Forms.Application.Queries.GetPublicFormResponses;  // Phase 6A.146
 using LankaConnect.Modules.Forms.Application.Queries.GetMyFormResponse;
 using LankaConnect.Modules.Forms.Application.Queries.GetMyFormResponseByUserId;
-using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
-using LankaConnect.Application.Events.Commands.CancelPendingAddition;
-using LankaConnect.Application.Events.Commands.AddTicketTier;
-using LankaConnect.Application.Events.Commands.UpdateTicketTier;
-using LankaConnect.Application.Events.Commands.RemoveTicketTier;
-using LankaConnect.Application.Events.Commands.SetTicketingMode;
-using LankaConnect.Application.Events.Commands.SetSeatingMode;
-using LankaConnect.Application.Events.Commands.ScanTicket; // Phase 6A.141
+using LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddAttendees;
+using LankaConnect.Products.LankaEvents.Application.Commands.CancelPendingAddition;
+using LankaConnect.Products.LankaEvents.Application.Commands.AddTicketTier;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateTicketTier;
+using LankaConnect.Products.LankaEvents.Application.Commands.RemoveTicketTier;
+using LankaConnect.Products.LankaEvents.Application.Commands.SetTicketingMode;
+using LankaConnect.Products.LankaEvents.Application.Commands.SetSeatingMode;
+using LankaConnect.Products.LankaEvents.Application.Commands.ScanTicket; // Phase 6A.141
 using LankaConnect.Application.Events.Queries.GetTicketTiers;
 using LankaConnect.API.Extensions;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -668,7 +668,7 @@ public class EventsController : BaseController<EventsController>
     /// </summary>
     [HttpPost("{id:guid}/convert-registration-mode")]
     [Authorize]
-    [ProducesResponseType(typeof(LankaConnect.Application.Events.Commands.ConvertRegistrationMode.ConvertRegistrationModeResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LankaConnect.Products.LankaEvents.Application.Commands.ConvertRegistrationMode.ConvertRegistrationModeResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -679,7 +679,7 @@ public class EventsController : BaseController<EventsController>
             "[7F-B] ConvertRegistrationMode endpoint hit — EventId={EventId} TargetMode={TargetMode} DryRun={DryRun}",
             id, request.TargetMode, request.DryRun);
 
-        var command = new LankaConnect.Application.Events.Commands.ConvertRegistrationMode.ConvertRegistrationModeCommand(
+        var command = new LankaConnect.Products.LankaEvents.Application.Commands.ConvertRegistrationMode.ConvertRegistrationModeCommand(
             EventId: id,
             TargetMode: request.TargetMode,
             DryRun: request.DryRun,
@@ -863,7 +863,7 @@ public class EventsController : BaseController<EventsController>
             "ScanTicket (QR) endpoint: EventId={EventId}, ScannerUserId={ScannerUserId}, PayloadLength={Length}",
             eventId, userId, request.QrPayload?.Length ?? 0);
 
-        var command = new LankaConnect.Application.Events.Commands.ScanTicket.ScanTicketCommand(
+        var command = new LankaConnect.Products.LankaEvents.Application.Commands.ScanTicket.ScanTicketCommand(
             EventId: eventId,
             ScannerUserId: userId,
             ScannerName: scannerName,
@@ -904,7 +904,7 @@ public class EventsController : BaseController<EventsController>
             "ScanTicket (manual) endpoint: EventId={EventId}, ScannerUserId={ScannerUserId}, TicketCode={TicketCode}",
             eventId, userId, request.TicketCode);
 
-        var command = new LankaConnect.Application.Events.Commands.ScanTicket.ScanTicketCommand(
+        var command = new LankaConnect.Products.LankaEvents.Application.Commands.ScanTicket.ScanTicketCommand(
             EventId: eventId,
             ScannerUserId: userId,
             ScannerName: scannerName,
@@ -972,11 +972,11 @@ public class EventsController : BaseController<EventsController>
 
         // Phase 6A.43: Support both legacy and multi-attendee formats
         // Convert AnonymousAttendeeDto to Application layer AttendeeDto if provided
-        List<LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee.AttendeeDto>? attendees = null;
+        List<LankaConnect.Products.LankaEvents.Application.Commands.RegisterAnonymousAttendee.AttendeeDto>? attendees = null;
         if (request.Attendees != null && request.Attendees.Any())
         {
             attendees = request.Attendees.Select(a =>
-                new LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee.AttendeeDto(
+                new LankaConnect.Products.LankaEvents.Application.Commands.RegisterAnonymousAttendee.AttendeeDto(
                     a.Name,
                     a.AgeCategory,
                     a.Gender,
@@ -1002,7 +1002,7 @@ public class EventsController : BaseController<EventsController>
             DonorNotes: request.DonorNotes,
             // Phase 6A.137F: Pass bundled add-on, collection, and sponsor fields
             AddOnSelections: request.AddOnSelections?.Select(a =>
-                new LankaConnect.Application.Events.Commands.RsvpToEvent.AddOnSelectionDto(a.DefinitionId, a.Quantity)).ToList(),
+                new LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent.AddOnSelectionDto(a.DefinitionId, a.Quantity)).ToList(),
             CollectionAmount: request.CollectionAmount,
             CollectionNotes: request.CollectionNotes,
             SponsorAmount: request.SponsorAmount,
@@ -1671,8 +1671,8 @@ public class EventsController : BaseController<EventsController>
         var command = new UpdateRegistrationDetailsCommand(
             eventId,
             userId,
-            request.Attendees?.Select(a => new Application.Events.Commands.RsvpToEvent.AttendeeDto(a.Name, a.AgeCategory, a.Gender)).ToList()
-                ?? new List<Application.Events.Commands.RsvpToEvent.AttendeeDto>(),
+            request.Attendees?.Select(a => new LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent.AttendeeDto(a.Name, a.AgeCategory, a.Gender)).ToList()
+                ?? new List<LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent.AttendeeDto>(),
             request.Email,
             request.PhoneNumber,
             request.Address);
@@ -2343,7 +2343,7 @@ public class EventsController : BaseController<EventsController>
             request.Category, request.Items.Count, id);
 
         // Phase 6A.131: Map API DTOs to Application layer DTOs with dual-field support
-        var items = request.Items.Select(item => new LankaConnect.Application.Events.Commands.CreateSignUpListWithItems.SignUpItemDto(
+        var items = request.Items.Select(item => new LankaConnect.Products.LankaEvents.Application.Commands.CreateSignUpListWithItems.SignUpItemDto(
             item.ItemDescription,
             item.ItemType,
             item.ItemCategory,
@@ -3725,7 +3725,7 @@ public class EventsController : BaseController<EventsController>
     /// </summary>
     [HttpPost("registrations/{registrationId:guid}/add-headcount")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(LankaConnect.Application.Events.Commands.InitiateAddAttendees.InitiateAddAttendeesResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddAttendees.InitiateAddAttendeesResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> InitiateAddHeadCount(
@@ -3740,7 +3740,7 @@ public class EventsController : BaseController<EventsController>
         if (request.HeadCountDelta == null)
             return BadRequest(new ProblemDetails { Title = "Missing body", Detail = "headCountDelta is required", Status = 400 });
 
-        var command = new LankaConnect.Application.Events.Commands.InitiateAddHeadCount.InitiateAddHeadCountCommand(
+        var command = new LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddHeadCount.InitiateAddHeadCountCommand(
             RegistrationId: registrationId,
             HeadCountDelta: request.HeadCountDelta,
             SuccessUrl: request.SuccessUrl,
@@ -3926,7 +3926,7 @@ public record RsvpRequest(
     // Legacy format (backward compatibility)
     int Quantity = 1,
     // New format (Session 21 - multi-attendee)
-    List<LankaConnect.Application.Events.Commands.RsvpToEvent.AttendeeDto>? Attendees = null,
+    List<LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent.AttendeeDto>? Attendees = null,
     // Contact information (new format only)
     string? Email = null,
     string? PhoneNumber = null,
@@ -3940,7 +3940,7 @@ public record RsvpRequest(
     string? DonorPhone = null,
     string? DonorNotes = null,
     // Phase 6A.137F: Add-on, collection, and sponsor fields for bundled checkout
-    List<LankaConnect.Application.Events.Commands.RsvpToEvent.AddOnSelectionDto>? AddOnSelections = null,
+    List<LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent.AddOnSelectionDto>? AddOnSelections = null,
     decimal? CollectionAmount = null,
     string? CollectionNotes = null,
     decimal? SponsorAmount = null,
@@ -3962,7 +3962,7 @@ public record RsvpRequest(
     // Phase 7E.3a: Head-count payload for B-mode events (mutually exclusive with Attendees;
     // handler dispatches by event.RegistrationMode).
     string? LeadAttendeeName = null,
-    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null,
+    LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent.HeadCountDto? HeadCount = null,
     // Phase 8 S8.2.B: Assigned-seating fields. Required when the event's
     // SeatingMode == AssignedSeating; rejected for GeneralAdmission events.
     List<Guid>? SeatIds = null,
@@ -3999,7 +3999,7 @@ public record AnonymousRegistrationRequest(
     string? DonorPhone = null,
     string? DonorNotes = null,
     // Phase 6A.137F: Add-on, collection, and sponsor fields for bundled checkout
-    List<LankaConnect.Application.Events.Commands.RsvpToEvent.AddOnSelectionDto>? AddOnSelections = null,
+    List<LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent.AddOnSelectionDto>? AddOnSelections = null,
     decimal? CollectionAmount = null,
     string? CollectionNotes = null,
     decimal? SponsorAmount = null,
@@ -4020,7 +4020,7 @@ public record AnonymousRegistrationRequest(
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events (anonymous flow).
     string? LeadAttendeeName = null,
-    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null,
+    LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent.HeadCountDto? HeadCount = null,
     // Phase 8 S8.2.B: Assigned-seating fields. Required when the event's
     // SeatingMode == AssignedSeating; rejected for GeneralAdmission events.
     List<Guid>? SeatIds = null,
@@ -4259,7 +4259,7 @@ public record CalculateAdditionPriceRequest(
 /// frontend's existing head-count form components can be reused.
 /// </summary>
 public record InitiateAddHeadCountRequest(
-    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto HeadCountDelta,
+    LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent.HeadCountDto HeadCountDelta,
     string SuccessUrl,
     string CancelUrl);
 

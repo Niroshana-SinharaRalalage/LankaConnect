@@ -7,7 +7,7 @@ using Hangfire.States;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
-using LankaConnect.Application.Events.Commands.SendEventNotification;
+using LankaConnect.Products.LankaEvents.Application.Commands.SendEventNotification;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;

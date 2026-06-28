@@ -1,6 +1,6 @@
 using System.Reflection;
 using FluentAssertions;
-using LankaConnect.Application.Events.Commands.DeleteLayout;
+using LankaConnect.Products.LankaEvents.Application.Commands.DeleteLayout;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;

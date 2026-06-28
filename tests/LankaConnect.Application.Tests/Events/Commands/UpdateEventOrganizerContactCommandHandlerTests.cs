@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

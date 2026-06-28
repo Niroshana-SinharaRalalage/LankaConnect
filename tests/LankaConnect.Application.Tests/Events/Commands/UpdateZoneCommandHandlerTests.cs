@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Application.Events.Commands.UpdateZone;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateZone;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Entities;

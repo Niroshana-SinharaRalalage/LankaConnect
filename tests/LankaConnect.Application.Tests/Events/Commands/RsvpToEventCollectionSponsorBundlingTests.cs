@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Application.Events.Commands.RsvpToEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Commands;

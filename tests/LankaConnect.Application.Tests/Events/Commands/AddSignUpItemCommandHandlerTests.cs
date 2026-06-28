@@ -2,7 +2,7 @@ using FluentAssertions;
 using FluentValidation;
 using FluentValidation.TestHelper;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Commands.AddSignUpItem;
+using LankaConnect.Products.LankaEvents.Application.Commands.AddSignUpItem;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

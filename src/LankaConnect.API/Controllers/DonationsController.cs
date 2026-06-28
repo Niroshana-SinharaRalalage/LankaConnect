@@ -1,5 +1,5 @@
 using LankaConnect.API.Extensions;
-using LankaConnect.Application.Events.Commands.CreateDonation;
+using LankaConnect.Products.LankaEvents.Application.Commands.CreateDonation;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.ExportDonations;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;

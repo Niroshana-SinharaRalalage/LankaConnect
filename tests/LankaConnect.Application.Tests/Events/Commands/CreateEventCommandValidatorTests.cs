@@ -1,5 +1,5 @@
 using FluentValidation.TestHelper;
-using LankaConnect.Application.Events.Commands.CreateEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.CreateEvent;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Xunit;
 

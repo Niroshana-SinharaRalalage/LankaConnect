@@ -1,7 +1,7 @@
 using System.Reflection;
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Commands.BatchUpdateLayout;
+using LankaConnect.Products.LankaEvents.Application.Commands.BatchUpdateLayout;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;

@@ -1,7 +1,7 @@
 using FluentAssertions;
 using LankaConnect.Modules.Communications.Contracts;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Commands.UpdateEvent;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateEvent;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;

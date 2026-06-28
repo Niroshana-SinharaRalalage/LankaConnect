@@ -9,7 +9,7 @@ namespace LankaConnect.Modules.Forms.Contracts;
 /// </summary>
 /// <remarks>
 /// Wave 5.3a (2026-06-11). Today the surface is a single method invoked
-/// from <c>LankaConnect.Application.Events.Commands.CancelRsvp</c> when an
+/// from <c>LankaConnect.Products.LankaEvents.Application.Commands.CancelRsvp</c> when an
 /// attendee cancels and any FormResponses they submitted need to be
 /// scrubbed. Implementation in Forms.Application (Wave 5.3b) self-saves on
 /// FormsDbContext — two-DbContext atomicity is lost vs. today's shared

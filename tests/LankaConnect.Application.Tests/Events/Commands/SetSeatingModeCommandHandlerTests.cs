@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Application.Events.Commands.SetSeatingMode;
+using LankaConnect.Products.LankaEvents.Application.Commands.SetSeatingMode;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;

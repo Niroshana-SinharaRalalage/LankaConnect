@@ -1,7 +1,7 @@
 using LankaConnect.Modules.Identity.Contracts;
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Events.Commands.PhotoAlbums.SendAlbumNotification;
+using LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.SendAlbumNotification;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain;

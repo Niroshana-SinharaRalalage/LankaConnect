@@ -1,10 +1,10 @@
 using LankaConnect.API.Extensions;
-using LankaConnect.Application.Events.Commands.ClearAddOnDefinitionImage;
-using LankaConnect.Application.Events.Commands.CreateAddOnDefinition;
-using LankaConnect.Application.Events.Commands.SetAddOnDefinitionImage;
-using LankaConnect.Application.Events.Commands.UpdateAddOnDefinition;
-using LankaConnect.Application.Events.Commands.PurchaseAddOn;
-using LankaConnect.Application.Events.Commands.PurchaseAddOnCart;
+using LankaConnect.Products.LankaEvents.Application.Commands.ClearAddOnDefinitionImage;
+using LankaConnect.Products.LankaEvents.Application.Commands.CreateAddOnDefinition;
+using LankaConnect.Products.LankaEvents.Application.Commands.SetAddOnDefinitionImage;
+using LankaConnect.Products.LankaEvents.Application.Commands.UpdateAddOnDefinition;
+using LankaConnect.Products.LankaEvents.Application.Commands.PurchaseAddOn;
+using LankaConnect.Products.LankaEvents.Application.Commands.PurchaseAddOnCart;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.ExportAddOnPurchases;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;

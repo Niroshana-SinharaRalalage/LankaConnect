@@ -132,35 +132,20 @@ public class NewsletterConfiguration : IEntityTypeConfiguration<Newsletter>
         builder.Navigation(n => n.EmailGroupLinks)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        // Phase 6A.74 Enhancement 1: Metro Areas - Many-to-Many Relationship
-        // Junction table for location targeting (non-event newsletters)
-        builder
-            .HasMany<LankaConnect.Products.LankaEvents.Domain.MetroArea>("_metroAreaEntities")
-            .WithMany()
-            .UsingEntity<Dictionary<string, object>>(
-                "newsletter_metro_areas",
-                j => j
-                    .HasOne<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
-                    .WithMany()
-                    .HasForeignKey("metro_area_id")
-                    .OnDelete(DeleteBehavior.Cascade),
-                j => j
-                    .HasOne<Newsletter>()
-                    .WithMany()
-                    .HasForeignKey("newsletter_id")
-                    .OnDelete(DeleteBehavior.Cascade),
-                j =>
-                {
-                    j.ToTable("newsletter_metro_areas", "communications");
-                    j.HasKey("newsletter_id", "metro_area_id"); // Composite primary key
-                    j.Property<DateTime>("created_at")
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+        // W5.2.d-hotfix2 (2026-06-28): Metro Areas M2M now via NewsletterMetroAreaLink
+        // junction CLR entity (mirror of NewsletterEmailGroupLink from W5.4.d.1b).
+        // Replaces the broken `_metroAreaEntities` shadow nav that failed at runtime
+        // with InvalidCastException after W5.1 retyped the field to List<object>.
+        // Same physical communications.newsletter_metro_areas table, columns,
+        // composite PK, indexes. NewsletterMetroAreaLinkConfiguration owns
+        // table/column/index setup.
+        builder.HasMany(n => n.MetroAreaLinks)
+            .WithOne()
+            .HasForeignKey(l => l.NewsletterId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-                    // Indexes for query performance
-                    j.HasIndex("newsletter_id");
-                    j.HasIndex("metro_area_id");
-                });
+        builder.Navigation(n => n.MetroAreaLinks)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Foreign key to users table
         builder.HasOne<LankaConnect.Modules.Identity.Domain.Entities.User>()

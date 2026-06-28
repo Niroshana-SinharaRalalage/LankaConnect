@@ -1,10 +1,12 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Communications.ValueObjects;
-// W5.1.a-α.3 (2026-06-27): MetroArea moved to Products/LankaEvents.Domain.
-// _metroAreaEntities retyped to List<object> to keep this assembly free of
-// the Products dep. EF Core's change tracker only needs collection identity,
-// not element type, for shadow navigations.
+// W5.2.d-hotfix2 (2026-06-28): The W5.1 List<object> retyping of _metroAreaEntities
+// caused InvalidCastException on every newsletter create because EF Core 8's
+// shadow-nav hydrator assigns a List<MetroArea> via reflection and List<T> is
+// invariant. Replaced with the NewsletterMetroAreaLink junction CLR pattern
+// (mirrors NewsletterEmailGroupLink from W5.4.d.1b) — no Products dep, no
+// invariant-generic trap. Same physical communications.newsletter_metro_areas table.
 
 namespace LankaConnect.Domain.Communications.Entities;
 
@@ -23,7 +25,9 @@ public class Newsletter : LegacyBaseEntity
     // stays as-is because MetroArea is NOT moving in Wave 5.4 — it lives in
     // LankaConnect.Domain.Events and is reachable from this same Domain assembly.
     private readonly List<NewsletterEmailGroupLink> _emailGroupLinks = new();
-    private List<object> _metroAreaEntities = new();
+    // W5.2.d-hotfix2: NewsletterMetroAreaLink junction CLR replaces the broken
+    // List<object> shadow nav from W5.1.
+    private readonly List<NewsletterMetroAreaLink> _metroAreaLinks = new();
 
     public NewsletterTitle Title { get; private set; }
     public NewsletterDescription Description { get; private set; }
@@ -50,6 +54,7 @@ public class Newsletter : LegacyBaseEntity
     // Wave 5.4.d.1b (2026-06-22): EmailGroupLinks exposes the junction collection
     // for EF Core HasMany expression-tree binding (mirrors EventEmailGroupLinks).
     public IReadOnlyList<NewsletterEmailGroupLink> EmailGroupLinks => _emailGroupLinks.AsReadOnly();
+    public IReadOnlyList<NewsletterMetroAreaLink> MetroAreaLinks => _metroAreaLinks.AsReadOnly();
 
     // EF Core constructor
     private Newsletter()
@@ -99,6 +104,10 @@ public class Newsletter : LegacyBaseEntity
         if (metroAreaIds != null)
         {
             _metroAreaIds.AddRange(metroAreaIds);
+            foreach (var mid in metroAreaIds)
+            {
+                _metroAreaLinks.Add(NewsletterMetroAreaLink.Create(Id, mid));
+            }
         }
     }
 
@@ -313,9 +322,14 @@ public class Newsletter : LegacyBaseEntity
         }
 
         _metroAreaIds.Clear();
+        _metroAreaLinks.Clear();
         if (metroAreaIds != null)
         {
             _metroAreaIds.AddRange(metroAreaIds);
+            foreach (var mid in metroAreaIds)
+            {
+                _metroAreaLinks.Add(NewsletterMetroAreaLink.Create(Id, mid));
+            }
         }
 
         return Result.Success();

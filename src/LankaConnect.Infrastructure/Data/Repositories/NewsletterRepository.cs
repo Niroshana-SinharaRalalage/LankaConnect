@@ -53,31 +53,11 @@ public class NewsletterRepository : Repository<Newsletter>, INewsletterRepositor
                 // Newsletter.cs now owns _emailGroupLinks directly; EF handles the
                 // junction-row inserts as part of the standard insert pipeline.
 
-                // Phase 6A.74 Enhancement 1: Sync metro areas from domain list to shadow navigation for persistence
-                if (entity.MetroAreaIds.Any())
-                {
-                    _repoLogger.LogDebug("Loading {Count} metro area entities for shadow navigation", entity.MetroAreaIds.Count);
-
-                    // Load the MetroArea entities from the database based on the domain's ID list
-                    var metroAreaEntities = await _context.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
-                        .Where(m => entity.MetroAreaIds.Contains(m.Id))
-                        .ToListAsync(cancellationToken);
-
-                    if (metroAreaEntities.Count != entity.MetroAreaIds.Count)
-                    {
-                        _repoLogger.LogWarning("Metro area count mismatch - Expected: {Expected}, Found: {Found}",
-                            entity.MetroAreaIds.Count, metroAreaEntities.Count);
-                    }
-
-                    // Access shadow navigation using EF Core's Entry API
-                    var metroAreasCollection = _context.Entry(entity).Collection("_metroAreaEntities");
-
-                    // Set the loaded entities into the shadow navigation
-                    // EF Core will detect this and create rows in newsletter_metro_areas junction table
-                    metroAreasCollection.CurrentValue = metroAreaEntities;
-
-                    _repoLogger.LogDebug("Synced {Count} metro areas to shadow navigation", metroAreaEntities.Count);
-                }
+                // W5.2.d-hotfix2 (2026-06-28): MetroArea shadow-nav fetching dropped.
+                // Newsletter.cs now owns _metroAreaLinks directly (junction CLR pattern
+                // mirroring _emailGroupLinks); EF handles the junction-row inserts as
+                // part of the standard insert pipeline. No round-trip DB fetch needed
+                // for the link rows.
 
                 stopwatch.Stop();
 

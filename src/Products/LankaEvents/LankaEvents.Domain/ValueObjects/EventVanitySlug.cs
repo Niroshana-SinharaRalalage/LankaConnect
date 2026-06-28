@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Phase 6A.154: Organizer-controlled vanity URL slug.

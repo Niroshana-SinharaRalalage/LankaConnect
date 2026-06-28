@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -391,8 +391,8 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
     /// attendee's name + age category + tier name (denormalized) are still surfaced.
     /// </summary>
     private static IReadOnlyList<AttendeeDetail>? BuildAttendeeDetails(
-        Domain.Events.Registration? registration,
-        Domain.Events.Event? @event)
+        LankaConnect.Products.LankaEvents.Domain.Registration? registration,
+        LankaConnect.Products.LankaEvents.Domain.Event? @event)
     {
         if (registration is null || registration.Attendees is null || !registration.Attendees.Any())
             return null;
@@ -450,7 +450,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
     /// nothing for the add-ons section (no empty card).
     /// </summary>
     private async Task<IReadOnlyList<AddOnSummary>?> BuildAddOnsAsync(
-        Domain.Events.Registration? registration,
+        LankaConnect.Products.LankaEvents.Domain.Registration? registration,
         Guid eventId,
         CancellationToken cancellationToken)
     {
@@ -520,8 +520,8 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
     /// malformed_request because there is no resolved ticket to enrich from.
     /// </summary>
     private async Task<ScanTicketResult> BuildTicketResolvedRejectionAsync(
-        Domain.Events.Entities.Ticket ticket,
-        Domain.Events.Event? ticketEvent,
+        LankaConnect.Products.LankaEvents.Domain.Entities.Ticket ticket,
+        LankaConnect.Products.LankaEvents.Domain.Event? ticketEvent,
         string reason,
         string reasonMessage,
         string? wrongEventTitle,

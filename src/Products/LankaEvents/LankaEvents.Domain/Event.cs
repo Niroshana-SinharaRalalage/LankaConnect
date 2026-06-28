@@ -1,11 +1,11 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.ValueObjects;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Products.LankaEvents.Domain;
 
 // W3C (2026-06-06): Event migrated from legacy BaseEntity to
 // BB.Domain.Entity<Guid> + IAuditable per ADR-007. Class declaration uses
@@ -1200,7 +1200,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         IsFreeEvent = true;
 
         // Optional: Set explicit $0 pricing for display/reporting purposes
-        var zeroPrice = Money.Create(0m, Shared.Enums.Currency.USD);
+        var zeroPrice = Money.Create(0m, LankaConnect.Domain.Shared.Enums.Currency.USD);
         if (zeroPrice.IsSuccess)
         {
             SetTicketPriceInternal(zeroPrice.Value);
@@ -1328,7 +1328,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         // Free event
         if (IsFree())
         {
-            var freePrice = Pricing?.AdultPrice ?? TicketPrice ?? Money.Create(0, Shared.Enums.Currency.USD).Value;
+            var freePrice = Pricing?.AdultPrice ?? TicketPrice ?? Money.Create(0, LankaConnect.Domain.Shared.Enums.Currency.USD).Value;
             return Result<Money>.Success(freePrice);
         }
 
@@ -2787,7 +2787,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         {
             // Clear pricing — Free events don't carry a non-zero ticket price.
             Pricing = null;
-            var zeroResult = Money.Create(0m, Shared.Enums.Currency.USD);
+            var zeroResult = Money.Create(0m, LankaConnect.Domain.Shared.Enums.Currency.USD);
             SetTicketPriceInternal(zeroResult.IsSuccess ? zeroResult.Value : null);
         }
 

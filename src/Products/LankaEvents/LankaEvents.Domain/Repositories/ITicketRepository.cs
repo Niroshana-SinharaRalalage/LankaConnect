@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
 
-namespace LankaConnect.Domain.Events.Repositories;
+namespace LankaConnect.Products.LankaEvents.Domain.Repositories;
 
 /// <summary>
 /// Phase 6A.24: Repository interface for ticket operations

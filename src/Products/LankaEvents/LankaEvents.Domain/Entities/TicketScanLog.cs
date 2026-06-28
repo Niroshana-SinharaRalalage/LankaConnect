@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
 /// Phase 6A.141 — Paid-Event Ticket Check-in audit log.

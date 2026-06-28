@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Enums;
+namespace LankaConnect.Products.LankaEvents.Domain.Enums;
 
 public enum EventType
 {

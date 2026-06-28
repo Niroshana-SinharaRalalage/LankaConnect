@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
 /// Phase 6A.156 — Organizer-defined sponsorship package (Gold / Silver / Bronze,

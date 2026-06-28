@@ -6,11 +6,11 @@ using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
@@ -386,8 +386,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                         // Now filters by RegistrationId first, then includes both Completed and Pending.
                         var completedAddOns = addOnPurchases?
                             .Where(p => p.RegistrationId == registration.Id
-                                     && (p.Status == LankaConnect.Domain.Events.Enums.AddOnPurchaseStatus.Completed
-                                         || p.Status == LankaConnect.Domain.Events.Enums.AddOnPurchaseStatus.Pending))
+                                     && (p.Status == LankaConnect.Products.LankaEvents.Domain.Enums.AddOnPurchaseStatus.Completed
+                                         || p.Status == LankaConnect.Products.LankaEvents.Domain.Enums.AddOnPurchaseStatus.Pending))
                             .ToList();
 
                         if (completedAddOns != null && completedAddOns.Count > 0)

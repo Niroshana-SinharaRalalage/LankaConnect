@@ -116,9 +116,9 @@ using LankaConnect.Application.Events.Commands.SetSeatingMode;
 using LankaConnect.Application.Events.Commands.ScanTicket; // Phase 6A.141
 using LankaConnect.Application.Events.Queries.GetTicketTiers;
 using LankaConnect.API.Extensions;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Domain.Shared.Enums;
 
 namespace LankaConnect.API.Controllers;
@@ -373,7 +373,7 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
-    /// Phase 7E.2: Returns the set of <see cref="LankaConnect.Domain.Events.Enums.RegistrationMode"/>
+    /// Phase 7E.2: Returns the set of <see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode"/>
     /// values compatible with a given draft event shape. Drives the frontend mode picker so
     /// disabled options match server-side validation. All shape parameters default to <c>false</c>.
     /// Public endpoint — no auth needed (the response is shape-only metadata).
@@ -392,8 +392,8 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] bool hasMatrixPricing = false,
         // Phase 8X.11 — payment-mode axis. Defaults to Free; FE picker passes the
         // current paymentMode so External shows up exactly when ExternalPaid.
-        [FromQuery] LankaConnect.Domain.Events.Enums.EventPaymentMode paymentMode =
-            LankaConnect.Domain.Events.Enums.EventPaymentMode.Free)
+        [FromQuery] LankaConnect.Products.LankaEvents.Domain.Enums.EventPaymentMode paymentMode =
+            LankaConnect.Products.LankaEvents.Domain.Enums.EventPaymentMode.Free)
     {
         var query = new GetAllowedRegistrationModesQuery(
             isFreeAttendance, hasSeating, hasNamedSeating, requiresAttendeeNameOnTicket,
@@ -663,7 +663,7 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Phase 7F-B: Convert all active registrations on an event from one
-    /// <see cref="LankaConnect.Domain.Events.Enums.RegistrationMode"/> to another.
+    /// <see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode"/> to another.
     /// Owner only. Pass <c>dryRun=true</c> to compute the conversion report without
     /// applying — drives the UI's diff-preview confirmation dialog.
     /// </summary>
@@ -1276,7 +1276,7 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListEventRefundRequests(
-        Guid eventId, [FromQuery] LankaConnect.Domain.Events.Enums.RefundRequestStatus? status = null)
+        Guid eventId, [FromQuery] LankaConnect.Products.LankaEvents.Domain.Enums.RefundRequestStatus? status = null)
     {
         if (!RefundApprovalWorkflowEnabled) return NotFound();
         var userId = User.GetUserId();
@@ -3978,7 +3978,7 @@ public record CancelEventRequest(string Reason);
 /// Phase 7F-B: request body for <see cref="EventsController.ConvertRegistrationMode"/>.
 /// </summary>
 public record ConvertRegistrationModeRequest(
-    LankaConnect.Domain.Events.Enums.RegistrationMode TargetMode,
+    LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode TargetMode,
     bool DryRun = false,
     bool NotifyAttendees = false);
 public record PostponeEventRequest(string Reason);
@@ -4095,8 +4095,8 @@ public record AnonymousRegistrationRequest(
 /// </summary>
 public record AnonymousAttendeeDto(
     string Name,
-    LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
-    LankaConnect.Domain.Events.Enums.Gender? Gender = null,
+    LankaConnect.Products.LankaEvents.Domain.Enums.AgeCategory AgeCategory,
+    LankaConnect.Products.LankaEvents.Domain.Enums.Gender? Gender = null,
     Guid? TicketTierId = null);
 
 /// <summary>
@@ -4122,8 +4122,8 @@ public record UpdateRegistrationRequest(
 /// </summary>
 public record UpdateRegistrationAttendeeDto(
     string Name,
-    LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
-    LankaConnect.Domain.Events.Enums.Gender? Gender = null);
+    LankaConnect.Products.LankaEvents.Domain.Enums.AgeCategory AgeCategory,
+    LankaConnect.Products.LankaEvents.Domain.Enums.Gender? Gender = null);
 public record ApproveEventRequest(Guid ApprovedByAdminId);
 public record RejectEventRequest(Guid RejectedByAdminId, string Reason);
 public record EventReorderImagesRequest(Dictionary<Guid, int> NewOrders); // Epic 2 Phase 2
@@ -4341,8 +4341,8 @@ public record InitiateAddAttendeesRequest(
 /// </summary>
 public record AddAttendeeDto(
     string Name,
-    LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
-    LankaConnect.Domain.Events.Enums.Gender? Gender = null);
+    LankaConnect.Products.LankaEvents.Domain.Enums.AgeCategory AgeCategory,
+    LankaConnect.Products.LankaEvents.Domain.Enums.Gender? Gender = null);
 
 // ==================== CUSTOM FORMS REQUEST DTOS ====================
 

@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Enums;
+namespace LankaConnect.Products.LankaEvents.Domain.Enums;
 
 /// <summary>
 /// Phase 6A.148: Per-line-item refund status. Tracked independently of the parent

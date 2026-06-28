@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Services;
+namespace LankaConnect.Products.LankaEvents.Domain.Services;
 
 /// <summary>
 /// Phase 7F-B (architect-approved 2026-04-30): policy carried into

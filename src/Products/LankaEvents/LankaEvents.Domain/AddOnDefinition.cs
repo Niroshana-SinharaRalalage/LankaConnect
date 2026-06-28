@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
 /// Organizer-defined purchasable add-on item for an event.

@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.DomainEvents;
+namespace LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 
 /// <summary>
 /// Domain event raised when a collection (event fund) contribution payment is completed via Stripe webhook.

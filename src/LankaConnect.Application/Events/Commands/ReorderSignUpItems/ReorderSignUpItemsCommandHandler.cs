@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -11,7 +11,7 @@ namespace LankaConnect.Application.Events.Commands.ReorderSignUpItems;
 /// <summary>
 /// Phase 6A.132: Handler for reordering sign-up items within a list.
 /// Loads the event aggregate, finds the list, delegates the set-equality check +
-/// DisplayOrder reassignment to <see cref="Domain.Events.Entities.SignUpList.ReorderItems"/>,
+/// DisplayOrder reassignment to <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.SignUpList.ReorderItems"/>,
 /// and persists. Returns specific failure messages (not-found vs. stale-view) so the client
 /// can decide whether to surface an error or silently refetch.
 /// </summary>

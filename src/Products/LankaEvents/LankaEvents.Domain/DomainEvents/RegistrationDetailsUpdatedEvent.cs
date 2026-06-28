@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.DomainEvents;
+namespace LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 
 /// <summary>
 /// Phase 6A.14: Domain event raised when registration details (attendees/contact) are updated

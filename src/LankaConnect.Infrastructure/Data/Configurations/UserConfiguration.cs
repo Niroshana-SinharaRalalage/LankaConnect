@@ -287,12 +287,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // Configure PreferredMetroAreas many-to-many relationship (Phase 5B + 6A.9 Fix)
         // ADR-009: Domain stores List<Guid> for business logic, EF Core needs entity references for persistence
         // Solution: Shadow navigation property "_preferredMetroAreaEntities" synced with "_preferredMetroAreaIds"
-        builder.HasMany<Domain.Events.MetroArea>("_preferredMetroAreaEntities")
+        builder.HasMany<LankaConnect.Products.LankaEvents.Domain.MetroArea>("_preferredMetroAreaEntities")
             .WithMany()
             .UsingEntity<Dictionary<string, object>>(
                 "user_preferred_metro_areas",
                 j => j
-                    .HasOne<Domain.Events.MetroArea>()
+                    .HasOne<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
                     .WithMany()
                     .HasForeignKey("metro_area_id")
                     .OnDelete(DeleteBehavior.Cascade)

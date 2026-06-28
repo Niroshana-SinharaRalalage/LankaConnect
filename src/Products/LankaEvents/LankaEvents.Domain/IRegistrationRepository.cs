@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Products.LankaEvents.Domain;
 
 public interface IRegistrationRepository : IRepository<Registration>
 {

@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Enums;
+namespace LankaConnect.Products.LankaEvents.Domain.Enums;
 
 /// <summary>
 /// Type of sign-up item based on how quantities are tracked

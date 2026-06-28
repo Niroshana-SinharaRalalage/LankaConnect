@@ -2,12 +2,12 @@ using LankaConnect.Modules.Identity.Contracts; // W4.7.d.3
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Events.Services;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Modules.Identity.Domain.Events;
@@ -175,7 +175,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
                 // Phase 8X.4b — ExternalPaid events have no internal registration path.
                 // Architect-locked guard message wins over the generic NoRegistration message.
-                if (@event.PaymentMode == LankaConnect.Domain.Events.Enums.EventPaymentMode.ExternalPaid)
+                if (@event.PaymentMode == LankaConnect.Products.LankaEvents.Domain.Enums.EventPaymentMode.ExternalPaid)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
@@ -187,7 +187,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
                 // Phase 7E.3a: Dispatch by event.RegistrationMode BEFORE format detection.
                 // Mode C → 400; B-mode → head-count flow; DetailedAttendees → existing logic.
-                if (@event.RegistrationMode == LankaConnect.Domain.Events.Enums.RegistrationMode.NoRegistration)
+                if (@event.RegistrationMode == LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.NoRegistration)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
@@ -198,7 +198,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                         "add-on purchases / collections are still accepted via their own endpoints.");
                 }
 
-                if (@event.RegistrationMode != LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees)
+                if (@event.RegistrationMode != LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.DetailedAttendees)
                 {
                     _logger.LogInformation(
                         "RegisterAnonymousAttendee: Using head-count format - EventId={EventId}, Mode={Mode}",
@@ -419,7 +419,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         // for Preliminary (paid) registrations; free events get the sync
         // conversion in S8.2.C.
         if (pendingSeatAssignments is not null
-            && registration.Status == Domain.Events.Enums.RegistrationStatus.Preliminary)
+            && registration.Status == LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationStatus.Preliminary)
         {
             var stashResult = registration.SetPendingSeatAssignments(
                 request.SeatSessionId!,
@@ -1401,22 +1401,22 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         Result<HeadCountBreakdown> hcResult;
         switch (@event.RegistrationMode)
         {
-            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountOnly:
+            case LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.HeadCountOnly:
                 if (!hc.Total.HasValue)
                     return Result<string?>.Failure("Total head-count is required for HeadCountOnly mode.");
                 hcResult = HeadCountBreakdown.ForTotalOnly(hc.Total.Value, tierCounts);
                 break;
-            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountByAge:
+            case LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.HeadCountByAge:
                 if (!hc.Adults.HasValue || !hc.Children.HasValue)
                     return Result<string?>.Failure("Adults and Children counts are required for HeadCountByAge mode.");
                 hcResult = HeadCountBreakdown.ForByAge(hc.Adults.Value, hc.Children.Value, tierCounts);
                 break;
-            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountByGender:
+            case LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.HeadCountByGender:
                 if (!hc.Males.HasValue || !hc.Females.HasValue)
                     return Result<string?>.Failure("Males and Females counts are required for HeadCountByGender mode.");
                 hcResult = HeadCountBreakdown.ForByGender(hc.Males.Value, hc.Females.Value, tierCounts);
                 break;
-            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountByAgeAndGender:
+            case LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.HeadCountByAgeAndGender:
                 if (!hc.AdultMales.HasValue || !hc.AdultFemales.HasValue ||
                     !hc.ChildMales.HasValue || !hc.ChildFemales.HasValue)
                     return Result<string?>.Failure(

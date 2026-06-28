@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
 using System.Text.RegularExpressions;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Value object representing shared contact information for a registration

@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Products.LankaEvents.Domain;
 
 public interface IEventRepository : IRepository<Event>
 {
@@ -81,7 +81,7 @@ public interface IEventRepository : IRepository<Event>
     /// <c>AssignToZone</c> / <c>AssignToTable</c> / <c>RemoveAssignment</c> operate
     /// on a fully-materialized aggregate. Returns null when the tier does not exist.
     /// </summary>
-    Task<Domain.Events.Entities.TicketTier?> GetTicketTierWithAssignmentsAsync(
+    Task<LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier?> GetTicketTierWithAssignmentsAsync(
         Guid tierId,
         CancellationToken cancellationToken = default);
 
@@ -92,7 +92,7 @@ public interface IEventRepository : IRepository<Event>
     /// of the event's tiers in a single commit. Returns an empty list when the
     /// event has no tiers.
     /// </summary>
-    Task<IReadOnlyList<Domain.Events.Entities.TicketTier>> GetTicketTiersWithAssignmentsForEventAsync(
+    Task<IReadOnlyList<LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier>> GetTicketTiersWithAssignmentsForEventAsync(
         Guid eventId,
         CancellationToken cancellationToken = default);
 }

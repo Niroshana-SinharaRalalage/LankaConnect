@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Value Object representing a user's position on an event's waiting list

@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Value object representing donation configuration for an event.

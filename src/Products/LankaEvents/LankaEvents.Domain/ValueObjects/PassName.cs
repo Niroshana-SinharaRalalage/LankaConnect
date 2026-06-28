@@ -1,13 +1,24 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 public class PassName : ValueObject
 {
-    public string Value { get; }
+    public string Value { get; private set; }
 
-    private PassName(string value)
-    {
+    // W5.1.a-α.3 (2026-06-27): EF Core 8 ComplexProperty cross-assembly binding
+
+
+    // requires parameterless ctor + writable property. Previously worked when
+
+
+    // PassName/PassDescription lived in same assembly as DbContext.
+
+
+    private PassName() { Value = null!; }
+
+
+    private PassName(string value) {
         Value = value;
     }
 

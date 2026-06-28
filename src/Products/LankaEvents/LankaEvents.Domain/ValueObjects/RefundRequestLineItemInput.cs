@@ -1,7 +1,7 @@
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Phase 6A.148: Input describing a single bucket the attendee (or organizer-on-behalf)

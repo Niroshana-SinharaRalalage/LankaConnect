@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Enums;
+namespace LankaConnect.Products.LankaEvents.Domain.Enums;
 
 /// <summary>
 /// Phase 7E: Per-event registration capture mode chosen by the organiser.

@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
 /// Phase 6A.154: a retired vanity URL slug. When an organizer changes or

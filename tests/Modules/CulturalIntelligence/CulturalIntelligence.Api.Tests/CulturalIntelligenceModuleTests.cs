@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Events.Services;
+using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Modules.CulturalIntelligence.Api;
 using LankaConnect.Modules.CulturalIntelligence.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;

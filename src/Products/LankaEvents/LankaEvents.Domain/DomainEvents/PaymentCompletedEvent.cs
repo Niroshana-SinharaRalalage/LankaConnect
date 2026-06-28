@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.DomainEvents;
+namespace LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 
 /// <summary>
 /// Phase 6A.24: Domain event raised when payment is completed for a paid event registration.

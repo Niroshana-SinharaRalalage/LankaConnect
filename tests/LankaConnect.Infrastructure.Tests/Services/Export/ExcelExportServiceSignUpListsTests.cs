@@ -1,7 +1,7 @@
 using ClosedXML.Excel;
 using FluentAssertions;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Infrastructure.Services.Export;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.IO.Compression;

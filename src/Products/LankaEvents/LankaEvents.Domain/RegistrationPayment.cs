@@ -1,8 +1,8 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
 /// Tracks individual payments made for a registration.

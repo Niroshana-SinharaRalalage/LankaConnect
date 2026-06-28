@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
 /// Polymorphic junction between a <see cref="TicketTier"/> and either a <see cref="VenueZone"/>

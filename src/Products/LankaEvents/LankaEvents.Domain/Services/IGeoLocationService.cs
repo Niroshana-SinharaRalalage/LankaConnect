@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Services;
+namespace LankaConnect.Products.LankaEvents.Domain.Services;
 
 /// <summary>
 /// Domain service for geographic distance calculations

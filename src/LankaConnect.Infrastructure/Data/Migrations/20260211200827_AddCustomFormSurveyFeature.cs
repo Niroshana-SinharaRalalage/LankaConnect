@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

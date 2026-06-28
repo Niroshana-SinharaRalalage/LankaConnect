@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.DomainEvents;
+namespace LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 
 /// <summary>
 /// Phase 6A.132: Raised when an organizer reorders the items within a sign-up list.

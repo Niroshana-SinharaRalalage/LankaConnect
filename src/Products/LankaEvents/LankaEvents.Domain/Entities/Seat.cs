@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
 /// Represents a physical seat within a venue zone OR at a banquet table.

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -94,7 +94,7 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
 
                 // Phase 6A.125: Log item details safely (GetCommittedQuantity throws for slot-based items)
                 var itemTypeStr = signUpItem.ItemType.ToString();
-                var capacityInfo = signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Quantity
+                var capacityInfo = signUpItem.ItemType == LankaConnect.Products.LankaEvents.Domain.Enums.SignUpItemType.Quantity
                     ? $"TargetQuantity={signUpItem.TargetQuantity}, CommittedQuantity={signUpItem.GetCommittedQuantity()}"
                     : $"AvailableSlots={signUpItem.AvailableSlots}, FilledSlots={signUpItem.Commitments.Count(c => c.SlotsClaimed > 0)}";
 
@@ -118,7 +118,7 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
                         request.UserId, itemTypeStr);
 
                     // Route to correct update method based on item type
-                    if (signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Slot)
+                    if (signUpItem.ItemType == LankaConnect.Products.LankaEvents.Domain.Enums.SignUpItemType.Slot)
                     {
                         var effectiveSlots = slotsClaimed ?? request.Quantity;
                         commitResult = signUpItem.UpdateSlotCommitment(
@@ -147,7 +147,7 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
                         request.UserId, itemTypeStr);
 
                     // Route to correct create method based on item type
-                    if (signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Slot)
+                    if (signUpItem.ItemType == LankaConnect.Products.LankaEvents.Domain.Enums.SignUpItemType.Slot)
                     {
                         var effectiveSlots = slotsClaimed ?? request.Quantity;
                         commitResult = signUpItem.AddSlotCommitment(

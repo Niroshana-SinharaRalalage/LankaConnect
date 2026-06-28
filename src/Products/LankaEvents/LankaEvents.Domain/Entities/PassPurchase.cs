@@ -1,11 +1,11 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
 /// Entity representing a user's purchase of event passes

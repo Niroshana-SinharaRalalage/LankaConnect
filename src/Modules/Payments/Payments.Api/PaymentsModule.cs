@@ -25,7 +25,7 @@ namespace LankaConnect.Modules.Payments.Api;
 /// <para>
 /// Per architect Risk #1 Option A ruling (2026-06-23), <c>RefundRequest</c> +
 /// <c>RefundRequestLineItem</c> + <c>RegistrationPayment</c> remain Registration
-/// aggregate children in <c>LankaConnect.Domain.Events.Entities</c> -- they
+/// aggregate children in <c>LankaConnect.Products.LankaEvents.Domain.Entities</c> -- they
 /// do NOT move to Payments.Domain at 4.4.d.2 or later.
 /// </para>
 /// </remarks>

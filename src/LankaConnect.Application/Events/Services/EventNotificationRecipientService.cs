@@ -1,11 +1,11 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Communications.Entities; // NewsletterSubscriber (EmailGroup no longer needed post-W5.4.d.1)
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
-using LankaConnect.Domain.Events.Services;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Services;
@@ -282,7 +282,7 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
             "[RCA-MA1-EXACT] No coordinates available, using exact city match for {City}, {State}",
             city, state);
 
-        Domain.Events.MetroArea? metroArea;
+        LankaConnect.Products.LankaEvents.Domain.MetroArea? metroArea;
         try
         {
             metroArea = await _metroAreaRepository.FindByLocationAsync(city, state, cancellationToken);

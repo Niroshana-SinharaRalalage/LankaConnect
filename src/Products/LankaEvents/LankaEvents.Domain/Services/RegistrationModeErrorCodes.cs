@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Services;
+namespace LankaConnect.Products.LankaEvents.Domain.Services;
 
 /// <summary>
 /// Stable error-code constants emitted by <see cref="RegistrationModeCompatibility"/>.

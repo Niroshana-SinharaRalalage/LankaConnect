@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.ValueObjects;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
@@ -63,7 +63,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasColumnName("registration_mode")
             .HasConversion<short>()
             .IsRequired()
-            .HasDefaultValue(LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees);
+            .HasDefaultValue(LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.DetailedAttendees);
 
         // Phase 8X — Per-event EventPaymentMode (Free / OnPlatformPaid / ExternalPaid).
         // Stored as smallint with DB-level DEFAULT 0 so legacy rows materialise as Free;
@@ -541,7 +541,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
     // gate for *new* values. Reflection cost is one-time per slot — EF caches
     // the converter expression compile.
     private static readonly System.Reflection.ConstructorInfo VanitySlugCtor =
-        typeof(LankaConnect.Domain.Events.ValueObjects.EventVanitySlug).GetConstructor(
+        typeof(LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventVanitySlug).GetConstructor(
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
             binder: null,
             types: new[] { typeof(string) },
@@ -549,9 +549,9 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         ?? throw new System.InvalidOperationException(
             "EventVanitySlug private(string) ctor not found — VanitySlug converter cannot materialize values.");
 
-    private static LankaConnect.Domain.Events.ValueObjects.EventVanitySlug? MaterializeVanitySlug(string? raw)
+    private static LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventVanitySlug? MaterializeVanitySlug(string? raw)
     {
         if (raw is null) return null;
-        return (LankaConnect.Domain.Events.ValueObjects.EventVanitySlug)VanitySlugCtor.Invoke(new object[] { raw });
+        return (LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventVanitySlug)VanitySlugCtor.Invoke(new object[] { raw });
     }
 }

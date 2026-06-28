@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events.Entities;

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
@@ -15,23 +15,21 @@ public class EventPassConfiguration : IEntityTypeConfiguration<EventPass>
         builder.Property(ep => ep.Id)
             .ValueGeneratedNever();
 
-        // Configure PassName value object using ComplexProperty (EF Core 8)
-        builder.ComplexProperty(ep => ep.Name, name =>
-        {
-            name.Property(n => n.Value)
-                .HasColumnName("name")
-                .HasMaxLength(100)
-                .IsRequired();
-        });
+        // Wave 5.1.a-α.3 (2026-06-27): PassName/PassDescription VOs decomposed into
+        // scalar string properties + [NotMapped] facades on EventPass (see EventPass.cs).
+        // Same Architect Option A pattern applied to Money for Price. Removes the cross-
+        // assembly ComplexProperty discovery failure (PassDescription "primary key required"
+        // / "no suitable constructor" errors after the W5.1.a-α.3 move to Products).
+        // Columns unchanged: name, description.
+        builder.Property(ep => ep.NameValue)
+            .HasColumnName("name")
+            .HasMaxLength(100)
+            .IsRequired();
 
-        // Configure PassDescription value object using ComplexProperty
-        builder.ComplexProperty(ep => ep.Description, description =>
-        {
-            description.Property(d => d.Value)
-                .HasColumnName("description")
-                .HasMaxLength(500)
-                .IsRequired();
-        });
+        builder.Property(ep => ep.DescriptionValue)
+            .HasColumnName("description")
+            .HasMaxLength(500)
+            .IsRequired();
 
         // Wave 5.1.a-α (2026-06-27): Money decomposed into scalar PriceAmount +
         // PriceCurrency. Direct Property mapping replaces ComplexProperty/OwnsOne

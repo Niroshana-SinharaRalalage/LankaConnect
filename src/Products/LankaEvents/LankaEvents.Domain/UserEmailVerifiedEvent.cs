@@ -1,5 +1,5 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Products.LankaEvents.Domain;
 
 public record UserEmailVerifiedEvent(Guid UserId, string Email) : DomainEvent;

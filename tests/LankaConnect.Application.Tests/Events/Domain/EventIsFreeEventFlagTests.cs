@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Xunit;
@@ -190,7 +190,7 @@ public class EventIsFreeEventFlagTests
 
         var attendees = new List<AttendeeDetails>
         {
-            AttendeeDetails.Create("John Doe", Domain.Events.Enums.AgeCategory.Adult, null).Value
+            AttendeeDetails.Create("John Doe", LankaConnect.Products.LankaEvents.Domain.Enums.AgeCategory.Adult, null).Value
         };
 
         // Act & Assert
@@ -214,7 +214,7 @@ public class EventIsFreeEventFlagTests
         var @event = CreateTestEvent(isFreeEvent: true);
         var attendees = new List<AttendeeDetails>
         {
-            AttendeeDetails.Create("John Doe", Domain.Events.Enums.AgeCategory.Adult, null).Value
+            AttendeeDetails.Create("John Doe", LankaConnect.Products.LankaEvents.Domain.Enums.AgeCategory.Adult, null).Value
         };
 
         // Act

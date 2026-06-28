@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 public record ConflictResolutionSuggestions
 {

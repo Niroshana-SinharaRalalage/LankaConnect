@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.DomainEvents;
+namespace LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 
 /// <summary>
 /// Phase 6A.157 — domain event raised when a packaged sponsorship payment is

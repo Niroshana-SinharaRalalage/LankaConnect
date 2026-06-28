@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.Repositories;
+namespace LankaConnect.Products.LankaEvents.Domain.Repositories;
 
 /// <summary>
 /// Phase 6A.156 — repository contract for the <see cref="SponsorshipPackage"/>

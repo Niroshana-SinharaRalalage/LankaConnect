@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
-namespace LankaConnect.Domain.Events.Services;
+namespace LankaConnect.Products.LankaEvents.Domain.Services;
 
 /// <summary>
 /// Phase 7E.2: Captures the event-shape axes that influence which <see cref="Enums.RegistrationMode"/>s are allowed.

@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
 /// Phase 7F-B (architect-approved 2026-04-30, plan §3.2): per-registration audit row

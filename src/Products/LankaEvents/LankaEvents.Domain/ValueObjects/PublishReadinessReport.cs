@@ -1,11 +1,11 @@
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Slice S4 — enumerated publish-readiness state for a venue layout.
 /// <para>
-/// Distinct from <see cref="LankaConnect.Domain.Events.Entities.VenueLayout.ValidateForEvent"/>:
+/// Distinct from <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.VenueLayout.ValidateForEvent"/>:
 /// that method short-circuits on the FIRST issue and is the authoritative publish gate
-/// (called from <see cref="LankaConnect.Domain.Events.Event.CheckLayoutPublishReadiness"/>
+/// (called from <see cref="LankaConnect.Products.LankaEvents.Domain.Event.CheckLayoutPublishReadiness"/>
 /// inside <c>PublishEventCommandHandler</c>). The report below is a *non-gating* snapshot
 /// surfaced through <c>GET /api/venue-layouts/{id}/publish-readiness</c> so the canvas
 /// editor and seating-section UI can show every issue at once.

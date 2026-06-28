@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Domain.Support.DomainEvents;
 
 /// <summary>
 /// Phase 6A.89: Raised when an admin replies to a support ticket.

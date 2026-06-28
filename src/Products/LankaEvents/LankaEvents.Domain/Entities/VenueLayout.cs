@@ -1,8 +1,8 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
 /// Aggregate root representing a venue seating layout.
@@ -669,7 +669,7 @@ public class VenueLayout : LegacyBaseEntity
     /// <remarks>
     /// The strict publish gate is still <see cref="ValidateForEvent"/> with
     /// <c>requireTierMapping=true</c> (called by
-    /// <see cref="LankaConnect.Domain.Events.Event.CheckLayoutPublishReadiness"/>).
+    /// <see cref="LankaConnect.Products.LankaEvents.Domain.Event.CheckLayoutPublishReadiness"/>).
     /// This method must remain semantically *broader-or-equal* to that gate — every
     /// failure ValidateForEvent would surface MUST appear here as a blocker, plus
     /// the additional checks (table mapping, multi-zone tier-total capacity, empty

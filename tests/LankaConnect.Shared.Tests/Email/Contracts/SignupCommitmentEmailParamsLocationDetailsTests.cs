@@ -16,7 +16,7 @@ namespace LankaConnect.Shared.Tests.Email.Contracts;
 ///   - <c>ToDictionary()</c> stays safe when no projection was supplied
 ///
 /// Together with the template rewrite migration this removes the GPS-coordinate suffix
-/// that <see cref="LankaConnect.Domain.Events.ValueObjects.EventLocation.ToString"/>
+/// that <see cref="LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventLocation.ToString"/>
 /// currently leaks into the three signup/volunteer commitment emails.
 /// </summary>
 public class SignupCommitmentEmailParamsLocationDetailsTests

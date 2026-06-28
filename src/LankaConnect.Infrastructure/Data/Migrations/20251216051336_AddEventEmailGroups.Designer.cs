@@ -1083,7 +1083,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("replies", "community");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.EventBadge", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -1133,7 +1133,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("event_badges", "badges");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpCommitment", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpCommitment", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -1199,7 +1199,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("sign_up_commitments", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpItem", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -1255,7 +1255,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("sign_up_items", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpList", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpList", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -1331,7 +1331,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("sign_up_lists", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.Ticket", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.Ticket", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -1389,7 +1389,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("tickets", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Event", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Event", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -1449,7 +1449,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("events", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.EventImage", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.EventImage", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -1498,7 +1498,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("EventImages", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.EventTemplate", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.EventTemplate", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -1569,7 +1569,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("event_templates", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.EventVideo", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.EventVideo", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -1634,7 +1634,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("EventVideos", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.MetroArea", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.MetroArea", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -1700,7 +1700,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("metro_areas", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Registration", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Registration", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -2646,7 +2646,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.EventBadge", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge", b =>
                 {
                     b.HasOne("LankaConnect.Domain.Badges.Badge", "Badge")
                         .WithMany()
@@ -2654,7 +2654,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Event", null)
                         .WithMany("Badges")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2663,46 +2663,46 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Navigation("Badge");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpCommitment", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpCommitment", b =>
                 {
-                    b.HasOne("LankaConnect.Domain.Events.Entities.SignUpItem", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpItem", null)
                         .WithMany("Commitments")
                         .HasForeignKey("SignUpItemId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("LankaConnect.Domain.Events.Entities.SignUpList", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpList", null)
                         .WithMany("Commitments")
                         .HasForeignKey("SignUpListId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpItem", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpItem", b =>
                 {
-                    b.HasOne("LankaConnect.Domain.Events.Entities.SignUpList", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpList", null)
                         .WithMany("Items")
                         .HasForeignKey("SignUpListId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpList", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpList", b =>
                 {
-                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Event", null)
                         .WithMany("SignUpLists")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.Ticket", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.Ticket", b =>
                 {
-                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Event", null)
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("LankaConnect.Domain.Events.Registration", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Registration", null)
                         .WithMany()
                         .HasForeignKey("RegistrationId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2714,7 +2714,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Event", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Event", b =>
                 {
                     b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "TicketPrice", b1 =>
                         {
@@ -2737,7 +2737,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 .HasForeignKey("EventId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventDescription", "Description", b1 =>
+                    b.OwnsOne("LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventDescription", "Description", b1 =>
                         {
                             b1.Property<Guid>("EventId")
                                 .HasColumnType("uuid");
@@ -2756,7 +2756,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 .HasForeignKey("EventId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventLocation", "Location", b1 =>
+                    b.OwnsOne("LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventLocation", "Location", b1 =>
                         {
                             b1.Property<Guid>("EventId")
                                 .HasColumnType("uuid");
@@ -2846,7 +2846,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             b1.Navigation("Coordinates");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventTitle", "Title", b1 =>
+                    b.OwnsOne("LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventTitle", "Title", b1 =>
                         {
                             b1.Property<Guid>("EventId")
                                 .HasColumnType("uuid");
@@ -2865,7 +2865,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 .HasForeignKey("EventId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.TicketPricing", "Pricing", b1 =>
+                    b.OwnsOne("LankaConnect.Products.LankaEvents.Domain.ValueObjects.TicketPricing", "Pricing", b1 =>
                         {
                             b1.Property<Guid>("EventId")
                                 .HasColumnType("uuid");
@@ -2888,7 +2888,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("EventId");
 
-                            b1.OwnsMany("LankaConnect.Domain.Events.ValueObjects.GroupPricingTier", "GroupTiers", b2 =>
+                            b1.OwnsMany("LankaConnect.Products.LankaEvents.Domain.ValueObjects.GroupPricingTier", "GroupTiers", b2 =>
                                 {
                                     b2.Property<Guid>("TicketPricingEventId")
                                         .HasColumnType("uuid");
@@ -2982,7 +2982,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             b1.Navigation("GroupTiers");
                         });
 
-                    b.OwnsMany("LankaConnect.Domain.Events.ValueObjects.WaitingListEntry", "WaitingList", b1 =>
+                    b.OwnsMany("LankaConnect.Products.LankaEvents.Domain.ValueObjects.WaitingListEntry", "WaitingList", b1 =>
                         {
                             b1.Property<Guid>("Id")
                                 .ValueGeneratedOnAdd()
@@ -3033,27 +3033,27 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Navigation("WaitingList");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.EventImage", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.EventImage", b =>
                 {
-                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Event", null)
                         .WithMany("Images")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.EventVideo", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.EventVideo", b =>
                 {
-                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Event", null)
                         .WithMany("Videos")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Registration", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Registration", b =>
                 {
-                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Event", null)
                         .WithMany("Registrations")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3083,7 +3083,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 .HasForeignKey("RegistrationId");
                         });
 
-                    b.OwnsMany("LankaConnect.Domain.Events.ValueObjects.AttendeeDetails", "Attendees", b1 =>
+                    b.OwnsMany("LankaConnect.Products.LankaEvents.Domain.ValueObjects.AttendeeDetails", "Attendees", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
@@ -3111,7 +3111,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 .HasForeignKey("RegistrationId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.AttendeeInfo", "AttendeeInfo", b1 =>
+                    b.OwnsOne("LankaConnect.Products.LankaEvents.Domain.ValueObjects.AttendeeInfo", "AttendeeInfo", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
@@ -3170,7 +3170,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 .IsRequired();
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.RegistrationContact", "Contact", b1 =>
+                    b.OwnsOne("LankaConnect.Products.LankaEvents.Domain.ValueObjects.RegistrationContact", "Contact", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
@@ -3494,7 +3494,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.Event", null)
                         .WithMany()
                         .HasForeignKey("event_id")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3503,7 +3503,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("user_preferred_metro_areas", b =>
                 {
-                    b.HasOne("LankaConnect.Domain.Events.MetroArea", null)
+                    b.HasOne("LankaConnect.Products.LankaEvents.Domain.MetroArea", null)
                         .WithMany()
                         .HasForeignKey("metro_area_id")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3532,19 +3532,19 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Navigation("Replies");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpItem", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpItem", b =>
                 {
                     b.Navigation("Commitments");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpList", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Entities.SignUpList", b =>
                 {
                     b.Navigation("Commitments");
 
                     b.Navigation("Items");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Event", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Event", b =>
                 {
                     b.Navigation("Badges");
 

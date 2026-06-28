@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Phase 7E: Demographic axis of <see cref="HeadCountBreakdown"/>. Carries optional per-axis

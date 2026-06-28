@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -85,12 +85,12 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.HasIndex(t => t.UserId);
 
         // Relationships
-        builder.HasOne<LankaConnect.Domain.Events.Registration>()
+        builder.HasOne<LankaConnect.Products.LankaEvents.Domain.Registration>()
             .WithMany()
             .HasForeignKey(t => t.RegistrationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<LankaConnect.Domain.Events.Event>()
+        builder.HasOne<LankaConnect.Products.LankaEvents.Domain.Event>()
             .WithMany()
             .HasForeignKey(t => t.EventId)
             .OnDelete(DeleteBehavior.Restrict);

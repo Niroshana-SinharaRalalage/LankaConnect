@@ -2,11 +2,11 @@ using Azure.Storage.Blobs;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -184,7 +184,7 @@ public class TicketService : ITicketService
 
             // Phase 8: Build ticket type label for PDF
             string? ticketType = null;
-            if (@event.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered
+            if (@event.TicketingMode == LankaConnect.Products.LankaEvents.Domain.Enums.TicketingMode.Tiered
                 && registration.Attendees.Any(a => a.TicketTierName != null))
             {
                 var tierGroups = registration.Attendees

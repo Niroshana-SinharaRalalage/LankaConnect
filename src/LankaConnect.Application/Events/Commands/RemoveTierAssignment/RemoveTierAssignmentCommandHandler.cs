@@ -1,9 +1,9 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -12,7 +12,7 @@ namespace LankaConnect.Application.Events.Commands.RemoveTierAssignment;
 /// <summary>
 /// Slice 5 Chunk 8: tier-assignment delete handler. Symmetric to
 /// <see cref="AssignTier.AssignTierCommandHandler"/>, but calls
-/// <see cref="Domain.Events.Entities.TicketTier.RemoveAssignment"/>.
+/// <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier.RemoveAssignment"/>.
 /// Returns <c>NotFound</c> when no matching assignment exists.
 /// </summary>
 public class RemoveTierAssignmentCommandHandler : ICommandHandler<RemoveTierAssignmentCommand>

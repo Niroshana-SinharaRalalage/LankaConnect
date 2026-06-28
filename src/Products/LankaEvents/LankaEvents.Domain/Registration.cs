@@ -1,11 +1,11 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Products.LankaEvents.Domain;
 
 public class Registration : LegacyBaseEntity
 {
@@ -950,7 +950,7 @@ public class Registration : LegacyBaseEntity
     /// is the workflow-aware counterpart: allowed from <c>{RefundRequested, Cancelled}</c>
     /// when <c>RefundCompletedAt</c> hasn't been set yet, idempotent on repeat calls.
     ///
-    /// Used by <see cref="LankaConnect.Domain.Events.Registration"/>'s
+    /// Used by <see cref="LankaConnect.Products.LankaEvents.Domain.Registration"/>'s
     /// <c>RegistrationWebhookHandler</c> workflow-aware branch (W5.D5) when a workflow-owned
     /// ticket refund's <c>charge.refunded</c> webhook arrives.
     ///

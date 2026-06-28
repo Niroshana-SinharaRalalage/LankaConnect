@@ -17,6 +17,7 @@
       Mirrors the W5.4.d.2 Communications.Domain -> LankaConnect.Domain edge.
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
 
 </Project>

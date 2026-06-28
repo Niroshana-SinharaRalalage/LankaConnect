@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Value object representing an event's physical location.

@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Represents a selectable option for choice-type form questions (SingleChoice, MultipleChoice, Dropdown).

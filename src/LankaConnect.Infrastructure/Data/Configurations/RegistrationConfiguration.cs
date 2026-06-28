@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL;  // Issue #56 FIX: For UseXminAsConcurrencyToken()
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
@@ -295,7 +295,7 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
             .HasColumnName("registration_mode")
             .HasConversion<short>()
             .IsRequired()
-            .HasDefaultValue(LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees);
+            .HasDefaultValue(LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.DetailedAttendees);
 
         // Phase 7E: Lead attendee name. Populated only for head-count modes (B1-B4).
         builder.Property(r => r.LeadAttendeeName)

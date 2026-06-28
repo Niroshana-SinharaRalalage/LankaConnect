@@ -16,6 +16,7 @@
       direct BB.Entity<Guid> + IAuditable (W3A pattern) deferred to W4.8 Cross-cutting cleanup.
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Phase 6A.141 — Paid-Event Ticket Check-in (QR Scanner) end-to-end.

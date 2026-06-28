@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
 /// Junction CLR entity for the Event -> EmailGroup many-to-many relationship.

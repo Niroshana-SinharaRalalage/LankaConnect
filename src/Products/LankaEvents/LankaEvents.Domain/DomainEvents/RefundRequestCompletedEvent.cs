@@ -1,11 +1,11 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.DomainEvents;
+namespace LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 
 /// <summary>
-/// Phase 6A.148.W5.6.B — raised from <see cref="LankaConnect.Domain.Events.Entities.RefundRequest.MarkCompletedIfAllSettled"/>
-/// at the exact moment the request's <see cref="LankaConnect.Domain.Events.Enums.RefundRequestStatus"/>
-/// flips to <see cref="LankaConnect.Domain.Events.Enums.RefundRequestStatus.Completed"/>.
+/// Phase 6A.148.W5.6.B — raised from <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequest.MarkCompletedIfAllSettled"/>
+/// at the exact moment the request's <see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RefundRequestStatus"/>
+/// flips to <see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RefundRequestStatus.Completed"/>.
 ///
 /// Replaces the workflow-path use of <see cref="RefundCompletedEvent"/> (which was emitted
 /// from the entity-level <c>Registration.CompleteRefundFromCancelled</c> when a single
@@ -18,9 +18,9 @@ namespace LankaConnect.Domain.Events.DomainEvents;
 ///
 /// This event is raised from inside the aggregate's <c>MarkCompletedIfAllSettled</c>
 /// state-machine guard <c>_lineItems.All(...terminal)</c> — so by construction every
-/// line item is in a terminal state (<see cref="LankaConnect.Domain.Events.Enums.RefundLineItemStatus.Refunded"/>,
-/// <see cref="LankaConnect.Domain.Events.Enums.RefundLineItemStatus.Failed"/>, or
-/// <see cref="LankaConnect.Domain.Events.Enums.RefundLineItemStatus.Rejected"/>) at the
+/// line item is in a terminal state (<see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemStatus.Refunded"/>,
+/// <see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemStatus.Failed"/>, or
+/// <see cref="LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemStatus.Rejected"/>) at the
 /// moment the event fires. The total carried below is therefore the final settled
 /// amount; no race window can produce an undercount.
 ///

@@ -1,7 +1,7 @@
 using System.Net;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.ValueObjects;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Phase 8X — External registration details for an <see cref="Enums.EventPaymentMode.ExternalPaid"/> event.

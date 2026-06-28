@@ -2,10 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -151,7 +151,7 @@ public class RegistrationAdditionConfiguration : IEntityTypeConfiguration<Regist
             .HasColumnName("registration_mode")
             .HasConversion<short>()
             .IsRequired()
-            .HasDefaultValue(LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees);
+            .HasDefaultValue(LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationMode.DetailedAttendees);
 
         // Phase 7F-D: optional Mode-B head-count delta. jsonb with deep-copy ValueComparer
         // (memory 6A.129) so EF detects changes when the delta's nested TierCount or

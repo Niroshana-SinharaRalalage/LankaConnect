@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Services;
+namespace LankaConnect.Products.LankaEvents.Domain.Services;
 
 /// <summary>
 /// Phase 6A.97: Service to lookup IANA timezone from US state location.

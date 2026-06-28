@@ -1,9 +1,9 @@
 using System.Globalization;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
-namespace LankaConnect.Domain.Events.Presets;
+namespace LankaConnect.Products.LankaEvents.Domain.Presets;
 
 /// <summary>
 /// Slice 6 Chunk S6.1: industry-standard layout presets. Produces a fully-populated

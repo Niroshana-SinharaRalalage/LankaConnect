@@ -4,7 +4,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 
@@ -42,8 +42,8 @@ public class WhatsAppBackgroundJobTests
 
     private static Event CreateRealEvent(Guid eventId, string title = "Test Event")
     {
-        var eventTitle = LankaConnect.Domain.Events.ValueObjects.EventTitle.Create(title).Value;
-        var eventDesc = LankaConnect.Domain.Events.ValueObjects.EventDescription.Create("Test description").Value;
+        var eventTitle = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventTitle.Create(title).Value;
+        var eventDesc = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventDescription.Create("Test description").Value;
 
         var evt = Event.Create(
             eventTitle,
@@ -53,7 +53,7 @@ public class WhatsAppBackgroundJobTests
             Guid.NewGuid(),
             100,
             null,
-            LankaConnect.Domain.Events.Enums.EventCategory.Community).Value;
+            LankaConnect.Products.LankaEvents.Domain.Enums.EventCategory.Community).Value;
 
         evt.SetAsFreeEvent();
 
@@ -316,16 +316,16 @@ public class WhatsAppBackgroundJobTests
             .Create("123 Main St", "Atlanta", "GA", "30301", "US").Value;
 
         // Create a real EventLocation wrapping the address
-        var realLocation = LankaConnect.Domain.Events.ValueObjects.EventLocation
+        var realLocation = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventLocation
             .Create(realAddress).Value;
 
         // Create a real event with the physical location
-        var eventTitle = LankaConnect.Domain.Events.ValueObjects.EventTitle.Create("Annual Gala").Value;
-        var eventDesc = LankaConnect.Domain.Events.ValueObjects.EventDescription.Create("Test").Value;
+        var eventTitle = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventTitle.Create("Annual Gala").Value;
+        var eventDesc = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventDescription.Create("Test").Value;
         var realEvent = Event.Create(eventTitle, eventDesc,
             DateTime.UtcNow.AddDays(14), DateTime.UtcNow.AddDays(14).AddHours(2),
             Guid.NewGuid(), 100, realLocation,
-            LankaConnect.Domain.Events.Enums.EventCategory.Community).Value;
+            LankaConnect.Products.LankaEvents.Domain.Enums.EventCategory.Community).Value;
         realEvent.SetAsFreeEvent();
         typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")?.SetValue(realEvent, eventId);
 

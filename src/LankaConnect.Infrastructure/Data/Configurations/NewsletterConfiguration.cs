@@ -135,12 +135,12 @@ public class NewsletterConfiguration : IEntityTypeConfiguration<Newsletter>
         // Phase 6A.74 Enhancement 1: Metro Areas - Many-to-Many Relationship
         // Junction table for location targeting (non-event newsletters)
         builder
-            .HasMany<Domain.Events.MetroArea>("_metroAreaEntities")
+            .HasMany<LankaConnect.Products.LankaEvents.Domain.MetroArea>("_metroAreaEntities")
             .WithMany()
             .UsingEntity<Dictionary<string, object>>(
                 "newsletter_metro_areas",
                 j => j
-                    .HasOne<Domain.Events.MetroArea>()
+                    .HasOne<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
                     .WithMany()
                     .HasForeignKey("metro_area_id")
                     .OnDelete(DeleteBehavior.Cascade),
@@ -169,7 +169,7 @@ public class NewsletterConfiguration : IEntityTypeConfiguration<Newsletter>
             .OnDelete(DeleteBehavior.Restrict); // Don't cascade delete newsletters when user is deleted
 
         // Foreign key to events table (nullable)
-        builder.HasOne<Domain.Events.Event>()
+        builder.HasOne<LankaConnect.Products.LankaEvents.Domain.Event>()
             .WithMany()
             .HasForeignKey(n => n.EventId)
             .OnDelete(DeleteBehavior.SetNull) // Set to null if event is deleted (preserve newsletter)

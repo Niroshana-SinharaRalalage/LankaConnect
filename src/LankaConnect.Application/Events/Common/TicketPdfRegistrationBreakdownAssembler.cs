@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 
 namespace LankaConnect.Application.Events.Common;

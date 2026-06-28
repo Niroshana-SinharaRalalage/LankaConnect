@@ -4,9 +4,9 @@ using AutoMapper;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
@@ -696,7 +696,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
             ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
 
-        var metroArea = await dbContext.Set<Domain.Events.MetroArea>()
+        var metroArea = await dbContext.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
             .FindAsync(new object[] { metroAreaId }, cancellationToken);
 
         if (metroArea != null)
@@ -717,7 +717,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
             ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
 
-        var metroArea = await dbContext.Set<Domain.Events.MetroArea>()
+        var metroArea = await dbContext.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
             .FindAsync(new object[] { metroAreaId }, cancellationToken);
 
         if (metroArea != null)
@@ -742,7 +742,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
             ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
 
-        var metroArea = await dbContext.Set<Domain.Events.MetroArea>()
+        var metroArea = await dbContext.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
             .FirstOrDefaultAsync(m => m.Name.ToLower() == city.ToLower()
                                    && m.State.ToLower() == state.ToLower(),
                                    cancellationToken);

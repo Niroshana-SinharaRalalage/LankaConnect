@@ -1,9 +1,9 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
 /// Standalone collection (event fund) contribution entity with its own payment lifecycle.

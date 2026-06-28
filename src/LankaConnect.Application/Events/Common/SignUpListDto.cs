@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
 namespace LankaConnect.Application.Events.Common;
 

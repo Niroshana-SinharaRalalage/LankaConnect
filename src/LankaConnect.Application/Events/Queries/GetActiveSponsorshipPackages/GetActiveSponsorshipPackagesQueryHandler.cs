@@ -1,8 +1,8 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Queries.GetActiveSponsorshipPackages;
@@ -49,7 +49,7 @@ public class GetActiveSponsorshipPackagesQueryHandler
 
             // Server-side filter chain — any failure short-circuits to empty
             // so the FE simply hides the package grid (no error UX needed).
-            if (@event.Status != Domain.Events.Enums.EventStatus.Published)
+            if (@event.Status != LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published)
                 return Result<IReadOnlyList<SponsorshipPackagePublicDto>>.Success(empty);
 
             if (!@event.AreSponsorsEnabled())

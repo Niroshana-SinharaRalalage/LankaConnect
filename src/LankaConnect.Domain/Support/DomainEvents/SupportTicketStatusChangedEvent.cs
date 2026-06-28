@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Support.Enums;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Domain.Support.DomainEvents;
 
 /// <summary>
 /// Phase 6A.89: Raised when a support ticket status changes.

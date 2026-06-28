@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Events.ValueObjects;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
 
 namespace LankaConnect.Domain.Tests.Events;
 

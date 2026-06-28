@@ -1,5 +1,5 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Products.LankaEvents.Domain;
 
 public record UserPasswordChangedEvent(Guid UserId, string Email) : DomainEvent;

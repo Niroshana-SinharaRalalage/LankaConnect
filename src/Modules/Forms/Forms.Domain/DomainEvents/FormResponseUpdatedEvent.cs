@@ -1,5 +1,5 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Forms.Domain.Entities;
 
 namespace LankaConnect.Modules.Forms.Domain.DomainEvents;

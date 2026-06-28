@@ -75,6 +75,13 @@ public class UserIdImportTests
         if (System.IO.File.Exists(identityContractsPath))
             references.Add(MetadataReference.CreateFromFile(identityContractsPath));
 
+        // Wave 5.1.a-α.3 (2026-06-27): Event family moved to Products/LankaEvents.Domain.
+        // Application files reference Event/Registration/EventPass/etc. types now in
+        // LankaConnect.Products.LankaEvents.Domain.
+        var lankaEventsDomainPath = ResolveAssembly(System.IO.Path.Combine("Products", "LankaEvents", "LankaEvents.Domain"), "LankaConnect.Products.LankaEvents.Domain");
+        if (System.IO.File.Exists(lankaEventsDomainPath))
+            references.Add(MetadataReference.CreateFromFile(lankaEventsDomainPath));
+
         return references.ToArray();
     }
 }

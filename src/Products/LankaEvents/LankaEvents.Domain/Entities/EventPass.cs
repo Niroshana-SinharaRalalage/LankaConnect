@@ -1,10 +1,10 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
 /// Entity representing a pass/ticket type for an event
@@ -21,13 +21,21 @@ public class EventPass : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaC
 
     public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.IDomainEvent> GetDomainEvents() => DomainEvents;
 
-    public PassName Name { get; private set; }
-    public PassDescription Description { get; private set; }
+    // Wave 5.1.a-α.3 (2026-06-27): PassName/PassDescription VOs decomposed to scalar
+    // strings + [NotMapped] facades — same Option A pattern applied to Money for
+    // EventPass.Price. PassName/PassDescription are cross-assembly ComplexProperty
+    // types after the move; EF Core 8 fails to bind their private constructors at
+    // model discovery. Scalar pattern removes them from EF's model graph entirely.
+    public string NameValue { get; private set; }
+    public string DescriptionValue { get; private set; }
 
-    // Wave 5.1.a-α (2026-06-27): Money decomposed into 2 scalar columns + [NotMapped]
-    // facade. Architect ruling Option A: removes Money from EF's model graph for this
-    // aggregate so the cross-assembly shared-type-entity collision (W5.1 rollback)
-    // dissolves when EventPass moves to Products.LankaEvents.Domain in W5.1.a-α.3.
+    [NotMapped]
+    public PassName Name => PassName.Create(NameValue).Value;
+
+    [NotMapped]
+    public PassDescription Description => PassDescription.Create(DescriptionValue).Value;
+
+    // Wave 5.1.a-α (2026-06-27): Money decomposed into 2 scalar columns + [NotMapped] facade.
     public decimal PriceAmount { get; private set; }
     public Currency PriceCurrency { get; private set; }
 
@@ -42,8 +50,8 @@ public class EventPass : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaC
     // EF Core constructor
     private EventPass()
     {
-        Name = null!;
-        Description = null!;
+        NameValue = null!;
+        DescriptionValue = null!;
     }
 
     private EventPass(PassName name, PassDescription description, Money price, int totalQuantity)
@@ -51,8 +59,8 @@ public class EventPass : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaC
         // W3C (2026-06-06): explicit Id init — see Notification W3A migration notes.
         Id = Guid.NewGuid();
         CreatedAt = DateTime.UtcNow;
-        Name = name;
-        Description = description;
+        NameValue = name.Value;
+        DescriptionValue = description.Value;
         PriceAmount = price.Amount;
         PriceCurrency = price.Currency;
         TotalQuantity = totalQuantity;
@@ -129,8 +137,8 @@ public class EventPass : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaC
         if (price == null)
             return Result.Failure("Pass price is required");
 
-        Name = name;
-        Description = description;
+        NameValue = name.Value;
+        DescriptionValue = description.Value;
         PriceAmount = price.Amount;
         PriceCurrency = price.Currency;
 

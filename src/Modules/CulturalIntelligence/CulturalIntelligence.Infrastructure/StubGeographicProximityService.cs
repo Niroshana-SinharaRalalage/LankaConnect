@@ -1,7 +1,7 @@
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Services;
-using LankaConnect.Domain.Events.ValueObjects.Recommendations;
+using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
 
 namespace LankaConnect.Modules.CulturalIntelligence.Infrastructure;
 

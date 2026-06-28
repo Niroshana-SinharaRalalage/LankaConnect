@@ -10,7 +10,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     ///
     /// Drops NOT NULL on <c>events.events.StartDate</c> and <c>events.events.EndDate</c>
     /// so events can be created in the new <c>EventStatus.Planning</c> state without
-    /// committing to start/end dates yet. <see cref="LankaConnect.Domain.Events.Event.SetDates"/>
+    /// committing to start/end dates yet. <see cref="LankaConnect.Products.LankaEvents.Domain.Event.SetDates"/>
     /// transitions a Planning event to Draft once both dates are filled in.
     ///
     /// Architect verdict 2026-05-08 (Q1=A): TBD events can be Published; the listing

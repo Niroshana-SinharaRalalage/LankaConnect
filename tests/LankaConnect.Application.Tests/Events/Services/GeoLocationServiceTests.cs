@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Events.Services;
+using LankaConnect.Products.LankaEvents.Domain.Services;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Services;

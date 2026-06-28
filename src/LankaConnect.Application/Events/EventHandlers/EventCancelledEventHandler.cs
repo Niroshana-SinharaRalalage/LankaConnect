@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Hangfire;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Events.BackgroundJobs;
-using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

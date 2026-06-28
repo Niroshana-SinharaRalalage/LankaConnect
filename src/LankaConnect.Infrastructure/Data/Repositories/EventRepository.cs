@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Services;
+using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Infrastructure.Helpers;
 using System.Diagnostics;
 using Serilog.Context;
@@ -469,7 +469,7 @@ public class EventRepository : Repository<Event>, IEventRepository
     {
         if (string.IsNullOrWhiteSpace(slug)) return null;
 
-        var voResult = LankaConnect.Domain.Events.ValueObjects.EventVanitySlug.Create(slug.Trim().ToLowerInvariant());
+        var voResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventVanitySlug.Create(slug.Trim().ToLowerInvariant());
         if (voResult.IsFailure || voResult.Value is null) return null;
         var slugVo = voResult.Value;
 
@@ -483,7 +483,7 @@ public class EventRepository : Repository<Event>, IEventRepository
     {
         if (string.IsNullOrWhiteSpace(slug)) return false;
 
-        var voResult = LankaConnect.Domain.Events.ValueObjects.EventVanitySlug.Create(slug.Trim().ToLowerInvariant());
+        var voResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventVanitySlug.Create(slug.Trim().ToLowerInvariant());
         if (voResult.IsFailure || voResult.Value is null) return false;
         var slugVo = voResult.Value;
 
@@ -921,31 +921,31 @@ public class EventRepository : Repository<Event>, IEventRepository
     }
 
     /// <summary>
-    /// Slice 5 Chunk 8: loads a <see cref="Domain.Events.Entities.TicketTier"/> with its
+    /// Slice 5 Chunk 8: loads a <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier"/> with its
     /// polymorphic <c>Assignments</c> collection eager-loaded. Tracked so
     /// <c>AssignToZone</c> / <c>RemoveAssignment</c> domain mutations persist through
     /// <c>SaveChanges</c>.
     /// </summary>
-    public async Task<Domain.Events.Entities.TicketTier?> GetTicketTierWithAssignmentsAsync(
+    public async Task<LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier?> GetTicketTierWithAssignmentsAsync(
         Guid tierId,
         CancellationToken cancellationToken = default)
     {
-        return await _context.Set<Domain.Events.Entities.TicketTier>()
+        return await _context.Set<LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier>()
             .Include(t => t.Assignments)
             .FirstOrDefaultAsync(t => t.Id == tierId, cancellationToken);
     }
 
     /// <summary>
-    /// Slice 8 S8.8c: loads every <see cref="Domain.Events.Entities.TicketTier"/>
+    /// Slice 8 S8.8c: loads every <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier"/>
     /// belonging to the given event with its polymorphic <c>Assignments</c>
     /// collection eager-loaded. Tracked so batch tier-reconciliation domain
     /// mutations persist through <c>SaveChanges</c>.
     /// </summary>
-    public async Task<IReadOnlyList<Domain.Events.Entities.TicketTier>> GetTicketTiersWithAssignmentsForEventAsync(
+    public async Task<IReadOnlyList<LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier>> GetTicketTiersWithAssignmentsForEventAsync(
         Guid eventId,
         CancellationToken cancellationToken = default)
     {
-        return await _context.Set<Domain.Events.Entities.TicketTier>()
+        return await _context.Set<LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier>()
             .Include(t => t.Assignments)
             .Where(t => t.EventId == eventId)
             .ToListAsync(cancellationToken);

@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
 /// Represents an organizer contact for an event.

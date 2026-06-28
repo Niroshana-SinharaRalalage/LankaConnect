@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Events.Services;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -87,11 +87,11 @@ public class CreatePackageSponsorCommandHandler : ICommandHandler<CreatePackageS
                 if (@event == null)
                     return Result<CreatePackageSponsorResult>.Failure("Event not found");
 
-                if (@event.Status != Domain.Events.Enums.EventStatus.Published)
+                if (@event.Status != LankaConnect.Products.LankaEvents.Domain.Enums.EventStatus.Published)
                     return Result<CreatePackageSponsorResult>.Failure("Sponsorship packages are only available for published events");
 
                 // 2. Reject ExternalPaid events (architect decision #15)
-                if (@event.PaymentMode == Domain.Events.Enums.EventPaymentMode.ExternalPaid)
+                if (@event.PaymentMode == LankaConnect.Products.LankaEvents.Domain.Enums.EventPaymentMode.ExternalPaid)
                     return Result<CreatePackageSponsorResult>.Failure("Sponsorship packages are not supported on externally-paid events");
 
                 // 3. Validate sponsors enabled AND packages enabled

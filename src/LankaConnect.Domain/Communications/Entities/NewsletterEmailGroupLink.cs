@@ -4,7 +4,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// Junction CLR entity for the Newsletter -> EmailGroup many-to-many relationship.
 /// Holds only the foreign-key Guids — NO CLR navigation to the EmailGroup
 /// aggregate root. Mirrors the
-/// <see cref="LankaConnect.Domain.Events.Entities.EventEmailGroupLink"/>
+/// <see cref="LankaConnect.Products.LankaEvents.Domain.Entities.EventEmailGroupLink"/>
 /// pattern; both share the same rationale (EF Core 8 cannot model a typed
 /// M2M nav once the linked aggregate moves to a different module, and
 /// the prior Wave 4.1.2 + 5.4 attempts proved this).

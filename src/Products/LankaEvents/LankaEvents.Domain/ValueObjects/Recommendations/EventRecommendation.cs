@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.ValueObjects.Recommendations;
+namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
 
 /// <summary>
 /// Core Event Recommendation value object containing event and computed recommendation score

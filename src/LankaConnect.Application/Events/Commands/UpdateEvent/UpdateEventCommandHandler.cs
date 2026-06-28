@@ -4,11 +4,11 @@ using LankaConnect.Application.Events.Commands.CreateEvent;
 using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.Enums; // Phase 8X: EventPaymentMode
-using LankaConnect.Domain.Events.Services; // Phase 6A.X: Revenue breakdown
-using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.Enums; // Phase 8X: EventPaymentMode
+using LankaConnect.Products.LankaEvents.Domain.Services; // Phase 6A.X: Revenue breakdown
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using Microsoft.Extensions.Logging;
@@ -330,10 +330,10 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         // from 6A.153 — unrelated edits don't accidentally clear the slug.
         if (request.UpdateVanitySlug)
         {
-            LankaConnect.Domain.Events.ValueObjects.EventVanitySlug? slug = null;
+            LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventVanitySlug? slug = null;
             if (!string.IsNullOrWhiteSpace(request.VanitySlug))
             {
-                var slugResult = LankaConnect.Domain.Events.ValueObjects.EventVanitySlug.Create(request.VanitySlug);
+                var slugResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.EventVanitySlug.Create(request.VanitySlug);
                 if (slugResult.IsFailure)
                 {
                     _logger.LogWarning(
@@ -623,7 +623,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         {
             // Validate the requested mode against the post-update event shape (using the just-applied
             // pricing/free state). Same compatibility helper that CreateEvent uses — single source of truth.
-            var modeContext = new LankaConnect.Domain.Events.Services.RegistrationModeContext
+            var modeContext = new LankaConnect.Products.LankaEvents.Domain.Services.RegistrationModeContext
             {
                 IsFreeAttendance = @event.IsFreeEvent,
                 // Phase 8X.11 — pass payment-mode axis so the compatibility helper rejects
@@ -636,7 +636,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 // Other axes (named seating, identity-bound add-on, per-ticket name, matrix pricing)
                 // are not yet modelled on Event — they default to false. Phase 7F revisits.
             };
-            var modeCompatibility = LankaConnect.Domain.Events.Services
+            var modeCompatibility = LankaConnect.Products.LankaEvents.Domain.Services
                 .RegistrationModeCompatibility.Check(request.RegistrationMode.Value, modeContext);
             if (modeCompatibility.IsFailure)
             {

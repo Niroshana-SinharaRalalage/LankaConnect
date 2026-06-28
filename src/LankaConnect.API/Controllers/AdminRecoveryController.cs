@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Events;
+using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
@@ -91,7 +91,7 @@ public class AdminRecoveryController : ControllerBase
             }
 
             // Step 2: Verify payment is completed (safety check)
-            if (registration.PaymentStatus != Domain.Events.Enums.PaymentStatus.Completed)
+            if (registration.PaymentStatus != LankaConnect.Products.LankaEvents.Domain.Enums.PaymentStatus.Completed)
             {
                 _logger.LogWarning(
                     "Registration {RegistrationId} has PaymentStatus {Status}, expected Completed",
@@ -106,7 +106,7 @@ public class AdminRecoveryController : ControllerBase
             }
 
             // Step 3: Verify registration is confirmed
-            if (registration.Status != Domain.Events.Enums.RegistrationStatus.Confirmed)
+            if (registration.Status != LankaConnect.Products.LankaEvents.Domain.Enums.RegistrationStatus.Confirmed)
             {
                 _logger.LogWarning(
                     "Registration {RegistrationId} has Status {Status}, expected Confirmed",

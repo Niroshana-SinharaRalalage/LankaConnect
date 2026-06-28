@@ -696,9 +696,13 @@ public class AppDbContext : DbContext, IApplicationDbContext
         _logger.LogWarning("[DEBUG-STACK] CommitAsync called from: {CallerStack}", callerInfo);
 
         // DIAGNOSTIC: Log all tracked entities BEFORE DetectChanges
-        var trackedEntitiesBeforeDetect = ChangeTracker.Entries<LegacyBaseEntity>().ToList();
+        // Wave3-followup.B (2026-06-28): widened from LegacyBaseEntity to BB.Entity<Guid>
+        // so W3C-migrated aggregates (Event, TicketTier, EventPass-was, etc. that derive
+        // from BB.Entity<Guid> directly) are also collected. Pre-fix, every domain event
+        // raised on a W3C-migrated aggregate was silently swallowed.
+        var trackedEntitiesBeforeDetect = ChangeTracker.Entries<LankaConnect.BuildingBlocks.Domain.Entity<Guid>>().ToList();
         _logger.LogInformation(
-            "[DIAG-11] Tracked LegacyBaseEntity count BEFORE DetectChanges: {Count}",
+            "[DIAG-11] Tracked BB.Entity<Guid> count BEFORE DetectChanges: {Count}",
             trackedEntitiesBeforeDetect.Count);
 
         foreach (var entry in trackedEntitiesBeforeDetect)
@@ -716,12 +720,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // before SaveChangesAsync below; nothing to do here.
 
         // CRITICAL FIX Phase 6A.24: Force change detection BEFORE collecting domain events
-        // Without this, ChangeTracker.Entries<LegacyBaseEntity>() returns empty collection
+        // Without this, ChangeTracker.Entries<LankaConnect.BuildingBlocks.Domain.Entity<Guid>>() returns empty collection
         // because EF Core only auto-detects changes DURING SaveChangesAsync()
         ChangeTracker.DetectChanges();
 
         // DIAGNOSTIC: Log all tracked entities AFTER DetectChanges
-        var trackedEntitiesAfterDetect = ChangeTracker.Entries<LegacyBaseEntity>().ToList();
+        var trackedEntitiesAfterDetect = ChangeTracker.Entries<LankaConnect.BuildingBlocks.Domain.Entity<Guid>>().ToList();
         _logger.LogInformation(
             "[DIAG-13] Tracked LegacyBaseEntity count AFTER DetectChanges: {Count}",
             trackedEntitiesAfterDetect.Count);
@@ -738,7 +742,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         }
 
         // Collect domain events before saving
-        var domainEvents = ChangeTracker.Entries<LegacyBaseEntity>()
+        var domainEvents = ChangeTracker.Entries<LankaConnect.BuildingBlocks.Domain.Entity<Guid>>()
             .Where(e => e.Entity.DomainEvents.Any())
             .SelectMany(e => e.Entity.DomainEvents)
             .ToList();
@@ -765,7 +769,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // from re-collecting and re-dispatching the same domain events, which caused duplicate emails.
         // The domain events are already captured in the local 'domainEvents' list, so clearing them
         // from the entities is safe and necessary to prevent double dispatch.
-        foreach (var entry in ChangeTracker.Entries<LegacyBaseEntity>())
+        foreach (var entry in ChangeTracker.Entries<LankaConnect.BuildingBlocks.Domain.Entity<Guid>>())
         {
             entry.Entity.ClearDomainEvents();
         }

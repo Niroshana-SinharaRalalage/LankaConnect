@@ -52,18 +52,6 @@ public class AddOnRefundService : IAddOnRefundService
         {
             var stopwatch = Stopwatch.StartNew();
 
-            // Phase 6A.148 ring-2 interlock (architect F5 defense-in-depth).
-            var approvalFlagOn = _configuration.GetValue<bool>("Refund:ApprovalWorkflow:Enabled");
-            if (approvalFlagOn && !isPreApproved)
-            {
-                _logger.LogWarning(
-                    "[6A.148 INTERLOCK] BLOCKED RefundUserPurchasesAsync called without isPreApproved while approval workflow is ON. " +
-                    "UserId={UserId} EventId={EventId} — caller must route via RefundExecutionService.",
-                    userId, eventId);
-                return Result<AddOnRefundResult>.Failure(
-                    "Refund-approval workflow is enabled. Direct add-on refunds are blocked.");
-            }
-
             _logger.LogInformation(
                 "AddOnRefundService START: UserId={UserId}, EventId={EventId}, IsPreApproved={IsPreApproved}",
                 userId, eventId, isPreApproved);
@@ -94,6 +82,26 @@ public class AddOnRefundService : IAddOnRefundService
                         userId, eventId, purchases.Count, stopwatch.ElapsedMilliseconds);
 
                     return Result<AddOnRefundResult>.Success(new AddOnRefundResult(0, 0m, 0));
+                }
+
+                // 2026-06-28 fix: Phase 6A.148 approval-workflow interlock moved BELOW the
+                // empty-purchases short-circuit. Previously this check fired before we
+                // queried the DB, so cancelling a registration with ZERO add-on purchases
+                // (e.g. every free event) returned a Failure result and surfaced an alarming
+                // "Direct add-on refunds are blocked" warning to the user via the UI's
+                // partial-failure summary. Founder caught this 2026-06-28 cancelling a
+                // free event registration. With the check after the empty-list check, free
+                // and no-add-on cancellations now return clean Success(0,0,0) without
+                // touching the approval-workflow interlock.
+                var approvalFlagOn = _configuration.GetValue<bool>("Refund:ApprovalWorkflow:Enabled");
+                if (approvalFlagOn && !isPreApproved)
+                {
+                    _logger.LogWarning(
+                        "[6A.148 INTERLOCK] BLOCKED RefundUserPurchasesAsync called without isPreApproved while approval workflow is ON. " +
+                        "UserId={UserId} EventId={EventId} RefundableCount={RefundableCount} — caller must route via RefundExecutionService.",
+                        userId, eventId, refundablePurchases.Count);
+                    return Result<AddOnRefundResult>.Failure(
+                        "Refund-approval workflow is enabled. Direct add-on refunds are blocked.");
                 }
 
                 _logger.LogInformation(

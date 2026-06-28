@@ -1,7 +1,10 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Communications.ValueObjects;
-using LankaConnect.Domain.Events;
+// W5.1.a-α.3 (2026-06-27): MetroArea moved to Products/LankaEvents.Domain.
+// _metroAreaEntities retyped to List<object> to keep this assembly free of
+// the Products dep. EF Core's change tracker only needs collection identity,
+// not element type, for shadow navigations.
 
 namespace LankaConnect.Domain.Communications.Entities;
 
@@ -20,7 +23,7 @@ public class Newsletter : LegacyBaseEntity
     // stays as-is because MetroArea is NOT moving in Wave 5.4 — it lives in
     // LankaConnect.Domain.Events and is reachable from this same Domain assembly.
     private readonly List<NewsletterEmailGroupLink> _emailGroupLinks = new();
-    private List<MetroArea> _metroAreaEntities = new(); // Shadow navigation for EF Core (unchanged)
+    private List<object> _metroAreaEntities = new();
 
     public NewsletterTitle Title { get; private set; }
     public NewsletterDescription Description { get; private set; }

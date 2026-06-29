@@ -1,19 +1,38 @@
-# Master TODO — Phase B: Product Module Roadmap
+# Master TODO — Phase B: Products and Service Extraction
 
 | | |
 |---|---|
-| **Plan Version** | v1 (created 2026-06-04 alongside Phase A v5 wave plan) |
+| **Plan Version** | v1.1 (created 2026-06-04 alongside Phase A v5 wave plan; renamed + reframed 2026-06-29 per founder direction + architect ruling) |
+| **Parent Plan** | [PLATFORM_MASTER_PLAN.md](PLATFORM_MASTER_PLAN.md) — read first; THE source of truth |
 | **Phase B Trigger** | Phase A Wave 8 final task complete (3-week stabilization soak passed, zero P0/P1 outstanding) |
 | **Phase B Estimated Start** | ~Late October 2026 (depending on Phase A nominal pace) — early December 2026 (risk-adjusted) |
-| **Phase B Goal** | Build new product modules on top of the stable Phase A foundation, following the Capability/Product pattern from ENTERPRISE_ARCHITECTURE_BLUEPRINT.md |
-| **Authoritative Architecture** | [ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md) |
+| **Phase B Goals** | (1) Build the next 6 products on the stable Phase A foundation following the Capability/Product pattern. (2) Extract microservices as product scale + organizational complexity demand it. Both tracks share the Phase A foundation; extraction is a natural consequence of product maturation, not the organizing principle of Phase B. |
+| **Authoritative Architecture** | [ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md) (5-layer model; §7.14 covers microservice readiness) |
 | **Related** | [MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) (Phase A wave plan) |
 
 ---
 
 ## Why this document exists
 
-Phase A (modular monolith refactor) finishes with `Products/LankaEvents` as the proof point. Phase B builds the next 6 products against the same Capability foundation. Without a roadmap, the temptation will be to start the most exciting product first (LankaSeyla e-commerce) rather than the simplest proof-of-architecture product (LankaTemples). This document prevents that mistake.
+Phase A (modular monolith refactor) finishes with `Products/LankaEvents` as the proof point. Phase B has **two interleaved tracks**:
+
+### Track 1 — Products (the primary work)
+
+Build the next 6 products against the shared Capability foundation: **LankaTemples → LankaBusiness → LankaHomes → LankaMart → LankaSeyla → LankaNivasa**. Without a roadmap, the temptation is to start with the most exciting product first (LankaSeyla e-commerce) rather than the simplest proof-of-architecture product (LankaTemples). This document prevents that mistake. The Capability/Product pattern means each new product reuses the foundation at zero re-architecture cost — that's the entire technical thesis of Phase A.
+
+### Track 2 — Service Extraction (the maturation work)
+
+The 5-layer architecture is microservice-ready post-Phase-A (blueprint §7.14). As individual products reach scale (sustained traffic justifying independent deployment cadence) or as organizational complexity demands separation (multi-team ownership of distinct products), specific Capabilities or Products are extracted to standalone services. Track 2 is **demand-driven**, not calendar-driven. Likely first extractions:
+
+- **Identity** (clearest capability boundary; user data isolation simplest)
+- **Payments** (Stripe-bounded; clearest external integration story)
+- **Communications** (high-volume async work; benefits from independent scaling)
+
+Extraction is NOT a Phase B sub-wave with a fixed start date. It is a series of architectural decisions ratified via ADRs as triggered by Track 1 evidence. Each extraction follows the blueprint §7.14 readiness pattern + the existing Outbox-everything contract (D5).
+
+### Naming history
+
+This document was originally `MASTER_TODO_PHASE_B_PRODUCT_ROADMAP.md` (2026-06-04). Renamed 2026-06-29 to `PHASE_B_PRODUCTS_AND_EXTRACTION` to reflect founder's broader Phase B taxonomy (Products + Extraction tracks both belong here, not in a hypothetical separate Phase). Content was reframed to cover both tracks; the original 6-product roadmap content is preserved below under Track 1.
 
 ---
 

@@ -2,15 +2,16 @@
 
 | | |
 |---|---|
-| **Plan Version** | **v5 (enterprise wave plan — founder-approved 2026-06-04) + 2026-06-08 testing-discipline overlay** |
+| **Plan Version** | **v5 (enterprise wave plan — founder-approved 2026-06-04) + 2026-06-08 testing-discipline overlay + 2026-06-29 platform-plan hierarchy backfill** |
+| **Parent Plan** | [PLATFORM_MASTER_PLAN.md](PLATFORM_MASTER_PLAN.md) — read first; THE source of truth |
 | **Phase A Duration** | **25 weeks calendar** (v5 nominal) → **~35 weeks remaining under Approach 3** (parallel structural + testing tracks; see §"Calendar Impact" below) |
-| **Execution Plan** | THIS document — single source of truth; one W#.# numbering system (no parallel Stage/G/Layer hierarchies) |
-| **Authoritative Architecture** | [ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md) |
+| **Execution Plan** | THIS document — Phase A status checklist; one W#.# numbering system. Cross-refs: [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md), [docs/architect-consults/](architect-consults/), [docs/architecture/decisions/](architecture/decisions/) |
+| **Authoritative Architecture** | [ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md) + [ADRs in decisions/](architecture/decisions/) |
 | **Approach** | Trunk-based development + feature flags (no long-lived branch); wave-based sequencing |
 | **Cutover Discipline** | Per-module flag flip with 7-day staging soak + 24h production canary |
 | **Definition of Done** | LankaEvents (and all current functionality) works identically post-cutover; future products (LankaSeyla/LankaMart/LankaHomes/LankaTemples/LankaBusiness/LankaNivasa) integrate against the stable foundation with ZERO re-architecture |
 | **Pre-flight gates landed** | PR-0 (#107), PR-0a (#108), PR-A (#109), PR-B (#113) all merged on develop |
-| **Current wave** | Wave 0 — architecture ratification in progress |
+| **Current wave** | Wave 5 — Products carve-out (sub-waves 5.0/5.1/5.2/5.3 SHIPPED; 5.3 STAGING-VERIFICATION gated on Wave 9.a Events smoke) |
 
 ---
 
@@ -32,13 +33,14 @@
 | **Wave1** | BuildingBlocks + SharedKernel | ✅ SHIPPED | — |
 | **Wave2** | SharedKernel.Cultural untangling (MVP scope) | ✅ SHIPPED | — |
 | **Wave3** | 79-entity migration to BB.Entity<TId> | 🟡 In flight via Wave4 capability extractions | — |
-| **Wave4** | 8 capability extractions (Notifications cleanup, Communications, Media, Forms, Payments, Scheduling, Identity, CulturalIntelligence) | 🟡 Wave4.0/Wave4.0b/Wave4.2/Wave4.3/Wave4.5/Wave4.7 shipped | ~12 wk |
-| **Wave4.9** | Testing-discipline overlay + IAuditable physical-column rollout + Schema realignment (architect-added 2026-06-07/08) | 🟡 Wave4.9.0 sub-tasks shipping; Wave4.9.1.4+ pending | ~7 wk |
-| **Wave5** | Products carve-out (`Products/LankaEvents`) | ⏳ Pending | ~2 wk |
+| **Wave4** | 8 capability extractions (Notifications cleanup, Communications, Media, Forms, Payments, Scheduling, Identity, CulturalIntelligence) | 🟡 Wave4.0/Wave4.0b/Wave4.2/Wave4.3/Wave4.5 SHIPPED; Wave4.4 (Payments.Contracts) STAGING-VERIFIED `86121c43` (status sourced from archived wave-plan file); Wave4.6 (Identity.Contracts) IN-PROGRESS (active wave-plan file kept in place at `docs/MASTER_TODO_WAVE_4_6_IDENTITY_CONTRACTS.md`); Wave4.7 consumer migrations IN-PROGRESS (latest `ac1410a0`) | ~12 wk |
+| **Wave4.9** | Testing-discipline overlay + IAuditable physical-column rollout + Schema realignment (architect-added 2026-06-07/08) | 🟡 Wave4.9.0/4.9.1 sub-tasks shipping | ~7 wk |
+| **Wave5** | Products carve-out (`Products/LankaEvents`) | 🟡 **IN-PROGRESS** — Wave5.0 SHIPPED (`916aab0b` skeleton); Wave5.1 SHIPPED (`47e14ef9` + `59ed4483` Event-family Domain move); Wave5.2 SHIPPED (~458 files Application carve-out across `9d9c2e78` + `918b0f6d` + `7e040d5b` + `7eb8f71f` + `134b756e` + `89532397` + `59989cba` + `1688aee9` + `b3ca3496` + `0a5c1fd2`); Wave5.3 SHIPPED (18-repo Infrastructure carve-out across `9be09e8a` + `bd33290a` + `a820df03` + `e43481cf` + `0047a6dd`) — STAGING-VERIFICATION gated on Wave9.a; Wave5.4/5.5 pending | ~3 wk |
 | **Wave6** | ArchTest hardening (28 rules total) | ⏳ Pending | ~1.5 wk |
 | **Wave6.5** | Outbox cutover (architect-added; retires self-saving repository pattern) | ⏳ Pending | ~3 wk |
 | **Wave7** | Frontend mirror (Turborepo + feature packages) | ⏳ Pending | ~6 wk |
 | **Wave8** | Production cutover + stabilization | ⏳ Pending | ~5 wk |
+| **Wave9** | **API Smoke Suite** — per-controller staging smoke covering ~330 of 369 endpoints (~90%); founder-mandated separate wave (2026-06-29) after observing per-slice UI-checkpoint cadence doesn't scale across 42 controllers | 🟡 **PLANNED** — Wave9.a (Foundation + Events controller smoke) gates Wave5.3 STAGING-VERIFIED flip + Wave5.4 kickoff | ~3 wk |
 
 ### Wave4.9 Task Tree (replaces all prior Stage/G/Phase numbering)
 
@@ -91,6 +93,26 @@
 **Wave4.9.4 — Forms schema rename** (4 form-table ALTER SET SCHEMA forms) — ⏳ Pending
 
 **Wave4.9.5 — AppDbContext snapshot resync** (Phase 3 redo: surgical purge of Modules.* leaks, NOT full snapshot regeneration) — ⏳ Pending
+
+### Wave 9 Task Tree — API Smoke Suite
+
+**Founder-mandated as a separate top-level wave** (2026-06-29). Origin: founder observed per-slice UI-checkpoint cadence doesn't scale across 369 endpoints / 42 controllers. The W3C dispatch-filter bug (3-week silent regression) was the catalyst — staging coverage of ~5 endpoints per commit left 364 paths unsmoked, including the Event-aggregate dispatch chain that broke silently.
+
+**Why a separate wave, NOT a sub-track of Wave 4.9**: founder direction (three iterations). The smoke suite is a discrete cross-cutting deliverable that gates production cutover; folding it into the testing-discipline overlay obscured its visibility as an independent wave with its own ship gate.
+
+**Scope**: Per-controller PowerShell scripts running against staging after every deploy. Coverage target: ~90% of 369 endpoints (~330). Excluded ~39 documented case-by-case (webhook signing, destructive admin recovery, diagnostic system probes, test stubs).
+
+**Gating chain**: Wave9.a (Foundation + Events controller smoke) → Wave5.3 STAGING-VERIFIED flip → Wave5.4 unblocks.
+
+| Sub-slice | Scope | Status |
+|---|---|---|
+| **Wave9.a** Foundation + Events cluster | Lc-Auth + Lc-Fixtures + Lc-Assertion + Lc-Report PS modules; Smoke-EventsController.ps1 (117 endpoints — biggest controller; gates Wave5.3 STAGING-VERIFIED flip) | ⏳ NEXT UP |
+| **Wave9.b** Auth + Identity cluster | Auth (11), Users (18), AdminUsers (10), AdminRecovery (1) — 40 endpoints | ⏳ Pending |
+| **Wave9.c** Venue + ticketing cluster | VenueLayouts (29), AddOns (12), SeatingMetrics (3) — 44 endpoints | ⏳ Pending |
+| **Wave9.d** Communications cluster | Newsletters (12), Newsletter singular (4), EmailGroups (5), EmailMetrics (7), WhatsApp (6), WhatsAppAdmin (4), Notifications (3), AdminEmailTemplates (6) — 47 endpoints | ⏳ Pending |
+| **Wave9.e** Finance + business cluster | Sponsors (14), SponsorshipPackages (8), Donations (6), Collections (6), Businesses (13), Payments (4), RefundReconciliation (1), Approvals (3) — 55 endpoints | ⏳ Pending |
+| **Wave9.f** Long tail + scenarios + CI | PhotoAlbums (13), Badges (9), Diagnostics (5), Analytics (3), Health (3), AdminSupportTickets (7), Admin (6), EventConfig (3), ReferenceData (4), Configuration (2), Dashboard (2), Test (2), Contact (1), Content (1), EventTemplates (1), MetroAreas (1), Public (1) — 64 endpoints + 10 cross-controller scenarios + Run-FullSmokeSuite.ps1 orchestrator + CI hook in deploy-staging.yml | ⏳ Pending |
+| **Wave9.g** Closeout + W5.3 STAGING-VERIFIED flip | Run full suite vs current staging; flip Wave5.3 to STAGING-VERIFIED iff suite green; update CLAUDE.md §13 + add `[[api-smoke-suite-pattern]]` memory entry | ⏳ Pending |
 
 ### Cross-Reference Files
 
@@ -1814,8 +1836,14 @@ See [PRODUCTION_CUTOVER_RUNBOOK.md](./operations/PRODUCTION_CUTOVER_RUNBOOK.md).
 
 ## Document Maintenance
 
-- Update this document at the end of each task
+**Revised 2026-06-29 per founder ruling (see [PLATFORM_MASTER_PLAN.md](PLATFORM_MASTER_PLAN.md)).** The legacy "sync with 3 tracking docs" pattern produced fragmentation. New rules:
+
+- Update **this document** (Phase A plan) at the end of each task — flip wave / sub-slice status (PLANNED → IN-PROGRESS → SHIPPED `<commit>` → STAGING-VERIFIED `<date>` → CLOSED `<date>`)
 - Mark completed items `[x]` IMMEDIATELY (don't batch)
 - Add discovered subtasks as they're found; don't hide them
-- Sync with PROGRESS_TRACKER.md and STREAMLINED_ACTION_PLAN.md per [TASK_SYNCHRONIZATION_STRATEGY.md](./TASK_SYNCHRONIZATION_STRATEGY.md)
-- Reference task IDs (Wave3.1, Wave6.4, etc.) in PRs and commits for traceability
+- Append narrative entries to **[PROGRESS_TRACKER.md](PROGRESS_TRACKER.md)** (the append-only audit journal)
+- Add a row to **[TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md)** for any new TODO item (Task → Sub-slice → Wave → Phase → Vision lineage; no orphan tasks)
+- Reference task IDs (Wave3.1, Wave6.4, Wave 9.a, etc.) in PRs and commits for traceability
+- Update the **machine-readable status block** at the top of [PLATFORM_MASTER_PLAN.md](PLATFORM_MASTER_PLAN.md) when the current wave / sub-slice flips
+
+`STREAMLINED_ACTION_PLAN.md` and `TASK_SYNCHRONIZATION_STRATEGY.md` are RETIRED (archived to `docs/archive/superseded/`). Do NOT update them.

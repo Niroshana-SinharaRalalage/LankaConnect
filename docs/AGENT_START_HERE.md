@@ -158,7 +158,7 @@ A: Push back via System Architect consult. Frame it as: "Founder asked for X; he
 
 ### Q: I'm an AI agent and I notice I might be running out of context.
 
-A: Save what matters to memory IMMEDIATELY via the auto-memory system (Write tool to `~/.claude/projects/<project>/memory/`). Memory persists across sessions. Specifically save: founder corrections, architect rulings, current Wave state, any in-flight gating chain (e.g., "Wave 5.3 is gated on Wave 4.9.6.a").
+A: Save what matters to memory IMMEDIATELY via the auto-memory system (Write tool to `~/.claude/projects/<project>/memory/`). Memory persists across sessions. Specifically save: founder corrections, architect rulings, current Wave state, any in-flight gating chain (e.g., "Wave 5.3 is gated on Wave 9.a").
 
 ---
 

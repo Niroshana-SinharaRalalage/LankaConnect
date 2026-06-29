@@ -7,7 +7,7 @@ MACHINE-READABLE STATUS HEADER (grep-friendly; update with every status flip)
 CURRENT_PHASE: Phase A
 CURRENT_WAVE: Wave 5
 CURRENT_WAVE_STATUS: IN-PROGRESS
-ACTIVE_SUB_SLICE: Wave 5.3 SHIPPED (5 commits); STAGING-VERIFICATION gated on Wave 4.9.6.a (Events smoke)
+ACTIVE_SUB_SLICE: Wave 5.3 SHIPPED (5 commits); STAGING-VERIFICATION gated on Wave 9.a (Events smoke)
 ARCHITECT_REVIEW_REQUIRED: NO
 LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) + System Architect (Opus 4.7) pairing
 LAST_UPDATED: 2026-06-29
@@ -127,13 +127,13 @@ Even when you think you know the right answer. Even when an earlier architect ru
 | Wave 3 — 79-entity migration to BB.Entity<TId> | 🟡 IN-FLIGHT | Via Wave 4 capability extractions |
 | Wave 4 — Capability extractions | 🟡 PARTIAL | 4.0/4.0b/4.2/4.3/4.5 SHIPPED; 4.4 STAGING-VERIFIED; 4.6 IN-PROGRESS; 4.7 consumer migrations IN-PROGRESS; 4.1 Communications partially shipped (legacy numbering) |
 | Wave 4.9 — Testing-discipline overlay | 🟡 PARTIAL | 4.9.0 + 4.9.1 sub-tasks shipping; **4.9.6 PLANNED (per-controller API smoke suite)** |
-| Wave 5 — Products carve-out (LankaEvents → `Products/LankaEvents`) | 🟡 IN-PROGRESS | 5.0/5.1/5.2/5.3 SHIPPED; 5.3 STAGING-VERIFICATION gated on Wave 4.9.6.a (Events smoke); 5.4/5.5 pending |
+| Wave 5 — Products carve-out (LankaEvents → `Products/LankaEvents`) | 🟡 IN-PROGRESS | 5.0/5.1/5.2/5.3 SHIPPED; 5.3 STAGING-VERIFICATION gated on Wave 9.a (Events smoke); 5.4/5.5 pending |
 | Wave 6 — ArchTest hardening (28 rules total) | ⏳ Pending | |
 | Wave 6.5 — Outbox cutover | ⏳ Pending | |
 | Wave 7 — Frontend mirror (Turborepo + feature packages) | ⏳ Pending | |
 | Wave 8 — Production cutover + stabilization | ⏳ Pending | |
 
-**Immediate gating chain**: Wave 4.9.6.a (Events controller smoke) → Wave 5.3 STAGING-VERIFIED flip → Wave 5.4 (next Products carve-out chunk) unblocks.
+**Immediate gating chain**: Wave 9.a (Events controller smoke) → Wave 5.3 STAGING-VERIFIED flip → Wave 5.4 (next Products carve-out chunk) unblocks.
 
 ---
 

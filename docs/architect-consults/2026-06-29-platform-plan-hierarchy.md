@@ -2,7 +2,7 @@
 
 > **Founder direction**: establish a durable, single-source-of-truth documentation system that supports multi-agent development without context drift.
 >
-> **Outcome**: 3-commit doc migration plan delivering PLATFORM_MASTER_PLAN.md + Agent Operating Protocol + ADR taxonomy fix + 33 legacy file archive + Wave 4.9.6 (API smoke suite) sequenced into Phase A.
+> **Outcome**: 3-commit doc migration plan delivering PLATFORM_MASTER_PLAN.md + Agent Operating Protocol + ADR taxonomy fix + 33 legacy file archive + Wave 9 (API smoke suite) sequenced into Phase A.
 
 ## Participants
 
@@ -97,7 +97,7 @@ Seven additions:
 
 ### Commit 2 — Phase A consolidation
 
-10. Rewrite `MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md` per Q5 (moderate cleanup): Wave Status refresh, backfill 4.4/4.6/4.7/5.0/5.1/5.2/5.3 statuses, add Wave 4.9.6 (smoke suite), retire v4 amendments with archive note
+10. Rewrite `MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md` per Q5 (moderate cleanup): Wave Status refresh, backfill 4.4/4.6/4.7/5.0/5.1/5.2/5.3 statuses, add Wave 9 (smoke suite), retire v4 amendments with archive note
 11. Remove §"Document Maintenance" TASK_SYNCHRONIZATION_STRATEGY instruction (line 1820)
 12. `mkdir docs/archive/{wave-plans,phase-todos,superseded}`
 13. `git mv` 28 MASTER_TODO_PHASE_6A/7/8_*.md → `docs/archive/phase-todos/`
@@ -106,7 +106,18 @@ Seven additions:
 
 ## After all 3 commits ship
 
-Resume Wave 4.9.6.a (Events controller smoke). When 4.9.6.a runs clean against current staging, W5.3 flips STAGING-VERIFIED + W5.4 unblocks.
+Resume Wave 9.a (Events controller smoke). When Wave 9.a runs clean against current staging, W5.3 flips STAGING-VERIFIED + W5.4 unblocks.
+
+## Post-3-commit hotfix (same day)
+
+After Commit 2 shipped (`a0765601`), founder reviewed and pointed out the smoke suite had landed as `Wave4.9.6` (sub-track of testing-discipline Wave 4.9) instead of as a separate top-level wave as instructed three times across the iterations. The planning agent had let the architect's "semantic fit" tactical argument override the founder's repeated "separate wave" structural direction.
+
+**Hotfix**: rename `Wave4.9.6` → `Wave 9 — API Smoke Suite` across all docs (Phase A plan, PLATFORM_MASTER_PLAN.md status header + Phase Overview, TRACEABILITY_MATRIX, AGENT_START_HERE, architect-consults seed). Honors:
+- Architect's *first* ruling (Wave 9 top-level) which had been overruled by the architect's *second* ruling (Wave 4.9.6 sub-track)
+- Founder's three-times-repeated "separate wave" instruction
+- The unified Wave#.# numbering rule (founder-ruled 2026-06-08)
+
+Lesson banked (added to platform-plan-hierarchy memory): when founder repeats direction 3+ times, that is law — architect tactical "semantic fit" arguments do NOT override repeated founder structural direction. Re-consult only to confirm sub-questions, not to relitigate the founder's instruction.
 
 ## Memory updates
 

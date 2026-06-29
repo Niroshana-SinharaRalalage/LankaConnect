@@ -4,6 +4,7 @@ using Moq;
 using Xunit;
 using LankaConnect.Application.Analytics.Commands.RecordEventView;
 using LankaConnect.Domain.Analytics;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Tests.Analytics.Commands;

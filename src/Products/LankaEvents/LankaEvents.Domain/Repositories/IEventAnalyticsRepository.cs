@@ -1,6 +1,7 @@
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Analytics;
 
-namespace LankaConnect.Domain.Analytics;
+namespace LankaConnect.Products.LankaEvents.Domain.Repositories;
 
 /// <summary>
 /// Repository interface for EventAnalytics aggregate

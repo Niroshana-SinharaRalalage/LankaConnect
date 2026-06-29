@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Analytics;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Domain.Common;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

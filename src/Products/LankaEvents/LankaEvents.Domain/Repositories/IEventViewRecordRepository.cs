@@ -1,4 +1,6 @@
-namespace LankaConnect.Domain.Analytics;
+using LankaConnect.Domain.Analytics;
+
+namespace LankaConnect.Products.LankaEvents.Domain.Repositories;
 
 /// <summary>
 /// Repository interface for EventViewRecord entity
@@ -28,16 +30,5 @@ public interface IEventViewRecordRepository
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Entity representing a single view of an event
-/// Used for detailed tracking and unique viewer calculation
-/// </summary>
-public class EventViewRecord
-{
-    public Guid Id { get; set; }
-    public Guid EventId { get; set; }
-    public Guid? UserId { get; set; }
-    public string IpAddress { get; set; } = string.Empty;
-    public string? UserAgent { get; set; }
-    public DateTime ViewedAt { get; set; }
-}
+// EventViewRecord entity now lives at src/LankaConnect.Domain/Analytics/EventViewRecord.cs
+// (Wave 5.4.a: only the interface moved; entity stays in LankaConnect.Domain.Analytics)

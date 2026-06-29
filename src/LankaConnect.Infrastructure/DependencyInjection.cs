@@ -251,8 +251,8 @@ public static class DependencyInjection
         // LankaConnect.Products.LankaEvents.Application.Repositories.
 
         // Add Analytics Repositories (Epic 2 Phase 3)
-        services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
-        services.AddScoped<LankaConnect.Domain.Analytics.IEventViewRecordRepository, EventViewRecordRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IEventAnalyticsRepository, EventAnalyticsRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IEventViewRecordRepository, EventViewRecordRepository>();
 
         // Add Reference Data Repository (Phase 6A.47)
         services.AddScoped<IReferenceDataRepository, LankaConnect.Infrastructure.Data.Repositories.ReferenceData.ReferenceDataRepository>();

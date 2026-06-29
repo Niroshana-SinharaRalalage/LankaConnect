@@ -1,6 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Analytics.Common;
 using LankaConnect.Domain.Analytics;
+using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Analytics.Queries.GetOrganizerDashboard;

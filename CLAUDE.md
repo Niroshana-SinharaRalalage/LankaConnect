@@ -5,6 +5,29 @@
 
 ---
 
+# 🛑 SECTION 0: MANDATORY READ ORDER (BEFORE ANY TASK)
+
+**Founder-mandated 2026-06-29. Non-negotiable. Skipping = work happens against stale context.**
+
+Before taking ANY action — planning, implementation, architecture, refactoring, or documentation work — read in this order:
+
+1. **[docs/PLATFORM_MASTER_PLAN.md](./docs/PLATFORM_MASTER_PLAN.md)** — THE single source of truth for the platform; includes the **Agent Operating Protocol** that every agent must follow
+2. **[docs/architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](./docs/architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md)** — authoritative architecture (5-layer model, D1-D10 decisions, ArchTest rules)
+3. **[docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](./docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md)** — current phase work plan (per `CURRENT_PHASE` in PLATFORM_MASTER_PLAN status header)
+4. **[docs/AGENT_START_HERE.md](./docs/AGENT_START_HERE.md)** — human-readable onboarding companion (read once, return for FAQ + grep recipes)
+
+**Hard rules**:
+
+- ❌ **Never bypass architecture constraints** — the 5-layer model + D1-D10 decisions are not optional
+- ❌ **Never change architecture without ADR + System Architect approval** — new ADRs go in `docs/architecture/decisions/`
+- ❌ **Never add TODO items outside the hierarchy** — see TRACEABILITY_MATRIX.md; no orphan tasks
+- ✅ **Always escalate planning changes to System Architect** — send focused consult via `SendMessage` to the architect persona
+- ✅ **Planning, roadmap, architecture, and major documentation refactoring REQUIRE System Architect pairing** — non-negotiable
+
+If documents conflict: STOP, request architect review. Do not pick a side.
+
+---
+
 # PART A: LANKACONNECT PROJECT RULES (MANDATORY)
 
 ## 🚨 SECTION 1: SENIOR ENGINEER MINDSET (ALWAYS ACTIVE)
@@ -217,12 +240,20 @@ curl -X 'POST' \
 
 ## 🚨 SECTION 7: DOCUMENTATION SYNCHRONIZATION (MANDATORY)
 
-**CRITICAL: Update tracking docs BEFORE marking task complete.**
+**Revised 2026-06-29 per founder ruling.** Retired the "3 PRIMARY tracking docs" pattern that produced documentation fragmentation. Replaced with the single-source-of-truth hierarchy.
 
-### After EVERY implementation, update ALL 3 documents:
-1. **PROGRESS_TRACKER.md** - Add new entry with date, changes made
-2. **STREAMLINED_ACTION_PLAN.md** - Update action item status
-3. **TASK_SYNCHRONIZATION_STRATEGY.md** - Update phase overview
+### After EVERY implementation, update TWO documents:
+
+1. **[docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](./docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md)** — flip wave / sub-slice status (PLANNED → IN-PROGRESS → STAGING-VERIFIED `<date>` → CLOSED `<date>`). For non-Phase-A work, update the relevant phase plan.
+2. **[docs/PROGRESS_TRACKER.md](./docs/PROGRESS_TRACKER.md)** — append narrative entry (what was done, why, commits, smoke evidence). PROGRESS_TRACKER is the append-only audit journal.
+
+**Two docs, distinct purposes**:
+- Phase plan = current status (what's true now)
+- PROGRESS_TRACKER = historical journal (what happened when)
+
+For new TODO items, also add a row to [docs/TRACEABILITY_MATRIX.md](./docs/TRACEABILITY_MATRIX.md) — Task → Sub-slice → Wave → Phase → Vision lineage. No orphan tasks.
+
+`STREAMLINED_ACTION_PLAN.md` and `TASK_SYNCHRONIZATION_STRATEGY.md` are RETIRED — archived under `docs/archive/superseded/` for audit. Do NOT update them.
 
 ---
 
@@ -384,10 +415,12 @@ git worktree add ../lc-marketplace feature/marketplace-module
 
 ### Part 3: Documentation Synchronization (BEFORE COMPLETION)
 
-**PRIMARY Tracking Documents** (MUST STAY IN SYNC):
-1. [PROGRESS_TRACKER.md](./docs/PROGRESS_TRACKER.md) - Current session status
-2. [STREAMLINED_ACTION_PLAN.md](./docs/STREAMLINED_ACTION_PLAN.md) - Action items
-3. [TASK_SYNCHRONIZATION_STRATEGY.md](./docs/TASK_SYNCHRONIZATION_STRATEGY.md) - Phase overview
+**Single Source of Truth** (founder-ruled 2026-06-29):
+
+1. [PLATFORM_MASTER_PLAN.md](./docs/PLATFORM_MASTER_PLAN.md) - Master plan (read first, every time)
+2. [MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](./docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) - Current phase plan (flip status here)
+3. [PROGRESS_TRACKER.md](./docs/PROGRESS_TRACKER.md) - Append-only audit journal
+4. [TRACEABILITY_MATRIX.md](./docs/TRACEABILITY_MATRIX.md) - Add row for any new TODO item
 
 ---
 
@@ -539,13 +572,16 @@ Message 3: Write "file.js"
 
 ## 📚 REFERENCE DOCUMENTS
 
-All agents MUST read these documents before starting work:
+**Mandatory read order is defined in SECTION 0 at the top of this file.** This section lists supporting references.
 
-1. **[UI_STYLE_GUIDE.md](./docs/UI_STYLE_GUIDE.md)** - UI consistency
-2. **[PARALLEL_AGENT_COORDINATION.md](./docs/PARALLEL_AGENT_COORDINATION.md)** - Coordination strategy
-3. **[REVISED_MODULAR_MONOLITH_STRATEGY.md](./docs/REVISED_MODULAR_MONOLITH_STRATEGY.md)** - Architecture
-4. **[PROGRESS_TRACKER.md](./docs/PROGRESS_TRACKER.md)** - Current status
-5. **[STREAMLINED_ACTION_PLAN.md](./docs/STREAMLINED_ACTION_PLAN.md)** - Action items
+1. **[PLATFORM_MASTER_PLAN.md](./docs/PLATFORM_MASTER_PLAN.md)** - Master plan (SECTION 0 mandates reading this first)
+2. **[ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](./docs/architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md)** - Authoritative architecture
+3. **[MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](./docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md)** - Current phase plan
+4. **[AGENT_START_HERE.md](./docs/AGENT_START_HERE.md)** - Human-readable onboarding + FAQ + grep recipes
+5. **[UI_STYLE_GUIDE.md](./docs/UI_STYLE_GUIDE.md)** - UI consistency rules
+6. **[PROGRESS_TRACKER.md](./docs/PROGRESS_TRACKER.md)** - Append-only audit journal
+
+`REVISED_MODULAR_MONOLITH_STRATEGY.md` is SUPERSEDED by ENTERPRISE_ARCHITECTURE_BLUEPRINT.md (replaced 2026-06-04; archived under `docs/archive/superseded/` in Commit 2).
 
 ---
 

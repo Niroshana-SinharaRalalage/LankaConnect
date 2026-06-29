@@ -94,6 +94,16 @@ public static class LankaEventsModule
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IAddOnPurchaseRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.AddOnPurchaseRepository>();
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ISponsorshipPackageRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.SponsorshipPackageRepository>();
 
+        // W5.3.c1 (2026-06-28): 4 Event child-entity repositories relocated to Products.
+        // VenueLayout + Seat (Hold + Reservation) + Ticket cover the seated-event +
+        // ticket-issuance write paths. Architect-gated split from c2 (Event +
+        // Registration aggregate roots) so blast radius bisects cleanly if a
+        // regression appears in one or the other half.
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IVenueLayoutRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.VenueLayoutRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ISeatHoldRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.SeatHoldRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ISeatReservationRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.SeatReservationRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.TicketRepository>();
+
         return services;
     }
 }

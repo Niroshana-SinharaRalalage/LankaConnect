@@ -541,12 +541,11 @@ public static class DependencyInjection
         // Phase 6A.45: Export services for attendee management
         services.AddScoped<IExcelExportService, LankaConnect.Infrastructure.Services.Export.ExcelExportService>();
         services.AddScoped<ICsvExportService, LankaConnect.Infrastructure.Services.Export.CsvExportService>();
-        services.AddScoped<ITicketRepository, TicketRepository>();
+        // W5.3.c1 (2026-06-28): TicketRepository registration moved to LankaEventsModule.
 
         // Phase 2: Venue Seating repositories
-        services.AddScoped<IVenueLayoutRepository, VenueLayoutRepository>();
-        services.AddScoped<ISeatHoldRepository, SeatHoldRepository>();
-        services.AddScoped<ISeatReservationRepository, SeatReservationRepository>();
+        // W5.3.c1 (2026-06-28): VenueLayout + SeatHold + SeatReservation registrations
+        // moved to LankaEventsModule. Same physical AppDbContext + Repository<T> base.
 
         // W5.3.b (2026-06-28): 8 Event-finance repository registrations moved to
         // Products/LankaEvents.Api/LankaEventsModule.AddLankaEventsModule().

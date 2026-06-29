@@ -250,9 +250,11 @@ public static class DependencyInjection
         // composition root as the Products-namespace interfaces already live in
         // LankaConnect.Products.LankaEvents.Application.Repositories.
 
-        // Add Analytics Repositories (Epic 2 Phase 3)
-        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IEventAnalyticsRepository, EventAnalyticsRepository>();
-        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IEventViewRecordRepository, EventViewRecordRepository>();
+        // W5.4.b (2026-06-29): Analytics repositories registrations moved to
+        // Products/LankaEvents.Api/LankaEventsModule.AddLankaEventsModule().
+        // Same physical AppDbContext + Repository<T> base; only the implementation
+        // assembly + DI registration site shifted to the Products composition root.
+        // Completes the Event-family Repository carve-out begun in Wave 5.3.
 
         // Add Reference Data Repository (Phase 6A.47)
         services.AddScoped<IReferenceDataRepository, LankaConnect.Infrastructure.Data.Repositories.ReferenceData.ReferenceDataRepository>();

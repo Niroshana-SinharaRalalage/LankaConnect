@@ -112,6 +112,12 @@ public static class LankaEventsModule
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.IEventRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventRepository>();
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.IRegistrationRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.RegistrationRepository>();
 
+        // W5.4.b (2026-06-29): Analytics repositories relocated to Products. Completes the
+        // Event-family Repository carve-out begun in Wave 5.3. Interfaces moved in
+        // Wave 5.4.a (ae50fb27); implementations + DI shift in this sub-slice.
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IEventAnalyticsRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventAnalyticsRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IEventViewRecordRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventViewRecordRepository>();
+
         return services;
     }
 }

@@ -1,67 +1,75 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Repositories;
+using System.Diagnostics;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
-/// Repository implementation for AddOnDefinition operations.
-/// Includes atomic stock management methods using raw SQL.
+/// Phase 6A.156 — concrete repository for <see cref="SponsorshipPackage"/>.
+/// Atomic stock methods lifted byte-for-byte from
+/// <see cref="AddOnDefinitionRepository"/>: a single SQL UPDATE with a WHERE
+/// clause that re-checks the available quantity so two concurrent buyers
+/// cannot oversell a 1-cap Gold slot.
+///
+/// All read/write paths wrap structured-logging context (<see cref="LogContext"/>)
+/// + Stopwatch + try/catch per CLAUDE.md Section 4 observability rule.
 /// </summary>
-public class AddOnDefinitionRepository : Repository<AddOnDefinition>, IAddOnDefinitionRepository
+public class SponsorshipPackageRepository : Repository<SponsorshipPackage>, ISponsorshipPackageRepository
 {
-    private readonly ILogger<AddOnDefinitionRepository> _repoLogger;
+    private readonly ILogger<SponsorshipPackageRepository> _repoLogger;
 
-    public AddOnDefinitionRepository(
+    public SponsorshipPackageRepository(
         AppDbContext context,
-        ILogger<AddOnDefinitionRepository> logger) : base(context)
+        ILogger<SponsorshipPackageRepository> logger) : base(context)
     {
         _repoLogger = logger;
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AddOnDefinition>> GetByEventIdAsync(
+    public async Task<IReadOnlyList<SponsorshipPackage>> GetByEventIdAsync(
         Guid eventId,
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetByEventId"))
-        using (LogContext.PushProperty("EntityType", "AddOnDefinition"))
+        using (LogContext.PushProperty("EntityType", "SponsorshipPackage"))
         using (LogContext.PushProperty("EventId", eventId))
         {
             var stopwatch = Stopwatch.StartNew();
 
             _repoLogger.LogDebug(
-                "GetByEventIdAsync START: EventId={EventId}",
+                "SponsorshipPackage.GetByEventIdAsync START: EventId={EventId}",
                 eventId);
 
             try
             {
-                var definitions = await _dbSet
+                var packages = await _dbSet
                     .AsNoTracking()
-                    .Where(d => d.EventId == eventId)
-                    .OrderBy(d => d.SortOrder)
+                    .Where(p => p.EventId == eventId)
+                    .OrderBy(p => p.SortOrder)
                     .ToListAsync(cancellationToken);
 
                 stopwatch.Stop();
 
                 _repoLogger.LogInformation(
-                    "GetByEventIdAsync COMPLETE: EventId={EventId}, Count={Count}, Duration={ElapsedMs}ms",
+                    "SponsorshipPackage.GetByEventIdAsync COMPLETE: EventId={EventId}, Count={Count}, Duration={ElapsedMs}ms",
                     eventId,
-                    definitions.Count,
+                    packages.Count,
                     stopwatch.ElapsedMilliseconds);
 
-                return definitions;
+                return packages;
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
 
                 _repoLogger.LogError(ex,
-                    "GetByEventIdAsync FAILED: EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    "SponsorshipPackage.GetByEventIdAsync FAILED: EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
                     eventId,
                     stopwatch.ElapsedMilliseconds,
                     ex.Message);
@@ -72,44 +80,44 @@ public class AddOnDefinitionRepository : Repository<AddOnDefinition>, IAddOnDefi
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AddOnDefinition>> GetActiveByEventIdAsync(
+    public async Task<IReadOnlyList<SponsorshipPackage>> GetActiveByEventIdAsync(
         Guid eventId,
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetActiveByEventId"))
-        using (LogContext.PushProperty("EntityType", "AddOnDefinition"))
+        using (LogContext.PushProperty("EntityType", "SponsorshipPackage"))
         using (LogContext.PushProperty("EventId", eventId))
         {
             var stopwatch = Stopwatch.StartNew();
 
             _repoLogger.LogDebug(
-                "GetActiveByEventIdAsync START: EventId={EventId}",
+                "SponsorshipPackage.GetActiveByEventIdAsync START: EventId={EventId}",
                 eventId);
 
             try
             {
-                var definitions = await _dbSet
+                var packages = await _dbSet
                     .AsNoTracking()
-                    .Where(d => d.EventId == eventId && d.IsActive)
-                    .OrderBy(d => d.SortOrder)
+                    .Where(p => p.EventId == eventId && p.IsActive)
+                    .OrderBy(p => p.SortOrder)
                     .ToListAsync(cancellationToken);
 
                 stopwatch.Stop();
 
                 _repoLogger.LogInformation(
-                    "GetActiveByEventIdAsync COMPLETE: EventId={EventId}, Count={Count}, Duration={ElapsedMs}ms",
+                    "SponsorshipPackage.GetActiveByEventIdAsync COMPLETE: EventId={EventId}, Count={Count}, Duration={ElapsedMs}ms",
                     eventId,
-                    definitions.Count,
+                    packages.Count,
                     stopwatch.ElapsedMilliseconds);
 
-                return definitions;
+                return packages;
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
 
                 _repoLogger.LogError(ex,
-                    "GetActiveByEventIdAsync FAILED: EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    "SponsorshipPackage.GetActiveByEventIdAsync FAILED: EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
                     eventId,
                     stopwatch.ElapsedMilliseconds,
                     ex.Message);
@@ -121,38 +129,41 @@ public class AddOnDefinitionRepository : Repository<AddOnDefinition>, IAddOnDefi
 
     /// <inheritdoc />
     public async Task<bool> TryReserveStockAsync(
-        Guid definitionId,
+        Guid packageId,
         int quantity,
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "TryReserveStock"))
-        using (LogContext.PushProperty("EntityType", "AddOnDefinition"))
-        using (LogContext.PushProperty("DefinitionId", definitionId))
+        using (LogContext.PushProperty("EntityType", "SponsorshipPackage"))
+        using (LogContext.PushProperty("PackageId", packageId))
         using (LogContext.PushProperty("Quantity", quantity))
         {
             var stopwatch = Stopwatch.StartNew();
 
             _repoLogger.LogDebug(
-                "TryReserveStockAsync START: DefinitionId={DefinitionId}, Quantity={Quantity}",
-                definitionId, quantity);
+                "SponsorshipPackage.TryReserveStockAsync START: PackageId={PackageId}, Quantity={Quantity}",
+                packageId, quantity);
 
             try
             {
-                var sql = @"UPDATE events.add_on_definitions
+                // Single UPDATE with re-check inside the WHERE clause. Postgres
+                // makes this row-locked + atomic — two concurrent reservations
+                // for the last slot are linearized; the loser sees rows=0.
+                var sql = @"UPDATE events.sponsorship_packages
                     SET quantity_sold = quantity_sold + {0}, updated_at = NOW()
                     WHERE id = {1} AND is_active = true
                       AND (quantity_limit IS NULL OR quantity_sold + {0} <= quantity_limit)";
 
                 var rows = await _context.Database.ExecuteSqlRawAsync(
-                    sql, new object[] { quantity, definitionId }, cancellationToken);
+                    sql, new object[] { quantity, packageId }, cancellationToken);
 
                 var reserved = rows > 0;
 
                 stopwatch.Stop();
 
                 _repoLogger.LogInformation(
-                    "TryReserveStockAsync COMPLETE: DefinitionId={DefinitionId}, Quantity={Quantity}, Reserved={Reserved}, Duration={ElapsedMs}ms",
-                    definitionId,
+                    "SponsorshipPackage.TryReserveStockAsync COMPLETE: PackageId={PackageId}, Quantity={Quantity}, Reserved={Reserved}, Duration={ElapsedMs}ms",
+                    packageId,
                     quantity,
                     reserved,
                     stopwatch.ElapsedMilliseconds);
@@ -164,8 +175,8 @@ public class AddOnDefinitionRepository : Repository<AddOnDefinition>, IAddOnDefi
                 stopwatch.Stop();
 
                 _repoLogger.LogError(ex,
-                    "TryReserveStockAsync FAILED: DefinitionId={DefinitionId}, Quantity={Quantity}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
-                    definitionId,
+                    "SponsorshipPackage.TryReserveStockAsync FAILED: PackageId={PackageId}, Quantity={Quantity}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    packageId,
                     quantity,
                     stopwatch.ElapsedMilliseconds,
                     ex.Message);
@@ -177,37 +188,39 @@ public class AddOnDefinitionRepository : Repository<AddOnDefinition>, IAddOnDefi
 
     /// <inheritdoc />
     public async Task<bool> TryRestoreStockAsync(
-        Guid definitionId,
+        Guid packageId,
         int quantity,
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "TryRestoreStock"))
-        using (LogContext.PushProperty("EntityType", "AddOnDefinition"))
-        using (LogContext.PushProperty("DefinitionId", definitionId))
+        using (LogContext.PushProperty("EntityType", "SponsorshipPackage"))
+        using (LogContext.PushProperty("PackageId", packageId))
         using (LogContext.PushProperty("Quantity", quantity))
         {
             var stopwatch = Stopwatch.StartNew();
 
             _repoLogger.LogDebug(
-                "TryRestoreStockAsync START: DefinitionId={DefinitionId}, Quantity={Quantity}",
-                definitionId, quantity);
+                "SponsorshipPackage.TryRestoreStockAsync START: PackageId={PackageId}, Quantity={Quantity}",
+                packageId, quantity);
 
             try
             {
-                var sql = @"UPDATE events.add_on_definitions
+                // GREATEST guards against underflow if a restore arrives twice
+                // (idempotent boundary — same protection AddOnDefinition uses).
+                var sql = @"UPDATE events.sponsorship_packages
                     SET quantity_sold = GREATEST(0, quantity_sold - {0}), updated_at = NOW()
                     WHERE id = {1}";
 
                 var rows = await _context.Database.ExecuteSqlRawAsync(
-                    sql, new object[] { quantity, definitionId }, cancellationToken);
+                    sql, new object[] { quantity, packageId }, cancellationToken);
 
                 var restored = rows > 0;
 
                 stopwatch.Stop();
 
                 _repoLogger.LogInformation(
-                    "TryRestoreStockAsync COMPLETE: DefinitionId={DefinitionId}, Quantity={Quantity}, Restored={Restored}, Duration={ElapsedMs}ms",
-                    definitionId,
+                    "SponsorshipPackage.TryRestoreStockAsync COMPLETE: PackageId={PackageId}, Quantity={Quantity}, Restored={Restored}, Duration={ElapsedMs}ms",
+                    packageId,
                     quantity,
                     restored,
                     stopwatch.ElapsedMilliseconds);
@@ -219,8 +232,8 @@ public class AddOnDefinitionRepository : Repository<AddOnDefinition>, IAddOnDefi
                 stopwatch.Stop();
 
                 _repoLogger.LogError(ex,
-                    "TryRestoreStockAsync FAILED: DefinitionId={DefinitionId}, Quantity={Quantity}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
-                    definitionId,
+                    "SponsorshipPackage.TryRestoreStockAsync FAILED: PackageId={PackageId}, Quantity={Quantity}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    packageId,
                     quantity,
                     stopwatch.ElapsedMilliseconds,
                     ex.Message);

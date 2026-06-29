@@ -548,20 +548,12 @@ public static class DependencyInjection
         services.AddScoped<ISeatHoldRepository, SeatHoldRepository>();
         services.AddScoped<ISeatReservationRepository, SeatReservationRepository>();
 
-        // Add-Only Attendees Feature repositories
-        services.AddScoped<IRegistrationAdditionRepository, RegistrationAdditionRepository>();
-        services.AddScoped<IRegistrationPaymentRepository, RegistrationPaymentRepository>();
-
-        // Donation Feature repository
-        services.AddScoped<IDonationRepository, DonationRepository>();
-
-        // Financial Feature repositories (Collections, Sponsors, Add-ons)
-        services.AddScoped<ICollectionRepository, CollectionRepository>();
-        services.AddScoped<ISponsorRepository, SponsorRepository>();
-        services.AddScoped<IAddOnDefinitionRepository, AddOnDefinitionRepository>();
-        services.AddScoped<IAddOnPurchaseRepository, AddOnPurchaseRepository>();
-        // Phase 6A.156 — organizer-defined sponsorship packages (Gold/Silver/Bronze tiers)
-        services.AddScoped<ISponsorshipPackageRepository, SponsorshipPackageRepository>();
+        // W5.3.b (2026-06-28): 8 Event-finance repository registrations moved to
+        // Products/LankaEvents.Api/LankaEventsModule.AddLankaEventsModule().
+        // Repositories covered: RegistrationAddition, RegistrationPayment, Donation,
+        // Collection, Sponsor, AddOnDefinition, AddOnPurchase, SponsorshipPackage.
+        // Same physical AppDbContext + Repository<T> base; only the assembly and
+        // DI registration site shifted to the Products composition root.
 
         // Phase 6A.109: Add EnumSyncValidator to detect enum/database drift at startup (Issue #78)
         services.AddHostedService<LankaConnect.Infrastructure.Services.Validation.EnumSyncValidator>();

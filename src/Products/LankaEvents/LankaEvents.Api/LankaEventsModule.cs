@@ -79,6 +79,21 @@ public static class LankaEventsModule
         services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventNotificationHistoryRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventNotificationHistoryRepository>();
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketScanLogRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.TicketScanLogRepository>();
 
+        // W5.3.b (2026-06-28): 8 Event-finance repositories relocated to Products.
+        // All interfaces already in LankaConnect.Products.LankaEvents.Domain.Repositories;
+        // implementations now also in Products/LankaEvents.Infrastructure/Repositories.
+        // RegistrationAddition + RegistrationPayment cover the add-on lifecycle write paths;
+        // Donation / Collection / Sponsor / SponsorshipPackage / AddOnDefinition / AddOnPurchase
+        // cover the rest of the Event finance domain.
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IRegistrationAdditionRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.RegistrationAdditionRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IRegistrationPaymentRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.RegistrationPaymentRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IDonationRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.DonationRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ICollectionRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.CollectionRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ISponsorRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.SponsorRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IAddOnDefinitionRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.AddOnDefinitionRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IAddOnPurchaseRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.AddOnPurchaseRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ISponsorshipPackageRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.SponsorshipPackageRepository>();
+
         return services;
     }
 }

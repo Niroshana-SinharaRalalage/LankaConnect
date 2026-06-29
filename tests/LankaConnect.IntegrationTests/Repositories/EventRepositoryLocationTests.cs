@@ -9,6 +9,7 @@ using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Repositories;  // W5.3.c2: EventRepository relocated
 using LankaConnect.IntegrationTests.Common;
 
 namespace LankaConnect.IntegrationTests.Repositories;

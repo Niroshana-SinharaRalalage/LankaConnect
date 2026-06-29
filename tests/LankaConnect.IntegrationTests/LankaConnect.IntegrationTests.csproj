@@ -32,6 +32,12 @@
     <ProjectReference Include="..\..\src\Modules\Identity\Identity.Application\Identity.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\Identity.Infrastructure\Identity.Infrastructure.csproj" />
+    <!-- W5.3.c2 (2026-06-28): EventRepository moved to Products/LankaEvents.Infrastructure;
+         EventRepositoryLocationTests directly instantiates EventRepository(_context, _geoLocationService, _logger)
+         per the integration-test pattern (DI-bypass for white-box repo tests). LankaConnect.API
+         already references this project transitively via LankaEventsModule, but the test assembly
+         needs a direct ProjectReference so `using LankaConnect.Products.LankaEvents.Infrastructure.Repositories;` resolves. -->
+    <ProjectReference Include="..\..\src\Products\LankaEvents\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

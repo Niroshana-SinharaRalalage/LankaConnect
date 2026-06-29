@@ -1,3 +1,5 @@
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -7,7 +9,7 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 public class RegistrationRepository : Repository<Registration>, IRegistrationRepository
 {
@@ -25,7 +27,11 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
     /// and needs domain event dispatch (e.g., payment completion via Stripe webhook).
     /// Phase 6A.49: Fix for paid event email - ensures domain events are collected from ChangeTracker.
     /// Uses tracking (NOT AsNoTracking) so that when CompletePayment() raises PaymentCompletedEvent,
-    /// the event is dispatched via AppDbContext.CommitAsync() → ChangeTracker.Entries&lt;BaseEntity&gt;().
+    /// the event is dispatched via AppDbContext.CommitAsync() → ChangeTracker.Entries&lt;BB.Entity&lt;Guid&gt;&gt;()
+    /// (widened in Wave3-followup.B / 1688aee9 from the legacy Entries&lt;LegacyBaseEntity&gt;() filter
+    /// after the W3C migration moved several aggregates including Event off LegacyBaseEntity onto
+    /// BuildingBlocks.Domain.Entity&lt;Guid&gt;; the filter widening preserves dispatch survival across
+    /// the mixed-base-class population).
     /// Phase 6A.X: Added comprehensive logging with LogContext, Stopwatch, and PostgreSQL SqlState extraction
     /// </summary>
     public override async Task<Registration?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

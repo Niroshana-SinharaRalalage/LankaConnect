@@ -104,6 +104,14 @@ public static class LankaEventsModule
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ISeatReservationRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.SeatReservationRepository>();
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.TicketRepository>();
 
+        // W5.3.c2 (2026-06-28): Event + Registration aggregate-root repository registrations.
+        // EventRepository (953 LOC) is the spine of the entire Events read+write surface;
+        // RegistrationRepository (607 LOC) hosts the GetByIdAsync tracking override that
+        // raises PaymentCompletedEvent + RegistrationConfirmedEvent through the dispatch
+        // chain widened in Wave3-followup.B (1688aee9). Both interfaces in Products.LankaEvents.Domain.
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.IEventRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.IRegistrationRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.RegistrationRepository>();
+
         return services;
     }
 }

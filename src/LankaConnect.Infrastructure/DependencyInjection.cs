@@ -168,8 +168,11 @@ public static class DependencyInjection
 
         // Add Repositories
         services.AddScoped<IBusinessRepository, BusinessRepository>();
-        services.AddScoped<IEventRepository, EventRepository>();
-        services.AddScoped<IRegistrationRepository, RegistrationRepository>();
+        // W5.3.c2 (2026-06-28): EventRepository + RegistrationRepository registrations
+        // moved to Products/LankaEvents.Api/LankaEventsModule.AddLankaEventsModule().
+        // These are the final + largest Event-family repositories (1,560 LOC combined).
+        // Same physical AppDbContext + Repository<T> base; only the implementation
+        // assembly + DI registration site shifted to the Products composition root.
         services.AddScoped<IForumTopicRepository, ForumTopicRepository>();
         services.AddScoped<IReplyRepository, ReplyRepository>();
         

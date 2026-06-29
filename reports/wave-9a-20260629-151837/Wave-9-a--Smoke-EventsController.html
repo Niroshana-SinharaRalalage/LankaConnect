@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Smoke Report: Wave 9.a: Smoke-EventsController</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:24px;color:#222}
+.status{padding:8px 16px;border-radius:4px;display:inline-block;color:#fff;font-weight:600}
+.pass{background:#22c55e}.fail{background:#dc2626}.warn{background:#eab308}
+table{border-collapse:collapse;margin:12px 0}td,th{border:1px solid #ddd;padding:6px 10px}th{background:#f3f4f6}
+tr.row-FAIL{background:#fee2e2}tr.row-SKIP{background:#fef3c7}
+.summary{margin:12px 0;font-size:14px}
+</style></head><body>
+<h1>Smoke Report: Wave 9.a: Smoke-EventsController</h1>
+<div class='status fail'>FAIL: 22/34 passed</div>
+<div class='summary'>Started: 2026-06-29T19:18:41Z UTC | Duration: 35.34 sec | Pass rate: 64.71%</div>
+<h2>Results</h2>
+<table><thead><tr><th>Status</th><th>Section</th><th>Test</th><th>Endpoint</th><th>Duration (ms)</th><th>Details</th></tr></thead><tbody>
+<tr class='row-PASS'><td>PASS</td><td>crud-read</td><td>list my events</td><td>GET /api/Events/my-events</td><td>1099</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-read</td><td>list paginated</td><td>GET /api/Events/my-events?pageNumber=2</td><td>1935</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-read</td><td>paid event detail round-trip (W5.3 EventRepository proof)</td><td>GET /api/Events/{paidFixture}</td><td>225</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-read</td><td>public visible events</td><td>GET /api/Events</td><td>1025</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>list-and-filter</td><td>category filter Social</td><td>GET /api/Events?category=Social</td><td>365</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>list-and-filter</td><td>category filter Cultural</td><td>GET /api/Events?category=Cultural</td><td>906</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>list-and-filter</td><td>trending events</td><td>GET /api/Events/trending</td><td>209</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-write</td><td>create free event</td><td>POST /api/Events</td><td>284</td><td>-</td></tr>
+<tr class='row-FAIL'><td>FAIL</td><td>crud-write</td><td>fetch created event</td><td>GET /api/Events/{id}</td><td>245</td><td>Assertion &#39;Assert-AuditFieldsFresh&#39; failed: expected=updatedAt present actual=missing updatedAt context=newly-created event audit fields</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-write</td><td>publish event</td><td>POST /api/Events/{id}/publish</td><td>201</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-write</td><td>verify published status</td><td>GET /api/Events/{id}</td><td>351</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-write</td><td>unpublish event</td><td>POST /api/Events/{id}/unpublish</td><td>237</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>crud-write</td><td>delete event</td><td>DELETE /api/Events/{id}</td><td>0</td><td>destructive; run with -IncludeDestructive</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>rsvp</td><td>rsvp setup: create + publish event</td><td>POST /api/Events + /publish</td><td>546</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>rsvp</td><td>pre-RSVP: currentRegistrations == 0</td><td>GET /api/Events/{id}</td><td>558</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>rsvp</td><td>POST RSVP</td><td>POST /api/Events/{id}/rsvp</td><td>6945</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>rsvp</td><td>post-RSVP: currentRegistrations 0-&gt;1 (W5.3 RegistrationRepository proof)</td><td>GET /api/Events/{id}</td><td>363</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>rsvp</td><td>attendees list shows my registration</td><td>GET /api/Events/{id}/attendees</td><td>356</td><td>-</td></tr>
+<tr class='row-FAIL'><td>FAIL</td><td>rsvp</td><td>dispatch log: RegistrationConfirmedEvent dispatched</td><td>(container logs)</td><td>9971</td><td>Assertion &#39;Assert-DomainEventDispatched&#39; failed: expected=log line containing &#39;dispatched ... Registration&#39; actual=no matching log lines found (event was not dispatched OR log tail too short) context=W5.3 EventRepository must dispatch RegistrationConfirmedEvent through Wave3-followup.B-widened filter</td></tr>
+<tr class='row-FAIL'><td>FAIL</td><td>cancel</td><td>cancel my registration</td><td>DELETE /api/Events/{id}/my-registration</td><td>161</td><td>Expected 200/204, got 405</td></tr>
+<tr class='row-FAIL'><td>FAIL</td><td>cancel</td><td>post-cancel: registration removed from event</td><td>GET /api/Events/{id}</td><td>308</td><td>Expected count=0 OR status!=Confirmed; got count=1 status=Confirmed</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>paid-event</td><td>create paid event</td><td>POST /api/Events (isFreeEvent=false)</td><td>376</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>paid-event</td><td>paid event detail round-trip</td><td>GET /api/Events/{id}</td><td>361</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>paid-event</td><td>Stripe checkout</td><td>POST /api/Events/{id}/checkout</td><td>0</td><td>state-dependent (Stripe); run with -IncludePaymentFlows</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>my-registrations</td><td>list my registrations</td><td>GET /api/Events/my-registrations</td><td>133</td><td>-</td></tr>
+<tr class='row-FAIL'><td>FAIL</td><td>attendees</td><td>attendees list for canonical event</td><td>GET /api/Events/{paidFixture}/attendees</td><td>178</td><td>Assertion &#39;Assert-HttpStatus&#39; failed: expected=200 actual=403 context= url=GET https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Events/5fbcea92-bd5b-486f-9eab-1c4ee0146307/attendees bodyPreview=&lt;empty&gt; err=HTTP 403</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>ticketing</td><td>ticket tiers visible on paid event</td><td>GET /api/Events/{paidFixture} (ticketTiers field)</td><td>307</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>ticketing</td><td>ticket-tier CRUD operations</td><td>POST/PATCH /api/Events/{id}/ticket-tiers</td><td>0</td><td>expansion deferred to Wave 9.c full ticketing coverage</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>organizer-contacts</td><td>organizer contacts visible on event detail</td><td>GET /api/Events/{id}.organizerContacts</td><td>247</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>organizer-contacts</td><td>organizer contacts CRUD</td><td>POST/PATCH/DELETE /api/Events/{id}/organizer-contacts</td><td>0</td><td>expansion deferred to follow-up</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>email-groups</td><td>email-groups field on event detail</td><td>GET /api/Events/{id}.emailGroupIds</td><td>321</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>email-groups</td><td>email-group CRUD on events</td><td>POST/DELETE /api/Events/{id}/email-groups</td><td>0</td><td>expansion deferred to follow-up</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>analytics</td><td>event analytics endpoints</td><td>GET /api/Events/{id}/analytics/*</td><td>0</td><td>EventAnalyticsRepository + EventViewRecordRepository remain in legacy Infrastructure (interfaces in LankaConnect.Domain.Analytics); not part of W5.3 surface</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>admin</td><td>global admin endpoints (skipped - 403 inverted assertion)</td><td>POST /api/Events/admin/*</td><td>0</td><td>test user is EventOrganizer not global admin; inverted-403 assertions deferred to dedicated admin smoke (Wave 9.b)</td></tr>
+</tbody></table>
+</body></html>
+

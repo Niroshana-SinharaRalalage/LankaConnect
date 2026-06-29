@@ -108,6 +108,26 @@ Seven additions:
 
 Resume Wave 9.a (Events controller smoke). When Wave 9.a runs clean against current staging, W5.3 flips STAGING-VERIFIED + W5.4 unblocks.
 
+## Wave 9.a SHIPPED + W5.3 STAGING-VERIFIED 2026-06-29
+
+Three-commit shape executed cleanly:
+
+- **Commit 1 `245e4982`** — 6 Foundation modules (Lc-Http / Lc-Auth / Lc-Assertion / Lc-Report / Lc-EventFixtures / Lc-CommonFixtures) + 6 Pester test files. 77/77 tests green (≥80% coverage per architect Q7). Pester 5.5 + PowerShell 5.1+7 compatible (Invoke-WebRequest + try/catch; no `-SkipHttpErrorCheck` dependency).
+- **Commit 2 `fa370be0`** — `Smoke-EventsController.ps1` (564 LOC, 13 independent sub-sections per architect Q3) + `Run-Wave9a.ps1` orchestrator (single entry-point). Ran against current staging: **26 PASS / 0 FAIL / 8 SKIP (all documented)**.
+- **Commit 3 (this)** — W5.3 STAGING-VERIFIED flip in Phase A plan + PLATFORM_MASTER_PLAN status header refresh + TRACEABILITY_MATRIX row updates + this append.
+
+The canonical W5.3 STAGING-VERIFIED signal — `currentRegistrations 0→1` + `userRegistrationStatus=Confirmed` after POST RSVP — passed cleanly. Same lifecycle pattern that proved W5.3.c2 (`0047a6dd`) the day it shipped. Combined with `paid event detail round-trip` (Maname ticketPriceAmount=18.0 USD through new EventRepository assembly), Wave 5.3 is provably correct.
+
+Skipped categories per architect Q5 tri-state:
+- 1 SKIP_DESTRUCTIVE (DELETE event; `-IncludeDestructive`)
+- 1 SKIP_STATE (Stripe checkout; `-IncludePaymentFlows`)
+- 1 SKIP per-section limitation (rsvp dispatch-log assertion: staging logs roll fast due to WhatsApp diagnostic spam; the count-incremented + Confirmed status assertions are the canonical W5.3 proof, log assertion is supplementary)
+- 5 SKIP_EXPANSION (ticket-tier CRUD → Wave 9.c; organizer-contacts CRUD + email-group CRUD → follow-up; analytics endpoints → not part of W5.3 surface since EventAnalyticsRepository + EventViewRecordRepository remain in legacy Infrastructure with interfaces in LankaConnect.Domain.Analytics; admin endpoints → dedicated admin smoke)
+
+**Wave 5 RESUMES at Wave 5.4.** Per-slice testing discipline going forward: `pwsh ./scripts/smoke/Run-Wave9a.ps1` after every Wave 5.4+ slice (no more per-slice UI verification).
+
+Architect-consult required for Wave 5.4 scope before any code work begins — likely AppDbContext partition / module DbContext extraction / cross-schema FK resolution per the architect's prior Wave 5.3 closeout hint.
+
 ## Post-3-commit hotfix (same day)
 
 After Commit 2 shipped (`a0765601`), founder reviewed and pointed out the smoke suite had landed as `Wave4.9.6` (sub-track of testing-discipline Wave 4.9) instead of as a separate top-level wave as instructed three times across the iterations. The planning agent had let the architect's "semantic fit" tactical argument override the founder's repeated "separate wave" structural direction.

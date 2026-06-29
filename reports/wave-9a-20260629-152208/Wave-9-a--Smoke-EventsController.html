@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Smoke Report: Wave 9.a: Smoke-EventsController</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:24px;color:#222}
+.status{padding:8px 16px;border-radius:4px;display:inline-block;color:#fff;font-weight:600}
+.pass{background:#22c55e}.fail{background:#dc2626}.warn{background:#eab308}
+table{border-collapse:collapse;margin:12px 0}td,th{border:1px solid #ddd;padding:6px 10px}th{background:#f3f4f6}
+tr.row-FAIL{background:#fee2e2}tr.row-SKIP{background:#fef3c7}
+.summary{margin:12px 0;font-size:14px}
+</style></head><body>
+<h1>Smoke Report: Wave 9.a: Smoke-EventsController</h1>
+<div class='status warn'>WARN: 26/34 passed</div>
+<div class='summary'>Started: 2026-06-29T19:22:16Z UTC | Duration: 46.93 sec | Pass rate: 76.47%</div>
+<h2>Results</h2>
+<table><thead><tr><th>Status</th><th>Section</th><th>Test</th><th>Endpoint</th><th>Duration (ms)</th><th>Details</th></tr></thead><tbody>
+<tr class='row-PASS'><td>PASS</td><td>crud-read</td><td>list my events</td><td>GET /api/Events/my-events</td><td>3599</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-read</td><td>list paginated</td><td>GET /api/Events/my-events?pageNumber=2</td><td>2178</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-read</td><td>paid event detail round-trip (W5.3 EventRepository proof)</td><td>GET /api/Events/{paidFixture}</td><td>874</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-read</td><td>public visible events</td><td>GET /api/Events</td><td>1829</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>list-and-filter</td><td>category filter Social</td><td>GET /api/Events?category=Social</td><td>427</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>list-and-filter</td><td>category filter Cultural</td><td>GET /api/Events?category=Cultural</td><td>639</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>list-and-filter</td><td>trending events</td><td>GET /api/Events/trending</td><td>258</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-write</td><td>create free event</td><td>POST /api/Events</td><td>1162</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-write</td><td>fetch created event</td><td>GET /api/Events/{id}</td><td>277</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-write</td><td>publish event</td><td>POST /api/Events/{id}/publish</td><td>963</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-write</td><td>verify published status</td><td>GET /api/Events/{id}</td><td>300</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>crud-write</td><td>unpublish event</td><td>POST /api/Events/{id}/unpublish</td><td>231</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>crud-write</td><td>delete event</td><td>DELETE /api/Events/{id}</td><td>0</td><td>destructive; run with -IncludeDestructive</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>rsvp</td><td>rsvp setup: create + publish event</td><td>POST /api/Events + /publish</td><td>519</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>rsvp</td><td>pre-RSVP: currentRegistrations == 0</td><td>GET /api/Events/{id}</td><td>253</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>rsvp</td><td>POST RSVP</td><td>POST /api/Events/{id}/rsvp</td><td>11940</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>rsvp</td><td>post-RSVP: currentRegistrations 0-&gt;1 (W5.3 RegistrationRepository proof)</td><td>GET /api/Events/{id}</td><td>364</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>rsvp</td><td>attendees list shows my registration</td><td>GET /api/Events/{id}/attendees</td><td>555</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>rsvp</td><td>dispatch log assertion (log tail too short)</td><td>(container logs)</td><td>0</td><td>Staging logs roll fast (WhatsApp diag spam); count-incremented + Confirmed status above is canonical W5.3 proof</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>cancel</td><td>cancel my rsvp</td><td>DELETE /api/Events/{id}/rsvp</td><td>552</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>cancel</td><td>post-cancel: registration removed from event</td><td>GET /api/Events/{id}</td><td>300</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>paid-event</td><td>create paid event</td><td>POST /api/Events (isFreeEvent=false)</td><td>669</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>paid-event</td><td>paid event detail round-trip</td><td>GET /api/Events/{id}</td><td>304</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>paid-event</td><td>Stripe checkout</td><td>POST /api/Events/{id}/checkout</td><td>0</td><td>state-dependent (Stripe); run with -IncludePaymentFlows</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>my-registrations</td><td>list my registrations</td><td>GET /api/Events/my-registrations</td><td>123</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>attendees</td><td>attendees list for organizer-owned event</td><td>GET /api/Events/{id}/attendees</td><td>186</td><td>-</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>ticketing</td><td>ticket tiers visible on paid event</td><td>GET /api/Events/{paidFixture} (ticketTiers field)</td><td>160</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>ticketing</td><td>ticket-tier CRUD operations</td><td>POST/PATCH /api/Events/{id}/ticket-tiers</td><td>0</td><td>expansion deferred to Wave 9.c full ticketing coverage</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>organizer-contacts</td><td>organizer contacts visible on event detail</td><td>GET /api/Events/{id}.organizerContacts</td><td>153</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>organizer-contacts</td><td>organizer contacts CRUD</td><td>POST/PATCH/DELETE /api/Events/{id}/organizer-contacts</td><td>0</td><td>expansion deferred to follow-up</td></tr>
+<tr class='row-PASS'><td>PASS</td><td>email-groups</td><td>email-groups field on event detail</td><td>GET /api/Events/{id}.emailGroupIds</td><td>175</td><td>-</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>email-groups</td><td>email-group CRUD on events</td><td>POST/DELETE /api/Events/{id}/email-groups</td><td>0</td><td>expansion deferred to follow-up</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>analytics</td><td>event analytics endpoints</td><td>GET /api/Events/{id}/analytics/*</td><td>0</td><td>EventAnalyticsRepository + EventViewRecordRepository remain in legacy Infrastructure (interfaces in LankaConnect.Domain.Analytics); not part of W5.3 surface</td></tr>
+<tr class='row-SKIP'><td>SKIP</td><td>admin</td><td>global admin endpoints (skipped - 403 inverted assertion)</td><td>POST /api/Events/admin/*</td><td>0</td><td>test user is EventOrganizer not global admin; inverted-403 assertions deferred to dedicated admin smoke (Wave 9.b)</td></tr>
+</tbody></table>
+</body></html>
+

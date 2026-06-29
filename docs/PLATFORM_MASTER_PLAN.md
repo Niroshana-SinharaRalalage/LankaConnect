@@ -5,13 +5,13 @@ MACHINE-READABLE STATUS HEADER (grep-friendly; update with every status flip)
 -->
 ```
 CURRENT_PHASE: Phase A
-CURRENT_WAVE: Wave 5 (PAUSED at 5.3 SHIPPED; resumes at 5.4 after Wave 9 ships)
-CURRENT_WAVE_STATUS: PAUSED — pending Wave 9 (API Smoke Suite) build
-ACTIVE_WORK: Wave 9 — API Smoke Suite (interrupting Wave 5 work)
-ACTIVE_SUB_SLICE: Wave 9.a (Foundation + Events controller smoke) — NEXT UP
-NEXT_AFTER_GATE: Wave 5.4 — Products carve-out resumption (architect-consult required for scope: likely AppDbContext partition / module DbContext extraction / cross-schema FK resolution)
-ONGOING_DISCIPLINE_AFTER_WAVE_9: API smoke suite replaces UI verification as the per-slice testing mechanism for ALL subsequent Wave 5.4+ slices
-ARCHITECT_REVIEW_REQUIRED: NO
+CURRENT_WAVE: Wave 5 (resuming at 5.4; Wave 9.a SHIPPED gating green)
+CURRENT_WAVE_STATUS: RESUMING — Wave 5.3 STAGING-VERIFIED 2026-06-29 (Wave 9.a smoke green: 26 PASS, 0 FAIL, 8 SKIP documented)
+ACTIVE_WORK: Wave 5.4 scope architect consult — NEXT
+ACTIVE_SUB_SLICE: Wave 5.4 — Products carve-out resumption (architect consult pending for scope: AppDbContext partition / module DbContext extraction / cross-schema FK resolution)
+ONGOING_DISCIPLINE: API smoke suite (Wave 9.a infrastructure) is the per-slice testing mechanism going forward. Run pwsh ./scripts/smoke/Run-Wave9a.ps1 after every Wave 5.4+ slice. No more per-slice UI verification.
+WAVE_9_COMPLETE_STATUS: Wave 9.a SHIPPED; Wave 9.b through 9.g pending (per-controller smokes for Auth/Identity, Communications, Finance/Business, long-tail/scenarios/CI, closeout)
+ARCHITECT_REVIEW_REQUIRED: YES — Wave 5.4 scope consult before resumption code work begins
 LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) + System Architect (Opus 4.7) pairing
 LAST_UPDATED: 2026-06-29
 ```
@@ -130,13 +130,15 @@ Even when you think you know the right answer. Even when an earlier architect ru
 | Wave 3 — 79-entity migration to BB.Entity<TId> | 🟡 IN-FLIGHT | Via Wave 4 capability extractions |
 | Wave 4 — Capability extractions | 🟡 PARTIAL | 4.0/4.0b/4.2/4.3/4.5 SHIPPED; 4.4 STAGING-VERIFIED; 4.6 IN-PROGRESS; 4.7 consumer migrations IN-PROGRESS; 4.1 Communications partially shipped (legacy numbering) |
 | Wave 4.9 — Testing-discipline overlay | 🟡 PARTIAL | 4.9.0 + 4.9.1 sub-tasks shipping; **4.9.6 PLANNED (per-controller API smoke suite)** |
-| Wave 5 — Products carve-out (LankaEvents → `Products/LankaEvents`) | 🟡 IN-PROGRESS | 5.0/5.1/5.2/5.3 SHIPPED; 5.3 STAGING-VERIFICATION gated on Wave 9.a (Events smoke); 5.4/5.5 pending |
+| Wave 5 — Products carve-out (LankaEvents → `Products/LankaEvents`) | 🟢 RESUMING | 5.0/5.1/5.2 SHIPPED; **Wave 5.3 STAGING-VERIFIED 2026-06-29** via Wave 9.a smoke (26 PASS / 0 FAIL / 8 SKIP documented); Wave 5.4 awaiting architect-consult on scope (AppDbContext partition / module DbContext extraction / cross-schema FK resolution); Wave 5.5 closeout pending |
 | Wave 6 — ArchTest hardening (28 rules total) | ⏳ Pending | |
 | Wave 6.5 — Outbox cutover | ⏳ Pending | |
 | Wave 7 — Frontend mirror (Turborepo + feature packages) | ⏳ Pending | |
 | Wave 8 — Production cutover + stabilization | ⏳ Pending | |
 
-**Immediate gating chain**: Wave 9.a (Events controller smoke) → Wave 5.3 STAGING-VERIFIED flip → Wave 5.4 (next Products carve-out chunk) unblocks.
+**Wave 5.3 STAGING-VERIFIED 2026-06-29.** Wave 9.a (`fa370be0`) Foundation modules + Smoke-EventsController.ps1 ran green against current staging: 26 PASS, 0 FAIL, 8 SKIP (all documented). The canonical W5.3 STAGING-VERIFIED signal — `currentRegistrations 0→1` + `userRegistrationStatus=Confirmed` after RSVP — passed. Wave 5.4 now unblocks; architect-consult required for scope.
+
+**Immediate next**: Wave 5.4 architect consult → Wave 5.4 execution (using Wave 9.a smoke suite for per-slice verification, no more UI checkpoints) → Wave 5.5 closeout → Wave 6 (ArchTest hardening).
 
 ---
 

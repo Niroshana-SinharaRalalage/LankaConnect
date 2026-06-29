@@ -7,12 +7,14 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using System.Diagnostics;
 using Serilog.Context;
 
+using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Phase 2B: Repository implementation for VenueLayout aggregate operations.
 /// Loads full aggregate (layout → zones → seats) for domain operations.
 /// </summary>
+[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class VenueLayoutRepository : Repository<VenueLayout>, IVenueLayoutRepository
 {
     private readonly ILogger<VenueLayoutRepository> _repoLogger;

@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Abstractions;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Repository implementation for AddOnPurchase operations.
 /// Part of the standalone AddOn system for events.
 /// </summary>
+[Wave6_5TransitionalException("Uses legacy AppDbContext + Repository<T> base via W5.0 transitional ProjectReference; Wave 6.5 will extract LankaEventsDbContext")]
 public class AddOnPurchaseRepository : Repository<AddOnPurchase>, IAddOnPurchaseRepository
 {
     private readonly ILogger<AddOnPurchaseRepository> _repoLogger;

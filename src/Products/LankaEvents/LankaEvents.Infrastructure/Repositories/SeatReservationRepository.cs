@@ -6,12 +6,14 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Serilog.Context;
 
+using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Phase 2B: Repository implementation for SeatReservation operations.
 /// Reservations are created on payment completion and hard-deleted on cancellation (V1).
 /// </summary>
+[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class SeatReservationRepository : Repository<SeatReservation>, ISeatReservationRepository
 {
     private readonly ILogger<SeatReservationRepository> _repoLogger;

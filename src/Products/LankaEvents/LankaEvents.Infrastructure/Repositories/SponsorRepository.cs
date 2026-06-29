@@ -9,12 +9,14 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using System.Diagnostics;
 using Serilog.Context;
 
+using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository implementation for Sponsor operations.
 /// Part of the standalone Sponsor system for events.
 /// </summary>
+[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class SponsorRepository : Repository<Sponsor>, ISponsorRepository
 {
     private readonly ILogger<SponsorRepository> _repoLogger;

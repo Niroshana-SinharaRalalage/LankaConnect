@@ -8,6 +8,7 @@ using LankaConnect.Infrastructure.Data.Repositories;    // W5.3.a1: Repository<T
 using System.Diagnostics;
 using Serilog.Context;
 
+using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
@@ -17,6 +18,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Phase 6A Event Notifications: Supports both full state names and abbreviations
 /// Phase 6A.X: Enhanced with comprehensive logging pattern
 /// </summary>
+[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class MetroAreaRepository : Repository<MetroArea>, IMetroAreaRepository
 {
     private readonly ILogger<MetroAreaRepository> _repoLogger;

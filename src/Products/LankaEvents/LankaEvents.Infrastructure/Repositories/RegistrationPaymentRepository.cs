@@ -9,12 +9,14 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using System.Diagnostics;
 using Serilog.Context;
 
+using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository implementation for RegistrationPayment operations.
 /// Part of the Add-Only Attendees with Delta Payment feature.
 /// </summary>
+[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class RegistrationPaymentRepository : Repository<RegistrationPayment>, IRegistrationPaymentRepository
 {
     private readonly ILogger<RegistrationPaymentRepository> _repoLogger;

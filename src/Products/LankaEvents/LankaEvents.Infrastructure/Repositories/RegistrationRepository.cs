@@ -9,8 +9,10 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using System.Diagnostics;
 using Serilog.Context;
 
+using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
+[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class RegistrationRepository : Repository<Registration>, IRegistrationRepository
 {
     private readonly ILogger<RegistrationRepository> _repoLogger;

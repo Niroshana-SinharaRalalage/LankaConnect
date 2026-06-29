@@ -7,6 +7,7 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using System.Diagnostics;
 using Serilog.Context;
 
+using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
@@ -14,6 +15,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Handles detailed view tracking for unique viewer calculations
 /// Phase 6A.X: Enhanced with comprehensive observability logging
 /// </summary>
+[Wave6_5TransitionalException("Uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class EventViewRecordRepository : IEventViewRecordRepository
 {
     private readonly AppDbContext _context;

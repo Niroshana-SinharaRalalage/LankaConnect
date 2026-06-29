@@ -10,8 +10,10 @@ using LankaConnect.Infrastructure.Helpers;
 using System.Diagnostics;
 using Serilog.Context;
 
+using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
+[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class EventRepository : Repository<Event>, IEventRepository
 {
     private readonly IGeoLocationService _geoLocationService;

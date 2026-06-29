@@ -36,7 +36,7 @@
 | **Wave4** | 8 capability extractions (Notifications cleanup, Communications, Media, Forms, Payments, Scheduling, Identity, CulturalIntelligence) | 🟡 Wave4.0/Wave4.0b/Wave4.2/Wave4.3/Wave4.5 SHIPPED; Wave4.4 (Payments.Contracts) STAGING-VERIFIED `86121c43` (status sourced from archived wave-plan file); Wave4.6 (Identity.Contracts) IN-PROGRESS (active wave-plan file kept in place at `docs/MASTER_TODO_WAVE_4_6_IDENTITY_CONTRACTS.md`); Wave4.7 consumer migrations IN-PROGRESS (latest `ac1410a0`) | ~12 wk |
 | **Wave4.9** | Testing-discipline overlay + IAuditable physical-column rollout + Schema realignment (architect-added 2026-06-07/08) | 🟡 Wave4.9.0/4.9.1 sub-tasks shipping | ~7 wk |
 | **Wave5** | Products carve-out (`Products/LankaEvents`) | 🟢 **RESUMING — Wave 5.3 STAGING-VERIFIED 2026-06-29** — Wave5.0 SHIPPED (`916aab0b` skeleton); Wave5.1 SHIPPED (`47e14ef9` + `59ed4483` Event-family Domain move); Wave5.2 SHIPPED (~458 files Application carve-out across `9d9c2e78` + `918b0f6d` + `7e040d5b` + `7eb8f71f` + `134b756e` + `89532397` + `59989cba` + `1688aee9` + `b3ca3496` + `0a5c1fd2`); **Wave5.3 SHIPPED + STAGING-VERIFIED 2026-06-29** (18-repo Infrastructure carve-out across `9be09e8a` + `bd33290a` + `a820df03` + `e43481cf` + `0047a6dd`; verification via Wave 9.a smoke `fa370be0`: 26 PASS, 0 FAIL, 8 SKIP documented; canonical proof `currentRegistrations 0→1` + `userRegistrationStatus=Confirmed` passed). **Wave 5.4 NEXT** — architect-consult required for scope (likely AppDbContext partition / module DbContext extraction / cross-schema FK resolution per the architect's prior closeout hint). Wave 5.5 = Products carve-out closeout (ArchTests for Products boundary, deferred-namespace cleanups, docs). Per-slice testing discipline going forward: API smoke suite via `pwsh ./scripts/smoke/Run-Wave9a.ps1` (replaces UI verification). | ~3 wk |
-| **Wave6** | ArchTest hardening (28 rules total) | ⏳ Pending | ~1.5 wk |
+| **Wave6** | ArchTest hardening (28 rules total) + W5.5.a-deferred debt cleanup (architect-added 2026-06-29) | ⏳ Pending — includes Wave 6.X.Y + Wave 6.X.Z debt-tracking entries from Wave 5.5.a Rules 5+9 Skip-fact deferrals | ~1.5 wk |
 | **Wave6.5** | Outbox cutover (architect-added; retires self-saving repository pattern) | ⏳ Pending | ~3 wk |
 | **Wave7** | Frontend mirror (Turborepo + feature packages) | ⏳ Pending | ~6 wk |
 | **Wave8** | Production cutover + stabilization | ⏳ Pending | ~5 wk |
@@ -93,6 +93,18 @@
 **Wave4.9.4 — Forms schema rename** (4 form-table ALTER SET SCHEMA forms) — ⏳ Pending
 
 **Wave4.9.5 — AppDbContext snapshot resync** (Phase 3 redo: surgical purge of Modules.* leaks, NOT full snapshot regeneration) — ⏳ Pending
+
+### Wave 6 debt-tracking entries (architect-added 2026-06-29 via Wave 5.5.a Skip-fact deferrals)
+
+These entries track architectural debt surfaced — but not introduced — by Wave 5.5.a's
+ArchTest rules 5 and 9. Both rules ship with `[Fact(Skip = "...")]` in
+`tests/architecture/LankaConnect.ArchitectureTests/ProductsLayerRules.cs`; un-skipping
+each is the merge gate when the corresponding cleanup completes.
+
+| Task | Description | Status | Notes |
+|---|---|---|---|
+| **Wave 6.X.Y** | Resolve Rule 5 debt: 14 `LankaConnect.Infrastructure` services/handlers/background-services directly reference `Products.LankaEvents.Application`. Cleanup pattern = publish integration events instead of invoking command/query types directly. Per blueprint §7.4 / D5. Affected: `RegistrationEmailService`, `PdfTicketService`, `TicketService`, `CsvExportService`, `ExcelExportService`, 7 `*WebhookHandler` classes, `RefundReconciliationBackgroundService`, `SeatHoldCleanupService`. Composition-root `DependencyInjection.cs` is permanently allowed (carries the runtime-vs-wiring distinction). | ⏳ PLANNED | Blocked on **Wave 6.5 Outbox cutover** providing the integration-event mechanism. Pick next free Wave 6.X sub-slot at consult time. |
+| **Wave 6.X.Z** | Resolve Rule 9 debt: 14 `Forms.Application` query types (7 queries + 7 handlers: GetPublicFormResponses, GetMyFormResponse, GetMyFormResponseByUserId, GetFormResponses, GetEventForms, GetEventFormDetail, ExportFormResponses) directly reference `Products.LankaEvents.Application` instead of going through `Products.LankaEvents.Domain` interfaces or a dedicated `IEventQueries` facade. Same cross-module boundary class as W5.3.c2 audit. | ⏳ PLANNED | Architect-consult required for facade-vs-direct-Domain-interface decision. |
 
 ### Wave 9 Task Tree — API Smoke Suite
 

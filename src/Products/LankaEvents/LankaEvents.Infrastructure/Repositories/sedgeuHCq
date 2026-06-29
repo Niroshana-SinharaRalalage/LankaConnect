@@ -14,7 +14,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Phase 6A.61: Repository implementation for EventNotificationHistory tracking
 /// Phase 6A.X: Enhanced with comprehensive observability logging
 /// </summary>
-[Wave6_5TransitionalException("Uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
+[Wave6_5TransitionalException("Uses legacy AppDbContext + Repository<T> base via W5.0 transitional ProjectReference; Wave 6.5 will extract LankaEventsDbContext")]
 public class EventNotificationHistoryRepository : IEventNotificationHistoryRepository
 {
     private readonly AppDbContext _context;

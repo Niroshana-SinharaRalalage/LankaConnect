@@ -91,6 +91,16 @@
     <ProjectReference Include="..\..\..\src\Modules\Identity\Identity.Application\Identity.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Identity\Identity.Infrastructure\Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
+
+    <!-- W5.5.a (2026-06-29) — Products/LankaEvents layer; ArchTest enforces:
+         (1) Products.LankaEvents.Domain depends only on allowed assemblies (BB + SharedKernel + Scheduling.Domain + LankaConnect.Domain transitional)
+         (2) Products.LankaEvents.Infrastructure transitional dep on legacy is namespace-scoped + attribute-gated via [Wave6_5TransitionalException]
+         (3) Other modules (Identity, Payments, etc.) reach Products only via Domain interfaces, never *.Application/*.Infrastructure
+         (4) Products.Application does not reference Products.Infrastructure (Clean Arch invariant) -->
+    <ProjectReference Include="..\..\..\src\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Products\LankaEvents\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Products\LankaEvents\LankaEvents.Api\LankaEvents.Api.csproj" />
   </ItemGroup>
 
 </Project>

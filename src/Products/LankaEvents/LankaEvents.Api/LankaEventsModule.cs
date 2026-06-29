@@ -3,6 +3,8 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using LankaConnect.Products.LankaEvents.Application.Services;
+using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 namespace LankaConnect.Products.LankaEvents.Api;
 
@@ -58,6 +60,14 @@ public static class LankaEventsModule
         services.AddScoped<ISeatAssignmentValidator, SeatAssignmentValidator>();
         services.AddScoped<ILayoutMetrics, LayoutMetrics>();
         services.AddScoped<ISeatHoldMetrics, SeatHoldMetrics>();
+
+        // W5.3.a1 (2026-06-28): first Infrastructure repo relocated to Products.
+        // MetroAreaRepository moved from LankaConnect.Infrastructure.Data.Repositories
+        // to Products/LankaEvents.Infrastructure/Repositories. Same AppDbContext, same
+        // Repository<T> base, same SQL — only the assembly + DI registration site
+        // changed. Proves the cross-module DI pattern for W5.3.a2 (bulk leaves) +
+        // W5.3.b (finance) + W5.3.c (aggregate root + children).
+        services.AddScoped<IMetroAreaRepository, MetroAreaRepository>();
 
         return services;
     }

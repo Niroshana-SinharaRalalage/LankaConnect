@@ -236,8 +236,10 @@ public static class DependencyInjection
         // Add Email Group Repository (Phase 6A.25)
         // Wave 5.4.d.2 (2026-06-22): registration moved to CommunicationsModule
 
-        // Add Metro Area Repository (Phase 6A Event Notifications)
-        services.AddScoped<IMetroAreaRepository, MetroAreaRepository>();
+        // W5.3.a1 (2026-06-28): MetroAreaRepository registration moved to
+        // Products/LankaEvents.Api/LankaEventsModule.AddLankaEventsModule().
+        // Same physical AppDbContext; only the assembly hosting the implementation
+        // and its DI registration shifted to the Products composition root.
 
         // Phase 6A.71: Event Reminder Tracking Repository
         services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventReminderRepository, EventReminderRepository>();

@@ -3,10 +3,12 @@ using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Infrastructure.Common;
+using LankaConnect.Infrastructure.Data;                 // W5.3.a1: AppDbContext
+using LankaConnect.Infrastructure.Data.Repositories;    // W5.3.a1: Repository<T> base
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository implementation for MetroArea entity

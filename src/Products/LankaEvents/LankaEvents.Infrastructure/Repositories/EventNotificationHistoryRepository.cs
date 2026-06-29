@@ -1,3 +1,5 @@
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Application.Repositories;
@@ -5,7 +7,7 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Phase 6A.61: Repository implementation for EventNotificationHistory tracking

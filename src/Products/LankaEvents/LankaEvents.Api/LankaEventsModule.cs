@@ -69,6 +69,16 @@ public static class LankaEventsModule
         // W5.3.b (finance) + W5.3.c (aggregate root + children).
         services.AddScoped<IMetroAreaRepository, MetroAreaRepository>();
 
+        // W5.3.a2 (2026-06-28): bulk leaf-repo relocation. Three more Event-family
+        // repositories shifted from LankaConnect.Infrastructure to Products following
+        // the W5.3.a1 proof. Interfaces already lived in Products.* namespaces.
+        // EventAnalytics + EventViewRecord intentionally deferred: their interfaces
+        // remain in LankaConnect.Domain.Analytics and a separate slice (W5.3.b or
+        // dedicated cleanup) will move them.
+        services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventReminderRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventReminderRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventNotificationHistoryRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventNotificationHistoryRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketScanLogRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.TicketScanLogRepository>();
+
         return services;
     }
 }

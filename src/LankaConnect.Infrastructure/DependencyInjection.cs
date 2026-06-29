@@ -241,11 +241,11 @@ public static class DependencyInjection
         // Same physical AppDbContext; only the assembly hosting the implementation
         // and its DI registration shifted to the Products composition root.
 
-        // Phase 6A.71: Event Reminder Tracking Repository
-        services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventReminderRepository, EventReminderRepository>();
-
-        // Phase 6A.61: Event Notification History Repository
-        services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventNotificationHistoryRepository, EventNotificationHistoryRepository>();
+        // W5.3.a2 (2026-06-28): EventReminderRepository + EventNotificationHistoryRepository
+        // registrations moved to Products/LankaEvents.Api/LankaEventsModule.AddLankaEventsModule().
+        // Same physical AppDbContext; assemblies + DI registration sites shifted to Products
+        // composition root as the Products-namespace interfaces already live in
+        // LankaConnect.Products.LankaEvents.Application.Repositories.
 
         // Add Analytics Repositories (Epic 2 Phase 3)
         services.AddScoped<LankaConnect.Domain.Analytics.IEventAnalyticsRepository, EventAnalyticsRepository>();
@@ -531,9 +531,8 @@ public static class DependencyInjection
         // process lifetime; rotation happens via container restart after a Key Vault update.
         services.AddSingleton<ITicketSignatureService, HmacTicketSignatureService>();
 
-        // Phase 6A.141: Ticket-scan audit log repository.
-        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketScanLogRepository,
-            LankaConnect.Infrastructure.Data.Repositories.TicketScanLogRepository>();
+        // W5.3.a2 (2026-06-28): TicketScanLogRepository registration moved to
+        // Products/LankaEvents.Api/LankaEventsModule.AddLankaEventsModule().
 
         // Wave 4.4.d.2 (2026-06-23): IRefundRequestRepository registration relocated
         // to PaymentsModule alongside the physical move of the interface (Payments.Domain)

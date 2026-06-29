@@ -1,3 +1,5 @@
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Repositories;
 using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -6,7 +8,7 @@ using Npgsql;
 using Serilog.Context;
 using System.Diagnostics;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Phase 6A.71: Repository implementation for tracking sent event reminders

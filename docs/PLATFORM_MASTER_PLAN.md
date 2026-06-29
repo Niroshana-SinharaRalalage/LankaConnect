@@ -5,9 +5,12 @@ MACHINE-READABLE STATUS HEADER (grep-friendly; update with every status flip)
 -->
 ```
 CURRENT_PHASE: Phase A
-CURRENT_WAVE: Wave 5
-CURRENT_WAVE_STATUS: IN-PROGRESS
-ACTIVE_SUB_SLICE: Wave 5.3 SHIPPED (5 commits); STAGING-VERIFICATION gated on Wave 9.a (Events smoke)
+CURRENT_WAVE: Wave 5 (PAUSED at 5.3 SHIPPED; resumes at 5.4 after Wave 9 ships)
+CURRENT_WAVE_STATUS: PAUSED — pending Wave 9 (API Smoke Suite) build
+ACTIVE_WORK: Wave 9 — API Smoke Suite (interrupting Wave 5 work)
+ACTIVE_SUB_SLICE: Wave 9.a (Foundation + Events controller smoke) — NEXT UP
+NEXT_AFTER_GATE: Wave 5.4 — Products carve-out resumption (architect-consult required for scope: likely AppDbContext partition / module DbContext extraction / cross-schema FK resolution)
+ONGOING_DISCIPLINE_AFTER_WAVE_9: API smoke suite replaces UI verification as the per-slice testing mechanism for ALL subsequent Wave 5.4+ slices
 ARCHITECT_REVIEW_REQUIRED: NO
 LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) + System Architect (Opus 4.7) pairing
 LAST_UPDATED: 2026-06-29

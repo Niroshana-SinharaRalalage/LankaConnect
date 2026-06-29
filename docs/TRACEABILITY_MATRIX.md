@@ -59,8 +59,10 @@ Every task must serve at least one vision reference.
 | W5.3.b | Bulk-move 8 Event-finance repos (AddOnDefinition, AddOnPurchase, Collection, Donation, Sponsor, SponsorshipPackage, RegistrationPayment, RegistrationAddition) | Wave 5.3.b | Wave 5 | Phase A | V2 + V3 | SHIPPED `a820df03` | Planning Agent |
 | W5.3.c1 | Relocate 4 Event child-entity repos (VenueLayout, SeatHold, SeatReservation, Ticket) | Wave 5.3.c | Wave 5 | Phase A | V2 + V3 | SHIPPED `e43481cf` | Planning Agent |
 | W5.3.c2 | Relocate EventRepository + RegistrationRepository (aggregate roots, 1,560 LOC) | Wave 5.3.c | Wave 5 | Phase A | V2 + V3 + V5 | SHIPPED `0047a6dd` | Planning Agent + Architect pairing |
-| W9.a | Per-controller smoke for EventsController — gates W5.3 STAGING-VERIFIED flip | Wave 9.a | Wave 9 | Phase A | V5 | PLANNED | Planning Agent |
+| W9.a | Per-controller smoke for EventsController — gates W5.3 STAGING-VERIFIED flip + Wave 5 resumption | Wave 9.a | Wave 9 | Phase A | V5 | PLANNED — NEXT UP | Planning Agent |
 | W9.b-k | Per-controller smoke for remaining 41 controllers (~330 endpoints total) | Wave 9.b through k | Wave 9 | Phase A | V5 | PLANNED | Planning Agent |
+| W5.4 | Products carve-out resumption — scope TBD per architect consult at Wave 9 completion (likely AppDbContext partition / module DbContext extraction / cross-schema FK resolution) | Wave 5.4 | Wave 5 | Phase A | V2 + V3 | PLANNED — PENDING WAVE 9 | Planning Agent + Architect pairing |
+| W5.5 | Products carve-out closeout — ArchTests for Products boundary + deferred-namespace cleanups + docs | Wave 5.5 | Wave 5 | Phase A | V2 + V3 + V4 | PLANNED — AFTER W5.4 | Planning Agent + Architect pairing |
 
 ---
 

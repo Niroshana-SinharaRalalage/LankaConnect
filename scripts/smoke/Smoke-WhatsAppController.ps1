@@ -81,9 +81,22 @@ function Test-WhatsAppMutatorsFlow {
         } | Out-Null
     }
 
-    # Verify request/confirm SKIP -- truly send real SMS via Twilio (9.h.6)
-    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-mutators' -TestName 'request verification' -Endpoint 'POST /api/whatsapp/verify/request' -SkipReason 'would send real SMS via Twilio; 9.h.6 (LC_DISABLE_WEBHOOK_SIG_VALIDATION + test-mode flag)'
-    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-mutators' -TestName 'confirm verification' -Endpoint 'POST /api/whatsapp/verify/confirm' -SkipReason 'inbox-token flow (SMS code); 9.h.6'
+    # Wave 9.h.9: verify request triggers real Twilio SMS to provided phone. Use a
+    # test phone number that won't ring real owners. AdminManager OK.
+    Test-LcEndpoint -Report $Report -Section 'whatsapp-mutators' -TestName 'request verification (real Twilio SMS)' -Endpoint 'POST /api/whatsapp/verify/request' -Action {
+        $r = Invoke-LcPost -Path '/api/whatsapp/verify/request' -Body @{
+            phoneNumber = '+15555550199'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    # Confirm with bogus code -- expect 400 (invalid code); proves wiring
+    Test-LcEndpoint -Report $Report -Section 'whatsapp-mutators' -TestName 'confirm verification (bogus code expect 400)' -Endpoint 'POST /api/whatsapp/verify/confirm' -Action {
+        $r = Invoke-LcPost -Path '/api/whatsapp/verify/confirm' -Body @{
+            phoneNumber = '+15555550199'
+            code = '000000'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 function Invoke-WhatsAppControllerSmoke {

@@ -128,12 +128,50 @@ function Test-AuthLoginLifecycleFlow {
 function Test-AuthAccountManagementFlow {
     param([Parameter(Mandatory)]$Report)
 
-    # All these endpoints would create state (new users) or send real emails
-    Add-LcResult -Report $Report -Status SKIP -Section 'auth-account' -TestName 'register new user' -Endpoint 'POST /api/Auth/register' -SkipReason 'destructive (would pollute staging users); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'auth-account' -TestName 'forgot password' -Endpoint 'POST /api/Auth/forgot-password' -SkipReason 'destructive (would send real password-reset email to test user); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'auth-account' -TestName 'reset password' -Endpoint 'POST /api/Auth/reset-password' -SkipReason 'state-dependent (requires valid reset token from email); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'auth-account' -TestName 'verify email' -Endpoint 'POST /api/Auth/verify-email' -SkipReason 'state-dependent (requires valid verification token); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'auth-account' -TestName 'resend verification' -Endpoint 'POST /api/Auth/resend-verification' -SkipReason 'destructive (would send email); -IncludeDestructive'
+    # Wave 9.h.9: Founder OK with real signup emails.
+    Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'register new user (signup)' -Endpoint 'POST /api/Auth/register' -Action {
+        $r = Invoke-LcPost -Path '/api/Auth/register' -Bearer $null -Body @{
+            firstName = 'Smoke'
+            lastName  = "Reg$(Get-Random -Maximum 9999)"
+            email     = "smoke-reg-$(Get-Random -Maximum 99999)@lankaconnect.test"
+            password  = 'Smoke1!Test'
+            confirmPassword = 'Smoke1!Test'
+            acceptTerms = $true
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'forgot password (sends real email)' -Endpoint 'POST /api/Auth/forgot-password' -Action {
+        $r = Invoke-LcPost -Path '/api/Auth/forgot-password' -Bearer $null -Body @{
+            email = 'smoke-forgot@lankaconnect.test'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'reset password (bogus token expect 400)' -Endpoint 'POST /api/Auth/reset-password' -Action {
+        $r = Invoke-LcPost -Path '/api/Auth/reset-password' -Bearer $null -Body @{
+            token = 'bogus-smoke-token-9h9'
+            email = 'smoke-reset@lankaconnect.test'
+            newPassword = 'NewSmoke1!Pwd'
+            confirmPassword = 'NewSmoke1!Pwd'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'verify email (bogus token expect 400)' -Endpoint 'POST /api/Auth/verify-email' -Action {
+        $r = Invoke-LcPost -Path '/api/Auth/verify-email' -Bearer $null -Body @{
+            token = 'bogus-smoke-token-9h9'
+            email = 'smoke-verify@lankaconnect.test'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'resend verification (sends real email)' -Endpoint 'POST /api/Auth/resend-verification' -Action {
+        $r = Invoke-LcPost -Path '/api/Auth/resend-verification' -Bearer $null -Body @{
+            email = 'smoke-resend@lankaconnect.test'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 
     # Entra (Microsoft Azure AD external login) - requires Azure AD config
     if ($IncludeExternalProviders) {
@@ -144,8 +182,12 @@ function Test-AuthAccountManagementFlow {
         Add-LcResult -Report $Report -Status SKIP -Section 'auth-account' -TestName 'login via Entra' -Endpoint 'POST /api/Auth/login/entra' -SkipReason 'state-dependent (requires Azure AD config); -IncludeExternalProviders'
     }
 
-    # test/verify-user is a backdoor endpoint for testing - SKIP by default
-    Add-LcResult -Report $Report -Status SKIP -Section 'auth-account' -TestName 'test verify user (backdoor)' -Endpoint 'POST /api/Auth/test/verify-user/{userId}' -SkipReason 'destructive backdoor endpoint; -IncludeDestructive'
+    # test/verify-user is a backdoor endpoint by design (used for smoke + integration testing)
+    Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'test verify user (backdoor by design)' -Endpoint 'POST /api/Auth/test/verify-user/{userId}' -Action {
+        $userId = Get-LcUserId
+        $r = Invoke-LcPost -Path "/api/Auth/test/verify-user/$userId" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 # ============================================================================

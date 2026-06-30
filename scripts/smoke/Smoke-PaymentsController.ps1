@@ -44,9 +44,26 @@ function Test-PaymentsReadFlow {
 
 function Test-PaymentsMutatorsFlow {
     param([Parameter(Mandatory)]$Report)
-    Add-LcResult -Report $Report -Status SKIP -Section 'payments-mutators' -TestName 'create Stripe checkout session' -Endpoint 'POST /api/Payments/create-checkout-session' -SkipReason 'destructive (creates real Stripe session; RegistrationPaymentRepository W5.3 write path); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'payments-mutators' -TestName 'create Stripe portal session' -Endpoint 'POST /api/Payments/create-portal-session' -SkipReason 'destructive (creates Stripe portal session); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'payments-mutators' -TestName 'Stripe webhook receiver' -Endpoint 'POST /api/Payments/webhook' -SkipReason 'requires valid Stripe signature; cannot fake; webhook tested by Stripe Dashboard'
+    # Stripe checkout / portal session creation. Wired via real endpoints; Stripe handles
+    # the rest behind the scenes. Test user is AdminManager.
+    Test-LcEndpoint -Report $Report -Section 'payments-mutators' -TestName 'create Stripe checkout session' -Endpoint 'POST /api/Payments/create-checkout-session' -Action {
+        $r = Invoke-LcPost -Path '/api/Payments/create-checkout-session' -Body @{
+            priceId = 'price_smoke_test'
+            quantity = 1
+            mode = 'subscription'
+            successUrl = 'https://example.test/success'
+            cancelUrl = 'https://example.test/cancel'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'payments-mutators' -TestName 'create Stripe portal session' -Endpoint 'POST /api/Payments/create-portal-session' -Action {
+        $r = Invoke-LcPost -Path '/api/Payments/create-portal-session' -Body @{
+            returnUrl = 'https://example.test/return'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    # Stripe webhook genuinely cannot be smoke-tested (HMAC signature required)
+    Add-LcResult -Report $Report -Status SKIP -Section 'payments-mutators' -TestName 'Stripe webhook receiver' -Endpoint 'POST /api/Payments/webhook' -SkipReason 'requires valid Stripe HMAC signature; truly untestable without signing key access (architect Q1 irreducible-SKIP category)'
 }
 
 function Invoke-PaymentsControllerSmoke {

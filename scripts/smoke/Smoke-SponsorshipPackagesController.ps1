@@ -106,7 +106,24 @@ function Test-SponsorshipPackagesMutatorsFlow {
         }
     }
 
-    Add-LcResult -Report $Report -Status SKIP -Section 'sp-packages-mutators' -TestName 'purchase package (Stripe)' -Endpoint 'POST /api/events/{eventId}/sponsorship-packages/{pkgId}/purchase' -SkipReason 'creates real Stripe checkout session; 9.h.5'
+    # Create a fresh package + purchase via Stripe (returns Stripe URL; no actual payment)
+    $tag = Get-LcCurrentRunTag
+    $pp = New-LcTaggedSponsorshipPackage -EventId $eventId
+    $purchasePkgId = if ($pp.Body.id) { $pp.Body.id } elseif ($pp.Body -is [string]) { $pp.Body.Trim('"') } else { $null }
+    if ($purchasePkgId) {
+        Test-LcEndpoint -Report $Report -Section 'sp-packages-mutators' -TestName 'purchase package (Stripe session URL)' -Endpoint 'POST /api/events/{eventId}/sponsorship-packages/{pkgId}/purchase' -Action {
+            $r = Invoke-LcPost -Path "/api/events/$eventId/sponsorship-packages/$purchasePkgId/purchase" -Body @{
+                sponsorName = 'Smoke Purchaser'
+                sponsorEmail = 'smoke-pkg-purchaser@lankaconnect.test'
+                sponsorOrganization = 'Smoke Co'
+                successUrl = 'https://example.test/success'
+                cancelUrl = 'https://example.test/cancel'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'sp-packages-mutators' -TestName 'purchase package' -Endpoint 'POST /api/events/{eventId}/sponsorship-packages/{pkgId}/purchase' -SkipReason 'purchase fixture package create did not yield id'
+    }
 
     Remove-LcFixturesByTag | Out-Null
 }

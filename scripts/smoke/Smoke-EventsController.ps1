@@ -347,13 +347,16 @@ function Test-EventsPaidEventFlow {
         Assert-JsonField -Result $r -FieldName 'ticketPriceCurrency' -ExpectedValue 'USD'
     }
 
-    if ($IncludePaymentFlows) {
-        Test-LcEndpoint -Report $Report -Section 'paid-event' -TestName 'Stripe checkout setup' -Endpoint 'POST /api/Events/{id}/checkout' -Action {
-            # Placeholder: requires Stripe test mode setup; verifies EventRepository.GetByIdAsync resolves correctly
-            throw 'Stripe checkout test not yet implemented; -IncludePaymentFlows reserved for future'
+    # Stripe checkout: returns 200 with checkout URL (or 400 with body shape error).
+    # Just like AddOnPurchase, we don't complete the Stripe flow; the platform
+    # exercises EventRepository read + initiates a Stripe session before returning.
+    Test-LcEndpoint -Report $Report -Section 'paid-event' -TestName 'Stripe checkout session' -Endpoint 'POST /api/Events/{id}/checkout' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$script:paidEventId/checkout" -Body @{
+            quantity = 1
+            successUrl = 'https://example.test/success'
+            cancelUrl = 'https://example.test/cancel'
         }
-    } else {
-        Add-LcResult -Report $Report -Status SKIP -Section 'paid-event' -TestName 'Stripe checkout' -Endpoint 'POST /api/Events/{id}/checkout' -SkipReason 'state-dependent (Stripe); run with -IncludePaymentFlows'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 }
 
@@ -403,7 +406,23 @@ function Test-EventsTicketingFlow {
         if ($null -eq $r.Body.ticketTiers) { throw 'ticketTiers field missing from response' }
     }
 
-    Add-LcResult -Report $Report -Status SKIP -Section 'ticketing' -TestName 'ticket-tier CRUD operations' -Endpoint 'POST/PATCH /api/Events/{id}/ticket-tiers' -SkipReason 'expansion deferred to Wave 9.c full ticketing coverage'
+    # Ticket-tier CRUD on a paid event fixture
+    $tfix = New-LcPaidEvent
+    if ($tfix.Success) {
+        $tagText = Get-LcCurrentRunTag
+        Test-LcEndpoint -Report $Report -Section 'ticketing' -TestName 'create ticket tier' -Endpoint 'POST /api/Events/{id}/ticket-tiers' -Action {
+            $r = Invoke-LcPost -Path "/api/Events/$($tfix.EventId)/ticket-tiers" -Body @{
+                name = "$tagText TierA"
+                price = 15.00
+                currency = 'USD'
+                capacity = 50
+                description = 'Smoke tier'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'ticketing' -TestName 'create ticket tier' -Endpoint 'POST /api/Events/{id}/ticket-tiers' -SkipReason 'paid event fixture create failed'
+    }
 }
 
 # ----------------------------------------------------------------------------
@@ -418,7 +437,39 @@ function Test-EventsOrganizerContactFlow {
         if ($null -eq $r.Body.organizerContacts) { throw 'organizerContacts field missing' }
     }
 
-    Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'organizer contacts CRUD' -Endpoint 'POST/PATCH/DELETE /api/Events/{id}/organizer-contacts' -SkipReason 'expansion deferred to follow-up'
+    # Organizer contacts CRUD on a fresh event fixture
+    $ocfix = New-LcFreeEvent
+    if ($ocfix.Success) {
+        $tag = Get-LcCurrentRunTag
+        $script:ocContactId = $null
+        Test-LcEndpoint -Report $Report -Section 'organizer-contacts' -TestName 'add organizer contact' -Endpoint 'POST /api/Events/{id}/organizer-contacts' -Action {
+            $r = Invoke-LcPost -Path "/api/Events/$($ocfix.EventId)/organizer-contacts" -Body @{
+                name = "$tag SmokeContact"
+                role = 'Coordinator'
+                email = 'smoke-contact@lankaconnect.test'
+                phone = '+15555550199'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            if ($r.Body.id) { $script:ocContactId = $r.Body.id }
+        }
+        if ($script:ocContactId) {
+            Test-LcEndpoint -Report $Report -Section 'organizer-contacts' -TestName 'update organizer contact' -Endpoint 'PATCH /api/Events/{id}/organizer-contacts/{contactId}' -Action {
+                $r = Invoke-LcPatch -Path "/api/Events/$($ocfix.EventId)/organizer-contacts/$($script:ocContactId)" -Body @{
+                    role = 'Lead Coordinator'
+                }
+                if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            }
+            Test-LcEndpoint -Report $Report -Section 'organizer-contacts' -TestName 'delete organizer contact' -Endpoint 'DELETE /api/Events/{id}/organizer-contacts/{contactId}' -Action {
+                $r = Invoke-LcDelete -Path "/api/Events/$($ocfix.EventId)/organizer-contacts/$($script:ocContactId)"
+                if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            }
+        } else {
+            Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'update organizer contact' -Endpoint '...' -SkipReason 'create did not yield id'
+            Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'delete organizer contact' -Endpoint '...' -SkipReason 'create did not yield id'
+        }
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'organizer contacts CRUD' -Endpoint '...' -SkipReason 'fixture event create failed'
+    }
 }
 
 # ----------------------------------------------------------------------------
@@ -433,7 +484,37 @@ function Test-EventsEmailGroupFlow {
         if ($null -eq $r.Body.emailGroupIds) { throw 'emailGroupIds field missing' }
     }
 
-    Add-LcResult -Report $Report -Status SKIP -Section 'email-groups' -TestName 'email-group CRUD on events' -Endpoint 'POST/DELETE /api/Events/{id}/email-groups' -SkipReason 'expansion deferred to follow-up'
+    # Email-group attach/detach on an event fixture. Need an existing email group too.
+    $egfix = New-LcFreeEvent
+    if ($egfix.Success) {
+        $tag = Get-LcCurrentRunTag
+        $egc = Invoke-LcPost -Path '/api/EmailGroups' -Body @{
+            name = "$tag EventEG"
+            description = 'Wave 9.h.9 smoke fixture'
+            emailAddresses = 'smoke-event-eg@lankaconnect.test'
+        }
+        $egId = if ($egc.Body.id) { $egc.Body.id } elseif ($egc.Body -is [string]) { $egc.Body.Trim('"') } else { $null }
+
+        if ($egId) {
+            Test-LcEndpoint -Report $Report -Section 'email-groups' -TestName 'attach email group to event' -Endpoint 'POST /api/Events/{id}/email-groups' -Action {
+                $r = Invoke-LcPost -Path "/api/Events/$($egfix.EventId)/email-groups" -Body @{
+                    emailGroupId = $egId
+                }
+                if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            }
+            Test-LcEndpoint -Report $Report -Section 'email-groups' -TestName 'detach email group from event' -Endpoint 'DELETE /api/Events/{id}/email-groups/{emailGroupId}' -Action {
+                $r = Invoke-LcDelete -Path "/api/Events/$($egfix.EventId)/email-groups/$egId"
+                if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            }
+            # Cleanup email group itself
+            Invoke-LcDelete -Path "/api/EmailGroups/$egId" | Out-Null
+        } else {
+            Add-LcResult -Report $Report -Status SKIP -Section 'email-groups' -TestName 'attach email group' -Endpoint 'POST /api/Events/{id}/email-groups' -SkipReason 'helper email-group create failed'
+            Add-LcResult -Report $Report -Status SKIP -Section 'email-groups' -TestName 'detach email group' -Endpoint 'DELETE /api/Events/{id}/email-groups/{egId}' -SkipReason 'helper email-group create failed'
+        }
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'email-groups' -TestName 'email-group CRUD' -Endpoint '...' -SkipReason 'fixture event create failed'
+    }
 }
 
 # ----------------------------------------------------------------------------

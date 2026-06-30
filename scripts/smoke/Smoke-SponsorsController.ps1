@@ -103,11 +103,45 @@ function Test-SponsorsMutatorsFlow {
     # Image upload / delete / brochure / patch / staging-image / off-platform
     # Each requires either a sponsor ID (from a prior create) or specific multipart shape.
     # These remain SKIPped with VALID technical reasons (not "destructive" -- specific):
-    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName 'upload sponsor image (multipart)' -Endpoint 'POST /api/events/{eventId}/sponsors/{sponsorId}/image' -SkipReason 'CompletedPayment-status sponsor required before image; sponsor create returns sessionUrl not sponsorId in money flow (Stripe-mediated); 9.h.5 territory'
-    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName 'delete sponsor image' -Endpoint 'DELETE /api/events/{eventId}/sponsors/{sponsorId}/image' -SkipReason 'requires sponsor with prior image upload; same blocker as upload'
-    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName 'upload sponsor brochure (multipart)' -Endpoint 'POST /api/events/{eventId}/sponsors/{sponsorId}/brochure' -SkipReason 'requires sponsorId from Stripe-completed flow; 9.h.5'
-    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName 'delete sponsor brochure' -Endpoint 'DELETE /api/events/{eventId}/sponsors/{sponsorId}/brochure' -SkipReason 'requires sponsor with prior brochure'
-    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName 'patch sponsor' -Endpoint 'PATCH /api/events/{eventId}/sponsors/{sponsorId}' -SkipReason 'requires sponsor from Stripe-completed money flow; 9.h.5'
+    # Wave 9.h.9: use off-platform sponsor (returns sponsor ID immediately, no Stripe).
+    # Off-platform sponsors exist as fully-created records suitable for image/brochure/patch.
+    $offPlatform = Invoke-LcPost -Path "/api/events/$eventId/sponsors/off-platform" -Body @{
+        sponsorName = 'Off-platform Smoke (for image/brochure/patch tests)'
+        amount = 50.00
+        currency = 'USD'
+        sponsorType = 'Money'
+        notes = 'Wave 9.h.9 smoke fixture'
+    }
+    $sponsorId = if ($offPlatform.Body.id) { $offPlatform.Body.id } elseif ($offPlatform.Body -is [string]) { $offPlatform.Body.Trim('"') } else { $null }
+
+    if ($sponsorId) {
+        Test-LcEndpoint -Report $Report -Section 'sponsors-mutators' -TestName 'upload sponsor image (multipart)' -Endpoint 'POST /api/events/{eventId}/sponsors/{sponsorId}/image' -Action {
+            $r = Invoke-LcMultipart -Path "/api/events/$eventId/sponsors/$sponsorId/image" -FileFieldName 'image' -FileName 'sponsor.png'
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'sponsors-mutators' -TestName 'delete sponsor image' -Endpoint 'DELETE /api/events/{eventId}/sponsors/{sponsorId}/image' -Action {
+            $r = Invoke-LcDelete -Path "/api/events/$eventId/sponsors/$sponsorId/image"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'sponsors-mutators' -TestName 'upload sponsor brochure (multipart)' -Endpoint 'POST /api/events/{eventId}/sponsors/{sponsorId}/brochure' -Action {
+            $r = Invoke-LcMultipart -Path "/api/events/$eventId/sponsors/$sponsorId/brochure" -FileFieldName 'brochure' -FileName 'brochure.pdf' -ContentType 'application/pdf'
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'sponsors-mutators' -TestName 'delete sponsor brochure' -Endpoint 'DELETE /api/events/{eventId}/sponsors/{sponsorId}/brochure' -Action {
+            $r = Invoke-LcDelete -Path "/api/events/$eventId/sponsors/$sponsorId/brochure"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'sponsors-mutators' -TestName 'patch sponsor' -Endpoint 'PATCH /api/events/{eventId}/sponsors/{sponsorId}' -Action {
+            $r = Invoke-LcPatch -Path "/api/events/$eventId/sponsors/$sponsorId" -Body @{
+                notes = 'Updated by Wave 9.h.9 smoke'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        foreach ($n in 'upload sponsor image','delete sponsor image','upload sponsor brochure','delete sponsor brochure','patch sponsor') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName $n -Endpoint '...' -SkipReason 'off-platform sponsor create did not yield id'
+        }
+    }
 
     Test-LcEndpoint -Report $Report -Section 'sponsors-mutators' -TestName 'upload staging image (multipart)' -Endpoint 'POST /api/events/{eventId}/sponsors/staging-image' -Action {
         $r = Invoke-LcMultipart -Path "/api/events/$eventId/sponsors/staging-image" -FileFieldName 'image' -FileName 'staging-logo.png'

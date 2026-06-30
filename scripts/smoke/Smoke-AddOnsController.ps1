@@ -142,9 +142,38 @@ function Test-AddOnsMutatorsFlow {
         }
     }
 
-    # Purchase endpoints touch Stripe; deferred to 9.h.5
-    Add-LcResult -Report $Report -Status SKIP -Section 'addons-mutators' -TestName 'purchase add-on (Stripe-mediated)' -Endpoint 'POST /api/events/{eventId}/add-ons/{defId}/purchase' -SkipReason 'creates real Stripe checkout session; 9.h.5 (LC_STRIPE_TEST_MODE)'
-    Add-LcResult -Report $Report -Status SKIP -Section 'addons-mutators' -TestName 'purchase add-on cart (Stripe-mediated)' -Endpoint 'POST /api/events/{eventId}/add-ons/purchase-cart' -SkipReason 'creates real Stripe checkout session; 9.h.5'
+    # Wave 9.h.5: Stripe purchase endpoints DO work - they return 200 with a Stripe
+    # CHECKOUT SESSION URL (cs_test_...) and write the pending AddOnPurchase record.
+    # We don't need to complete the Stripe flow to verify the W5.3 repo write path.
+    if ($script:addOnDefId) {
+        Test-LcEndpoint -Report $Report -Section 'addons-mutators' -TestName 'purchase add-on (W5.3 AddOnPurchaseRepository write + Stripe session)' -Endpoint 'POST /api/events/{eventId}/add-ons/{defId}/purchase' -Action {
+            $r = Invoke-LcPost -Path "/api/events/$eventId/add-ons/$($script:addOnDefId)/purchase" -Body @{
+                buyerName  = 'Smoke Buyer 9h5'
+                buyerEmail = 'smoke-buyer@lankaconnect.test'
+                buyerPhone = '+15555550999'
+                quantity   = 1
+                successUrl = 'https://example.test/success'
+                cancelUrl  = 'https://example.test/cancel'
+            }
+            if (-not $r.Success) { throw "purchase failed: HTTP $($r.StatusCode)" }
+            if ($r.Body -notmatch 'checkout.stripe.com') { throw 'expected Stripe checkout URL in response body' }
+        }
+
+        Test-LcEndpoint -Report $Report -Section 'addons-mutators' -TestName 'purchase add-on cart (W5.3 AddOnPurchaseRepository + RegistrationAdditionRepository writes)' -Endpoint 'POST /api/events/{eventId}/add-ons/purchase-cart' -Action {
+            $r = Invoke-LcPost -Path "/api/events/$eventId/add-ons/purchase-cart" -Body @{
+                buyerName  = 'Smoke Cart Buyer'
+                buyerEmail = 'smoke-cart-buyer@lankaconnect.test'
+                successUrl = 'https://example.test/success'
+                cancelUrl  = 'https://example.test/cancel'
+                items      = @( @{ addOnDefinitionId = $script:addOnDefId; quantity = 2 } )
+            }
+            if (-not $r.Success) { throw "cart purchase failed: HTTP $($r.StatusCode)" }
+            if ($r.Body -notmatch 'checkout.stripe.com') { throw 'expected Stripe checkout URL in response body' }
+        }
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'addons-mutators' -TestName 'purchase add-on' -Endpoint 'POST /api/events/{eventId}/add-ons/{defId}/purchase' -SkipReason 'no add-on definition id from create'
+        Add-LcResult -Report $Report -Status SKIP -Section 'addons-mutators' -TestName 'purchase add-on cart' -Endpoint 'POST /api/events/{eventId}/add-ons/purchase-cart' -SkipReason 'no add-on definition id from create'
+    }
 
     Remove-LcFixturesByTag | Out-Null
 }

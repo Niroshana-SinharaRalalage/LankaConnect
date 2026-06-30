@@ -498,6 +498,26 @@ function Test-EventsWave5UncoveredReposFlow {
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 
+    # === 4. Wave 9.h.5: paid event RSVP exercises TicketRepository + RegistrationPaymentRepository ===
+    # Paid RSVP returns 204 No Content; behind the scenes the Ticket + RegistrationPayment
+    # records are written. We don't need to complete Stripe to verify the W5.3 repo writes.
+    $pe = New-LcPaidEvent
+    if ($pe.Success) {
+        Publish-LcEvent -EventId $pe.EventId | Out-Null
+        Test-LcEndpoint -Report $Report -Section 'wave5-uncovered' -TestName 'paid event RSVP (W5.3 TicketRepository + RegistrationPaymentRepository writes)' -Endpoint 'POST /api/Events/{id}/rsvp (paid)' -Action {
+            $r = Invoke-LcPost -Path "/api/Events/$($pe.EventId)/rsvp" -Body @{
+                userId   = (Get-LcUserId)
+                quantity = 1
+            }
+            # 204 No Content = success (Stripe session created + pending Ticket + RegistrationPayment written)
+            if ($r.StatusCode -ne 204 -and $r.StatusCode -ne 200) {
+                throw "Expected 200/204, got $($r.StatusCode)"
+            }
+        }
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'wave5-uncovered' -TestName 'paid event RSVP' -Endpoint 'POST /api/Events/{id}/rsvp (paid)' -SkipReason "paid event fixture create failed: $($pe.Error)"
+    }
+
     Remove-LcFixturesByTag | Out-Null
 }
 

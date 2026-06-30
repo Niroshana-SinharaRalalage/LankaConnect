@@ -12,6 +12,8 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-EventFixtures.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-FinanceFixtures.psm1') -Force
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -34,22 +36,56 @@ function Test-LcEndpoint {
 
 function Test-CollectionsReadFlow {
     param([Parameter(Mandatory)]$Report)
-    $eventId = [Guid]::NewGuid().ToString()
+
+    # Wave 9.h.2: real event fixture with collection-config enabled
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'collections-read' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture failed: $($fix.Error)"
+        return
+    }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    Enable-LcEventFinanceConfigs -EventId $fix.EventId | Out-Null
+    $eventId = $fix.EventId
 
     Test-LcEndpoint -Report $Report -Section 'collections-read' -TestName 'my collections (W5.3 CollectionRepository)' -Endpoint "GET /api/events/{eventId}/collections/mine" -Action {
         $r = Invoke-LcGet -Path "/api/events/$eventId/collections/mine"
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 
-    # WAVE 9.e FINDING: 4 Collection read endpoints throw 500 on fake event ID.
-    foreach ($name in 'organizer collections list','organizer collections summary','organizer collections export','public collections summary') {
-        Add-LcResult -Report $Report -Status SKIP -Section 'collections-read' -TestName "$name (500 finding)" -Endpoint "GET /api/events/{eventId}/collections/..." -SkipReason '500 on fake event ID; needs real event fixture; -IncludeFixtures'
+    # Wave 9.h.2: F12-F15 resolved via real event fixture
+    foreach ($e in @(
+        @{ Path="/api/events/$eventId/collections";                Name='organizer collections list (F12 - real event)' }
+        @{ Path="/api/events/$eventId/collections/summary";        Name='organizer collections summary (F13 - real event)' }
+        @{ Path="/api/events/$eventId/collections/export";         Name='organizer collections export (F14 - real event)' }
+        @{ Path="/api/events/$eventId/collections/public-summary"; Name='public collections summary (F15 - real event)' }
+    )) {
+        Test-LcEndpoint -Report $Report -Section 'collections-read' -TestName $e.Name -Endpoint "GET $($e.Path)" -Action {
+            $r = Invoke-LcGet -Path $e.Path
+            if ($r.StatusCode -ge 500) { throw "confirmed real bug: 5xx $($r.StatusCode)" }
+        }
     }
+
+    Remove-LcFixturesByTag | Out-Null
 }
 
 function Test-CollectionsMutatorsFlow {
     param([Parameter(Mandatory)]$Report)
-    Add-LcResult -Report $Report -Status SKIP -Section 'collections-mutators' -TestName 'record collection' -Endpoint 'POST /api/events/{eventId}/collections' -SkipReason 'destructive (creates collection record); -IncludeDestructive'
+
+    # Wave 9.h.3: create real event + record a collection
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'collections-mutators' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture failed: $($fix.Error)"
+        return
+    }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    Enable-LcEventFinanceConfigs -EventId $fix.EventId | Out-Null
+
+    Test-LcEndpoint -Report $Report -Section 'collections-mutators' -TestName 'record collection (real event)' -Endpoint 'POST /api/events/{eventId}/collections' -Action {
+        $c = New-LcTaggedCollection -EventId $fix.EventId
+        if (-not $c.Success) { throw "collection create failed: HTTP $($c.StatusCode) $($c.Error)" }
+    }
+
+    Remove-LcFixturesByTag | Out-Null
 }
 
 function Invoke-CollectionsControllerSmoke {

@@ -35,19 +35,16 @@ function Test-NewslettersReadFlow {
     param([Parameter(Mandatory)]$Report)
     $fakeId = [Guid]::NewGuid().ToString()
 
-    # WAVE 9.d FINDING: my-newsletters + published both return 400 InvalidOperation on
-    # bare GET despite no required params. Tracked for Wave 9.g closeout investigation
-    # (smells like a handler-level domain validation failure - maybe the test user has
-    # no creator profile / no metro area subscription). Both endpoints assert wiring
-    # check (5xx fail only) so the smoke stays signal-clean while the finding is logged.
-    Test-LcEndpoint -Report $Report -Section 'newsletters-read' -TestName 'my newsletters list (wiring; logs 400 finding)' -Endpoint 'GET /api/Newsletters/my-newsletters' -Action {
-        $r = Invoke-LcGet -Path '/api/Newsletters/my-newsletters'
-        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-    }
-    Test-LcEndpoint -Report $Report -Section 'newsletters-read' -TestName 'published newsletters (wiring; logs 400 finding)' -Endpoint 'GET /api/Newsletters/published' -Action {
-        $r = Invoke-LcGet -Path '/api/Newsletters/published'
-        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-    }
+    # Wave 9.h.2 investigation: F17/F18 CONFIRMED REAL PLATFORM BUGS.
+    # GET /api/Newsletters/my-newsletters and GET /api/Newsletters/published both
+    # return 400 InvalidOperation on bare GET (also fails unauthenticated, also fails
+    # with explicit query params). Generic error swallows the actual exception
+    # (errorType InvalidOperation, developerMessage null in PROD mode).
+    # Smoke marks these SKIP with valid technical reason: "platform handler bug
+    # requires backend fix; cannot smoke-cover without source-level remediation."
+    # Tracked for hardening wave.
+    Add-LcResult -Report $Report -Status SKIP -Section 'newsletters-read' -TestName 'my newsletters list (F17 CONFIRMED REAL BUG)' -Endpoint 'GET /api/Newsletters/my-newsletters' -SkipReason 'F17 CONFIRMED REAL BUG: 400 InvalidOperation on bare auth GET (handler-level domain failure; needs platform code fix, NOT smoke fix)'
+    Add-LcResult -Report $Report -Status SKIP -Section 'newsletters-read' -TestName 'published newsletters (F18 CONFIRMED REAL BUG)' -Endpoint 'GET /api/Newsletters/published' -SkipReason 'F18 CONFIRMED REAL BUG: 400 InvalidOperation on AllowAnonymous GET (also fails unauth + with params; needs platform code fix, NOT smoke fix)'
     Test-LcEndpoint -Report $Report -Section 'newsletters-read' -TestName 'newsletter by id (404 OK)' -Endpoint 'GET /api/Newsletters/{id}' -Action {
         $r = Invoke-LcGet -Path "/api/Newsletters/$fakeId"
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }

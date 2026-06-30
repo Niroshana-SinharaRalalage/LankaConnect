@@ -47,9 +47,11 @@ function Test-BusinessesReadFlow {
         $r = Invoke-LcGet -Path "/api/Businesses/$fakeId"
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
-    # WAVE 9.e FINDING: GET /api/Businesses/{id}/services throws 500 on fake business ID
-    # (same pattern as Sponsors/Donations/Collections 500s). Hardening candidate.
-    Add-LcResult -Report $Report -Status SKIP -Section 'businesses-read' -TestName 'business services (500 finding)' -Endpoint 'GET /api/Businesses/{id}/services' -SkipReason '500 on fake business ID; needs real business fixture; -IncludeFixtures'
+    # Wave 9.h.2 investigation: F16 RESOLUTION BLOCKED ON F20.
+    # GET /api/Businesses/{id}/services likely works with a real business but Business
+    # creation itself is broken (F20: POST /api/Businesses returns 500 DatabaseError).
+    # Cannot create fixture business -> cannot smoke /services real-business path.
+    Add-LcResult -Report $Report -Status SKIP -Section 'businesses-read' -TestName 'business services (F16; BLOCKED on F20)' -Endpoint 'GET /api/Businesses/{id}/services' -SkipReason 'F16 resolution requires real business fixture; F20 (POST /api/Businesses 500 DatabaseError) blocks fixture creation; needs platform F20 fix first'
     Test-LcEndpoint -Report $Report -Section 'businesses-read' -TestName 'business images' -Endpoint 'GET /api/Businesses/{id}/images' -Action {
         $r = Invoke-LcGet -Path "/api/Businesses/$fakeId/images"
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }

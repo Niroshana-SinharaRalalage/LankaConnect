@@ -18,6 +18,8 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-EventFixtures.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-FinanceFixtures.psm1') -Force
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -44,9 +46,19 @@ function Test-LcEndpoint {
 function Test-AddOnsReadFlow {
     param([Parameter(Mandatory)]$Report)
 
-    # Use a fake event GUID; any non-5xx response = endpoint wired correctly.
-    # 200 (empty list/details) or 404 (event-not-found) both prove wiring.
-    $eventId = [Guid]::NewGuid().ToString()
+    # Wave 9.h.2: create a real event fixture and enable add-on subresources.
+    # All reads now exercise actual W5.3 AddOnDefinition + AddOnPurchase repos
+    # against a real event the test user organizes. The 3 organizer-only endpoints
+    # (purchases/summary/export) that previously SKIPped with "500 on fake event"
+    # findings F1-F3 now have real coverage.
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'addons-read' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture event create failed: $($fix.Error)"
+        return
+    }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    Enable-LcEventFinanceConfigs -EventId $fix.EventId | Out-Null
+    $eventId = $fix.EventId
 
     Test-LcEndpoint -Report $Report -Section 'addons-read' -TestName 'list add-on definitions (W5.3 AddOnDefinitionRepository)' -Endpoint 'GET /api/events/{eventId}/add-ons' -Action {
         $r = Invoke-LcGet -Path "/api/events/$eventId/add-ons"
@@ -63,15 +75,24 @@ function Test-AddOnsReadFlow {
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 
-    # WAVE 9.b/c FINDING: these 3 organizer-scoped endpoints throw 500 (not 404/403) on
-    # a non-existent event ID. Confirmed against staging develop d2d5edac on 2026-06-30.
-    # Likely a `.First()` / `.Single()` on null result in the organizer-purchases query
-    # handler. Surfaces as bug/hardening candidate; tracked for Wave 9.g closeout
-    # investigation. SKIP for now (needs real Lc-EventFixtures-created event to exercise
-    # the happy path); -IncludeFixtures will wire this up properly.
-    Add-LcResult -Report $Report -Status SKIP -Section 'addons-read' -TestName 'organizer purchases listing' -Endpoint 'GET /api/events/{eventId}/add-ons/purchases' -SkipReason '500 on fake event (likely .First() on null) - hardening candidate; needs real event fixture; -IncludeFixtures'
-    Add-LcResult -Report $Report -Status SKIP -Section 'addons-read' -TestName 'organizer purchases summary' -Endpoint 'GET /api/events/{eventId}/add-ons/purchases/summary' -SkipReason '500 on fake event - hardening candidate; needs real event fixture; -IncludeFixtures'
-    Add-LcResult -Report $Report -Status SKIP -Section 'addons-read' -TestName 'organizer purchases CSV export' -Endpoint 'GET /api/events/{eventId}/add-ons/purchases/export' -SkipReason '500 on fake event - hardening candidate; needs real event fixture; -IncludeFixtures'
+    # Wave 9.h.2: previously-SKIPped F1-F3 now exercised against real event fixture.
+    # If these PASS, the findings were environmental (fake-event 500 = hardening but
+    # not real bug); if they 5xx, real platform bug confirmed.
+    Test-LcEndpoint -Report $Report -Section 'addons-read' -TestName 'organizer purchases listing (F1 - real event)' -Endpoint 'GET /api/events/{eventId}/add-ons/purchases' -Action {
+        $r = Invoke-LcGet -Path "/api/events/$eventId/add-ons/purchases"
+        if ($r.StatusCode -ge 500) { throw "F1 confirmed real bug: 5xx $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'addons-read' -TestName 'organizer purchases summary (F2 - real event)' -Endpoint 'GET /api/events/{eventId}/add-ons/purchases/summary' -Action {
+        $r = Invoke-LcGet -Path "/api/events/$eventId/add-ons/purchases/summary"
+        if ($r.StatusCode -ge 500) { throw "F2 confirmed real bug: 5xx $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'addons-read' -TestName 'organizer purchases CSV export (F3 - real event)' -Endpoint 'GET /api/events/{eventId}/add-ons/purchases/export' -Action {
+        $r = Invoke-LcGet -Path "/api/events/$eventId/add-ons/purchases/export"
+        if ($r.StatusCode -ge 500) { throw "F3 confirmed real bug: 5xx $($r.StatusCode)" }
+    }
+
+    # Cleanup: cascade-delete event removes all addon definitions + purchases
+    Remove-LcFixturesByTag | Out-Null
 }
 
 # ----------------------------------------------------------------------------

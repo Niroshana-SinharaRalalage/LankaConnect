@@ -13,6 +13,8 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-EventFixtures.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-FinanceFixtures.psm1') -Force
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -35,9 +37,17 @@ function Test-LcEndpoint {
 
 function Test-SponsorsReadFlow {
     param([Parameter(Mandatory)]$Report)
-    $eventId = [Guid]::NewGuid().ToString()
 
-    # Tests that pass wiring on fake event (return 200/404 cleanly)
+    # Wave 9.h.2: real event fixture + sponsor-config enabled
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'sponsors-read' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture failed: $($fix.Error)"
+        return
+    }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    Enable-LcEventFinanceConfigs -EventId $fix.EventId | Out-Null
+    $eventId = $fix.EventId
+
     foreach ($e in @(
         @{ Path="/api/events/$eventId/sponsors/public"; Name='public sponsors (W5.3 SponsorRepository)' }
         @{ Path="/api/events/$eventId/sponsors/mine";   Name='my sponsorships' }
@@ -48,12 +58,23 @@ function Test-SponsorsReadFlow {
         }
     }
 
-    # WAVE 9.e FINDING: 3 organizer-scoped Sponsor endpoints throw 500 on fake event ID.
-    # Same pattern as Wave 9.c AddOns findings (handler assumes parent event exists).
-    # Tracked for Wave 9.g closeout. Needs real event fixture (-IncludeFixtures) to exercise.
-    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-read' -TestName 'organizer sponsors list (500 on fake event - hardening candidate)' -Endpoint "GET /api/events/{eventId}/sponsors" -SkipReason '500 on fake event ID (handler assumes parent exists); needs Lc-EventFixtures; -IncludeFixtures'
-    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-read' -TestName 'organizer sponsors summary (500 finding)' -Endpoint "GET /api/events/{eventId}/sponsors/summary" -SkipReason '500 on fake event ID; needs real event fixture; -IncludeFixtures'
-    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-read' -TestName 'organizer sponsors CSV export (500 finding)' -Endpoint "GET /api/events/{eventId}/sponsors/export" -SkipReason '500 on fake event ID; needs real event fixture; -IncludeFixtures'
+    # Wave 9.h.2: F4-F6 resolved -- previously SKIPped with 500-on-fake-event finding;
+    # now exercised against a real event the test user organizes. PASS = environmental
+    # finding (not a real bug); FAIL with 5xx = real bug confirmed.
+    Test-LcEndpoint -Report $Report -Section 'sponsors-read' -TestName 'organizer sponsors list (F4 - real event)' -Endpoint "GET /api/events/{eventId}/sponsors" -Action {
+        $r = Invoke-LcGet -Path "/api/events/$eventId/sponsors"
+        if ($r.StatusCode -ge 500) { throw "F4 confirmed real bug: 5xx $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'sponsors-read' -TestName 'organizer sponsors summary (F5 - real event)' -Endpoint "GET /api/events/{eventId}/sponsors/summary" -Action {
+        $r = Invoke-LcGet -Path "/api/events/$eventId/sponsors/summary"
+        if ($r.StatusCode -ge 500) { throw "F5 confirmed real bug: 5xx $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'sponsors-read' -TestName 'organizer sponsors CSV export (F6 - real event)' -Endpoint "GET /api/events/{eventId}/sponsors/export" -Action {
+        $r = Invoke-LcGet -Path "/api/events/$eventId/sponsors/export"
+        if ($r.StatusCode -ge 500) { throw "F6 confirmed real bug: 5xx $($r.StatusCode)" }
+    }
+
+    Remove-LcFixturesByTag | Out-Null
 }
 
 function Test-SponsorsMutatorsFlow {

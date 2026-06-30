@@ -12,6 +12,8 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-EventFixtures.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-FinanceFixtures.psm1') -Force
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -34,23 +36,56 @@ function Test-LcEndpoint {
 
 function Test-DonationsReadFlow {
     param([Parameter(Mandatory)]$Report)
-    $eventId = [Guid]::NewGuid().ToString()
+
+    # Wave 9.h.2: real event fixture with donations enabled
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'donations-read' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture failed: $($fix.Error)"
+        return
+    }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    Enable-LcEventFinanceConfigs -EventId $fix.EventId | Out-Null
+    $eventId = $fix.EventId
 
     Test-LcEndpoint -Report $Report -Section 'donations-read' -TestName 'my donations (W5.3 DonationRepository)' -Endpoint "GET /api/events/{eventId}/donations/mine" -Action {
         $r = Invoke-LcGet -Path "/api/events/$eventId/donations/mine"
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 
-    # WAVE 9.e FINDING: 4 Donation read endpoints throw 500 on fake event ID (organizer
-    # list / summary / export + public-summary). Same pattern as Sponsors/AddOns.
-    foreach ($name in 'organizer donations list','organizer donations summary','organizer donations export','public donations summary') {
-        Add-LcResult -Report $Report -Status SKIP -Section 'donations-read' -TestName "$name (500 finding)" -Endpoint "GET /api/events/{eventId}/donations/..." -SkipReason '500 on fake event ID; needs real event fixture; -IncludeFixtures'
+    # Wave 9.h.2: F8-F11 resolved via real event fixture (donations enabled).
+    foreach ($e in @(
+        @{ Path="/api/events/$eventId/donations";                Name='organizer donations list (F8 - real event)' }
+        @{ Path="/api/events/$eventId/donations/summary";        Name='organizer donations summary (F9 - real event)' }
+        @{ Path="/api/events/$eventId/donations/export";         Name='organizer donations export (F10 - real event)' }
+        @{ Path="/api/events/$eventId/donations/public-summary"; Name='public donations summary (F11 - real event)' }
+    )) {
+        Test-LcEndpoint -Report $Report -Section 'donations-read' -TestName $e.Name -Endpoint "GET $($e.Path)" -Action {
+            $r = Invoke-LcGet -Path $e.Path
+            if ($r.StatusCode -ge 500) { throw "confirmed real bug: 5xx $($r.StatusCode)" }
+        }
     }
+
+    Remove-LcFixturesByTag | Out-Null
 }
 
 function Test-DonationsMutatorsFlow {
     param([Parameter(Mandatory)]$Report)
-    Add-LcResult -Report $Report -Status SKIP -Section 'donations-mutators' -TestName 'record donation' -Endpoint 'POST /api/events/{eventId}/donations' -SkipReason 'destructive (creates donation record + may trigger payment); -IncludeDestructive'
+
+    # Wave 9.h.3: create real event + actually record a donation
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'donations-mutators' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture failed: $($fix.Error)"
+        return
+    }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    Enable-LcEventFinanceConfigs -EventId $fix.EventId | Out-Null
+
+    Test-LcEndpoint -Report $Report -Section 'donations-mutators' -TestName 'record donation (real event)' -Endpoint 'POST /api/events/{eventId}/donations' -Action {
+        $d = New-LcTaggedDonation -EventId $fix.EventId
+        if (-not $d.Success) { throw "donation create failed: HTTP $($d.StatusCode) $($d.Error)" }
+    }
+
+    Remove-LcFixturesByTag | Out-Null
 }
 
 function Invoke-DonationsControllerSmoke {

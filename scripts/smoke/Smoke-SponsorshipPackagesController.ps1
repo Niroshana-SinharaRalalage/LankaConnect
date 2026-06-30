@@ -12,6 +12,8 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-EventFixtures.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-FinanceFixtures.psm1') -Force
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -34,15 +36,29 @@ function Test-LcEndpoint {
 
 function Test-SponsorshipPackagesReadFlow {
     param([Parameter(Mandatory)]$Report)
-    $eventId = [Guid]::NewGuid().ToString()
+
+    # Wave 9.h.2: real event fixture + sponsor-config enabled
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'sp-packages-read' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture failed: $($fix.Error)"
+        return
+    }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    Enable-LcEventFinanceConfigs -EventId $fix.EventId | Out-Null
+    $eventId = $fix.EventId
 
     Test-LcEndpoint -Report $Report -Section 'sp-packages-read' -TestName 'list active packages' -Endpoint "GET /api/events/{eventId}/sponsorship-packages/active" -Action {
         $r = Invoke-LcGet -Path "/api/events/$eventId/sponsorship-packages/active"
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 
-    # WAVE 9.e FINDING: list-packages endpoint throws 500 on fake event ID (same pattern).
-    Add-LcResult -Report $Report -Status SKIP -Section 'sp-packages-read' -TestName 'list packages (500 finding W5.3 SponsorshipPackageRepository)' -Endpoint "GET /api/events/{eventId}/sponsorship-packages" -SkipReason '500 on fake event ID; needs real event fixture; -IncludeFixtures'
+    # Wave 9.h.2: F7 resolved via real event fixture
+    Test-LcEndpoint -Report $Report -Section 'sp-packages-read' -TestName 'list packages (F7 - real event; W5.3 SponsorshipPackageRepository)' -Endpoint "GET /api/events/{eventId}/sponsorship-packages" -Action {
+        $r = Invoke-LcGet -Path "/api/events/$eventId/sponsorship-packages"
+        if ($r.StatusCode -ge 500) { throw "F7 confirmed real bug: 5xx $($r.StatusCode)" }
+    }
+
+    Remove-LcFixturesByTag | Out-Null
 }
 
 function Test-SponsorshipPackagesMutatorsFlow {

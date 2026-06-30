@@ -40,8 +40,17 @@ function Test-ApprovalsFlow {
         # Non-admin -> 403 expected; admin -> 200 also OK
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
-    Add-LcResult -Report $Report -Status SKIP -Section 'approvals-flow' -TestName 'approve user upgrade' -Endpoint 'POST /api/Approvals/{userId}/approve' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future: GitHub Actions OIDC + scoped admin SP.'
-    Add-LcResult -Report $Report -Status SKIP -Section 'approvals-flow' -TestName 'reject user upgrade' -Endpoint 'POST /api/Approvals/{userId}/reject' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future: GitHub Actions OIDC + scoped admin SP.'
+    # Test user is AdminManager (highest role). Approvals require a user with PENDING
+    # upgrade state. The fakeUserId here will return 404 (no such pending request),
+    # which proves wiring without doing real state mutation.
+    Test-LcEndpoint -Report $Report -Section 'approvals-flow' -TestName 'approve user upgrade (wiring)' -Endpoint 'POST /api/Approvals/{userId}/approve' -Action {
+        $r = Invoke-LcPost -Path "/api/Approvals/$fakeUserId/approve" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'approvals-flow' -TestName 'reject user upgrade (wiring)' -Endpoint 'POST /api/Approvals/{userId}/reject' -Action {
+        $r = Invoke-LcPost -Path "/api/Approvals/$fakeUserId/reject" -Body @{ reason = 'Smoke test rejection' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 function Invoke-ApprovalsControllerSmoke {

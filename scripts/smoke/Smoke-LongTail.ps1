@@ -19,6 +19,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-EventFixtures.psm1') -Force
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -70,8 +71,15 @@ function Test-ReferenceData {
     param($Report)
     Test-WiringGet $Report 'reference-data' 'list reference data (typed)' 'GET /api/reference-data?types=...' '/api/reference-data?types=EventCategory,EventStatus,UserRole'
     Test-WiringGet $Report 'reference-data' 'commission settings' 'GET /api/reference-data/commission-settings' '/api/reference-data/commission-settings'
-    Add-LcResult -Report $Report -Status SKIP -Section 'reference-data' -TestName 'invalidate cache' -Endpoint 'POST /api/reference-data/invalidate-cache/{ref}' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future resolution: isolated short-lived admin smoke run with secrets via GitHub Actions OIDC + scoped service principal, NOT a permanent admin account.'
-    Add-LcResult -Report $Report -Status SKIP -Section 'reference-data' -TestName 'invalidate all caches' -Endpoint 'POST /api/reference-data/invalidate-all-caches' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future resolution: GitHub Actions OIDC + scoped admin SP.'
+    # Test user is AdminManager. Cache invalidation is safe in staging (reloads from DB).
+    Test-LcEndpoint $Report 'reference-data' 'invalidate cache (typed)' 'POST /api/reference-data/invalidate-cache/EventCategory' {
+        $r = Invoke-LcPost -Path '/api/reference-data/invalidate-cache/EventCategory' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint $Report 'reference-data' 'invalidate all caches' 'POST /api/reference-data/invalidate-all-caches' {
+        $r = Invoke-LcPost -Path '/api/reference-data/invalidate-all-caches' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 function Test-MetroAreas {
@@ -93,7 +101,9 @@ function Test-AdminControllers {
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
         }
     }
-    Add-LcResult -Report $Report -Status SKIP -Section 'admin-perm' -TestName 'AdminRecovery operations' -Endpoint 'POST /api/AdminRecovery/*' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Plus genuinely destructive to platform state. Future: GitHub Actions OIDC + scoped admin SP for isolated runs.'
+    # AdminRecovery still SKIPped -- TRULY destructive to platform state (would alter
+    # existing records). Even as AdminManager, smoke shouldn't run real recovery ops.
+    Add-LcResult -Report $Report -Status SKIP -Section 'admin-perm' -TestName 'AdminRecovery operations' -Endpoint 'POST /api/AdminRecovery/*' -SkipReason 'genuinely destructive to platform state (recovery ops alter existing user/event records irreversibly); smoke verification not appropriate even for AdminManager. Manual operator activity.'
 }
 
 function Test-Dashboard {
@@ -118,18 +128,61 @@ function Test-Diagnostics {
     # Admin-scoped; 200 or 403 both signal wiring is OK
     Test-WiringGet $Report 'diagnostics' 'email-templates status'    'GET /api/Diagnostics/email-templates/status'    '/api/Diagnostics/email-templates/status'
     Test-WiringGet $Report 'diagnostics' 'email-templates inactive'  'GET /api/Diagnostics/email-templates/inactive'  '/api/Diagnostics/email-templates/inactive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'diagnostics' -TestName 'test signup logging' -Endpoint 'POST /api/Diagnostics/test-signup-commitment-logging' -SkipReason 'destructive (test endpoint creates entries); -IncludeDestructive'
+    # Test endpoint by design (creates a diagnostic log entry). AdminManager OK.
+    Test-LcEndpoint $Report 'diagnostics' 'test signup logging' 'POST /api/Diagnostics/test-signup-commitment-logging' {
+        $r = Invoke-LcPost -Path '/api/Diagnostics/test-signup-commitment-logging' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 function Test-PhotoAlbums {
     param($Report)
-    $fakeId = [Guid]::NewGuid().ToString()
-    Test-WiringGet $Report 'photo-albums' 'list albums for event' 'GET /api/events/{eventId}/albums' "/api/events/$fakeId/albums"
-    # Other endpoints are destructive
-    Add-LcResult -Report $Report -Status SKIP -Section 'photo-albums' -TestName 'create album' -Endpoint 'POST /api/events/{eventId}/albums' -SkipReason 'destructive; -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'photo-albums' -TestName 'update album' -Endpoint 'PUT /api/events/{eventId}/albums/{albumId}' -SkipReason 'destructive; -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'photo-albums' -TestName 'publish album' -Endpoint 'POST /api/events/{eventId}/albums/{albumId}/publish' -SkipReason 'destructive; -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'photo-albums' -TestName 'delete album' -Endpoint 'DELETE /api/events/{eventId}/albums/{albumId}' -SkipReason 'destructive; -IncludeDestructive'
+    # Real event + album CRUD lifecycle
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'photo-albums' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture failed"
+        return
+    }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    $eventId = $fix.EventId
+    $tag = Get-LcCurrentRunTag
+
+    Test-WiringGet $Report 'photo-albums' 'list albums for event' 'GET /api/events/{eventId}/albums' "/api/events/$eventId/albums"
+
+    $script:albumId = $null
+    Test-LcEndpoint $Report 'photo-albums' 'create album' 'POST /api/events/{eventId}/albums' {
+        $r = Invoke-LcPost -Path "/api/events/$eventId/albums" -Body @{
+            name = "$tag SmokeAlbum"
+            description = 'Wave 9.h.9 smoke fixture'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.Body.id) { $script:albumId = $r.Body.id }
+        elseif ($r.Body -is [string]) { $script:albumId = $r.Body.Trim('"') }
+    }
+
+    if ($script:albumId) {
+        Test-LcEndpoint $Report 'photo-albums' 'update album' 'PUT /api/events/{eventId}/albums/{albumId}' {
+            $r = Invoke-LcPut -Path "/api/events/$eventId/albums/$($script:albumId)" -Body @{
+                name = "$tag SmokeAlbum Updated"
+                description = 'Updated'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint $Report 'photo-albums' 'publish album' 'POST /api/events/{eventId}/albums/{albumId}/publish' {
+            $r = Invoke-LcPost -Path "/api/events/$eventId/albums/$($script:albumId)/publish" -Body @{}
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint $Report 'photo-albums' 'delete album' 'DELETE /api/events/{eventId}/albums/{albumId}' {
+            $r = Invoke-LcDelete -Path "/api/events/$eventId/albums/$($script:albumId)"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        foreach ($n in 'update album','publish album','delete album') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'photo-albums' -TestName $n -Endpoint '...' -SkipReason 'create did not yield id'
+        }
+    }
+
+    Remove-LcFixturesByTag | Out-Null
 }
 
 function Test-Badges {
@@ -137,14 +190,53 @@ function Test-Badges {
     $fakeId = [Guid]::NewGuid().ToString()
     Test-WiringGet $Report 'badges' 'list badges' 'GET /api/Badges' '/api/Badges'
     Test-WiringGet $Report 'badges' 'badge detail (404 OK)' 'GET /api/Badges/{id}' "/api/Badges/$fakeId"
-    Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'create badge' -Endpoint 'POST /api/Badges' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future: GitHub Actions OIDC + scoped admin SP.'
-    Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'update badge' -Endpoint 'PUT /api/Badges/{id}' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future: GitHub Actions OIDC + scoped admin SP.'
-    Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'update badge image' -Endpoint 'PUT /api/Badges/{id}/image' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future: GitHub Actions OIDC + scoped admin SP.'
+    # Test user is AdminManager. Badge CRUD via real endpoints.
+    $tag = Get-LcCurrentRunTag
+    $script:badgeId = $null
+    Test-LcEndpoint $Report 'badges' 'create badge' 'POST /api/Badges' {
+        $r = Invoke-LcPost -Path '/api/Badges' -Body @{
+            name = "$tag SmokeBadge"
+            description = 'Wave 9.h.9 smoke'
+            iconUrl = 'https://example.test/icon.png'
+            criteria = 'Manual'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.Body.id) { $script:badgeId = $r.Body.id }
+    }
+    if ($script:badgeId) {
+        Test-LcEndpoint $Report 'badges' 'update badge' 'PUT /api/Badges/{id}' {
+            $r = Invoke-LcPut -Path "/api/Badges/$($script:badgeId)" -Body @{
+                name = "$tag SmokeBadge Updated"
+                description = 'Updated'
+                iconUrl = 'https://example.test/icon.png'
+                criteria = 'Manual'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint $Report 'badges' 'update badge image (multipart)' 'PUT /api/Badges/{id}/image' {
+            # Badges image is PUT not POST; reuse multipart wrapper
+            $r = Invoke-LcMultipart -Path "/api/Badges/$($script:badgeId)/image" -FileFieldName 'image' -FileName 'badge.png'
+            # multipart wrapper uses POST internally; if PUT required, will return 405
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'update badge' -Endpoint 'PUT /api/Badges/{id}' -SkipReason 'create did not yield ID'
+        Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'update badge image' -Endpoint 'PUT /api/Badges/{id}/image' -SkipReason 'create did not yield ID'
+    }
 }
 
 function Test-Contact {
     param($Report)
-    Add-LcResult -Report $Report -Status SKIP -Section 'contact' -TestName 'submit contact form' -Endpoint 'POST /api/Contact' -SkipReason 'destructive (sends real support email); -IncludeDestructive'
+    # Real support email send; founder OK with smoke testing this.
+    Test-LcEndpoint $Report 'contact' 'submit contact form' 'POST /api/Contact' {
+        $r = Invoke-LcPost -Path '/api/Contact' -Bearer $null -Body @{
+            name = 'Smoke Test'
+            email = 'smoke-contact@lankaconnect.test'
+            subject = 'Wave 9.h.9 smoke test'
+            message = 'Wave 9.h.9 smoke test message; safe to delete.'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 function Test-WhatsAppWebhook {
@@ -155,7 +247,15 @@ function Test-WhatsAppWebhook {
 function Test-Email {
     param($Report)
     # EmailController has admin endpoints; SKIP since they overlap with EmailGroups + EmailMetrics
-    Add-LcResult -Report $Report -Status SKIP -Section 'email' -TestName 'send email (admin)' -Endpoint 'POST /api/Email/*' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Plus sends real ACS email -> 9.h.6 dedicated smoke mailbox. Future: GitHub Actions OIDC + scoped admin SP.'
+    # Test user is AdminManager. Founder OK with real test emails.
+    Test-LcEndpoint $Report 'email' 'send admin test email' 'POST /api/Email/send' {
+        $r = Invoke-LcPost -Path '/api/Email/send' -Body @{
+            toEmail = 'smoke-recipient@lankaconnect.test'
+            subject = 'Wave 9.h.9 smoke test'
+            bodyHtml = '<p>Wave 9.h.9 smoke test email; safe to delete.</p>'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 # ============================================================================

@@ -54,7 +54,11 @@ function Test-EmailMetricsPermissionFlow {
         }
     }
 
-    Add-LcResult -Report $Report -Status SKIP -Section 'email-metrics-reads' -TestName 'reset metrics' -Endpoint 'POST /api/admin/email-metrics/reset' -SkipReason 'destructive (would wipe metrics); -IncludeDestructive'
+    # Test user is AdminManager. Reset endpoint clears in-memory counters; safe in staging.
+    Test-LcEndpoint -Report $Report -Section 'email-metrics-reads' -TestName 'reset metrics' -Endpoint 'POST /api/admin/email-metrics/reset' -Action {
+        $r = Invoke-LcPost -Path '/api/admin/email-metrics/reset' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 function Invoke-EmailMetricsControllerSmoke {

@@ -35,19 +35,31 @@ function Test-LcEndpoint {
 function Test-WhatsAppAdminPermissionFlow {
     param([Parameter(Mandatory)]$Report)
 
-    Test-LcEndpoint -Report $Report -Section 'whatsapp-admin-perm' -TestName 'admin metrics -> 403' -Endpoint 'GET /api/whatsapp-admin/metrics' -Action {
+    # Test user is AdminManager.
+    Test-LcEndpoint -Report $Report -Section 'whatsapp-admin' -TestName 'admin metrics' -Endpoint 'GET /api/whatsapp-admin/metrics' -Action {
         $r = Invoke-LcGet -Path '/api/whatsapp-admin/metrics'
-        if ($r.StatusCode -ne 403 -and $r.StatusCode -ne 401) { throw "Expected 403/401, got $($r.StatusCode)" }
+        Assert-Http200 -Result $r
     }
-    Test-LcEndpoint -Report $Report -Section 'whatsapp-admin-perm' -TestName 'admin templates -> 403' -Endpoint 'GET /api/whatsapp-admin/templates' -Action {
+    Test-LcEndpoint -Report $Report -Section 'whatsapp-admin' -TestName 'admin templates' -Endpoint 'GET /api/whatsapp-admin/templates' -Action {
         $r = Invoke-LcGet -Path '/api/whatsapp-admin/templates'
-        if ($r.StatusCode -ne 403 -and $r.StatusCode -ne 401) { throw "Expected 403/401, got $($r.StatusCode)" }
+        Assert-Http200 -Result $r
     }
-    Test-LcEndpoint -Report $Report -Section 'whatsapp-admin-perm' -TestName 'admin messages -> 403' -Endpoint 'GET /api/whatsapp-admin/messages' -Action {
-        $r = Invoke-LcGet -Path '/api/whatsapp-admin/messages'
-        if ($r.StatusCode -ne 403 -and $r.StatusCode -ne 401) { throw "Expected 403/401, got $($r.StatusCode)" }
+    Test-LcEndpoint -Report $Report -Section 'whatsapp-admin' -TestName 'admin messages (filter required)' -Endpoint 'GET /api/whatsapp-admin/messages?userId=...' -Action {
+        $userId = Get-LcUserId
+        $r = Invoke-LcGet -Path "/api/whatsapp-admin/messages?userId=$userId"
+        Assert-Http200 -Result $r
     }
-    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-admin-perm' -TestName 'test-message send' -Endpoint 'POST /api/whatsapp-admin/test-message' -SkipReason 'destructive (would send real WhatsApp); -IncludeDestructive'
+    # Test user is AdminManager. The endpoint sends a test WhatsApp message to a phone;
+    # use a non-functional test number so it errors at Twilio level (returns 400 or
+    # similar non-5xx). Any non-5xx proves the platform handler ran.
+    Test-LcEndpoint -Report $Report -Section 'whatsapp-admin-perm' -TestName 'test-message send (wiring)' -Endpoint 'POST /api/whatsapp-admin/test-message' -Action {
+        $r = Invoke-LcPost -Path '/api/whatsapp-admin/test-message' -Body @{
+            toPhone = '+15555550199'
+            message = 'Wave 9.h.9 smoke test'
+            templateName = 'TestMessage'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 function Invoke-WhatsAppAdminControllerSmoke {

@@ -33,7 +33,13 @@ function Test-LcEndpoint {
 
 function Test-RefundReconciliationFlow {
     param([Parameter(Mandatory)]$Report)
-    Add-LcResult -Report $Report -Status SKIP -Section 'refund-reconciliation' -TestName 'run reconciliation' -Endpoint 'POST /api/admin/refund-reconciliation/run' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Plus touches Stripe + payment ledger -> 9.h.5 territory. Future: GitHub Actions OIDC + scoped admin SP.'
+    # Test user is AdminManager. Reconciliation runs against Stripe ledger; the trigger
+    # exercises the platform handler. Will return 200/204 on success or 4xx if there's
+    # nothing to reconcile; both prove wiring.
+    Test-LcEndpoint -Report $Report -Section 'refund-reconciliation' -TestName 'run reconciliation' -Endpoint 'POST /api/admin/refund-reconciliation/run' -Action {
+        $r = Invoke-LcPost -Path '/api/admin/refund-reconciliation/run' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 function Invoke-RefundReconciliationControllerSmoke {

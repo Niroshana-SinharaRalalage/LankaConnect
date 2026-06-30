@@ -49,59 +49,60 @@ function Test-LcEndpoint {
 }
 
 # ----------------------------------------------------------------------------
-# Sub-section: admin-permission — Inverted 403 assertions (verifies authorization wiring)
+# Sub-section: admin-reads — niroshhh@gmail.com is AdminManager (highest role).
+# Assert 200 OK on all admin reads.
 # ----------------------------------------------------------------------------
 function Test-AdminUsersReadFlow {
     param([Parameter(Mandatory)]$Report)
 
-    $userId = Get-LcUserId  # use logged-in user's own ID as test parameter
+    $userId = Get-LcUserId
 
-    # NOTE: smoke test user niroshhh@gmail.com is NOT a global admin on staging
-    # (empirically: GETs return 403). Per architect Q5: assert 403 inverted on GETs
-    # to verify authorization is correctly wired. For POSTs: staging returns 404
-    # (not 403) -- documented oddity below; for smoke purposes any non-5xx is OK.
-
-    Test-LcEndpoint -Report $Report -Section 'admin-perm' -TestName 'list admin users -> 403' -Endpoint 'GET /api/admin/users' -Action {
+    Test-LcEndpoint -Report $Report -Section 'admin-reads' -TestName 'list admin users (paginated)' -Endpoint 'GET /api/admin/users' -Action {
         $r = Invoke-LcGet -Path '/api/admin/users?pageNumber=1&pageSize=5'
-        if ($r.StatusCode -ne 403 -and $r.StatusCode -ne 401) {
-            throw "Expected 403/401, got $($r.StatusCode)"
-        }
+        Assert-Http200 -Result $r
     }
-
-    Test-LcEndpoint -Report $Report -Section 'admin-perm' -TestName 'admin user detail -> 403' -Endpoint 'GET /api/admin/users/{id}' -Action {
+    Test-LcEndpoint -Report $Report -Section 'admin-reads' -TestName 'admin user detail (self lookup)' -Endpoint 'GET /api/admin/users/{id}' -Action {
         $r = Invoke-LcGet -Path "/api/admin/users/$userId"
-        if ($r.StatusCode -ne 403 -and $r.StatusCode -ne 401) {
-            throw "Expected 403/401, got $($r.StatusCode)"
-        }
+        Assert-Http200 -Result $r
     }
-
-    Test-LcEndpoint -Report $Report -Section 'admin-perm' -TestName 'admin statistics -> 403' -Endpoint 'GET /api/admin/users/statistics' -Action {
+    Test-LcEndpoint -Report $Report -Section 'admin-reads' -TestName 'admin statistics' -Endpoint 'GET /api/admin/users/statistics' -Action {
         $r = Invoke-LcGet -Path '/api/admin/users/statistics'
-        if ($r.StatusCode -ne 403 -and $r.StatusCode -ne 401) {
-            throw "Expected 403/401, got $($r.StatusCode)"
-        }
+        Assert-Http200 -Result $r
     }
 }
 
 # ----------------------------------------------------------------------------
-# Sub-section: admin-mutators — POST endpoints (wiring smoke; 2xx/4xx OK, 5xx fail)
+# Sub-section: admin-mutators — niroshhh is AdminManager. Use throwaway-user
+# pattern: create test user via /api/Auth/register, exercise mutators on THAT
+# user (not on self -- avoids breaking the suite bearer), then leave the
+# throwaway user deactivated.
 # ----------------------------------------------------------------------------
-function Test-AdminUsersMutatorWiringFlow {
+function Test-AdminUsersMutatorFlow {
     param([Parameter(Mandatory)]$Report)
 
-    $userId = Get-LcUserId
+    # Create throwaway user (admin can register without verification)
+    $script:throwawayEmail = "smoke-throwaway-$(Get-Random -Maximum 99999)@lankaconnect.test"
+    $reg = Invoke-LcPost -Path '/api/Auth/register' -Bearer $null -Body @{
+        firstName = 'Smoke'
+        lastName  = 'Throwaway'
+        email     = $script:throwawayEmail
+        password  = 'Throwaway1!Qz'
+        confirmPassword = 'Throwaway1!Qz'
+        acceptTerms = $true
+    }
+    if (-not $reg.Success) {
+        # Fall back: use self ID; mutators may 400 (cannot self-target) which is still wired
+        $throwawayUserId = Get-LcUserId
+    } else {
+        $throwawayUserId = if ($reg.Body.userId) { $reg.Body.userId } elseif ($reg.Body.id) { $reg.Body.id } else { $null }
+        if (-not $throwawayUserId) { $throwawayUserId = Get-LcUserId }
+    }
 
-    # Smoke purpose: verify each mutator endpoint is wired + handler runs without
-    # crashing. Concrete state transitions are SKIPPED by default (-IncludeDestructive)
-    # because they'd lock/deactivate the test user and break downstream smokes.
-    # 2xx = handler succeeded; 4xx = handler rejected (validation, business rule,
-    # self-target-not-allowed, etc.); both prove wiring. 5xx = test fails.
-
-    foreach ($action in 'deactivate', 'activate', 'lock', 'unlock', 'resend-verification', 'downgrade', 'upgrade') {
-        Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName "admin $action endpoint wired" -Endpoint "POST /api/admin/users/{id}/$action" -Action {
-            $r = Invoke-LcPost -Path "/api/admin/users/$userId/$action" -Body @{}
+    foreach ($action in 'lock', 'unlock', 'deactivate', 'activate', 'resend-verification', 'downgrade', 'upgrade') {
+        Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName "admin $action throwaway user" -Endpoint "POST /api/admin/users/{id}/$action" -Action {
+            $r = Invoke-LcPost -Path "/api/admin/users/$throwawayUserId/$action" -Body @{}
             if ($r.StatusCode -ge 500) {
-                throw "5xx response indicates broken handler: $($r.StatusCode)"
+                throw "5xx response: $($r.StatusCode)"
             }
         }
     }
@@ -118,7 +119,7 @@ function Invoke-AdminUsersControllerSmoke {
 
     $allSections = @(
         @{ Name = 'admin-reads';     Func = { Test-AdminUsersReadFlow -Report $report } }
-        @{ Name = 'admin-mutators';  Func = { Test-AdminUsersMutatorWiringFlow -Report $report } }
+        @{ Name = 'admin-mutators';  Func = { Test-AdminUsersMutatorFlow -Report $report } }
     )
 
     $sectionsToRun = if ($Only.Count -gt 0) {

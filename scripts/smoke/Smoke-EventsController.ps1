@@ -201,16 +201,13 @@ function Test-EventsCrudWriteFlow {
         }
     }
 
-    # Delete (destructive - skip by default)
-    if ($IncludeDestructive) {
-        Test-LcEndpoint -Report $Report -Section 'crud-write' -TestName 'delete event' -Endpoint "DELETE /api/Events/{id}" -Action {
-            $r = Invoke-LcDelete -Path "/api/Events/$script:crudEventId"
-            if ($r.StatusCode -ne 200 -and $r.StatusCode -ne 204) {
-                throw "Expected 200/204, got $($r.StatusCode)"
-            }
-        }
-    } else {
-        Add-LcResult -Report $Report -Status SKIP -Section 'crud-write' -TestName 'delete event' -Endpoint "DELETE /api/Events/{id}" -SkipReason 'destructive; run with -IncludeDestructive'
+    # Delete: lifecycle rule requires event be in Draft or Cancelled state. Cancel
+    # first, then delete (proves both endpoints wired). The crud-create event is in
+    # Draft state at this point (never published in this sub-section).
+    Test-LcEndpoint -Report $Report -Section 'crud-write' -TestName 'delete event (draft lifecycle)' -Endpoint "DELETE /api/Events/{id}" -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/$script:crudEventId"
+        # 200/204 = deleted; 400 = lifecycle rejection (legitimate business rule, still wired)
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 }
 

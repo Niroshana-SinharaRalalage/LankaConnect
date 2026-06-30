@@ -101,17 +101,52 @@ function Test-AddOnsReadFlow {
 function Test-AddOnsMutatorsFlow {
     param([Parameter(Mandatory)]$Report)
 
-    $mutators = @(
-        @{ Method = 'POST';   Path = '/api/events/{eventId}/add-ons';                              Name = 'create add-on definition' }
-        @{ Method = 'PUT';    Path = '/api/events/{eventId}/add-ons/{defId}';                      Name = 'update add-on definition' }
-        @{ Method = 'POST';   Path = '/api/events/{eventId}/add-ons/{defId}/image';                Name = 'upload definition image' }
-        @{ Method = 'DELETE'; Path = '/api/events/{eventId}/add-ons/{defId}/image';                Name = 'delete definition image' }
-        @{ Method = 'POST';   Path = '/api/events/{eventId}/add-ons/{defId}/purchase';             Name = 'purchase add-on (W5.3 AddOnPurchaseRepository)' }
-        @{ Method = 'POST';   Path = '/api/events/{eventId}/add-ons/purchase-cart';                Name = 'purchase add-on cart' }
-    )
-    foreach ($m in $mutators) {
-        Add-LcResult -Report $Report -Status SKIP -Section 'addons-mutators' -TestName $m.Name -Endpoint "$($m.Method) $($m.Path)" -SkipReason 'destructive (creates/modifies definitions/purchases); -IncludeDestructive'
+    # Wave 9.h.3: real fixtures + actual mutator coverage
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'addons-mutators' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture failed: $($fix.Error)"
+        return
     }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    Enable-LcEventFinanceConfigs -EventId $fix.EventId | Out-Null
+    $eventId = $fix.EventId
+
+    # Create definition + capture ID for subsequent mutators
+    $defId = $null
+    Test-LcEndpoint -Report $Report -Section 'addons-mutators' -TestName 'create add-on definition (W5.3 write)' -Endpoint 'POST /api/events/{eventId}/add-ons' -Action {
+        $a = New-LcTaggedAddOnDefinition -EventId $eventId
+        if (-not $a.Success) { throw "create failed: HTTP $($a.StatusCode)" }
+        $script:addOnDefId = if ($a.Body -is [string]) { $a.Body.Trim('"') }
+                             elseif ($a.Body.id) { $a.Body.id }
+                             else { $null }
+    }
+
+    if ($script:addOnDefId) {
+        Test-LcEndpoint -Report $Report -Section 'addons-mutators' -TestName 'update add-on definition' -Endpoint 'PUT /api/events/{eventId}/add-ons/{defId}' -Action {
+            $r = Invoke-LcPut -Path "/api/events/$eventId/add-ons/$($script:addOnDefId)" -Body @{
+                name = 'Smoke Updated AddOn'; description = 'Updated by 9.h.3'; price = 12.00; currency = 'USD'; quantityLimit = 50; sortOrder = 0; isActive = $true
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'addons-mutators' -TestName 'upload definition image (multipart)' -Endpoint 'POST /api/events/{eventId}/add-ons/{defId}/image' -Action {
+            $r = Invoke-LcMultipart -Path "/api/events/$eventId/add-ons/$($script:addOnDefId)/image" -FileFieldName 'image' -FileName 'addon.png'
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'addons-mutators' -TestName 'delete definition image' -Endpoint 'DELETE /api/events/{eventId}/add-ons/{defId}/image' -Action {
+            $r = Invoke-LcDelete -Path "/api/events/$eventId/add-ons/$($script:addOnDefId)/image"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        foreach ($n in 'update add-on definition','upload definition image','delete definition image') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'addons-mutators' -TestName $n -Endpoint '...' -SkipReason 'definition create did not yield ID for downstream'
+        }
+    }
+
+    # Purchase endpoints touch Stripe; deferred to 9.h.5
+    Add-LcResult -Report $Report -Status SKIP -Section 'addons-mutators' -TestName 'purchase add-on (Stripe-mediated)' -Endpoint 'POST /api/events/{eventId}/add-ons/{defId}/purchase' -SkipReason 'creates real Stripe checkout session; 9.h.5 (LC_STRIPE_TEST_MODE)'
+    Add-LcResult -Report $Report -Status SKIP -Section 'addons-mutators' -TestName 'purchase add-on cart (Stripe-mediated)' -Endpoint 'POST /api/events/{eventId}/add-ons/purchase-cart' -SkipReason 'creates real Stripe checkout session; 9.h.5'
+
+    Remove-LcFixturesByTag | Out-Null
 }
 
 function Invoke-AddOnsControllerSmoke {

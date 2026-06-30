@@ -11,6 +11,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-EventFixtures.psm1') -Force
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -46,9 +47,39 @@ function Test-EmailGroupsReadFlow {
 
 function Test-EmailGroupsMutatorsFlow {
     param([Parameter(Mandatory)]$Report)
-    Add-LcResult -Report $Report -Status SKIP -Section 'email-groups-mutators' -TestName 'create email group' -Endpoint 'POST /api/EmailGroups' -SkipReason 'destructive; -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'email-groups-mutators' -TestName 'update email group' -Endpoint 'PUT /api/EmailGroups/{id}' -SkipReason 'destructive; -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'email-groups-mutators' -TestName 'delete email group' -Endpoint 'DELETE /api/EmailGroups/{id}' -SkipReason 'destructive; -IncludeDestructive'
+
+    # Wave 9.h.3: tag-based fixture + full create/update/delete lifecycle
+    $tag = Get-LcCurrentRunTag
+    $groupId = $null
+
+    Test-LcEndpoint -Report $Report -Section 'email-groups-mutators' -TestName 'create email group' -Endpoint 'POST /api/EmailGroups' -Action {
+        # Contract: emailAddresses is a comma-separated STRING (not array)
+        $r = Invoke-LcPost -Path '/api/EmailGroups' -Body @{
+            name = "$tag SmokeGroup"
+            description = 'Wave 9.h.3 smoke fixture'
+            emailAddresses = 'smoke-recipient@lankaconnect.test'
+        }
+        if (-not $r.Success) { throw "create failed: HTTP $($r.StatusCode)" }
+        $script:emailGroupId = if ($r.Body -is [string]) { $r.Body.Trim('"') } elseif ($r.Body.id) { $r.Body.id } else { $null }
+    }
+
+    if ($script:emailGroupId) {
+        Test-LcEndpoint -Report $Report -Section 'email-groups-mutators' -TestName 'update email group' -Endpoint 'PUT /api/EmailGroups/{id}' -Action {
+            $r = Invoke-LcPut -Path "/api/EmailGroups/$($script:emailGroupId)" -Body @{
+                name = "$tag SmokeGroup Updated"
+                description = 'Updated by 9.h.3'
+                emailAddresses = 'smoke-recipient@lankaconnect.test,smoke-recipient2@lankaconnect.test'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'email-groups-mutators' -TestName 'delete email group' -Endpoint 'DELETE /api/EmailGroups/{id}' -Action {
+            $r = Invoke-LcDelete -Path "/api/EmailGroups/$($script:emailGroupId)"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'email-groups-mutators' -TestName 'update email group' -Endpoint 'PUT /api/EmailGroups/{id}' -SkipReason 'create did not yield ID'
+        Add-LcResult -Report $Report -Status SKIP -Section 'email-groups-mutators' -TestName 'delete email group' -Endpoint 'DELETE /api/EmailGroups/{id}' -SkipReason 'create did not yield ID'
+    }
 }
 
 function Invoke-EmailGroupsControllerSmoke {

@@ -149,9 +149,9 @@ function New-LcTaggedItemSponsor {
         sponsorEmail        = 'smoke-item-sponsor@lankaconnect.test'
         sponsorOrganization = "$Tag SmokeOrg"
         sponsorNotes        = 'Auto-created by Wave 9.h smoke. Safe to delete.'
-        itemDescription     = 'Smoke gift bag'
+        itemName            = 'Smoke Gift Bag'
+        itemDescription     = 'Smoke gift bag for Wave 9.h.3'
         estimatedValue      = 50.00
-        currency            = 'USD'
     }
     $r = Invoke-LcPost -Path "/api/events/$EventId/sponsors/item" -Body $body
     return [pscustomobject]@{

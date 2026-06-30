@@ -42,11 +42,48 @@ function Test-WhatsAppPreferencesFlow {
 
 function Test-WhatsAppMutatorsFlow {
     param([Parameter(Mandatory)]$Report)
-    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-mutators' -TestName 'enable whatsapp' -Endpoint 'POST /api/whatsapp/enable' -SkipReason 'destructive (mutates user preferences); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-mutators' -TestName 'disable whatsapp' -Endpoint 'POST /api/whatsapp/disable' -SkipReason 'destructive (mutates user preferences); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-mutators' -TestName 'request verification' -Endpoint 'POST /api/whatsapp/verify/request' -SkipReason 'destructive (would send real SMS via Twilio); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-mutators' -TestName 'confirm verification' -Endpoint 'POST /api/whatsapp/verify/confirm' -SkipReason 'state-dependent (requires valid code from SMS); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-mutators' -TestName 'update preferences' -Endpoint 'PUT /api/whatsapp/preferences' -SkipReason 'destructive (mutates preferences); -IncludeDestructive'
+
+    # Wave 9.h.3: WhatsApp prefs are user-scoped and REVERSIBLE.
+    # Pattern: capture original -> mutate -> assert -> restore original.
+
+    # First read current
+    $orig = Invoke-LcGet -Path '/api/whatsapp/preferences'
+    if (-not $orig.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'whatsapp-mutators' -TestName 'capture original state' -Endpoint 'GET /api/whatsapp/preferences' -ErrorMessage "HTTP $($orig.StatusCode)"
+        return
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'whatsapp-mutators' -TestName 'update preferences' -Endpoint 'PUT /api/whatsapp/preferences' -Action {
+        $r = Invoke-LcPut -Path '/api/whatsapp/preferences' -Body @{
+            receiveEventNotifications = $true
+            receiveOrganizerMessages  = $true
+            receivePromotionalMessages = $false
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'whatsapp-mutators' -TestName 'disable whatsapp' -Endpoint 'POST /api/whatsapp/disable' -Action {
+        $r = Invoke-LcPost -Path '/api/whatsapp/disable' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'whatsapp-mutators' -TestName 'enable whatsapp (re-enable)' -Endpoint 'POST /api/whatsapp/enable' -Action {
+        $r = Invoke-LcPost -Path '/api/whatsapp/enable' -Body @{ phoneNumber = '+15555550100' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    # Restore original prefs (best-effort)
+    if ($orig.Body) {
+        Invoke-LcPut -Path '/api/whatsapp/preferences' -Body @{
+            receiveEventNotifications = $orig.Body.receiveEventNotifications
+            receiveOrganizerMessages  = $orig.Body.receiveOrganizerMessages
+            receivePromotionalMessages = $orig.Body.receivePromotionalMessages
+        } | Out-Null
+    }
+
+    # Verify request/confirm SKIP -- truly send real SMS via Twilio (9.h.6)
+    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-mutators' -TestName 'request verification' -Endpoint 'POST /api/whatsapp/verify/request' -SkipReason 'would send real SMS via Twilio; 9.h.6 (LC_DISABLE_WEBHOOK_SIG_VALIDATION + test-mode flag)'
+    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-mutators' -TestName 'confirm verification' -Endpoint 'POST /api/whatsapp/verify/confirm' -SkipReason 'inbox-token flow (SMS code); 9.h.6'
 }
 
 function Invoke-WhatsAppControllerSmoke {

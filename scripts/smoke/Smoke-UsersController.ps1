@@ -159,13 +159,19 @@ function Test-UsersProfileUpdateFlow {
 function Test-UsersPhotoFlow {
     param([Parameter(Mandatory)]$Report)
 
-    if ($IncludePhotoUpload) {
-        Add-LcResult -Report $Report -Status SKIP -Section 'users-photo' -TestName 'upload profile photo' -Endpoint 'POST /api/Users/{id}/profile-photo' -SkipReason 'multipart/form-data upload not yet implemented in PowerShell smoke; -IncludePhotoUpload reserved for future'
-    } else {
-        Add-LcResult -Report $Report -Status SKIP -Section 'users-photo' -TestName 'upload profile photo' -Endpoint 'POST /api/Users/{id}/profile-photo' -SkipReason 'state-dependent (multipart/form-data); -IncludePhotoUpload'
+    # Wave 9.h.3: multipart upload (9.h.4 wrapper) + DELETE for cleanup.
+    # Reversible state -- upload then delete restores user to no-photo.
+    $userId = Get-LcUserId
+
+    Test-LcEndpoint -Report $Report -Section 'users-photo' -TestName 'upload profile photo (multipart)' -Endpoint 'POST /api/Users/{id}/profile-photo' -Action {
+        $r = Invoke-LcMultipart -Path "/api/Users/$userId/profile-photo" -FileFieldName 'image' -FileName 'smoke-profile.png'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 
-    Add-LcResult -Report $Report -Status SKIP -Section 'users-photo' -TestName 'delete profile photo' -Endpoint 'DELETE /api/Users/{id}/profile-photo' -SkipReason 'destructive (would remove existing photo if present); -IncludeDestructive'
+    Test-LcEndpoint -Report $Report -Section 'users-photo' -TestName 'delete profile photo' -Endpoint 'DELETE /api/Users/{id}/profile-photo' -Action {
+        $r = Invoke-LcDelete -Path "/api/Users/$userId/profile-photo"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 # ----------------------------------------------------------------------------

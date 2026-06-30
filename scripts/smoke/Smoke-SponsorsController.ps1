@@ -79,20 +79,53 @@ function Test-SponsorsReadFlow {
 
 function Test-SponsorsMutatorsFlow {
     param([Parameter(Mandatory)]$Report)
-    $mutators = @(
-        @{ Method='POST';   Path='/api/events/{eventId}/sponsors/money';                       Name='create money sponsor (W5.3 SponsorRepository write)' }
-        @{ Method='POST';   Path='/api/events/{eventId}/sponsors/item';                        Name='create item sponsor (W5.3 SponsorRepository write)' }
-        @{ Method='POST';   Path='/api/events/{eventId}/sponsors/{sponsorId}/image';           Name='upload sponsor image' }
-        @{ Method='DELETE'; Path='/api/events/{eventId}/sponsors/{sponsorId}/image';           Name='delete sponsor image' }
-        @{ Method='POST';   Path='/api/events/{eventId}/sponsors/{sponsorId}/brochure';        Name='upload sponsor brochure' }
-        @{ Method='DELETE'; Path='/api/events/{eventId}/sponsors/{sponsorId}/brochure';        Name='delete sponsor brochure' }
-        @{ Method='PATCH';  Path='/api/events/{eventId}/sponsors/{sponsorId}';                 Name='update sponsor' }
-        @{ Method='POST';   Path='/api/events/{eventId}/sponsors/staging-image';               Name='upload staging image' }
-        @{ Method='POST';   Path='/api/events/{eventId}/sponsors/off-platform';                Name='record off-platform sponsor' }
-    )
-    foreach ($m in $mutators) {
-        Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName $m.Name -Endpoint "$($m.Method) $($m.Path)" -SkipReason 'destructive (creates/mutates sponsors); -IncludeDestructive'
+
+    # Wave 9.h.3: real fixtures + actual mutator coverage
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'sponsors-mutators' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture failed: $($fix.Error)"
+        return
     }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    Enable-LcEventFinanceConfigs -EventId $fix.EventId | Out-Null
+    $eventId = $fix.EventId
+
+    Test-LcEndpoint -Report $Report -Section 'sponsors-mutators' -TestName 'create money sponsor (W5.3 write)' -Endpoint 'POST /api/events/{eventId}/sponsors/money' -Action {
+        $s = New-LcTaggedMoneySponsor -EventId $eventId
+        if (-not $s.Success) { throw "create failed: HTTP $($s.StatusCode)" }
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'sponsors-mutators' -TestName 'create item sponsor (W5.3 write)' -Endpoint 'POST /api/events/{eventId}/sponsors/item' -Action {
+        $s = New-LcTaggedItemSponsor -EventId $eventId
+        if (-not $s.Success) { throw "create failed: HTTP $($s.StatusCode)" }
+    }
+
+    # Image upload / delete / brochure / patch / staging-image / off-platform
+    # Each requires either a sponsor ID (from a prior create) or specific multipart shape.
+    # These remain SKIPped with VALID technical reasons (not "destructive" -- specific):
+    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName 'upload sponsor image (multipart)' -Endpoint 'POST /api/events/{eventId}/sponsors/{sponsorId}/image' -SkipReason 'CompletedPayment-status sponsor required before image; sponsor create returns sessionUrl not sponsorId in money flow (Stripe-mediated); 9.h.5 territory'
+    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName 'delete sponsor image' -Endpoint 'DELETE /api/events/{eventId}/sponsors/{sponsorId}/image' -SkipReason 'requires sponsor with prior image upload; same blocker as upload'
+    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName 'upload sponsor brochure (multipart)' -Endpoint 'POST /api/events/{eventId}/sponsors/{sponsorId}/brochure' -SkipReason 'requires sponsorId from Stripe-completed flow; 9.h.5'
+    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName 'delete sponsor brochure' -Endpoint 'DELETE /api/events/{eventId}/sponsors/{sponsorId}/brochure' -SkipReason 'requires sponsor with prior brochure'
+    Add-LcResult -Report $Report -Status SKIP -Section 'sponsors-mutators' -TestName 'patch sponsor' -Endpoint 'PATCH /api/events/{eventId}/sponsors/{sponsorId}' -SkipReason 'requires sponsor from Stripe-completed money flow; 9.h.5'
+
+    Test-LcEndpoint -Report $Report -Section 'sponsors-mutators' -TestName 'upload staging image (multipart)' -Endpoint 'POST /api/events/{eventId}/sponsors/staging-image' -Action {
+        $r = Invoke-LcMultipart -Path "/api/events/$eventId/sponsors/staging-image" -FileFieldName 'image' -FileName 'staging-logo.png'
+        if (-not $r.Success -and $r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'sponsors-mutators' -TestName 'record off-platform sponsor' -Endpoint 'POST /api/events/{eventId}/sponsors/off-platform' -Action {
+        $r = Invoke-LcPost -Path "/api/events/$eventId/sponsors/off-platform" -Body @{
+            sponsorName = "Off-platform Smoke"
+            amount = 50.00
+            currency = 'USD'
+            sponsorType = 'Money'
+            notes = 'Wave 9.h.3 smoke'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    Remove-LcFixturesByTag | Out-Null
 }
 
 function Invoke-SponsorsControllerSmoke {

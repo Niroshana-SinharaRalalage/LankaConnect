@@ -63,17 +63,52 @@ function Test-SponsorshipPackagesReadFlow {
 
 function Test-SponsorshipPackagesMutatorsFlow {
     param([Parameter(Mandatory)]$Report)
-    $mutators = @(
-        @{ Method='POST';   Path='/api/events/{eventId}/sponsorship-packages';                  Name='create package' }
-        @{ Method='PUT';    Path='/api/events/{eventId}/sponsorship-packages/{pkgId}';          Name='update package' }
-        @{ Method='DELETE'; Path='/api/events/{eventId}/sponsorship-packages/{pkgId}';          Name='delete package' }
-        @{ Method='POST';   Path='/api/events/{eventId}/sponsorship-packages/{pkgId}/purchase'; Name='purchase package' }
-        @{ Method='POST';   Path='/api/events/{eventId}/sponsorship-packages/{pkgId}/image';    Name='upload image' }
-        @{ Method='DELETE'; Path='/api/events/{eventId}/sponsorship-packages/{pkgId}/image';    Name='delete image' }
-    )
-    foreach ($m in $mutators) {
-        Add-LcResult -Report $Report -Status SKIP -Section 'sp-packages-mutators' -TestName $m.Name -Endpoint "$($m.Method) $($m.Path)" -SkipReason 'destructive; -IncludeDestructive'
+
+    # Wave 9.h.3: real fixtures + actual mutator coverage
+    $fix = New-LcFreeEvent
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'sp-packages-mutators' -TestName 'fixture setup' -Endpoint 'POST /api/Events' -ErrorMessage "fixture failed: $($fix.Error)"
+        return
     }
+    Publish-LcEvent -EventId $fix.EventId | Out-Null
+    Enable-LcEventFinanceConfigs -EventId $fix.EventId | Out-Null
+    $eventId = $fix.EventId
+
+    $pkgId = $null
+    Test-LcEndpoint -Report $Report -Section 'sp-packages-mutators' -TestName 'create sponsorship package' -Endpoint 'POST /api/events/{eventId}/sponsorship-packages' -Action {
+        $p = New-LcTaggedSponsorshipPackage -EventId $eventId
+        if (-not $p.Success) { throw "create failed: HTTP $($p.StatusCode)" }
+        $script:spPkgId = if ($p.Body -is [string]) { $p.Body.Trim('"') } elseif ($p.Body.id) { $p.Body.id } else { $null }
+    }
+
+    if ($script:spPkgId) {
+        Test-LcEndpoint -Report $Report -Section 'sp-packages-mutators' -TestName 'update package' -Endpoint 'PUT /api/events/{eventId}/sponsorship-packages/{pkgId}' -Action {
+            $r = Invoke-LcPut -Path "/api/events/$eventId/sponsorship-packages/$($script:spPkgId)" -Body @{
+                name = 'Smoke Updated Package'; description = 'Updated by 9.h.3'; price = 750.00; currency = 'USD'; perks = @('Updated perk'); quantity = 10
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'sp-packages-mutators' -TestName 'upload image (multipart)' -Endpoint 'POST /api/events/{eventId}/sponsorship-packages/{pkgId}/image' -Action {
+            $r = Invoke-LcMultipart -Path "/api/events/$eventId/sponsorship-packages/$($script:spPkgId)/image" -FileFieldName 'image' -FileName 'pkg.png'
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'sp-packages-mutators' -TestName 'delete image' -Endpoint 'DELETE /api/events/{eventId}/sponsorship-packages/{pkgId}/image' -Action {
+            $r = Invoke-LcDelete -Path "/api/events/$eventId/sponsorship-packages/$($script:spPkgId)/image"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'sp-packages-mutators' -TestName 'delete package' -Endpoint 'DELETE /api/events/{eventId}/sponsorship-packages/{pkgId}' -Action {
+            $r = Invoke-LcDelete -Path "/api/events/$eventId/sponsorship-packages/$($script:spPkgId)"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        foreach ($n in 'update package','upload image','delete image','delete package') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'sp-packages-mutators' -TestName $n -Endpoint '...' -SkipReason 'package create did not yield ID for downstream'
+        }
+    }
+
+    Add-LcResult -Report $Report -Status SKIP -Section 'sp-packages-mutators' -TestName 'purchase package (Stripe)' -Endpoint 'POST /api/events/{eventId}/sponsorship-packages/{pkgId}/purchase' -SkipReason 'creates real Stripe checkout session; 9.h.5'
+
+    Remove-LcFixturesByTag | Out-Null
 }
 
 function Invoke-SponsorshipPackagesControllerSmoke {

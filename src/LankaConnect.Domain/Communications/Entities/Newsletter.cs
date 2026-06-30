@@ -23,7 +23,7 @@ public class Newsletter : LegacyBaseEntity
     // Same rationale as the W5.4.c.0 Event surgery: EF Core 8 cannot model a
     // typed M2M nav once EmailGroup moves to Communications.Domain. _metroAreaEntities
     // stays as-is because MetroArea is NOT moving in Wave 5.4 — it lives in
-    // LankaConnect.Domain.Events and is reachable from this same Domain assembly.
+    // LankaConnect.Products.LankaEvents.Domain (moved Wave 5.1) and is reachable via the W5.0 transitional ProjectReference from Products.Domain to LankaConnect.Domain.
     private readonly List<NewsletterEmailGroupLink> _emailGroupLinks = new();
     // W5.2.d-hotfix2: NewsletterMetroAreaLink junction CLR replaces the broken
     // List<object> shadow nav from W5.1.

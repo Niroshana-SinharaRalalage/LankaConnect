@@ -149,7 +149,7 @@ try
     builder.Services.AddCulturalIntelligenceModule();
 
     // Wave 5.0 (2026-06-26) — LankaEvents product composition. Empty seam today;
-    // populates as the Event family migrates from LankaConnect.Domain.Events
+    // populates as the Event family migrates from legacy LankaConnect.Domain to LankaConnect.Products.LankaEvents.Domain (Wave 5.1-5.4 SHIPPED; Wave 5.5.b namespace cleanup 2026-06-29)
     // in W5.1 through W5.7.
     builder.Services.AddLankaEventsModule();
 

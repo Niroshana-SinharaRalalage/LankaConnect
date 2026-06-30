@@ -274,7 +274,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                 // alongside _emailGroupIds, so EF emits the matching INSERT/DELETE
                 // junction rows automatically. The metro-area shadow-nav block
                 // below remains because MetroArea was NOT migrated to a junction
-                // CLR type in Wave 5.4 (it lives in LankaConnect.Domain.Events and
+                // CLR type in Wave 5.4 (it lives in LankaConnect.Products.LankaEvents.Domain and
                 // doesn't cross the module boundary that's being cut).
                 var dbContext2 = _dbContext as DbContext
                     ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");

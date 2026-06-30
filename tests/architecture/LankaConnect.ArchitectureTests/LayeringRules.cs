@@ -1037,7 +1037,7 @@ public sealed class LayeringRules
     /// W5.4.d.3 (2026-06-22) — pins the Domain-side cut completed in this commit:
     /// LankaConnect.Domain no longer references Communications.Domain. This rule
     /// has no Forms-side equivalent because the Forms aggregates never held a
-    /// cross-aggregate typed nav from LankaConnect.Domain.Events into
+    /// cross-aggregate typed nav from LankaConnect.Products.LankaEvents.Domain into
     /// Forms.Domain. Communications IS different — Newsletter.cs had a typed
     /// M2M nav to EmailGroup (Phase 6A.74 `_emailGroupEntities: List&lt;EmailGroup&gt;`),
     /// and W5.4.d.1b surgery replaced that nav with the explicit

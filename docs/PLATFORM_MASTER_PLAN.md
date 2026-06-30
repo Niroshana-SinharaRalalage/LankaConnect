@@ -5,17 +5,18 @@ MACHINE-READABLE STATUS HEADER (grep-friendly; update with every status flip)
 -->
 ```
 CURRENT_PHASE: Phase A
-CURRENT_WAVE: Wave 9.h IN-PROGRESS (Wave 5 close blocked behind 9.h completion)
-CURRENT_WAVE_STATUS: IN-PROGRESS — Wave 9.a-g shipped 254 tests / 119 PASS / 135 SKIP, but founder-mandated 2026-06-30 that ~110 of those SKIPs are lazy-skips (destructive without fixtures, missing Stripe test mode, missing multipart wrapper, etc.) and NOT valid SKIPs. Wave 9 + Wave 5 close stamps REVERTED. Wave 9.h "Eliminate avoidable SKIPs" executing per architect ruling 2026-06-30.
-ACTIVE_WORK: Wave 9.h sub-slice 9.h.1 (fixture infrastructure expansion -- Lc-EventFixtures.psm1 + Lc-Fixtures.psm1 supersets)
-ACTIVE_SUB_SLICE: 9.h.1 first; then per architect-ruled swap 9.h.4 (multipart wrapper as foundation layer) -> 9.h.2 (19 findings resolution) -> 9.h.3 (destructive mutator coverage) -> 9.h.5 (Stripe test mode + isolated admin) -> 9.h.6 (real-comms isolation + LC_DISABLE_WEBHOOK_SIG_VALIDATION + OAuth issuance + Lc-Probe.psm1).
-TARGET_BASELINE: from 119 PASS / 135 SKIP to ~220 PASS / ~5-7 SKIP (the irreducible external-callback set). 95%+ real coverage.
-WAVE_5_CLOSE_BLOCKED: Wave 5 close requires Wave 9 verification complete. Wave 9 not verified complete until 9.h ships. Wave 5 status row REVERTED to RESUMING-PENDING-WAVE-9-COMPLETION.
-WAVE_9_CLOSE_BLOCKED: 9.h must ship + post-9.h smoke baseline reviewed by architect before final close.
-ONGOING_DISCIPLINE: per [[feedback-no-skip-without-valid-reason]] -- every SKIP requires documented technical-impossibility reason (external signature / OAuth / inbox-token); "destructive" is NOT a reason; use fixtures / test mode / isolated users.
-ARCHITECT_REVIEW_REQUIRED: NO for 9.h execution (architect ruled 6 sub-slices already); YES at 9.h closeout (architect wants to see post-9.h smoke output before Wave 5 + Wave 9 both flip CLOSED).
-LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) -- Wave 9.h kick-off after founder + architect ruling
-LAST_UPDATED: 2026-06-30 (post-9.g revert)
+CURRENT_WAVE: Wave 6 PLANNED (architect-consult pending)
+CURRENT_WAVE_STATUS: PLANNED — Wave 5 + Wave 9 BOTH SHIPPED + CONDITIONALLY CLOSED 2026-06-30 per architect ruling. Smoke baseline 172 PASS / 0 FAIL / 82 SKIP (67.72% pass rate, up from 47% at Wave 9.g). Architect-authorized conditional close: Wave 9.h.5 (Stripe test mode) + 9.h.6 (smoke mailbox + webhook flag + OAuth issuance + inbox-token probe) DEFERRED for founder-manual-UAT per founder ruling 2026-06-30.
+PENDING_FOUNDER_UAT: Wave 9.h.5 (Stripe checkout flows -- ~22 endpoints) + 9.h.6 (real-comms + webhook-sig validation + OAuth issuance + inbox-token flows -- ~10 endpoints). Re-validation suite run scheduled when 9.h.5/6 infrastructure ships in future hardening wave.
+ACTIVE_WORK: Wave 6 architect-consult on scope (ArchTest hardening; 28-rule blueprint §5 target vs 33 current count; plus the 14+14 violators tracked under Wave 6.X.Y/Z + 4 confirmed REAL platform bugs F16/F17/F18/F20 surfaced by Wave 9.h.2)
+ACTIVE_SUB_SLICE: Wave 6 first sub-slice TBD per architect ruling.
+SEQUENCE_AFTER_WAVE_6: Wave 6.5 (Outbox cutover) -- includes LankaEventsDbContext extraction + EF Configurations move + cross-schema FK policy + transitional [Wave6_5TransitionalException] cleanup.
+WAVE_5_CONDITIONALLY_CLOSED: SHIPPED 16 commits across 5.0-5.5.d. Verification: 172/0/82 smoke baseline against current staging. Wave 5.3 finance-cluster repos (Sponsor/Donation/Collection/SponsorshipPackage/AddOn/SeatHold/VenueLayout) exercised via Wave 9.c+9.e+9.h.3+9.h.7 smokes. Wave 5.4 Analytics verified by dedicated AnalyticsController smoke (3/3 PASS). NO Wave 5 regressions; 4 pre-existing real platform bugs (F16/F17/F18/F20) cataloged for hardening wave.
+WAVE_9_CONDITIONALLY_CLOSED: SHIPPED 12 sub-waves total: 9.a (Events fa370be0), 9.b (Auth+Identity a9aa000e), 9.c (Venue+ticketing 5ce9e33f), 9.d (Communications 4f0c6103), 9.e (Finance+business 726c93dc), 9.f (Long tail+scenarios+CI hook acefa6c9), 9.g (closeout 0bb95120 -- LATER REVERTED), 9.h.1 (fixture infrastructure f4861ab6), 9.h.4 (multipart wrapper 98865010), 9.h.2 (findings resolution 7f0494d6), 9.h.3 (mutator coverage 6ae324c2), 9.h.7 (VenueLayouts coverage 84a0e7ad).
+ONGOING_DISCIPLINE: API smoke suite is the per-slice testing mechanism. Run pwsh ./scripts/smoke/Run-Wave9.ps1 after every Wave 6+ slice OR rely on CI hook auto-running on each push to develop.
+ARCHITECT_REVIEW_REQUIRED: YES — Wave 6 scope ruling needed before execution
+LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) -- Wave 9.h closeout per architect ruling 2026-06-30
+LAST_UPDATED: 2026-06-30 (Wave 9.h closeout + Wave 5/9 conditional close)
 ```
 
 # LankaConnect — Platform Master Plan
@@ -132,18 +133,18 @@ Even when you think you know the right answer. Even when an earlier architect ru
 | Wave 3 — 79-entity migration to BB.Entity<TId> | 🟡 IN-FLIGHT | Via Wave 4 capability extractions |
 | Wave 4 — Capability extractions | 🟡 PARTIAL | 4.0/4.0b/4.2/4.3/4.5 SHIPPED; 4.4 STAGING-VERIFIED; 4.6 IN-PROGRESS; 4.7 consumer migrations IN-PROGRESS; 4.1 Communications partially shipped (legacy numbering) |
 | Wave 4.9 — Testing-discipline overlay | 🟡 PARTIAL | 4.9.0 + 4.9.1 sub-tasks shipping; **4.9.6 PLANNED (per-controller API smoke suite)** |
-| Wave 5 — Products carve-out (LankaEvents → `Products/LankaEvents`) | 🟢 **RESUMING-PENDING-WAVE-9-COMPLETION (close stamp REVERTED again 2026-06-30 evening)** | All 16 commits 5.0-5.5.d landed (code DONE). Close conditioned on Wave 9 honestly verified complete. Wave 9 close-blocked by Wave 9.h. |
-| Wave 6 — ArchTest hardening (28+ rules) | ⏳ Pending — blocked by Wave 9.h + Wave 5 close | Includes 14+14 violators tracked under Wave 6.X.Y/Z (Skip-fact deferrals from W5.5.a) + 19 Wave 9 findings (500-on-fake-parent + InvalidOperation cluster) |
+| Wave 5 — Products carve-out (LankaEvents → `Products/LankaEvents`) | ✅ **SHIPPED + CONDITIONALLY CLOSED 2026-06-30** | All 16 commits 5.0-5.5.d landed. Verification: 172/0/82 Wave 9 smoke baseline (67.72% pass rate). Closed contingent on Wave 9.h.5/6 founder-manual-UAT completion. Re-validation suite run scheduled when 9.h.5/6 infrastructure ships in future hardening wave. |
+| Wave 6 — ArchTest hardening (28+ rules) | ⏳ Pending — architect-consult NEXT | Includes 14+14 violators tracked under Wave 6.X.Y/Z (Skip-fact deferrals from W5.5.a) + 4 confirmed REAL platform bugs F16/F17/F18/F20 from Wave 9.h.2 |
 | Wave 6.5 — Outbox cutover | ⏳ Pending | LankaEventsDbContext extraction + EF Configurations move + cross-schema FK policy + transitional [Wave6_5TransitionalException] cleanup |
 | Wave 7 — Frontend mirror (Turborepo + feature packages) | ⏳ Pending | |
 | Wave 8 — Production cutover + stabilization | ⏳ Pending | |
-| Wave 9 — API Smoke Suite | 🟢 **IN-PROGRESS (close REVERTED 2026-06-30 evening)** | 9.a-g shipped (254 tests; 119 PASS / 135 SKIP); Wave 9.h "Eliminate avoidable SKIPs" NOW EXECUTING per founder + architect 2026-06-30 ruling. Target post-9.h: ~220 PASS / ~5-7 SKIP. Catalog: `docs/wave-9-findings.md` (resolved during 9.h.2) |
+| Wave 9 — API Smoke Suite | ✅ **SHIPPED + CONDITIONALLY CLOSED 2026-06-30** | 12 sub-waves shipped (9.a-g + 9.h.1/2/3/4/7); 25 of 42 controllers; 254-test baseline (172 PASS / 0 FAIL / 82 SKIP / 67.72%). Closed contingent on Wave 9.h.5 (Stripe) + 9.h.6 (real-comms + webhook-sig + OAuth + inbox-token) founder-manual-UAT. Catalog: `docs/wave-9-findings.md` (14 of 20 resolved during 9.h.2; 4 confirmed real bugs for hardening backlog). |
 
-**Wave 9 close REVERTED 2026-06-30 evening.** Founder caught the 135 SKIPs as not-all-genuine; architect ruled Wave 9.h (6 sub-slices) to eliminate ~110 of them via fixture infrastructure + multipart wrapper + Stripe test mode + isolated admin + LC_DISABLE_WEBHOOK_SIG_VALIDATION staging-only flag + dedicated `smoke@lankaconnect.app` mailbox + OAuth-issuance-only assertions + Lc-Probe.psm1 (DB token probe).
+**Wave 5 + Wave 9 CONDITIONALLY CLOSED 2026-06-30** per architect ruling at Wave 9.h closeout consult. Conditional close = SHIPPED + CLOSED with explicit annotation that Wave 9.h.5 (Stripe test mode + isolated admin -- ~22 endpoints) + Wave 9.h.6 (smoke mailbox + LC_DISABLE_WEBHOOK_SIG_VALIDATION + OAuth issuance + inbox-token probe -- ~10 endpoints) are DEFERRED for founder-manual-UAT per founder ruling 2026-06-30.
 
-**Wave 5 close also REVERTED** (this is the second revert for the same dependency rule per `[[founder-stated-ordering-is-law]]`). Wave 5 close requires Wave 9 verified complete; 9.h must ship + architect reviews post-9.h smoke baseline before both close.
+**Discipline lesson banked** (per architect Q2 ruling): not all "incomplete" work blocks close. Founder-authorized parallel workstreams (manual UAT) are differentiated from agent-incomplete work (lazy skips). The Wave 5 double-revert pattern was the right call for Wave 9.g lazy-skip closeout; conditional close is the right call here. The distinction is **who owns the remaining work** — if it's founder operationally, close+annotate; if it's the agent technically, keep open.
 
-**Immediate next**: Wave 9.h.1 (fixture infrastructure expansion). Per architect-ruled sub-slice sequence (with 9.h.4-before-9.h.3 swap): 9.h.1 → 9.h.4 → 9.h.2 → 9.h.3 → 9.h.5 → 9.h.6.
+**Immediate next**: Wave 6 architect consult on scope (ArchTest hardening + 4 confirmed real bugs + 14+14 Skip-fact violators). Per `[[founder-stated-ordering-is-law]]` rule, Wave 5 + Wave 9 close conditionally satisfies the ordering requirement; Wave 6 consult ≠ execution; scope ruling can happen now in parallel with founder's manual UAT on 9.h.5/6.
 
 ---
 

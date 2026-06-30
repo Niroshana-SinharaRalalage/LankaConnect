@@ -40,8 +40,8 @@ function Test-ApprovalsFlow {
         # Non-admin -> 403 expected; admin -> 200 also OK
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
-    Add-LcResult -Report $Report -Status SKIP -Section 'approvals-flow' -TestName 'approve user upgrade' -Endpoint 'POST /api/Approvals/{userId}/approve' -SkipReason 'destructive (mutates user role state); -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'approvals-flow' -TestName 'reject user upgrade' -Endpoint 'POST /api/Approvals/{userId}/reject' -SkipReason 'destructive; -IncludeDestructive'
+    Add-LcResult -Report $Report -Status SKIP -Section 'approvals-flow' -TestName 'approve user upgrade' -Endpoint 'POST /api/Approvals/{userId}/approve' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future: GitHub Actions OIDC + scoped admin SP.'
+    Add-LcResult -Report $Report -Status SKIP -Section 'approvals-flow' -TestName 'reject user upgrade' -Endpoint 'POST /api/Approvals/{userId}/reject' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future: GitHub Actions OIDC + scoped admin SP.'
 }
 
 function Invoke-ApprovalsControllerSmoke {

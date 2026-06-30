@@ -33,7 +33,7 @@ function Test-LcEndpoint {
 
 function Test-RefundReconciliationFlow {
     param([Parameter(Mandatory)]$Report)
-    Add-LcResult -Report $Report -Status SKIP -Section 'refund-reconciliation' -TestName 'run reconciliation' -Endpoint 'POST /api/admin/refund-reconciliation/run' -SkipReason 'destructive (would touch Stripe + payment ledger); admin-only; -IncludeDestructive'
+    Add-LcResult -Report $Report -Status SKIP -Section 'refund-reconciliation' -TestName 'run reconciliation' -Endpoint 'POST /api/admin/refund-reconciliation/run' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Plus touches Stripe + payment ledger -> 9.h.5 territory. Future: GitHub Actions OIDC + scoped admin SP.'
 }
 
 function Invoke-RefundReconciliationControllerSmoke {

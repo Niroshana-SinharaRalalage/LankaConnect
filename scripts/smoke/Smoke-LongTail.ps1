@@ -70,8 +70,8 @@ function Test-ReferenceData {
     param($Report)
     Test-WiringGet $Report 'reference-data' 'list reference data (typed)' 'GET /api/reference-data?types=...' '/api/reference-data?types=EventCategory,EventStatus,UserRole'
     Test-WiringGet $Report 'reference-data' 'commission settings' 'GET /api/reference-data/commission-settings' '/api/reference-data/commission-settings'
-    Add-LcResult -Report $Report -Status SKIP -Section 'reference-data' -TestName 'invalidate cache' -Endpoint 'POST /api/reference-data/invalidate-cache/{ref}' -SkipReason 'destructive (cache wipe; admin-only)'
-    Add-LcResult -Report $Report -Status SKIP -Section 'reference-data' -TestName 'invalidate all caches' -Endpoint 'POST /api/reference-data/invalidate-all-caches' -SkipReason 'destructive (full cache wipe; admin-only)'
+    Add-LcResult -Report $Report -Status SKIP -Section 'reference-data' -TestName 'invalidate cache' -Endpoint 'POST /api/reference-data/invalidate-cache/{ref}' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future resolution: isolated short-lived admin smoke run with secrets via GitHub Actions OIDC + scoped service principal, NOT a permanent admin account.'
+    Add-LcResult -Report $Report -Status SKIP -Section 'reference-data' -TestName 'invalidate all caches' -Endpoint 'POST /api/reference-data/invalidate-all-caches' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future resolution: GitHub Actions OIDC + scoped admin SP.'
 }
 
 function Test-MetroAreas {
@@ -93,7 +93,7 @@ function Test-AdminControllers {
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
         }
     }
-    Add-LcResult -Report $Report -Status SKIP -Section 'admin-perm' -TestName 'AdminRecovery operations' -Endpoint 'POST /api/AdminRecovery/*' -SkipReason 'destructive (recovery operations); admin-only; -IncludeDestructive'
+    Add-LcResult -Report $Report -Status SKIP -Section 'admin-perm' -TestName 'AdminRecovery operations' -Endpoint 'POST /api/AdminRecovery/*' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Plus genuinely destructive to platform state. Future: GitHub Actions OIDC + scoped admin SP for isolated runs.'
 }
 
 function Test-Dashboard {
@@ -137,9 +137,9 @@ function Test-Badges {
     $fakeId = [Guid]::NewGuid().ToString()
     Test-WiringGet $Report 'badges' 'list badges' 'GET /api/Badges' '/api/Badges'
     Test-WiringGet $Report 'badges' 'badge detail (404 OK)' 'GET /api/Badges/{id}' "/api/Badges/$fakeId"
-    Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'create badge' -Endpoint 'POST /api/Badges' -SkipReason 'destructive admin-only; -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'update badge' -Endpoint 'PUT /api/Badges/{id}' -SkipReason 'destructive admin-only; -IncludeDestructive'
-    Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'update badge image' -Endpoint 'PUT /api/Badges/{id}/image' -SkipReason 'destructive admin-only; -IncludeDestructive'
+    Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'create badge' -Endpoint 'POST /api/Badges' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future: GitHub Actions OIDC + scoped admin SP.'
+    Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'update badge' -Endpoint 'PUT /api/Badges/{id}' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future: GitHub Actions OIDC + scoped admin SP.'
+    Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'update badge image' -Endpoint 'PUT /api/Badges/{id}/image' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Future: GitHub Actions OIDC + scoped admin SP.'
 }
 
 function Test-Contact {
@@ -155,7 +155,7 @@ function Test-WhatsAppWebhook {
 function Test-Email {
     param($Report)
     # EmailController has admin endpoints; SKIP since they overlap with EmailGroups + EmailMetrics
-    Add-LcResult -Report $Report -Status SKIP -Section 'email' -TestName 'send email (admin)' -Endpoint 'POST /api/Email/*' -SkipReason 'destructive (sends real ACS email); admin-only; -IncludeDestructive'
+    Add-LcResult -Report $Report -Status SKIP -Section 'email' -TestName 'send email (admin)' -Endpoint 'POST /api/Email/*' -SkipReason 'Requires global admin role; smoke test user is EventOrganizer per principle of least privilege (architect ruling 2026-06-30). Plus sends real ACS email -> 9.h.6 dedicated smoke mailbox. Future: GitHub Actions OIDC + scoped admin SP.'
 }
 
 # ============================================================================

@@ -5,15 +5,16 @@ MACHINE-READABLE STATUS HEADER (grep-friendly; update with every status flip)
 -->
 ```
 CURRENT_PHASE: Phase A
-CURRENT_WAVE: Wave 6 PLANNED (architect-consult pending)
-CURRENT_WAVE_STATUS: PLANNED — Wave 5 CLOSED 2026-06-29 (Products/LankaEvents carve-out complete across 16 commits; ArchTest-enforced boundary; Wave 6.5 carryover scoped per architect ruling)
-ACTIVE_WORK: Wave 6 architect-consult on scope — NEXT
-ACTIVE_SUB_SLICE: Wave 6 — ArchTest hardening (28 rules total per blueprint §5). 25 pre-Wave-5.5 + 8 from Wave 5.5.a = 33 currently; consult required on whether Wave 6 still targets 28 or expands target. Also addresses Wave 6.X.Y + Wave 6.X.Z debt-tracking entries from Wave 5.5.a Skip-fact deferrals.
-ONGOING_DISCIPLINE: API smoke suite (Wave 9.a infrastructure) is the per-slice testing mechanism. Run pwsh ./scripts/smoke/Run-Wave9a.ps1 after every Wave 6+ slice. Wave 9.b through 9.g pending (per-controller smokes for Auth/Identity, Communications, Finance/Business, long-tail/scenarios/CI, closeout).
-WAVE_5_COMPLETION: Products/LankaEvents carve-out SHIPPED + CLOSED 2026-06-29. Pattern banked for Phase B per [[wave-5-products-carveout-complete]] MEMORY entry + src/Products/LankaEvents/README.md + blueprint §7.16. Wave 6.5 carryover (DbContext + EF Configs + cross-schema FK + Outbox) intentionally deferred — Phase B product launches do NOT require Wave 6.5 completion.
-ARCHITECT_REVIEW_REQUIRED: YES — Wave 6 scope ruling needed before execution
-LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) + System Architect (Opus 4.7) pairing
-LAST_UPDATED: 2026-06-29
+CURRENT_WAVE: Wave 9 IN-PROGRESS (resuming at 9.b after founder corrective action)
+CURRENT_WAVE_STATUS: IN-PROGRESS — Wave 9.a SHIPPED; Wave 9.b through 9.g pending. Wave 5 prematurely stamped CLOSED 2026-06-29 with only ~40-50% runtime surface smoke-verified; Wave 5 close is REVERTED pending full Wave 9 build-out + re-verification.
+ACTIVE_WORK: Wave 9.b — Auth + Identity cluster (Auth/Users/AdminUsers controllers; ~40 endpoints)
+ACTIVE_SUB_SLICE: Wave 9.b first; then 9.c (Venue + ticketing) / 9.d (Communications) / 9.e (Finance + business — where 13-14 untested Wave 5.3 repos finally get exercised) / 9.f (long tail + scenarios + CI hook) / 9.g (closeout) sequentially per founder direction 2026-06-29 evening. NO other work permitted until Wave 9 complete.
+SEQUENCE_AFTER_WAVE_9: (1) Re-run full suite against current staging; verify Wave 5 changes that Wave 9.a smoke didn't cover (Sponsor / Donation / Collection / SponsorshipPackage / Ticket / Seat / Venue / EventNotification / EventReminder / Analytics paths). (2) Properly close Wave 5 with honest coverage. (3) ONLY THEN start Wave 6 architect consult.
+WAVE_5_HONEST_STATUS: SHIPPED 16 commits across 5.0-5.5.d; smoke baseline 26/26 PASS via Wave 9.a but covers EventsController only; ~13-14 of 20 W5.3 repos NOT exercised by Wave 9.a; Analytics endpoints SKIPPED in Wave 9.a with now-stale reason post Wave 5.4. Verification gap to be closed during Wave 9.g closeout.
+WAVE_6_BLOCKED: Wave 6 architect-consult forbidden until Wave 9 complete + Wave 5 properly verified. No exceptions.
+ARCHITECT_REVIEW_REQUIRED: NO — founder directly issued corrective sequence; no architect consult needed for Wave 9.b execution (existing Wave 9.a architect ruling covers the pattern)
+LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) — corrective status after founder process correction
+LAST_UPDATED: 2026-06-29 (evening; post-corrective)
 ```
 
 # LankaConnect — Platform Master Plan

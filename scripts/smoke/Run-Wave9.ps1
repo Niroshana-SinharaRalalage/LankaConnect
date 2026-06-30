@@ -65,7 +65,15 @@ $controllerManifest = @(
     @{ Name = 'EmailMetrics';          Script = 'Smoke-EmailMetricsController.ps1';          Invoker = 'Invoke-EmailMetricsControllerSmoke' }
     @{ Name = 'WhatsApp';              Script = 'Smoke-WhatsAppController.ps1';              Invoker = 'Invoke-WhatsAppControllerSmoke' }
     @{ Name = 'WhatsAppAdmin';         Script = 'Smoke-WhatsAppAdminController.ps1';         Invoker = 'Invoke-WhatsAppAdminControllerSmoke' }
-    @{ Name = 'AdminEmailTemplates';   Script = 'Smoke-AdminEmailTemplatesController.ps1';   Invoker = 'Invoke-AdminEmailTemplatesControllerSmoke' }
+    @{ Name = 'AdminEmailTemplates';     Script = 'Smoke-AdminEmailTemplatesController.ps1';     Invoker = 'Invoke-AdminEmailTemplatesControllerSmoke' }
+    @{ Name = 'Sponsors';                Script = 'Smoke-SponsorsController.ps1';                Invoker = 'Invoke-SponsorsControllerSmoke' }
+    @{ Name = 'SponsorshipPackages';     Script = 'Smoke-SponsorshipPackagesController.ps1';     Invoker = 'Invoke-SponsorshipPackagesControllerSmoke' }
+    @{ Name = 'Donations';               Script = 'Smoke-DonationsController.ps1';               Invoker = 'Invoke-DonationsControllerSmoke' }
+    @{ Name = 'Collections';             Script = 'Smoke-CollectionsController.ps1';             Invoker = 'Invoke-CollectionsControllerSmoke' }
+    @{ Name = 'Businesses';              Script = 'Smoke-BusinessesController.ps1';              Invoker = 'Invoke-BusinessesControllerSmoke' }
+    @{ Name = 'Payments';                Script = 'Smoke-PaymentsController.ps1';                Invoker = 'Invoke-PaymentsControllerSmoke' }
+    @{ Name = 'RefundReconciliation';    Script = 'Smoke-RefundReconciliationController.ps1';    Invoker = 'Invoke-RefundReconciliationControllerSmoke' }
+    @{ Name = 'Approvals';               Script = 'Smoke-ApprovalsController.ps1';               Invoker = 'Invoke-ApprovalsControllerSmoke' }
 )
 
 $toRun = if ($OnlyControllers.Count -gt 0) {

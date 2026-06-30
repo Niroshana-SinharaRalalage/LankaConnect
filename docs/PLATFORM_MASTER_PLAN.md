@@ -5,18 +5,18 @@ MACHINE-READABLE STATUS HEADER (grep-friendly; update with every status flip)
 -->
 ```
 CURRENT_PHASE: Phase A
-CURRENT_WAVE: Wave 9.h IN-PROGRESS (Wave 5 + Wave 9 close REVERTED 2026-06-30 evening per founder ruling -- "test Wave 5 completely using API test suite before unblock Wave 6")
-CURRENT_WAVE_STATUS: IN-PROGRESS — Architect's conditional-close ruling REVERTED per founder ruling 2026-06-30 evening. Conditional close was insufficient: 7 of 20 Wave 5 repositories (35%) NOT exercised by smoke suite (4 Stripe-blocked + 3 testable-but-not-wired). Founder requires FULL Wave 5 smoke coverage via API test suite before Wave 6 unblock. Wave 9.h.5/6 ARE needed in the suite (cannot defer to founder manual UAT for Wave 5 verification).
-ACTIVE_WORK: Wave 9.h.8 -- Complete Wave 5 Repository smoke coverage (wire TicketScanLog + EventReminder via testable endpoints + EventNotificationHistory via non-destructive newsletter path). Wave 9.h.5 (Stripe test mode) also unblocked -- required for AddOnPurchase/RegistrationPayment/RegistrationAddition/Ticket coverage.
-WAVE_5_REPOSITORY_COVERAGE_AUDIT_2026-06-30:
-  COVERED (13 of 20): Event, Registration, AddOnDefinition, Sponsor, SponsorshipPackage, Donation, Collection, VenueLayout, SeatHold, SeatReservation, MetroArea, EventAnalytics, EventViewRecord
-  NOT COVERED -- Stripe-blocked (4): AddOnPurchase, RegistrationPayment, RegistrationAddition, Ticket
-  NOT COVERED -- testable-but-not-wired (3): TicketScanLog (check-in endpoints), EventNotificationHistory (newsletter-history write), EventReminder (reminder trigger)
-ACTIVE_SUB_SLICE: 9.h.8 first (wire 3 testable repos); then 9.h.5 (Stripe test mode for remaining 4); then Wave 5 + Wave 9 CLOSE; only then Wave 6 unblock.
-PENDING_FOUNDER_UAT_RESCOPED: 9.h.6 partial (LC_DISABLE_WEBHOOK_SIG_VALIDATION + OAuth issuance + inbox-token probe) still founder-manual-UAT IF they're not Wave 5 surface. Audit below confirms 9.h.6 surface does NOT touch Wave 5 repos.
-ARCHITECT_REVIEW_REQUIRED: NO for 9.h.8 execution (mechanical wiring of established pattern); YES at Wave 6 consult (after Wave 5 fully closed)
-LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) -- third Wave 5 close revert per founder ruling 2026-06-30 evening
-LAST_UPDATED: 2026-06-30 (Wave 5 + Wave 9 third close revert)
+CURRENT_WAVE: Wave 6 PLANNED (architect-consult pending)
+CURRENT_WAVE_STATUS: PLANNED — Wave 5 + Wave 9 BOTH SHIPPED + CLOSED 2026-06-30. Wave 5 final close: 20 of 20 Wave 5 repositories (100%) smoke-covered via 182 PASS / 0 FAIL / 79 SKIP / 261 total / 69.73% baseline. Wave 9 final close: 13 sub-waves total (9.a-g + 9.h.1/2/3/4/5/7/8). Wave 6 architect-consult unblocked per [[founder-stated-ordering-is-law]] + [[no-skip-without-valid-reason]] full coverage achieved.
+ACTIVE_WORK: Wave 6 architect-consult on scope (ArchTest hardening; 28-rule blueprint §5 target vs 33 current count; plus the 14+14 violators tracked under Wave 6.X.Y/Z + 4 confirmed REAL platform bugs F16/F17/F18/F20 surfaced by Wave 9.h.2)
+ACTIVE_SUB_SLICE: Wave 6 first sub-slice TBD per architect ruling.
+SEQUENCE_AFTER_WAVE_6: Wave 6.5 (Outbox cutover) -- includes LankaEventsDbContext extraction + EF Configurations move + cross-schema FK policy + transitional [Wave6_5TransitionalException] cleanup.
+WAVE_5_FULLY_CLOSED: SHIPPED 16 commits across 5.0-5.5.d. Verification: 20 OF 20 Wave 5 repositories smoke-covered (100%). Wave 5.3 finance-cluster (Sponsor/Donation/Collection/SponsorshipPackage/AddOnDefinition/AddOnPurchase/RegistrationPayment/RegistrationAddition/Ticket/TicketScanLog/EventNotificationHistory/EventReminder/VenueLayout/SeatHold/SeatReservation/MetroArea) all exercised via Wave 9.c+9.e+9.f+9.h.3+9.h.5+9.h.7+9.h.8. Wave 5.4 Analytics (EventAnalyticsRepository + EventViewRecordRepository) 3/3 PASS via Wave 9.f. EventRepository + RegistrationRepository via Wave 9.a baseline. NO Wave 5 regressions; 4 pre-existing real platform bugs F16/F17/F18/F20 banked for hardening wave.
+WAVE_9_FULLY_CLOSED: SHIPPED 13 sub-waves total: 9.a (Events fa370be0), 9.b (Auth+Identity a9aa000e), 9.c (Venue+ticketing 5ce9e33f), 9.d (Communications 4f0c6103), 9.e (Finance+business 726c93dc), 9.f (Long tail+scenarios+CI hook acefa6c9), 9.g (closeout 0bb95120 LATER REVERTED), 9.h.1 (fixture infrastructure f4861ab6), 9.h.4 (multipart wrapper 98865010), 9.h.2 (findings resolution 7f0494d6), 9.h.3 (mutator coverage 6ae324c2), 9.h.7 (VenueLayouts coverage 84a0e7ad), 9.h.8 (Wave 5 testable repos 18e4cc9d), 9.h.5 (Stripe-mediated repos 9a22a220).
+WAVE_9_h_6_STILL_DEFERRED: 9.h.6 (LC_DISABLE_WEBHOOK_SIG_VALIDATION staging-only + OAuth issuance + inbox-token Lc-Probe.psm1 + smoke@lankaconnect.app mailbox) stays DEFERRED for founder manual UAT. Audit confirmed 9.h.6 surface is auth/comms (not Wave 5 repository writes), so doesn't block Wave 5 close.
+ONGOING_DISCIPLINE: API smoke suite is the per-slice testing mechanism. Run pwsh ./scripts/smoke/Run-Wave9.ps1 after every Wave 6+ slice OR rely on CI hook auto-running on each push to develop.
+ARCHITECT_REVIEW_REQUIRED: YES — Wave 6 scope ruling needed before execution
+LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) -- Wave 5 + Wave 9 FINAL close 2026-06-30 after 20/20 repo coverage achieved
+LAST_UPDATED: 2026-06-30 (Wave 5 + Wave 9 FINAL CLOSE)
 ```
 
 # LankaConnect — Platform Master Plan
@@ -133,12 +133,12 @@ Even when you think you know the right answer. Even when an earlier architect ru
 | Wave 3 — 79-entity migration to BB.Entity<TId> | 🟡 IN-FLIGHT | Via Wave 4 capability extractions |
 | Wave 4 — Capability extractions | 🟡 PARTIAL | 4.0/4.0b/4.2/4.3/4.5 SHIPPED; 4.4 STAGING-VERIFIED; 4.6 IN-PROGRESS; 4.7 consumer migrations IN-PROGRESS; 4.1 Communications partially shipped (legacy numbering) |
 | Wave 4.9 — Testing-discipline overlay | 🟡 PARTIAL | 4.9.0 + 4.9.1 sub-tasks shipping; **4.9.6 PLANNED (per-controller API smoke suite)** |
-| Wave 5 — Products carve-out (LankaEvents → `Products/LankaEvents`) | 🟢 **CLOSE REVERTED THIRD TIME 2026-06-30 evening** | All 16 commits 5.0-5.5.d landed. Verification incomplete: 13 of 20 Wave 5 repositories (65%) smoke-covered; 7 uncovered. Per founder ruling 2026-06-30 evening *"test Wave 5 completely using API test suite before unblock Wave 6"*, conditional close insufficient. Wave 9.h.8 (testable repos) + Wave 9.h.5 (Stripe test mode for paid-flow repos) required in suite. |
-| Wave 6 — ArchTest hardening (28+ rules) | ⏳ Pending — BLOCKED behind Wave 5 full close | Includes 14+14 violators tracked under Wave 6.X.Y/Z (Skip-fact deferrals from W5.5.a) + 4 confirmed REAL platform bugs F16/F17/F18/F20 from Wave 9.h.2 |
+| Wave 5 — Products carve-out (LankaEvents → `Products/LankaEvents`) | ✅ **SHIPPED + CLOSED 2026-06-30 (FINAL)** | All 16 commits 5.0-5.5.d landed. **20 of 20 Wave 5 repositories (100%) smoke-covered** via Wave 9.a/c/e/f/h.3/h.5/h.7/h.8. Baseline: 182 PASS / 0 FAIL / 79 SKIP / 261 total / 69.73%. NO Wave 5 regressions; 4 pre-existing real platform bugs F16/F17/F18/F20 banked for hardening. |
+| Wave 6 — ArchTest hardening (28+ rules) | ⏳ Pending — architect-consult NEXT | Includes 14+14 violators tracked under Wave 6.X.Y/Z (Skip-fact deferrals from W5.5.a) + 4 confirmed REAL platform bugs F16/F17/F18/F20 from Wave 9.h.2 |
 | Wave 6.5 — Outbox cutover | ⏳ Pending | LankaEventsDbContext extraction + EF Configurations move + cross-schema FK policy + transitional [Wave6_5TransitionalException] cleanup |
 | Wave 7 — Frontend mirror (Turborepo + feature packages) | ⏳ Pending | |
 | Wave 8 — Production cutover + stabilization | ⏳ Pending | |
-| Wave 9 — API Smoke Suite | 🟢 **CLOSE REVERTED 2026-06-30 evening** | 12 sub-waves shipped (9.a-g + 9.h.1/2/3/4/7); 25 of 42 controllers; 254-test baseline (172 PASS / 0 FAIL / 82 SKIP / 67.72%). Close insufficient for Wave 5 verification. Wave 9.h.8 + 9.h.5 wiring NOW REQUIRED in suite (not founder manual UAT) per founder ruling. Catalog: `docs/wave-9-findings.md`. |
+| Wave 9 — API Smoke Suite | ✅ **SHIPPED + CLOSED 2026-06-30 (FINAL)** | 13 sub-waves shipped (9.a-g + 9.h.1/2/3/4/5/7/8); 25 of 42 controllers; 261-test baseline (182 PASS / 0 FAIL / 79 SKIP / 69.73% pass rate). 9.h.6 (auth/comms/webhook surface -- NOT Wave 5 repos) DEFERRED for founder manual UAT. Catalog: `docs/wave-9-findings.md`. |
 
 **Wave 5 + Wave 9 CONDITIONALLY CLOSED 2026-06-30** per architect ruling at Wave 9.h closeout consult. Conditional close = SHIPPED + CLOSED with explicit annotation that Wave 9.h.5 (Stripe test mode + isolated admin -- ~22 endpoints) + Wave 9.h.6 (smoke mailbox + LC_DISABLE_WEBHOOK_SIG_VALIDATION + OAuth issuance + inbox-token probe -- ~10 endpoints) are DEFERRED for founder-manual-UAT per founder ruling 2026-06-30.
 

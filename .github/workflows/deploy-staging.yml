@@ -429,6 +429,30 @@ jobs:
             exit 1
           fi
 
+      - name: Wave 9 API Smoke Suite
+        # Per Wave 9.f closeout: 25-controller smoke suite covering ~96 endpoint
+        # assertions runs on every staging deploy. Smoke failures fail the workflow.
+        # Findings (4xx documented oddities, SKIP categories) emit warnings only.
+        continue-on-error: false
+        run: |
+          echo "Running Wave 9 full smoke suite against staging deploy..."
+          export LC_STAGING_URL='${{ steps.get-url.outputs.STAGING_URL }}'
+          export LC_LOGIN_EMAIL='${{ secrets.LC_SMOKE_EMAIL }}'
+          export LC_LOGIN_PASSWORD='${{ secrets.LC_SMOKE_PASSWORD }}'
+          if [ -z "$LC_LOGIN_EMAIL" ]; then
+            echo "::warning::LC_SMOKE_EMAIL/LC_SMOKE_PASSWORD secrets not set; using default test creds (development only)"
+            export LC_LOGIN_EMAIL='niroshhh@gmail.com'
+            export LC_LOGIN_PASSWORD='1qaz!QAZ'
+          fi
+          # PowerShell on Ubuntu via pwsh
+          pwsh ./scripts/smoke/Run-Wave9.ps1 -SkipLogChecks
+          smoke_exit=$?
+          if [ $smoke_exit -ne 0 ]; then
+            echo "::error::Wave 9 smoke suite reported $smoke_exit failures"
+            exit $smoke_exit
+          fi
+          echo "✅ Wave 9 smoke suite green"
+
       - name: Get Container App Logs
         if: failure()
         run: |

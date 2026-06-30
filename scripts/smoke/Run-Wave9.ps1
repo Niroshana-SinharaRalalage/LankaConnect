@@ -74,6 +74,8 @@ $controllerManifest = @(
     @{ Name = 'Payments';                Script = 'Smoke-PaymentsController.ps1';                Invoker = 'Invoke-PaymentsControllerSmoke' }
     @{ Name = 'RefundReconciliation';    Script = 'Smoke-RefundReconciliationController.ps1';    Invoker = 'Invoke-RefundReconciliationControllerSmoke' }
     @{ Name = 'Approvals';               Script = 'Smoke-ApprovalsController.ps1';               Invoker = 'Invoke-ApprovalsControllerSmoke' }
+    @{ Name = 'Analytics';               Script = 'Smoke-AnalyticsController.ps1';               Invoker = 'Invoke-AnalyticsControllerSmoke' }
+    @{ Name = 'LongTail';                Script = 'Smoke-LongTail.ps1';                          Invoker = 'Invoke-LongTailSmoke' }
 )
 
 $toRun = if ($OnlyControllers.Count -gt 0) {

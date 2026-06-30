@@ -256,8 +256,121 @@ function Invoke-LcPut    { [CmdletBinding()] param([Parameter(Mandatory)][string
 function Invoke-LcPatch  { [CmdletBinding()] param([Parameter(Mandatory)][string]$Path, $Body, [object]$Bearer = '__USE_ENV__') Invoke-LcRequest -Method PATCH  -Path $Path -Body $Body -Bearer $Bearer }
 function Invoke-LcDelete { [CmdletBinding()] param([Parameter(Mandatory)][string]$Path, [object]$Bearer = '__USE_ENV__') Invoke-LcRequest -Method DELETE -Path $Path -Bearer $Bearer }
 
+# ============================================================================
+# Wave 9.h.4 Multipart upload wrapper
+# ============================================================================
+
+function Get-LcTestPng {
+    <#
+    .SYNOPSIS
+      Returns the bytes of a tiny 1x1 transparent PNG suitable for image-upload smokes.
+      Lazy-singleton (computed once per smoke run).
+    #>
+    [CmdletBinding()] param()
+    if ($script:LcTestPngBytes) { return $script:LcTestPngBytes }
+    # 1x1 transparent PNG -- 67 bytes, validated by every modern image processor
+    $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+    $script:LcTestPngBytes = [Convert]::FromBase64String($base64)
+    return $script:LcTestPngBytes
+}
+
+function Invoke-LcMultipart {
+    <#
+    .SYNOPSIS
+      POSTs a multipart/form-data body to the API. Used for image-upload smokes
+      (profile photo, sponsor brochure, badge image, business image, photo album).
+
+    .PARAMETER Path
+      Endpoint path (e.g. /api/Users/{id}/profile-photo).
+
+    .PARAMETER FileFieldName
+      Form field name the controller expects (e.g. 'file', 'image', 'photo').
+
+    .PARAMETER FileName
+      Filename header (e.g. 'test.png').
+
+    .PARAMETER FileBytes
+      Bytes to upload. Defaults to Get-LcTestPng.
+
+    .PARAMETER ContentType
+      MIME type. Defaults to image/png.
+
+    .PARAMETER ExtraFields
+      Hashtable of additional form fields (string key -> string value).
+
+    .PARAMETER Bearer
+      Bearer token. Defaults to env.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [string]$FileFieldName = 'file',
+        [string]$FileName = 'smoke-test.png',
+        [byte[]]$FileBytes = $(Get-LcTestPng),
+        [string]$ContentType = 'image/png',
+        [hashtable]$ExtraFields = @{},
+        [object]$Bearer = '__USE_ENV__'
+    )
+
+    # Build multipart body manually (Invoke-WebRequest's -Form is PS7+; we need PS5.1 compat)
+    $boundary = "----LcSmokeBoundary$(Get-Random)"
+    $LF = "`r`n"
+
+    # ASCII-encode the headers / form parts
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($key in $ExtraFields.Keys) {
+        [void]$sb.Append("--$boundary$LF")
+        [void]$sb.Append("Content-Disposition: form-data; name=`"$key`"$LF$LF")
+        [void]$sb.Append("$($ExtraFields[$key])$LF")
+    }
+    [void]$sb.Append("--$boundary$LF")
+    [void]$sb.Append("Content-Disposition: form-data; name=`"$FileFieldName`"; filename=`"$FileName`"$LF")
+    [void]$sb.Append("Content-Type: $ContentType$LF$LF")
+    $preBytes = [System.Text.Encoding]::UTF8.GetBytes($sb.ToString())
+
+    $postBytes = [System.Text.Encoding]::UTF8.GetBytes("$LF--$boundary--$LF")
+
+    $combined = New-Object byte[] ($preBytes.Length + $FileBytes.Length + $postBytes.Length)
+    [System.Buffer]::BlockCopy($preBytes, 0, $combined, 0, $preBytes.Length)
+    [System.Buffer]::BlockCopy($FileBytes, 0, $combined, $preBytes.Length, $FileBytes.Length)
+    [System.Buffer]::BlockCopy($postBytes, 0, $combined, $preBytes.Length + $FileBytes.Length, $postBytes.Length)
+
+    # Resolve bearer
+    $bearerToken = if ($Bearer -eq '__USE_ENV__') { $env:LC_BEARER } else { $Bearer }
+    $headers = @{ 'Accept' = 'application/json'; 'Content-Type' = "multipart/form-data; boundary=$boundary" }
+    if ($bearerToken) { $headers['Authorization'] = "Bearer $bearerToken" }
+
+    $uri = if ($Path -match '^https?://') { $Path } else { "$script:LcBaseUrl$Path" }
+
+    try {
+        $response = Invoke-WebRequest -Uri $uri -Method POST -Headers $headers -Body $combined -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
+        $statusCode = [int]$response.StatusCode
+        $body = if ($response.Content) {
+            try { $response.Content | ConvertFrom-Json -ErrorAction Stop } catch { $response.Content }
+        } else { $null }
+        return [pscustomobject]@{ Success = $true; StatusCode = $statusCode; Body = $body; Error = $null }
+    }
+    catch {
+        $ex = $_.Exception
+        if ($ex.Response) {
+            $statusCode = [int]$ex.Response.StatusCode
+            $errorBody = $null
+            try {
+                $stream = $ex.Response.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($stream)
+                $content = $reader.ReadToEnd()
+                $reader.Close()
+                $errorBody = try { $content | ConvertFrom-Json -ErrorAction Stop } catch { $content }
+            } catch { }
+            return [pscustomobject]@{ Success = $false; StatusCode = $statusCode; Body = $errorBody; Error = "HTTP $statusCode" }
+        }
+        return [pscustomobject]@{ Success = $false; StatusCode = 0; Body = $null; Error = $ex.Message }
+    }
+}
+
 Export-ModuleMember -Function `
     Set-LcHttpBaseUrl, Get-LcHttpBaseUrl, `
     Set-LcHttpRetryPolicy, `
     Invoke-LcHttpRaw, `
-    Invoke-LcRequest, Invoke-LcGet, Invoke-LcPost, Invoke-LcPut, Invoke-LcPatch, Invoke-LcDelete
+    Invoke-LcRequest, Invoke-LcGet, Invoke-LcPost, Invoke-LcPut, Invoke-LcPatch, Invoke-LcDelete, `
+    Get-LcTestPng, Invoke-LcMultipart

@@ -267,6 +267,53 @@ function New-LcTaggedSponsorshipPackage {
     }
 }
 
+function New-LcTaggedVenueLayout {
+    <#
+    .SYNOPSIS
+      Creates a venue layout (event-scoped or template) tagged for cleanup. Wave 9.h.7.
+    .PARAMETER EventId
+      Optional event GUID. If $null, creates a TEMPLATE layout.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$EventId = $null,
+        [string]$Tag = $(Get-LcCurrentRunTag),
+        [bool]$IsTemplate = $false
+    )
+    $body = @{
+        name             = "$Tag SmokeLayout"
+        layoutType       = 'Banquet'
+        eventId          = if ($EventId) { $EventId } else { $null }
+        isTemplate       = $IsTemplate
+        zones            = @(
+            @{
+                name         = 'Main'
+                color        = '#FF5500'
+                ticketTierId = $null
+                sortOrder    = 0
+            }
+        )
+    }
+    $r = Invoke-LcPost -Path '/api/venue-layouts' -Body $body
+    $layoutId = if ($r.Body.id) { $r.Body.id }
+                elseif ($r.Body -is [string]) { $r.Body.Trim('"') }
+                else { $null }
+    return [pscustomobject]@{
+        Success = $r.Success
+        StatusCode = $r.StatusCode
+        Body = $r.Body
+        LayoutId = $layoutId
+        ZoneId = $(if ($r.Body.zones -and $r.Body.zones.Count -gt 0) { $r.Body.zones[0].id } else { $null })
+        Tag = $Tag
+        Error = if ($r.Success) { $null } else { "HTTP $($r.StatusCode): $($r.Error)" }
+    }
+}
+
+function Remove-LcVenueLayoutById {
+    [CmdletBinding()] param([Parameter(Mandatory)][string]$LayoutId)
+    Invoke-LcDelete -Path "/api/venue-layouts/$LayoutId" | Out-Null
+}
+
 function New-LcTaggedPhotoAlbum {
     [CmdletBinding()]
     param(
@@ -373,4 +420,5 @@ Export-ModuleMember -Function `
     New-LcTaggedDonation, New-LcTaggedCollection, `
     New-LcTaggedAddOnDefinition, New-LcTaggedSponsorshipPackage, `
     New-LcTaggedPhotoAlbum, New-LcTaggedNewsletter, `
-    New-LcTaggedBusiness, Remove-LcBusinessesByTag
+    New-LcTaggedBusiness, Remove-LcBusinessesByTag, `
+    New-LcTaggedVenueLayout, Remove-LcVenueLayoutById

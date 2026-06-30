@@ -52,10 +52,13 @@ Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
 
 # Controller manifest: as Wave 9.c-f sub-slices ship, append entries here.
 $controllerManifest = @(
-    @{ Name = 'Events';      Script = 'Smoke-EventsController.ps1';     Invoker = 'Invoke-EventsControllerSmoke' }
-    @{ Name = 'Auth';        Script = 'Smoke-AuthController.ps1';       Invoker = 'Invoke-AuthControllerSmoke' }
-    @{ Name = 'Users';       Script = 'Smoke-UsersController.ps1';      Invoker = 'Invoke-UsersControllerSmoke' }
-    @{ Name = 'AdminUsers';  Script = 'Smoke-AdminUsersController.ps1'; Invoker = 'Invoke-AdminUsersControllerSmoke' }
+    @{ Name = 'Events';          Script = 'Smoke-EventsController.ps1';          Invoker = 'Invoke-EventsControllerSmoke' }
+    @{ Name = 'Auth';            Script = 'Smoke-AuthController.ps1';            Invoker = 'Invoke-AuthControllerSmoke' }
+    @{ Name = 'Users';           Script = 'Smoke-UsersController.ps1';           Invoker = 'Invoke-UsersControllerSmoke' }
+    @{ Name = 'AdminUsers';      Script = 'Smoke-AdminUsersController.ps1';      Invoker = 'Invoke-AdminUsersControllerSmoke' }
+    @{ Name = 'VenueLayouts';    Script = 'Smoke-VenueLayoutsController.ps1';    Invoker = 'Invoke-VenueLayoutsControllerSmoke' }
+    @{ Name = 'AddOns';          Script = 'Smoke-AddOnsController.ps1';          Invoker = 'Invoke-AddOnsControllerSmoke' }
+    @{ Name = 'SeatingMetrics';  Script = 'Smoke-SeatingMetricsController.ps1';  Invoker = 'Invoke-SeatingMetricsControllerSmoke' }
 )
 
 $toRun = if ($OnlyControllers.Count -gt 0) {

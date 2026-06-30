@@ -58,7 +58,14 @@ $controllerManifest = @(
     @{ Name = 'AdminUsers';      Script = 'Smoke-AdminUsersController.ps1';      Invoker = 'Invoke-AdminUsersControllerSmoke' }
     @{ Name = 'VenueLayouts';    Script = 'Smoke-VenueLayoutsController.ps1';    Invoker = 'Invoke-VenueLayoutsControllerSmoke' }
     @{ Name = 'AddOns';          Script = 'Smoke-AddOnsController.ps1';          Invoker = 'Invoke-AddOnsControllerSmoke' }
-    @{ Name = 'SeatingMetrics';  Script = 'Smoke-SeatingMetricsController.ps1';  Invoker = 'Invoke-SeatingMetricsControllerSmoke' }
+    @{ Name = 'SeatingMetrics';        Script = 'Smoke-SeatingMetricsController.ps1';        Invoker = 'Invoke-SeatingMetricsControllerSmoke' }
+    @{ Name = 'Newsletters';           Script = 'Smoke-NewslettersController.ps1';           Invoker = 'Invoke-NewslettersControllerSmoke' }
+    @{ Name = 'Newsletter';            Script = 'Smoke-NewsletterController.ps1';            Invoker = 'Invoke-NewsletterControllerSmoke' }
+    @{ Name = 'EmailGroups';           Script = 'Smoke-EmailGroupsController.ps1';           Invoker = 'Invoke-EmailGroupsControllerSmoke' }
+    @{ Name = 'EmailMetrics';          Script = 'Smoke-EmailMetricsController.ps1';          Invoker = 'Invoke-EmailMetricsControllerSmoke' }
+    @{ Name = 'WhatsApp';              Script = 'Smoke-WhatsAppController.ps1';              Invoker = 'Invoke-WhatsAppControllerSmoke' }
+    @{ Name = 'WhatsAppAdmin';         Script = 'Smoke-WhatsAppAdminController.ps1';         Invoker = 'Invoke-WhatsAppAdminControllerSmoke' }
+    @{ Name = 'AdminEmailTemplates';   Script = 'Smoke-AdminEmailTemplatesController.ps1';   Invoker = 'Invoke-AdminEmailTemplatesControllerSmoke' }
 )
 
 $toRun = if ($OnlyControllers.Count -gt 0) {

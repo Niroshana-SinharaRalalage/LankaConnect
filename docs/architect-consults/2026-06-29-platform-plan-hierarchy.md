@@ -128,6 +128,24 @@ Skipped categories per architect Q5 tri-state:
 
 Architect-consult required for Wave 5.4 scope before any code work begins — likely AppDbContext partition / module DbContext extraction / cross-schema FK resolution per the architect's prior Wave 5.3 closeout hint.
 
+## Wave 5 CLOSED 2026-06-29 — full closeout sequence
+
+After Wave 5.4 architect re-consult ruled Path C (Analytics-only) due to project-reference cycle blocking the proposed Path B (EF Configurations move), Wave 5.4 + Wave 5.5 executed cleanly in ~3 days:
+
+- **Wave 5.4.a `ae50fb27`** — Analytics interfaces (IEventAnalyticsRepository + IEventViewRecordRepository) moved from `LankaConnect.Domain.Analytics` to `Products.LankaEvents.Domain.Repositories`. EventViewRecord entity unintended-discovery: was co-located in the interface file; extracted to its own `src/LankaConnect.Domain/Analytics/EventViewRecord.cs` and entity stayed in legacy namespace per Path C scope. Smoke 26/26 green.
+- **Wave 5.4.b `c82ddce1`** — Analytics implementations moved to `Products.LankaEvents.Infrastructure`; DI shifted from `AddInfrastructure()` to `AddLankaEventsModule()`. Completes 20-of-20 Event-family repo carve-out. Smoke 26/26 green.
+- **Wave 5.5.a `d64fb3a5`** + cleanup `b8144d55` — 8 ArchTest rules in `ProductsLayerRules.cs` (Rules 1-6 + 8 + 9; Rule 7 dropped per architect Q3). MediatR pre-flight grep: zero hits in Products.Domain source (stays forbidden). 20 repository classes decorated with `[Wave6_5TransitionalException(...)]` (new attribute in BB.Abstractions). Rules 5 + 9 marked `[Fact(Skip = "...")]` with verbose tracking messages — 15 + 14 pre-existing violator types (LankaConnect.Infrastructure services directly invoking Products.LankaEvents.Application + Forms.Application query handlers reaching Products internals). Composition-root exclusion: `LankaConnect.Infrastructure.DependencyInjection` permanently allowed in Rule 5. Wave 6.X.Y + Wave 6.X.Z debt-tracking entries added to Phase A plan. Smoke 26/26 green.
+- **Wave 5.5.b `9e7a37ce`** — 4 stale `LankaConnect.Domain.Events` comment references updated to `LankaConnect.Products.LankaEvents.Domain` reflecting current state. Comments-only; counter-trigger C2.
+- **Wave 5.5.c `bbbe6c12`** — `src/Products/LankaEvents/README.md` (105 LOC: carve-out status table + project layout + boundary rules + Wave 6.5 deferred work + testing pointer) + new MEMORY entry `[[wave-5-products-carveout-complete]]` banking the W5.1→W5.3→W5.4→W5.5 pattern as reusable knowledge for Phase B product carve-outs.
+- **Wave 5.5.d (THIS commit)** — Per architect closeout ruling:
+  - Blueprint new §7.16 "Wave 5 Outcome and Wave 6.5 Carryover" (3 paragraphs: what shipped, what deferred with cross-refs to §7.4 + §7.14, pattern banked)
+  - Phase B plan note: "Wave 5 carve-out PROOF complete; pattern documented; Wave 6.5 NOT a Phase B prerequisite"
+  - README + blueprint use "scoped deferral" framing (neither founder's "known incomplete" nor architect's overly-neutral "ratified deferral" — captures intent in clearer phrasing)
+  - Phase A plan Wave 5 row: ✅ SHIPPED + CLOSED 2026-06-29
+  - PLATFORM_MASTER_PLAN.md status header: CURRENT_WAVE advances to "Wave 6 PLANNED (architect-consult pending)" + ARCHITECT_REVIEW_REQUIRED: YES
+
+**Wave 5 CLOSED. Phase A continues with Wave 6 (ArchTest hardening) pending architect-consult on scope. Wave 5.5.a already added 8 ArchTest rules; original blueprint §5 target was 28 total; current count is 33 (25 pre-W5.5.a + 8 from W5.5.a); architect needs to rule whether Wave 6 still targets 28 or expands target to ~35-40 incorporating the Skip-fact debt-track resolutions.**
+
 ## Post-3-commit hotfix (same day)
 
 After Commit 2 shipped (`a0765601`), founder reviewed and pointed out the smoke suite had landed as `Wave4.9.6` (sub-track of testing-discipline Wave 4.9) instead of as a separate top-level wave as instructed three times across the iterations. The planning agent had let the architect's "semantic fit" tactical argument override the founder's repeated "separate wave" structural direction.

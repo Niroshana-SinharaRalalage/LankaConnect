@@ -5,13 +5,13 @@ MACHINE-READABLE STATUS HEADER (grep-friendly; update with every status flip)
 -->
 ```
 CURRENT_PHASE: Phase A
-CURRENT_WAVE: Wave 5 (resuming at 5.4; Wave 9.a SHIPPED gating green)
-CURRENT_WAVE_STATUS: RESUMING — Wave 5.3 STAGING-VERIFIED 2026-06-29 (Wave 9.a smoke green: 26 PASS, 0 FAIL, 8 SKIP documented)
-ACTIVE_WORK: Wave 5.4 scope architect consult — NEXT
-ACTIVE_SUB_SLICE: Wave 5.4 — Products carve-out resumption (architect consult pending for scope: AppDbContext partition / module DbContext extraction / cross-schema FK resolution)
-ONGOING_DISCIPLINE: API smoke suite (Wave 9.a infrastructure) is the per-slice testing mechanism going forward. Run pwsh ./scripts/smoke/Run-Wave9a.ps1 after every Wave 5.4+ slice. No more per-slice UI verification.
-WAVE_9_COMPLETE_STATUS: Wave 9.a SHIPPED; Wave 9.b through 9.g pending (per-controller smokes for Auth/Identity, Communications, Finance/Business, long-tail/scenarios/CI, closeout)
-ARCHITECT_REVIEW_REQUIRED: YES — Wave 5.4 scope consult before resumption code work begins
+CURRENT_WAVE: Wave 6 PLANNED (architect-consult pending)
+CURRENT_WAVE_STATUS: PLANNED — Wave 5 CLOSED 2026-06-29 (Products/LankaEvents carve-out complete across 16 commits; ArchTest-enforced boundary; Wave 6.5 carryover scoped per architect ruling)
+ACTIVE_WORK: Wave 6 architect-consult on scope — NEXT
+ACTIVE_SUB_SLICE: Wave 6 — ArchTest hardening (28 rules total per blueprint §5). 25 pre-Wave-5.5 + 8 from Wave 5.5.a = 33 currently; consult required on whether Wave 6 still targets 28 or expands target. Also addresses Wave 6.X.Y + Wave 6.X.Z debt-tracking entries from Wave 5.5.a Skip-fact deferrals.
+ONGOING_DISCIPLINE: API smoke suite (Wave 9.a infrastructure) is the per-slice testing mechanism. Run pwsh ./scripts/smoke/Run-Wave9a.ps1 after every Wave 6+ slice. Wave 9.b through 9.g pending (per-controller smokes for Auth/Identity, Communications, Finance/Business, long-tail/scenarios/CI, closeout).
+WAVE_5_COMPLETION: Products/LankaEvents carve-out SHIPPED + CLOSED 2026-06-29. Pattern banked for Phase B per [[wave-5-products-carveout-complete]] MEMORY entry + src/Products/LankaEvents/README.md + blueprint §7.16. Wave 6.5 carryover (DbContext + EF Configs + cross-schema FK + Outbox) intentionally deferred — Phase B product launches do NOT require Wave 6.5 completion.
+ARCHITECT_REVIEW_REQUIRED: YES — Wave 6 scope ruling needed before execution
 LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) + System Architect (Opus 4.7) pairing
 LAST_UPDATED: 2026-06-29
 ```
@@ -130,7 +130,7 @@ Even when you think you know the right answer. Even when an earlier architect ru
 | Wave 3 — 79-entity migration to BB.Entity<TId> | 🟡 IN-FLIGHT | Via Wave 4 capability extractions |
 | Wave 4 — Capability extractions | 🟡 PARTIAL | 4.0/4.0b/4.2/4.3/4.5 SHIPPED; 4.4 STAGING-VERIFIED; 4.6 IN-PROGRESS; 4.7 consumer migrations IN-PROGRESS; 4.1 Communications partially shipped (legacy numbering) |
 | Wave 4.9 — Testing-discipline overlay | 🟡 PARTIAL | 4.9.0 + 4.9.1 sub-tasks shipping; **4.9.6 PLANNED (per-controller API smoke suite)** |
-| Wave 5 — Products carve-out (LankaEvents → `Products/LankaEvents`) | 🟢 RESUMING | 5.0/5.1/5.2 SHIPPED; **Wave 5.3 STAGING-VERIFIED 2026-06-29** via Wave 9.a smoke (26 PASS / 0 FAIL / 8 SKIP documented); Wave 5.4 awaiting architect-consult on scope (AppDbContext partition / module DbContext extraction / cross-schema FK resolution); Wave 5.5 closeout pending |
+| Wave 5 — Products carve-out (LankaEvents → `Products/LankaEvents`) | ✅ **SHIPPED + CLOSED 2026-06-29** | All sub-waves shipped: 5.0/5.1/5.2/5.3 (STAGING-VERIFIED via Wave 9.a smoke 26 PASS / 0 FAIL); 5.4 (`ae50fb27` + `c82ddce1`); 5.5 (`d64fb3a5` ArchTests + `9e7a37ce` cleanup + `bbbe6c12` docs + 5.5.d closeout). Wave 6.5 carryover scoped per architect ruling. Pattern banked for Phase B. |
 | Wave 6 — ArchTest hardening (28 rules total) | ⏳ Pending | |
 | Wave 6.5 — Outbox cutover | ⏳ Pending | |
 | Wave 7 — Frontend mirror (Turborepo + feature packages) | ⏳ Pending | |

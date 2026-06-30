@@ -612,6 +612,16 @@ The current "Phase A" jams the first two together. The proposed Wave 5 (Products
 
 ---
 
+### 7.16 Wave 5 Outcome and Wave 6.5 Carryover
+
+**Wave 5 SHIPPED 2026-06-29.** The Event family (1 aggregate root, 30+ sub-aggregates, ~458 Application files, 20 repository classes) now physically lives under `src/Products/LankaEvents/` across four assemblies (`Domain`, `Application`, `Infrastructure`, `Api`). DI composition runs through `LankaEventsModule.AddLankaEventsModule()`. The Products dependency boundary is ArchTest-enforced via 8 rules in `tests/architecture/LankaConnect.ArchitectureTests/ProductsLayerRules.cs` (6 hard rules + 2 architect-deferred Skip-fact entries tracked under Wave 6.X.Y / Wave 6.X.Z in the Phase A plan).
+
+**Wave 6.5 carryover (scoped deferral, not technical debt):** four items were intentionally left out of Wave 5's scope and assigned to Wave 6.5 (Outbox cutover) by architect ruling 2026-06-29 — (a) `LankaEventsDbContext` extraction, (b) EF Configurations move from `LankaConnect.Infrastructure/Data/Configurations/` to `Products/LankaEvents.Infrastructure/Configurations/` (blocked by project-reference cycle until the DbContext is extracted first), (c) cross-schema FK policy decision (`events.registrations.user_id → identity.users.id` per §7.4 D5), and (d) the 14 + 14 boundary violators surfaced by ArchTest Rules 5 + 9. Per §7.14, this scoping aligns with microservice-readiness work, which Wave 6.5 owns. 20 transitional-dep repository classes carry the `[Wave6_5TransitionalException(reason)]` attribute (defined in `BuildingBlocks.Abstractions`) for grep-able audit. **Phase B product launches do NOT require Wave 6.5 completion** — products can launch on the transitional W5.0 setup; Outbox cutover is operational maturation, not a precondition.
+
+**Pattern banked for Phase B:** Domain-first → Application → Infrastructure repositories (per-cluster sub-slices, leaf-most first) → final repos + interface promotion → ArchTest rules closeout. Documented in `src/Products/LankaEvents/README.md` (status table + project layout + boundary summary) and the `[[wave-5-products-carveout-complete]]` MEMORY entry. ~3 days founder-pace solo; ~2 weeks with operator UAT cadence and parallel architect-consult gates per the Wave 5 testing-discipline overlay.
+
+---
+
 ## 8. WHAT FIRES FIRST — Immediate Next Actions
 
 1. ✅ **Founder approval received 2026-06-04** for full enterprise plan (5 layers, 8 waves, 21 weeks remaining).

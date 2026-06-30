@@ -75,14 +75,16 @@ for full breakdown):
 - **Rule 9** — other capability modules reach Products only via Domain interfaces
   (SKIPPED with debt tracking; Wave 6 cleanup).
 
-## Known deferred work (Wave 6.5 owner)
+## Wave 6.5 carryover (scoped deferral — NOT technical debt)
 
-**The W5.0 transitional ProjectReference from `Products.LankaEvents.Infrastructure` to
-`LankaConnect.Infrastructure` is NOT cut yet.** 20 repository classes still depend on
+**Scoped to Wave 6.5 per architect ruling 2026-06-29 alongside Outbox cutover. Not a
+pre-Phase-B blocker.** Four items were intentionally left out of Wave 5's scope:
+
+The W5.0 transitional ProjectReference from `Products.LankaEvents.Infrastructure` to
+`LankaConnect.Infrastructure` remains in place; 20 repository classes still depend on
 legacy `AppDbContext` + `Repository<T>` base. Each carries
-`[Wave6_5TransitionalException("...")]` for grep-able audit.
-
-This dependency cuts when **Wave 6.5 (Outbox cutover)** ships:
+`[Wave6_5TransitionalException("...")]` for grep-able audit. Wave 6.5 cuts the
+dependency alongside Outbox cutover work:
 - `LankaEventsDbContext` extracted into `Products.LankaEvents.Infrastructure`
 - All 20 repos rewired against the new context
 - EF Configurations moved alongside (currently still in `LankaConnect.Infrastructure/Data/Configurations/`

@@ -48,6 +48,16 @@ This document was originally `MASTER_TODO_PHASE_B_PRODUCT_ROADMAP.md` (2026-06-0
 
 ---
 
+## Wave 5 carve-out PROOF complete (2026-06-29)
+
+The Phase-A Wave 5 Products carve-out for LankaEvents shipped 2026-06-29 across 16 commits. The Capability/Product topology described in `ENTERPRISE_ARCHITECTURE_BLUEPRINT.md` is now real, not theoretical — Event family physically lives in `Products/LankaEvents/{Domain,Application,Infrastructure,Api}` with ArchTest-enforced boundaries. See blueprint §7.16 for outcome + Wave 6.5 carryover summary.
+
+**Phase B implication**: product carve-outs follow the same pattern (Domain-first → Application → Infrastructure repos → final repos + interface promotion → ArchTest closeout). The pattern is documented in `src/Products/LankaEvents/README.md` and the `[[wave-5-products-carveout-complete]]` MEMORY entry. LankaTemples should be the cheapest of the six (no payments, heavy use of Scheduling capability per blueprint §7.14) and is the right proof point that the pattern is generalizable to NEW products, not just the legacy LankaEvents carve-out.
+
+**Wave 6.5 dependency is NOT a Phase B prerequisite.** Products can launch on the transitional W5.0 setup; Outbox-everything cleanup is operational maturation Wave 6.5 owns separately. Don't block Phase B kickoff on Wave 6.5 completion.
+
+---
+
 ## Future Product Inventory (7 products)
 
 | Product | Description | Phase B order | Estimate | Capabilities consumed |

@@ -143,8 +143,11 @@ public class BusinessConfiguration : IEntityTypeConfiguration<Business>
         builder.Property(b => b.CreatedAt)
             .IsRequired();
 
-        builder.Property(b => b.UpdatedAt)
-            .IsRequired();
+        // F20 fix (2026-06-30): UpdatedAt is nullable on LegacyBaseEntity (DateTime?),
+        // and AuditableInterceptor is NOT YET wired (Phase 1.10 scope per W3G comment).
+        // Marking IsRequired() forces NOT NULL on the DB column but EF sends NULL on
+        // every INSERT -> constraint violation (SQLSTATE 23502). Match the Domain.
+        builder.Property(b => b.UpdatedAt);
 
         // Wave4.9.2.4 Phase 1.4 (2026-06-08): physical CreatedBy/UpdatedBy
         // on business.businesses per Phase1_4_AddCreatedByUpdatedByToBusiness.

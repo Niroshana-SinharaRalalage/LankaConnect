@@ -66,11 +66,18 @@ public class InfrastructureTypedEmailService : ITypedEmailService
         var correlationId = _logger.GenerateCorrelationId();
         var stopwatch = Stopwatch.StartNew();
 
+        // Wave 9.h.10.5 stdout probe (architect-ruled 2026-07-01, diagnostic-only, no
+        // behavior change). Bypass the ILogger filter chain to guarantee capture by
+        // `az containerapp logs show --follow`. Removes after Session 2 fix lands.
+        Console.WriteLine($"[W9H10-EMAIL-PROBE] ENTRY correlationId={correlationId} template={emailParams.TemplateName} recipient={emailParams.RecipientEmail}");
+
         try
         {
             // Validate parameters (mandatory)
             if (!emailParams.Validate(out var validationErrors))
             {
+                Console.WriteLine($"[W9H10-EMAIL-PROBE] VALIDATION-FAIL correlationId={correlationId} template={emailParams.TemplateName} errors={string.Join(";", validationErrors)}");
+
                 // Log validation failure
                 _logger.LogParameterValidationFailure(
                     correlationId,
@@ -82,6 +89,8 @@ public class InfrastructureTypedEmailService : ITypedEmailService
 
                 return TypedEmailSendResult.Fail(correlationId, validationErrors);
             }
+
+            Console.WriteLine($"[W9H10-EMAIL-PROBE] VALIDATION-OK correlationId={correlationId} template={emailParams.TemplateName}");
 
             // Log email send start
             _logger.LogEmailSendStart(correlationId, emailParams.TemplateName, emailParams.RecipientEmail);
@@ -113,6 +122,8 @@ public class InfrastructureTypedEmailService : ITypedEmailService
             emailHeaders ??= new Dictionary<string, string>();
             emailHeaders["Feedback-ID"] = $"{emailParams.TemplateName}:{correlationId}:lankaconnect.app:acs";
 
+            Console.WriteLine($"[W9H10-EMAIL-PROBE] PROVIDER-INVOKE correlationId={correlationId} template={emailParams.TemplateName}");
+
             // Send email via AzureEmailService directly (no bridge)
             var result = await _emailService.SendTemplatedEmailAsync(
                 emailParams.TemplateName,
@@ -123,6 +134,8 @@ public class InfrastructureTypedEmailService : ITypedEmailService
 
             stopwatch.Stop();
             var durationMs = (int)stopwatch.ElapsedMilliseconds;
+
+            Console.WriteLine($"[W9H10-EMAIL-PROBE] PROVIDER-RESULT correlationId={correlationId} template={emailParams.TemplateName} success={result.IsSuccess} error={result.Error ?? "<none>"} durationMs={durationMs}");
 
             // Record metrics
             _metrics.RecordEmailSent(emailParams.TemplateName, durationMs, result.IsSuccess);
@@ -151,6 +164,9 @@ public class InfrastructureTypedEmailService : ITypedEmailService
         {
             stopwatch.Stop();
             var durationMs = (int)stopwatch.ElapsedMilliseconds;
+
+            Console.WriteLine($"[W9H10-EMAIL-PROBE] EXCEPTION correlationId={correlationId} template={emailParams.TemplateName} exceptionType={ex.GetType().FullName} message={ex.Message}");
+            Console.WriteLine($"[W9H10-EMAIL-PROBE] EXCEPTION-STACK correlationId={correlationId} stack={ex.StackTrace}");
 
             // Log exception
             _logger.LogEmailSendFailure(correlationId, emailParams.TemplateName, ex.Message, ex);

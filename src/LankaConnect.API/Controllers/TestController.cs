@@ -101,6 +101,13 @@ public class TestController : ControllerBase
     [ProducesResponseType(typeof(EmailHealthResponse), StatusCodes.Status200OK)]
     public IActionResult EmailHealthCheck()
     {
+        // Wave 9.h.10.3 plumbing probe (2026-07-01): confirm that stdout writes
+        // reach `az containerapp logs show --follow`. If we see [W9H10-STDOUT-PROBE]
+        // in the log stream after hitting this endpoint, the diagnostic path for
+        // silent-drop email dispatches (Console.WriteLine in suspect handlers) is
+        // viable. If not, the whole silent-drop diagnosis pivots to fixing log
+        // routing first. Remove once inventory + tier-1 diagnosis close.
+        Console.WriteLine($"[W9H10-STDOUT-PROBE] EmailHealthCheck hit at {DateTime.UtcNow:O}");
         return Ok(new EmailHealthResponse
         {
             Status = "Healthy",

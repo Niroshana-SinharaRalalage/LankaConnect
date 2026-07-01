@@ -23,6 +23,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-CommonFixtures.psm1') -Force  # Wave 9.h.10.2: Get-LcFixtureEmail
 
 function Test-LcEndpoint {
     param(
@@ -80,8 +81,10 @@ function Test-AdminUsersReadFlow {
 function Test-AdminUsersMutatorFlow {
     param([Parameter(Mandatory)]$Report)
 
-    # Create throwaway user (admin can register without verification)
-    $script:throwawayEmail = "smoke-throwaway-$(Get-Random -Maximum 99999)@lankaconnect.test"
+    # Create throwaway user (admin can register without verification).
+    # Wave 9.h.10.2: route through founder Gmail alias so admin-triggered
+    # lifecycle emails (Locked/Unlocked/Activated/Deactivated) deliver.
+    $script:throwawayEmail = Get-LcFixtureEmail -Slug 'admin-user-lifecycle' -Suffix (Get-Random -Maximum 99999)
     $reg = Invoke-LcPost -Path '/api/Auth/register' -Bearer $null -Body @{
         firstName = 'Smoke'
         lastName  = 'Throwaway'

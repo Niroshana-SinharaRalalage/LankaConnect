@@ -114,7 +114,7 @@ function Test-SponsorshipPackagesMutatorsFlow {
         Test-LcEndpoint -Report $Report -Section 'sp-packages-mutators' -TestName 'purchase package (Stripe session URL)' -Endpoint 'POST /api/events/{eventId}/sponsorship-packages/{pkgId}/purchase' -Action {
             $r = Invoke-LcPost -Path "/api/events/$eventId/sponsorship-packages/$purchasePkgId/purchase" -Body @{
                 sponsorName = 'Smoke Purchaser'
-                sponsorEmail = 'smoke-pkg-purchaser@lankaconnect.test'
+                sponsorEmail = (Get-LcFixtureEmail -Slug 'sponsorship-package-purchase' -Suffix $tag)
                 sponsorOrganization = 'Smoke Co'
                 successUrl = 'https://example.test/success'
                 cancelUrl = 'https://example.test/cancel'

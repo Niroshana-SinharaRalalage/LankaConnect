@@ -20,6 +20,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-EventFixtures.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-CommonFixtures.psm1') -Force  # Wave 9.h.10.2: Get-LcFixtureEmail
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -231,7 +232,7 @@ function Test-Contact {
     Test-LcEndpoint $Report 'contact' 'submit contact form' 'POST /api/Contact' {
         $r = Invoke-LcPost -Path '/api/Contact' -Bearer $null -Body @{
             name = 'Smoke Test'
-            email = 'smoke-contact@lankaconnect.test'
+            email = (Get-LcFixtureEmail -Slug 'template-support-ticket-confirmation')
             subject = 'Wave 9.h.9 smoke test'
             message = 'Wave 9.h.9 smoke test message; safe to delete.'
         }
@@ -250,7 +251,7 @@ function Test-Email {
     # Test user is AdminManager. Founder OK with real test emails.
     Test-LcEndpoint $Report 'email' 'send admin test email' 'POST /api/Email/send' {
         $r = Invoke-LcPost -Path '/api/Email/send' -Body @{
-            toEmail = 'smoke-recipient@lankaconnect.test'
+            toEmail = (Get-LcFixtureEmail -Slug 'admin-test-email')
             subject = 'Wave 9.h.9 smoke test'
             bodyHtml = '<p>Wave 9.h.9 smoke test email; safe to delete.</p>'
         }

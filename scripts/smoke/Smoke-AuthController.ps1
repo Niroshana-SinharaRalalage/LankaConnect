@@ -27,6 +27,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-CommonFixtures.psm1') -Force  # Wave 9.h.10.2: Get-LcFixtureEmail
 
 function Test-LcEndpoint {
     param(
@@ -133,7 +134,7 @@ function Test-AuthAccountManagementFlow {
         $r = Invoke-LcPost -Path '/api/Auth/register' -Bearer $null -Body @{
             firstName = 'Smoke'
             lastName  = "Reg$(Get-Random -Maximum 9999)"
-            email     = "smoke-reg-$(Get-Random -Maximum 99999)@lankaconnect.test"
+            email     = (Get-LcFixtureEmail -Slug 'template-welcome' -Suffix (Get-Random -Maximum 99999))
             password  = 'Smoke1!Test'
             confirmPassword = 'Smoke1!Test'
             acceptTerms = $true
@@ -143,7 +144,7 @@ function Test-AuthAccountManagementFlow {
 
     Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'forgot password (sends real email)' -Endpoint 'POST /api/Auth/forgot-password' -Action {
         $r = Invoke-LcPost -Path '/api/Auth/forgot-password' -Bearer $null -Body @{
-            email = 'smoke-forgot@lankaconnect.test'
+            email = (Get-LcFixtureEmail -Slug 'template-password-reset')
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
@@ -151,7 +152,7 @@ function Test-AuthAccountManagementFlow {
     Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'reset password (bogus token expect 400)' -Endpoint 'POST /api/Auth/reset-password' -Action {
         $r = Invoke-LcPost -Path '/api/Auth/reset-password' -Bearer $null -Body @{
             token = 'bogus-smoke-token-9h9'
-            email = 'smoke-reset@lankaconnect.test'
+            email = (Get-LcFixtureEmail -Slug 'template-password-change-confirmation')
             newPassword = 'NewSmoke1!Pwd'
             confirmPassword = 'NewSmoke1!Pwd'
         }
@@ -161,14 +162,14 @@ function Test-AuthAccountManagementFlow {
     Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'verify email (bogus token expect 400)' -Endpoint 'POST /api/Auth/verify-email' -Action {
         $r = Invoke-LcPost -Path '/api/Auth/verify-email' -Bearer $null -Body @{
             token = 'bogus-smoke-token-9h9'
-            email = 'smoke-verify@lankaconnect.test'
+            email = (Get-LcFixtureEmail -Slug 'template-membership-email-verification')
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 
     Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'resend verification (sends real email)' -Endpoint 'POST /api/Auth/resend-verification' -Action {
         $r = Invoke-LcPost -Path '/api/Auth/resend-verification' -Bearer $null -Body @{
-            email = 'smoke-resend@lankaconnect.test'
+            email = (Get-LcFixtureEmail -Slug 'template-membership-email-verification' -Suffix 'resend')
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }

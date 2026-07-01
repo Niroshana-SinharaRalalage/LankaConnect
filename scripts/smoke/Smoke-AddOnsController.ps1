@@ -149,7 +149,7 @@ function Test-AddOnsMutatorsFlow {
         Test-LcEndpoint -Report $Report -Section 'addons-mutators' -TestName 'purchase add-on (W5.3 AddOnPurchaseRepository write + Stripe session)' -Endpoint 'POST /api/events/{eventId}/add-ons/{defId}/purchase' -Action {
             $r = Invoke-LcPost -Path "/api/events/$eventId/add-ons/$($script:addOnDefId)/purchase" -Body @{
                 buyerName  = 'Smoke Buyer 9h5'
-                buyerEmail = 'smoke-buyer@lankaconnect.test'
+                buyerEmail = (Get-LcFixtureEmail -Slug 'addon-purchase' -Suffix (Get-LcCurrentRunTag))
                 buyerPhone = '+15555550999'
                 quantity   = 1
                 successUrl = 'https://example.test/success'
@@ -162,7 +162,7 @@ function Test-AddOnsMutatorsFlow {
         Test-LcEndpoint -Report $Report -Section 'addons-mutators' -TestName 'purchase add-on cart (W5.3 AddOnPurchaseRepository + RegistrationAdditionRepository writes)' -Endpoint 'POST /api/events/{eventId}/add-ons/purchase-cart' -Action {
             $r = Invoke-LcPost -Path "/api/events/$eventId/add-ons/purchase-cart" -Body @{
                 buyerName  = 'Smoke Cart Buyer'
-                buyerEmail = 'smoke-cart-buyer@lankaconnect.test'
+                buyerEmail = (Get-LcFixtureEmail -Slug 'addon-cart-purchase' -Suffix (Get-LcCurrentRunTag))
                 successUrl = 'https://example.test/success'
                 cancelUrl  = 'https://example.test/cancel'
                 items      = @( @{ addOnDefinitionId = $script:addOnDefId; quantity = 2 } )

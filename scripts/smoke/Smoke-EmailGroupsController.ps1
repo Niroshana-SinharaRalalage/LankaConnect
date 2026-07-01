@@ -12,6 +12,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-EventFixtures.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-CommonFixtures.psm1') -Force  # Wave 9.h.10.2: Get-LcFixtureEmail
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -57,7 +58,7 @@ function Test-EmailGroupsMutatorsFlow {
         $r = Invoke-LcPost -Path '/api/EmailGroups' -Body @{
             name = "$tag SmokeGroup"
             description = 'Wave 9.h.3 smoke fixture'
-            emailAddresses = 'smoke-recipient@lankaconnect.test'
+            emailAddresses = (Get-LcFixtureEmail -Slug 'email-group-recipient' -Suffix $tag)
         }
         if (-not $r.Success) { throw "create failed: HTTP $($r.StatusCode)" }
         $script:emailGroupId = if ($r.Body -is [string]) { $r.Body.Trim('"') } elseif ($r.Body.id) { $r.Body.id } else { $null }
@@ -68,7 +69,7 @@ function Test-EmailGroupsMutatorsFlow {
             $r = Invoke-LcPut -Path "/api/EmailGroups/$($script:emailGroupId)" -Body @{
                 name = "$tag SmokeGroup Updated"
                 description = 'Updated by 9.h.3'
-                emailAddresses = 'smoke-recipient@lankaconnect.test,smoke-recipient2@lankaconnect.test'
+                emailAddresses = "$(Get-LcFixtureEmail -Slug 'email-group-recipient' -Suffix $tag),$(Get-LcFixtureEmail -Slug 'email-group-recipient2' -Suffix $tag)"
             }
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
         }

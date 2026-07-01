@@ -20,6 +20,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-CommonFixtures.psm1') -Force  # Wave 9.h.10.2: Get-LcFixtureEmail
 
 function Test-LcEndpoint {
     param(
@@ -236,7 +237,7 @@ function Test-UsersCreateFlow {
         $r = Invoke-LcPost -Path '/api/Users' -Body @{
             firstName = 'Smoke'
             lastName = "Create$(Get-Random -Maximum 9999)"
-            email = "smoke-create-$(Get-Random -Maximum 99999)@lankaconnect.test"
+            email = (Get-LcFixtureEmail -Slug 'template-welcome' -Suffix "users-create-$(Get-Random -Maximum 99999)")
             password = 'Smoke1!Test'
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }

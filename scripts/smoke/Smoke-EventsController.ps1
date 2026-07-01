@@ -446,7 +446,7 @@ function Test-EventsOrganizerContactFlow {
             $r = Invoke-LcPost -Path "/api/Events/$($ocfix.EventId)/organizer-contacts" -Body @{
                 name = "$tag SmokeContact"
                 role = 'Coordinator'
-                email = 'smoke-contact@lankaconnect.test'
+                email = (Get-LcFixtureEmail -Slug 'event-organizer-contact' -Suffix $tag)
                 phone = '+15555550199'
             }
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
@@ -491,7 +491,7 @@ function Test-EventsEmailGroupFlow {
         $egc = Invoke-LcPost -Path '/api/EmailGroups' -Body @{
             name = "$tag EventEG"
             description = 'Wave 9.h.9 smoke fixture'
-            emailAddresses = 'smoke-event-eg@lankaconnect.test'
+            emailAddresses = (Get-LcFixtureEmail -Slug 'event-email-group' -Suffix $tag)
         }
         $egId = if ($egc.Body.id) { $egc.Body.id } elseif ($egc.Body -is [string]) { $egc.Body.Trim('"') } else { $null }
 

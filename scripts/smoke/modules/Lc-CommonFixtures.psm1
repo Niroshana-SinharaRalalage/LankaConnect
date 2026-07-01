@@ -17,6 +17,12 @@
   Wave 9.a Foundation module. As more aggregates are smoked (Wave 9.b through 9.f),
   if any aggregate's fixtures grow large enough, split into its own module
   (e.g. Lc-PaymentsFixtures.psm1) following the same pattern.
+
+  Wave 9.h.10.2 (2026-07-01): Get-LcFixtureEmail added. All smoke email
+  recipients MUST route through founder's inbox via Gmail `+` aliases so the
+  60+ platform templates actually deliver during smoke runs (previous
+  @lankaconnect.test recipients caused silent-drop, hiding the Wave 9.h.9
+  coverage gap founder flagged).
 #>
 
 function New-LcNewsletter {
@@ -127,6 +133,63 @@ function Remove-LcNewsletterByTag {
     }
 }
 
+function Get-LcFixtureEmail {
+    <#
+    .SYNOPSIS
+      Generates a Gmail-alias recipient for smoke email delivery. All
+      smoke-triggered emails MUST land in the founder inbox for verification.
+
+    .DESCRIPTION
+      Wave 9.h.10.2 recipient discipline: every email fixture routes through
+      `niroshanaks+<slug>@gmail.com` (Gmail's + alias is preserved through
+      the routing hop; the alias survives to the Inbox where filters key on it).
+
+      Slug convention: use the template name (or a semantic scenario slug) so
+      Gmail filters can bucket per template. Non-alphanumeric characters are
+      replaced with `-`; consecutive dashes collapse. Result is lowercased.
+
+      CI/other-run override: set $env:LC_SMOKE_INBOX to redirect the base
+      address (e.g. `noreply` for CI, `qa` for staging pipeline). Base defaults
+      to `niroshanaks`.
+
+    .PARAMETER Slug
+      Template-key or scenario slug. Examples:
+        'template-free-event-registration-confirmation'
+        'sponsor'
+        'refund-requested'
+
+    .PARAMETER Suffix
+      Optional extra qualifier appended to slug for scenario disambiguation.
+      Example: -Slug 'template-organizer-custom-email' -Suffix 'attendee-A'
+      → niroshanaks+template-organizer-custom-email-attendee-a@gmail.com
+
+    .OUTPUTS
+      String — a Gmail alias recipient.
+
+    .EXAMPLE
+      Get-LcFixtureEmail -Slug 'template-newsletter-notification'
+      # → niroshanaks+template-newsletter-notification@gmail.com
+
+    .EXAMPLE
+      Get-LcFixtureEmail -Slug 'sponsor' -Suffix (Get-LcCurrentRunTag)
+      # → niroshanaks+sponsor-smk-20260701-...@gmail.com
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Slug,
+        [string]$Suffix
+    )
+
+    $inbox = if ($env:LC_SMOKE_INBOX) { $env:LC_SMOKE_INBOX } else { 'niroshanaks' }
+
+    $raw = if ($Suffix) { "$Slug-$Suffix" } else { $Slug }
+    $safe = ($raw -replace '[^a-zA-Z0-9]+', '-').ToLowerInvariant().Trim('-')
+
+    return "$inbox+$safe@gmail.com"
+}
+
 Export-ModuleMember -Function `
     New-LcNewsletter, `
-    Remove-LcNewsletterByTag
+    Remove-LcNewsletterByTag, `
+    Get-LcFixtureEmail

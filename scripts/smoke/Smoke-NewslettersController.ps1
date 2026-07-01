@@ -11,6 +11,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-CommonFixtures.psm1') -Force  # Wave 9.h.10.2: Get-LcFixtureEmail
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -80,7 +81,7 @@ function Test-NewslettersMutatorsFlow {
     $egCreate = Invoke-LcPost -Path '/api/EmailGroups' -Body @{
         name = "$tag NewsletterRecipients"
         description = 'Wave 9.h.9 smoke fixture'
-        emailAddresses = 'smoke-newsletter-recipient@lankaconnect.test'
+        emailAddresses = (Get-LcFixtureEmail -Slug 'template-newsletter-notification' -Suffix $tag)
     }
     if ($egCreate.Success) {
         $script:newsletterEmailGroupId = if ($egCreate.Body.id) { $egCreate.Body.id } elseif ($egCreate.Body -is [string]) { $egCreate.Body.Trim('"') } else { $null }

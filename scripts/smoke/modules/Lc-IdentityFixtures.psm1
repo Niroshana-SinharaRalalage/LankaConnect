@@ -23,7 +23,10 @@ function New-LcTaggedThrowawayUser {
         [string]$Role = 'EventAttendee'
     )
     $shortTag = $Tag.Trim('[]').Replace('SMOKE-', '').Replace('-', '').Substring(0, [Math]::Min(8, $Tag.Length))
-    $email = "smoke-throwaway-$shortTag-$(Get-Random -Maximum 9999)@lankaconnect.test"
+    # Wave 9.h.10.2: throwaway users route through founder Gmail alias so
+    # admin-triggered lifecycle emails (Locked/Unlocked/Activated/Deactivated,
+    # plus registration confirmation) actually deliver during smoke runs.
+    $email = Get-LcFixtureEmail -Slug 'throwaway-user' -Suffix "$shortTag-$(Get-Random -Maximum 9999)"
     $body = @{
         firstName        = "$Tag Throwaway"
         lastName         = 'User'

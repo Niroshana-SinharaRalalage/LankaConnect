@@ -11,6 +11,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-CommonFixtures.psm1') -Force  # Wave 9.h.10.2: Get-LcFixtureEmail
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -83,7 +84,7 @@ function Test-BusinessesMutatorsFlow {
                 name = 'Updated Smoke Business'
                 description = 'Updated'
                 contactPhone = '+15555550201'
-                contactEmail = 'smoke-updated@lankaconnect.test'
+                contactEmail = (Get-LcFixtureEmail -Slug 'business-updated' -Suffix (Get-LcCurrentRunTag))
                 website = 'https://example.test/updated'
             }
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }

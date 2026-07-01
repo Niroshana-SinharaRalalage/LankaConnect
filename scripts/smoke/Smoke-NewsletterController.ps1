@@ -12,6 +12,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Http.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
+Import-Module (Join-Path $moduleDir 'Lc-CommonFixtures.psm1') -Force  # Wave 9.h.10.2: Get-LcFixtureEmail
 
 function Test-LcEndpoint {
     param([Parameter(Mandatory)]$Report, [Parameter(Mandatory)][string]$Section,
@@ -40,14 +41,14 @@ function Test-NewsletterPublicFlow {
     # genuinely state-dependent (need actual email token).
     Test-LcEndpoint -Report $Report -Section 'newsletter-public' -TestName 'subscribe' -Endpoint 'POST /api/Newsletter/subscribe' -Action {
         $r = Invoke-LcPost -Path '/api/Newsletter/subscribe' -Bearer $null -Body @{
-            email = "smoke-newsletter-$(Get-Random -Maximum 9999)@lankaconnect.test"
+            email = (Get-LcFixtureEmail -Slug 'template-newsletter-subscription-confirmation' -Suffix (Get-Random -Maximum 9999))
             name  = 'Smoke Subscriber'
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
     Test-LcEndpoint -Report $Report -Section 'newsletter-public' -TestName 'unsubscribe (POST by email)' -Endpoint 'POST /api/Newsletter/unsubscribe' -Action {
         $r = Invoke-LcPost -Path '/api/Newsletter/unsubscribe' -Bearer $null -Body @{
-            email = 'smoke-test-unsub@lankaconnect.test'
+            email = (Get-LcFixtureEmail -Slug 'newsletter-unsubscribe')
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }

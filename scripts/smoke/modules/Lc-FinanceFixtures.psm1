@@ -119,7 +119,7 @@ function New-LcTaggedMoneySponsor {
     )
     $body = @{
         sponsorName         = "$Tag SmokeSponsor"
-        sponsorEmail        = 'smoke-sponsor@lankaconnect.test'
+        sponsorEmail        = (Get-LcFixtureEmail -Slug 'sponsor-money' -Suffix $Tag)
         sponsorPhone        = '+15555550100'
         sponsorOrganization = "$Tag SmokeOrg"
         sponsorNotes        = 'Auto-created by Wave 9.h smoke. Safe to delete.'
@@ -146,7 +146,7 @@ function New-LcTaggedItemSponsor {
     )
     $body = @{
         sponsorName         = "$Tag SmokeItemSponsor"
-        sponsorEmail        = 'smoke-item-sponsor@lankaconnect.test'
+        sponsorEmail        = (Get-LcFixtureEmail -Slug 'sponsor-item' -Suffix $Tag)
         sponsorOrganization = "$Tag SmokeOrg"
         sponsorNotes        = 'Auto-created by Wave 9.h smoke. Safe to delete.'
         itemName            = 'Smoke Gift Bag'
@@ -172,7 +172,7 @@ function New-LcTaggedDonation {
     )
     $body = @{
         donorName  = "$Tag SmokeDonor"
-        donorEmail = 'smoke-donor@lankaconnect.test'
+        donorEmail = (Get-LcFixtureEmail -Slug 'donation' -Suffix $Tag)
         donorPhone = '+15555550101'
         donorNotes = 'Auto-created by Wave 9.h smoke.'
         amount     = $Amount
@@ -199,7 +199,7 @@ function New-LcTaggedCollection {
     )
     $body = @{
         contributorName  = "$Tag SmokeContrib"
-        contributorEmail = 'smoke-contrib@lankaconnect.test'
+        contributorEmail = (Get-LcFixtureEmail -Slug 'collection' -Suffix $Tag)
         contributorPhone = '+15555550102'
         contributorNotes = 'Auto-created by Wave 9.h smoke.'
         amount           = $Amount
@@ -369,7 +369,7 @@ function New-LcTaggedBusiness {
         name          = "$Tag SmokeBusiness"
         description   = 'Auto-created by Wave 9.h smoke. Safe to delete.'
         contactPhone  = '+15555550200'
-        contactEmail  = 'smoke-business@lankaconnect.test'
+        contactEmail  = (Get-LcFixtureEmail -Slug 'business' -Suffix $Tag)
         website       = 'https://example.test'
         address       = '200 Main St'
         city          = 'Boston'

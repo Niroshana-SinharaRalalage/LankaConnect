@@ -24,6 +24,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-CommonFixtures.psm1') -Force  # Wave 9.h.10.2: Get-LcFixtureEmail
+Import-Module (Join-Path $moduleDir 'Lc-IdentityFixtures.psm1') -Force  # Wave 9.h.10.2b: New-LcTaggedThrowawayUser + Get-LcAnyMetroAreaId
 
 function Test-LcEndpoint {
     param(
@@ -81,25 +82,19 @@ function Test-AdminUsersReadFlow {
 function Test-AdminUsersMutatorFlow {
     param([Parameter(Mandatory)]$Report)
 
-    # Create throwaway user (admin can register without verification).
-    # Wave 9.h.10.2: route through founder Gmail alias so admin-triggered
-    # lifecycle emails (Locked/Unlocked/Activated/Deactivated) deliver.
-    $script:throwawayEmail = Get-LcFixtureEmail -Slug 'admin-user-lifecycle' -Suffix (Get-Random -Maximum 99999)
-    $reg = Invoke-LcPost -Path '/api/Auth/register' -Bearer $null -Body @{
-        firstName = 'Smoke'
-        lastName  = 'Throwaway'
-        email     = $script:throwawayEmail
-        password  = 'Throwaway1!Qz'
-        confirmPassword = 'Throwaway1!Qz'
-        acceptTerms = $true
+    # Wave 9.h.10.2b: use the shared New-LcTaggedThrowawayUser fixture which
+    # (a) routes to founder Gmail alias for admin-lifecycle email delivery, and
+    # (b) includes preferredMetroAreaIds --- register now requires min 1, and
+    # the old inline body omitted it so register was silently 400ing and every
+    # admin lifecycle action targeted the admin's own id (rejected as "cannot
+    # lock own account"), causing 0 lifecycle emails to fire despite 7 PASS.
+    $throwaway = New-LcTaggedThrowawayUser
+    if (-not $throwaway.Success -or -not $throwaway.UserId) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'admin-mutators' -TestName 'throwaway user setup' -Endpoint 'POST /api/Auth/register' -ErrorMessage "throwaway create failed: $($throwaway.Error)"
+        return
     }
-    if (-not $reg.Success) {
-        # Fall back: use self ID; mutators may 400 (cannot self-target) which is still wired
-        $throwawayUserId = Get-LcUserId
-    } else {
-        $throwawayUserId = if ($reg.Body.userId) { $reg.Body.userId } elseif ($reg.Body.id) { $reg.Body.id } else { $null }
-        if (-not $throwawayUserId) { $throwawayUserId = Get-LcUserId }
-    }
+    $script:throwawayEmail = $throwaway.Email
+    $throwawayUserId = $throwaway.UserId
 
     foreach ($action in 'lock', 'unlock', 'deactivate', 'activate', 'resend-verification', 'downgrade', 'upgrade') {
         Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName "admin $action throwaway user" -Endpoint "POST /api/admin/users/{id}/$action" -Action {

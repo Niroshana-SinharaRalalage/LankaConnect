@@ -141,8 +141,12 @@ function Get-LcFixtureEmail {
 
     .DESCRIPTION
       Wave 9.h.10.2 recipient discipline: every email fixture routes through
-      `niroshanaks+<slug>@gmail.com` (Gmail's + alias is preserved through
+      `niroshhh+<slug>@gmail.com` (Gmail's + alias is preserved through
       the routing hop; the alias survives to the Inbox where filters key on it).
+
+      Wave 9.h.10.2b (2026-07-01) founder clarification: the admin-manager
+      account `niroshhh@gmail.com` is the primary smoke inbox; `niroshanaks@gmail.com`
+      is available for scenarios that need a separate user (via -Inbox override).
 
       Slug convention: use the template name (or a semantic scenario slug) so
       Gmail filters can bucket per template. Non-alphanumeric characters are
@@ -150,7 +154,7 @@ function Get-LcFixtureEmail {
 
       CI/other-run override: set $env:LC_SMOKE_INBOX to redirect the base
       address (e.g. `noreply` for CI, `qa` for staging pipeline). Base defaults
-      to `niroshanaks`.
+      to `niroshhh` (admin manager per founder ruling 2026-07-01).
 
     .PARAMETER Slug
       Template-key or scenario slug. Examples:
@@ -168,25 +172,30 @@ function Get-LcFixtureEmail {
 
     .EXAMPLE
       Get-LcFixtureEmail -Slug 'template-newsletter-notification'
-      # → niroshanaks+template-newsletter-notification@gmail.com
+      # → niroshhh+template-newsletter-notification@gmail.com
 
     .EXAMPLE
       Get-LcFixtureEmail -Slug 'sponsor' -Suffix (Get-LcCurrentRunTag)
-      # → niroshanaks+sponsor-smk-20260701-...@gmail.com
+      # → niroshhh+sponsor-smk-20260701-...@gmail.com
+
+    .EXAMPLE
+      Get-LcFixtureEmail -Slug 'attendee' -Inbox 'niroshanaks'
+      # → niroshanaks+attendee@gmail.com  (for scenarios that need a distinct user)
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string]$Slug,
-        [string]$Suffix
+        [string]$Suffix,
+        [string]$Inbox
     )
 
-    $inbox = if ($env:LC_SMOKE_INBOX) { $env:LC_SMOKE_INBOX } else { 'niroshanaks' }
+    $base = if ($Inbox) { $Inbox } elseif ($env:LC_SMOKE_INBOX) { $env:LC_SMOKE_INBOX } else { 'niroshhh' }
 
     $raw = if ($Suffix) { "$Slug-$Suffix" } else { $Slug }
     $safe = ($raw -replace '[^a-zA-Z0-9]+', '-').ToLowerInvariant().Trim('-')
 
-    return "$inbox+$safe@gmail.com"
+    return "$base+$safe@gmail.com"
 }
 
 Export-ModuleMember -Function `

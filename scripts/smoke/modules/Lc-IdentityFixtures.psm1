@@ -16,6 +16,31 @@
   the staging smoke user OR a dedicated admin-bearer flow is wired up.
 #>
 
+$script:LcCachedMetroAreaId = $null
+
+function Get-LcAnyMetroAreaId {
+    <#
+    .SYNOPSIS
+      Returns a valid metro-area id from staging. Cached per-session because
+      register/user-preferences smoke calls it repeatedly.
+
+    .DESCRIPTION
+      Wave 9.h.10.2b (2026-07-01): Auth register now REQUIRES preferredMetroAreaIds
+      (min 1). Wave 9.h.9 smoke silently sent register requests without it and got
+      400 --- but the smoke assertion only tripped on >= 500 so registration was
+      silently failing and every downstream throwaway-user flow was targeting the
+      admin user's own id (then rejected by "cannot lock own account"), so no
+      admin-lifecycle emails ever fired.
+    #>
+    if ($script:LcCachedMetroAreaId) { return $script:LcCachedMetroAreaId }
+    $r = Invoke-LcGet -Path '/api/metro-areas'
+    if (-not $r.Success) { throw "Get-LcAnyMetroAreaId: /api/metro-areas returned HTTP $($r.StatusCode)" }
+    $first = @($r.Body)[0]
+    if (-not $first -or -not $first.id) { throw "Get-LcAnyMetroAreaId: no metro areas returned from staging" }
+    $script:LcCachedMetroAreaId = $first.id
+    return $script:LcCachedMetroAreaId
+}
+
 function New-LcTaggedThrowawayUser {
     [CmdletBinding()]
     param(
@@ -27,22 +52,34 @@ function New-LcTaggedThrowawayUser {
     # admin-triggered lifecycle emails (Locked/Unlocked/Activated/Deactivated,
     # plus registration confirmation) actually deliver during smoke runs.
     $email = Get-LcFixtureEmail -Slug 'throwaway-user' -Suffix "$shortTag-$(Get-Random -Maximum 9999)"
+    $metroId = Get-LcAnyMetroAreaId
     $body = @{
-        firstName        = "$Tag Throwaway"
-        lastName         = 'User'
-        email            = $email
-        password         = 'Throwaway1!Qz'
-        confirmPassword  = 'Throwaway1!Qz'
-        acceptTerms      = $true
+        firstName             = "$Tag Throwaway"
+        lastName              = 'User'
+        email                 = $email
+        password              = 'Throwaway1!Qz'
+        confirmPassword       = 'Throwaway1!Qz'
+        acceptTerms           = $true
+        preferredMetroAreaIds = @($metroId)
     }
     $r = Invoke-LcPost -Path '/api/Auth/register' -Bearer $null -Body $body
+    # Wave 9.h.10.2b: hard-assert register succeeded. The old <500 check let 400s
+    # pass silently and hid the missing preferredMetroAreaIds requirement.
+    if (-not $r.Success -and $r.StatusCode -ne 201) {
+        return [pscustomobject]@{
+            Success = $false; StatusCode = $r.StatusCode; Body = $r.Body; Email = $email; UserId = $null; Tag = $Tag
+            Error   = "register FAILED HTTP $($r.StatusCode): $($r.Error)"
+        }
+    }
+    $userId = if ($r.Body.userId) { $r.Body.userId } elseif ($r.Body.id) { $r.Body.id } else { $null }
     return [pscustomobject]@{
-        Success    = $r.Success
+        Success    = $true
         StatusCode = $r.StatusCode
         Body       = $r.Body
         Email      = $email
+        UserId     = $userId
         Tag        = $Tag
-        Error      = if ($r.Success) { $null } else { "HTTP $($r.StatusCode): $($r.Error)" }
+        Error      = $null
     }
 }
 
@@ -73,4 +110,4 @@ function Remove-LcThrowawayUserByEmail {
 }
 
 Export-ModuleMember -Function `
-    New-LcTaggedThrowawayUser, Remove-LcThrowawayUserByEmail
+    New-LcTaggedThrowawayUser, Remove-LcThrowawayUserByEmail, Get-LcAnyMetroAreaId

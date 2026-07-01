@@ -28,6 +28,7 @@ Import-Module (Join-Path $moduleDir 'Lc-Auth.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Assertion.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-Report.psm1') -Force
 Import-Module (Join-Path $moduleDir 'Lc-CommonFixtures.psm1') -Force  # Wave 9.h.10.2: Get-LcFixtureEmail
+Import-Module (Join-Path $moduleDir 'Lc-IdentityFixtures.psm1') -Force  # Wave 9.h.10.2b: Get-LcAnyMetroAreaId
 
 function Test-LcEndpoint {
     param(
@@ -130,16 +131,21 @@ function Test-AuthAccountManagementFlow {
     param([Parameter(Mandatory)]$Report)
 
     # Wave 9.h.9: Founder OK with real signup emails.
+    # Wave 9.h.10.2b: register now requires preferredMetroAreaIds; hard-assert 200/201.
     Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'register new user (signup)' -Endpoint 'POST /api/Auth/register' -Action {
+        $metroId = Get-LcAnyMetroAreaId
         $r = Invoke-LcPost -Path '/api/Auth/register' -Bearer $null -Body @{
-            firstName = 'Smoke'
-            lastName  = "Reg$(Get-Random -Maximum 9999)"
-            email     = (Get-LcFixtureEmail -Slug 'template-welcome' -Suffix (Get-Random -Maximum 99999))
-            password  = 'Smoke1!Test'
-            confirmPassword = 'Smoke1!Test'
-            acceptTerms = $true
+            firstName             = 'Smoke'
+            lastName              = "Reg$(Get-Random -Maximum 9999)"
+            email                 = (Get-LcFixtureEmail -Slug 'template-membership-email-verification' -Suffix (Get-Random -Maximum 99999))
+            password               = 'Smoke1!Test'
+            confirmPassword       = 'Smoke1!Test'
+            acceptTerms           = $true
+            preferredMetroAreaIds = @($metroId)
         }
-        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ne 200 -and $r.StatusCode -ne 201) {
+            throw "register expected 200/201, got $($r.StatusCode) body=$($r.Error)"
+        }
     }
 
     Test-LcEndpoint -Report $Report -Section 'auth-account' -TestName 'forgot password (sends real email)' -Endpoint 'POST /api/Auth/forgot-password' -Action {

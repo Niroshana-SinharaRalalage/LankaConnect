@@ -35,16 +35,16 @@ function Test-NewslettersReadFlow {
     param([Parameter(Mandatory)]$Report)
     $fakeId = [Guid]::NewGuid().ToString()
 
-    # Wave 9.h.2 investigation: F17/F18 CONFIRMED REAL PLATFORM BUGS.
-    # GET /api/Newsletters/my-newsletters and GET /api/Newsletters/published both
-    # return 400 InvalidOperation on bare GET (also fails unauthenticated, also fails
-    # with explicit query params). Generic error swallows the actual exception
-    # (errorType InvalidOperation, developerMessage null in PROD mode).
-    # Smoke marks these SKIP with valid technical reason: "platform handler bug
-    # requires backend fix; cannot smoke-cover without source-level remediation."
-    # Tracked for hardening wave.
-    Add-LcResult -Report $Report -Status SKIP -Section 'newsletters-read' -TestName 'my newsletters list (F17 CONFIRMED REAL BUG)' -Endpoint 'GET /api/Newsletters/my-newsletters' -SkipReason 'F17 CONFIRMED REAL BUG: 400 InvalidOperation on bare auth GET (handler-level domain failure; needs platform code fix, NOT smoke fix)'
-    Add-LcResult -Report $Report -Status SKIP -Section 'newsletters-read' -TestName 'published newsletters (F18 CONFIRMED REAL BUG)' -Endpoint 'GET /api/Newsletters/published' -SkipReason 'F18 CONFIRMED REAL BUG: 400 InvalidOperation on AllowAnonymous GET (also fails unauth + with params; needs platform code fix, NOT smoke fix)'
+    # Wave 9.h.fix: F17 + F18 FIXED (98cc4e37) -- Newsletter handlers now use
+    # CLR-typed NewsletterMetroAreaLink junction (was Dictionary<string,object>).
+    Test-LcEndpoint -Report $Report -Section 'newsletters-read' -TestName 'my newsletters list (F17 fixed)' -Endpoint 'GET /api/Newsletters/my-newsletters' -Action {
+        $r = Invoke-LcGet -Path '/api/Newsletters/my-newsletters'
+        Assert-Http200 -Result $r
+    }
+    Test-LcEndpoint -Report $Report -Section 'newsletters-read' -TestName 'published newsletters (F18 fixed)' -Endpoint 'GET /api/Newsletters/published' -Action {
+        $r = Invoke-LcGet -Path '/api/Newsletters/published'
+        Assert-Http200 -Result $r
+    }
     Test-LcEndpoint -Report $Report -Section 'newsletters-read' -TestName 'newsletter by id (404 OK)' -Endpoint 'GET /api/Newsletters/{id}' -Action {
         $r = Invoke-LcGet -Path "/api/Newsletters/$fakeId"
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }

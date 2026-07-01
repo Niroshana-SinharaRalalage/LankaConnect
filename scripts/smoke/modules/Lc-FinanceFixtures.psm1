@@ -383,10 +383,13 @@ function New-LcTaggedBusiness {
         tags          = @('smoke', '9h')
     }
     $r = Invoke-LcPost -Path '/api/Businesses' -Body $body
+    # Response body: { businessId } (not { id })
+    $bizId = if ($r.Body.businessId) { $r.Body.businessId } elseif ($r.Body.id) { $r.Body.id } elseif ($r.Body -is [string]) { $r.Body.Trim('"') } else { $null }
     return [pscustomobject]@{
         Success = $r.Success
         StatusCode = $r.StatusCode
         Body = $r.Body
+        BusinessId = $bizId
         Tag = $Tag
         Error = if ($r.Success) { $null } else { "HTTP $($r.StatusCode): $($r.Error)" }
     }

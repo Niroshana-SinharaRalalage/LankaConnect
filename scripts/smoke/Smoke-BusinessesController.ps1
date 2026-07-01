@@ -47,11 +47,19 @@ function Test-BusinessesReadFlow {
         $r = Invoke-LcGet -Path "/api/Businesses/$fakeId"
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
-    # Wave 9.h.2 investigation: F16 RESOLUTION BLOCKED ON F20.
-    # GET /api/Businesses/{id}/services likely works with a real business but Business
-    # creation itself is broken (F20: POST /api/Businesses returns 500 DatabaseError).
-    # Cannot create fixture business -> cannot smoke /services real-business path.
-    Add-LcResult -Report $Report -Status SKIP -Section 'businesses-read' -TestName 'business services (F16; BLOCKED on F20)' -Endpoint 'GET /api/Businesses/{id}/services' -SkipReason 'F16 resolution requires real business fixture; F20 (POST /api/Businesses 500 DatabaseError) blocks fixture creation; needs platform F20 fix first'
+    # Wave 9.h.fix: F20 fixed (BusinessConfiguration UpdatedAt no longer IsRequired);
+    # F16 now exercisable via real business fixture.
+    $fbiz = New-LcTaggedBusiness
+    if ($fbiz.Success -and $fbiz.BusinessId) {
+        Test-LcEndpoint -Report $Report -Section 'businesses-read' -TestName 'business services (F16 - real business fixture)' -Endpoint 'GET /api/Businesses/{id}/services' -Action {
+            $r = Invoke-LcGet -Path "/api/Businesses/$($fbiz.BusinessId)/services"
+            if ($r.StatusCode -ge 500) { throw "F16 confirmed real bug: 5xx $($r.StatusCode)" }
+        }
+        # Cleanup
+        Invoke-LcDelete -Path "/api/Businesses/$($fbiz.BusinessId)" | Out-Null
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'businesses-read' -TestName 'business services (F16)' -Endpoint 'GET /api/Businesses/{id}/services' -SkipReason "F20 fixed but fixture business create failed: HTTP $($fbiz.StatusCode)"
+    }
     Test-LcEndpoint -Report $Report -Section 'businesses-read' -TestName 'business images' -Endpoint 'GET /api/Businesses/{id}/images' -Action {
         $r = Invoke-LcGet -Path "/api/Businesses/$fakeId/images"
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
@@ -60,18 +68,71 @@ function Test-BusinessesReadFlow {
 
 function Test-BusinessesMutatorsFlow {
     param([Parameter(Mandatory)]$Report)
-    $mutators = @(
-        @{ Method='POST';   Path='/api/Businesses';                                       Name='create business' }
-        @{ Method='PUT';    Path='/api/Businesses/{id}';                                  Name='update business' }
-        @{ Method='DELETE'; Path='/api/Businesses/{id}';                                  Name='delete business' }
-        @{ Method='POST';   Path='/api/Businesses/{id}/services';                         Name='add service' }
-        @{ Method='POST';   Path='/api/Businesses/{id}/images';                           Name='upload image' }
-        @{ Method='DELETE'; Path='/api/Businesses/{id}/images/{imageId}';                 Name='delete image' }
-        @{ Method='PATCH';  Path='/api/Businesses/{id}/images/{imageId}/set-primary';     Name='set primary image' }
-        @{ Method='PATCH';  Path='/api/Businesses/{id}/images/reorder';                   Name='reorder images' }
-    )
-    foreach ($m in $mutators) {
-        Add-LcResult -Report $Report -Status SKIP -Section 'businesses-mutators' -TestName $m.Name -Endpoint "$($m.Method) $($m.Path)" -SkipReason 'destructive; -IncludeDestructive'
+
+    # Wave 9.h.fix: F20 fixed. Business CRUD lifecycle now testable.
+    $script:mutBizId = $null
+    Test-LcEndpoint -Report $Report -Section 'businesses-mutators' -TestName 'create business' -Endpoint 'POST /api/Businesses' -Action {
+        $b = New-LcTaggedBusiness
+        if (-not $b.Success) { throw "create failed: HTTP $($b.StatusCode)" }
+        $script:mutBizId = $b.BusinessId
+    }
+
+    if ($script:mutBizId) {
+        Test-LcEndpoint -Report $Report -Section 'businesses-mutators' -TestName 'update business' -Endpoint 'PUT /api/Businesses/{id}' -Action {
+            $r = Invoke-LcPut -Path "/api/Businesses/$($script:mutBizId)" -Body @{
+                name = 'Updated Smoke Business'
+                description = 'Updated'
+                contactPhone = '+15555550201'
+                contactEmail = 'smoke-updated@lankaconnect.test'
+                website = 'https://example.test/updated'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'businesses-mutators' -TestName 'add service' -Endpoint 'POST /api/Businesses/{id}/services' -Action {
+            $r = Invoke-LcPost -Path "/api/Businesses/$($script:mutBizId)/services" -Body @{
+                name = 'Smoke Service'
+                description = 'Wave 9.h smoke'
+                price = 25.00
+                currency = 'USD'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'businesses-mutators' -TestName 'upload image (multipart)' -Endpoint 'POST /api/Businesses/{id}/images' -Action {
+            $r = Invoke-LcMultipart -Path "/api/Businesses/$($script:mutBizId)/images" -FileFieldName 'image' -FileName 'biz.png'
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'businesses-mutators' -TestName 'reorder images' -Endpoint 'PATCH /api/Businesses/{id}/images/reorder' -Action {
+            $r = Invoke-LcPatch -Path "/api/Businesses/$($script:mutBizId)/images/reorder" -Body @{ imageIds = @() }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        # Image delete + set-primary require specific image IDs from an upload; probe wire only
+        $fakeImgId = [Guid]::NewGuid().ToString()
+        Test-LcEndpoint -Report $Report -Section 'businesses-mutators' -TestName 'delete image (fake id wiring)' -Endpoint 'DELETE /api/Businesses/{id}/images/{imageId}' -Action {
+            $r = Invoke-LcDelete -Path "/api/Businesses/$($script:mutBizId)/images/$fakeImgId"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'businesses-mutators' -TestName 'set primary image (fake id wiring)' -Endpoint 'PATCH /api/Businesses/{id}/images/{imageId}/set-primary' -Action {
+            $r = Invoke-LcPatch -Path "/api/Businesses/$($script:mutBizId)/images/$fakeImgId/set-primary" -Body @{}
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        # Create a fresh business for the delete test (the mutBizId one has attached
+        # services + images that may block deletion; direct-probe confirms delete
+        # works cleanly on a bare business).
+        $delFix = New-LcTaggedBusiness
+        if ($delFix.Success -and $delFix.BusinessId) {
+            Test-LcEndpoint -Report $Report -Section 'businesses-mutators' -TestName 'delete business (fresh fixture)' -Endpoint 'DELETE /api/Businesses/{id}' -Action {
+                $r = Invoke-LcDelete -Path "/api/Businesses/$($delFix.BusinessId)"
+                if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            }
+        } else {
+            Add-LcResult -Report $Report -Status SKIP -Section 'businesses-mutators' -TestName 'delete business' -Endpoint 'DELETE /api/Businesses/{id}' -SkipReason 'fresh delete-fixture create failed'
+        }
+        # Cleanup: delete the mutator lifecycle business (best-effort)
+        Invoke-LcDelete -Path "/api/Businesses/$($script:mutBizId)" | Out-Null
+    } else {
+        foreach ($n in 'update business','delete business','add service','upload image','delete image','set primary image','reorder images') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'businesses-mutators' -TestName $n -Endpoint '...' -SkipReason 'business create did not yield id'
+        }
     }
 }
 

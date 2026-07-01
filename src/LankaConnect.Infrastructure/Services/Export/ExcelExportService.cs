@@ -6,6 +6,7 @@ using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.Products.LankaEvents.Contracts;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -14,8 +15,12 @@ namespace LankaConnect.Infrastructure.Services.Export;
 /// <summary>
 /// Excel export service implementation using ClosedXML.
 /// Creates multi-sheet Excel workbooks with attendee data and signup lists.
+///
+/// Wave 6.a.1 (2026-07-01): also implements <see cref="IFormResponseExporter"/>
+/// so Forms.Application can consume form-response Excel export via a narrow
+/// Contracts port without importing Products.LankaEvents.Application.Common.
 /// </summary>
-public class ExcelExportService : IExcelExportService
+public class ExcelExportService : IExcelExportService, IFormResponseExporter
 {
     private readonly ILogger<ExcelExportService> _logger;
 
@@ -23,6 +28,21 @@ public class ExcelExportService : IExcelExportService
     {
         _logger = logger;
     }
+
+    /// <summary>
+    /// Wave 6.a.1 IFormResponseExporter -- Excel branch.
+    /// </summary>
+    public byte[] ExportFormResponsesToExcel(EventFormDetailDto form, FormResponsesPagedDto responses)
+        => ExportFormResponses(form, responses);
+
+    /// <summary>
+    /// Wave 6.a.1 IFormResponseExporter -- CSV branch is a not-supported no-op on
+    /// the Excel service; callers should resolve IFormResponseExporter via
+    /// CsvExportService for CSV output.
+    /// </summary>
+    byte[] IFormResponseExporter.ExportFormResponsesToCsv(EventFormDetailDto form, FormResponsesPagedDto responses)
+        => throw new NotSupportedException("ExcelExportService does not support CSV; register CsvExportService as IFormResponseExporter for CSV exports.");
+
     public byte[] ExportEventAttendees(
         EventAttendeesResponse attendees,
         List<SignUpListDto>? signUpLists = null)

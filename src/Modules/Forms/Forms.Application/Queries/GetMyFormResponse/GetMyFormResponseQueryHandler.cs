@@ -6,7 +6,7 @@ using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using System.Security.Cryptography;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.Products.LankaEvents.Contracts;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;

@@ -1,3 +1,4 @@
+using LankaConnect.Products.LankaEvents.Contracts;
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;

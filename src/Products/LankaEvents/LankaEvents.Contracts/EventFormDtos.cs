@@ -1,7 +1,18 @@
-using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Modules.Forms.Contracts;
 
-namespace LankaConnect.Products.LankaEvents.Application.Common;
+namespace LankaConnect.Products.LankaEvents.Contracts;
+
+/// <summary>
+/// Cross-boundary Event-scoped Form DTOs. Shared by
+/// <c>Products.LankaEvents.Application</c> (queries that return Event-form data)
+/// and <c>Modules.Forms.Application</c> (form-response exports and CRUD).
+///
+/// Wave 6.a.1 (2026-07-01): moved from
+/// <c>Products.LankaEvents.Application.Common</c> to
+/// <c>Products.LankaEvents.Contracts</c> so Forms.Application can consume
+/// without violating Rule 9 (Capability modules reach Products only via
+/// Domain / Contracts, never via Application internals).
+/// </summary>
 
 /// <summary>
 /// Summary DTO for event forms (list view - no questions loaded).

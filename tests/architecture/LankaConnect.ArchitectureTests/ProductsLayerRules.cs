@@ -190,8 +190,9 @@ public sealed class ProductsLayerRules
     /// </remarks>
     [Fact(Skip = "Wave 6.5 target — 14 LankaConnect.Infrastructure services + handlers " +
                  "directly reference Products.LankaEvents.Application. Cleanup via " +
-                 "integration events / outbox per blueprint §7.4. Tracked: Wave 6.X.Y in " +
-                 "MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md. Un-skip when violations are resolved.")]
+                 "integration events / outbox per blueprint §7.4 / D5. Coherent with Rule 9b " +
+                 "Payments deferral. Tracked: Wave 6.5.X.Y in MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md. " +
+                 "Un-skip when violations are resolved as part of Wave 6.5 Outbox cutover.")]
     [Trait("Category", "ArchTest")]
     public void Rule5_LankaConnect_Infrastructure_DoesNotReferenceProducts_Application_Or_Api()
     {
@@ -278,10 +279,26 @@ public sealed class ProductsLayerRules
     /// This is the same cross-module boundary violation surfaced during W5.3.c2 audit (architect
     /// said "Wave-6-or-later cleanup question; not blocking c2"). Tracked: Wave 6.X.Z in Phase A plan.
     /// </remarks>
-    [Fact(Skip = "Wave 6 target — 14 Forms.Application query types directly reference " +
-                 "Products.LankaEvents.Application instead of Domain interfaces / IEventQueries facade. " +
-                 "Same cross-module boundary class as W5.3.c2 audit. Tracked: Wave 6.X.Z in " +
-                 "MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md. Un-skip when violations are resolved.")]
+    /// <remarks>
+    /// Wave 6.a.1 (2026-07-01): un-skipped after resolving all 14 Forms.Application
+    /// query violations. Fix pattern:
+    ///   1. Moved shared DTOs (EventFormDto family + PublicFormResponseDto family +
+    ///      ExportResult + ExportFormat) from Products.LankaEvents.Application.Common
+    ///      to Products.LankaEvents.Contracts (new files EventFormDtos.cs,
+    ///      ExportResult.cs in that assembly).
+    ///   2. Introduced narrow IFormResponseExporter port in Contracts so Forms.Application
+    ///      doesn't need the full ICsvExportService / IExcelExportService (which hold too
+    ///      many Product-internal signatures to publish).
+    ///   3. CsvExportService + ExcelExportService in Infrastructure implement
+    ///      IFormResponseExporter alongside their existing service interfaces.
+    ///   4. Forms.Application.csproj now references Products.LankaEvents.Contracts only.
+    ///
+    /// Payments.Application (11 refund + payment-completed handlers) is scoped to the
+    /// separate Rule 9b Skip-fact below — deferred to Wave 6.5 per architect ruling
+    /// 2026-07-01. Payments violations are the structural twin of Rule 5 legacy-Infrastructure
+    /// services (both need integration-event / Outbox cutover, not direct assembly ref).
+    /// </remarks>
+    [Fact]
     [Trait("Category", "ArchTest")]
     public void Rule9_OtherCapabilityModules_DoNotReferenceProducts_LankaEvents_Internals()
     {
@@ -300,7 +317,11 @@ public sealed class ProductsLayerRules
             typeof(LankaConnect.Modules.Forms.Application.AssemblyMarker).Assembly,
             typeof(LankaConnect.Modules.Forms.Infrastructure.AssemblyMarker).Assembly,
             typeof(LankaConnect.Modules.Payments.Domain.AssemblyMarker).Assembly,
-            typeof(LankaConnect.Modules.Payments.Application.AssemblyMarker).Assembly,
+            // Payments.Application EXCLUDED from Rule 9 main body -- 11 refund/payment-event
+            // handlers reference Products.LankaEvents.Application directly; deferred to
+            // Wave 6.5 per architect ruling 2026-07-01 (structural twin of Rule 5 legacy
+            // services). See Rule 9b Skip-fact below for the enumeration + tracking.
+            // typeof(LankaConnect.Modules.Payments.Application.AssemblyMarker).Assembly,
             typeof(LankaConnect.Modules.Payments.Infrastructure.AssemblyMarker).Assembly,
             typeof(LankaConnect.Modules.Identity.Domain.AssemblyMarker).Assembly,
             typeof(LankaConnect.Modules.Identity.Application.AssemblyMarker).Assembly,
@@ -325,6 +346,59 @@ public sealed class ProductsLayerRules
 
             AssertCompliant(result, assembly.GetName().Name!);
         }
+    }
+
+    /// <summary>
+    /// Rule 9b (Skip-fact) — Payments.Application must NOT reference
+    /// Products.LankaEvents.{Application, Infrastructure, Api} directly.
+    /// Structural twin of Rule 5 (legacy Infrastructure services): both are
+    /// integration-event / Outbox cutover territory.
+    /// </summary>
+    /// <remarks>
+    /// Wave 6.a.1 (2026-07-01): scoped OUT of Rule 9 main body per architect ruling
+    /// 2026-07-01 (Wave 6.5 pull-forward explicitly rejected). Tracked: Wave 6.X.W in
+    /// MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md.
+    ///
+    /// Enumerated violators at Wave 6.a.1 baseline (2026-07-01):
+    ///   Payments.Application.Services:
+    ///     - AddOnRefundService
+    ///     - RefundExecutionService
+    ///     - RefundLineDispatcher
+    ///     - RefundReconciliationService
+    ///     - RefundTotalCalculator
+    ///     - RegistrationRefundService
+    ///   Payments.Application.EventHandlers:
+    ///     - PaymentCompletedEventHandler
+    ///     - RefundCompletedEventHandler
+    ///     - RegistrationPendingPaymentEventHandler
+    ///   Payments.Application.Commands.RefundRequests:
+    ///     - ApproveRefundRequestCommandHandler
+    ///     - CreateOrganizerInitiatedRefundCommandHandler
+    ///   Total: 11 types.
+    ///
+    /// Cleanup via integration events / Outbox per blueprint §7.4 D5 alongside the
+    /// Rule 5 legacy-Infrastructure services (14) and LankaEventsDbContext extraction.
+    /// One coherent Wave 6.5 slice.
+    /// </remarks>
+    [Fact(Skip = "Wave 6.5 target — 11 Payments.Application services + event handlers " +
+                 "directly reference Products.LankaEvents.Application. Cleanup via " +
+                 "integration events / outbox per blueprint §7.4 / D5. Structural twin " +
+                 "of Rule 5 debt. Tracked: Wave 6.X.W in MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md. " +
+                 "Un-skip when violations are resolved as part of Wave 6.5 Outbox cutover.")]
+    [Trait("Category", "ArchTest")]
+    public void Rule9b_PaymentsApplication_DoesNotReferenceProducts_LankaEvents_Internals()
+    {
+        var paymentsApplication = typeof(LankaConnect.Modules.Payments.Application.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(paymentsApplication)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Products.LankaEvents.Application",
+                "LankaConnect.Products.LankaEvents.Infrastructure",
+                "LankaConnect.Products.LankaEvents.Api")
+            .GetResult();
+
+        AssertCompliant(result, paymentsApplication.GetName().Name!);
     }
 
     // ---------- Helpers ----------

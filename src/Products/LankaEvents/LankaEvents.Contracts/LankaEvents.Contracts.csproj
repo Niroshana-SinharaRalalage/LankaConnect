@@ -9,6 +9,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <!-- Wave 6.a.1 (2026-07-01): Forms.Contracts holds FormStatusDto + FormQuestionTypeDto
+         which the moved EventFormDto family uses. Products.Contracts referencing
+         Forms.Contracts is architecturally clean (Contracts referencing Contracts). -->
+    <ProjectReference Include="..\..\..\Modules\Forms\Forms.Contracts\Forms.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

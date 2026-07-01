@@ -1,3 +1,4 @@
+using LankaConnect.Products.LankaEvents.Contracts;
 using LankaConnect.API.Extensions;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateDonation;
 using LankaConnect.Products.LankaEvents.Application.Common;

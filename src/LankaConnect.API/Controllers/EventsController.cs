@@ -1,3 +1,4 @@
+using LankaConnect.Products.LankaEvents.Contracts;
 using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -3428,12 +3429,12 @@ public class EventsController : BaseController<EventsController>
         // Phase 7D.1 Step 17: Added volunteerszip / volunteersexcel for Kind=Volunteers exports
         var exportFormat = format.ToLower() switch
         {
-            "csv" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.Csv,
-            "signuplistszip" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.SignUpListsZip,
-            "signuplistsexcel" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.SignUpListsExcel,
-            "volunteerszip" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.VolunteersZip,
-            "volunteersexcel" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.VolunteersExcel,
-            _ => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.Excel
+            "csv" => LankaConnect.Products.LankaEvents.Contracts.ExportFormat.Csv,
+            "signuplistszip" => LankaConnect.Products.LankaEvents.Contracts.ExportFormat.SignUpListsZip,
+            "signuplistsexcel" => LankaConnect.Products.LankaEvents.Contracts.ExportFormat.SignUpListsExcel,
+            "volunteerszip" => LankaConnect.Products.LankaEvents.Contracts.ExportFormat.VolunteersZip,
+            "volunteersexcel" => LankaConnect.Products.LankaEvents.Contracts.ExportFormat.VolunteersExcel,
+            _ => LankaConnect.Products.LankaEvents.Contracts.ExportFormat.Excel
         };
 
         // Export attendees
@@ -3501,8 +3502,8 @@ public class EventsController : BaseController<EventsController>
 
         var exportFormat = format.ToLowerInvariant() switch
         {
-            "csv" => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.Csv,
-            _ => LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees.ExportFormat.Excel
+            "csv" => LankaConnect.Products.LankaEvents.Contracts.ExportFormat.Csv,
+            _ => LankaConnect.Products.LankaEvents.Contracts.ExportFormat.Excel
         };
 
         var result = await Mediator.Send(

@@ -5,9 +5,8 @@ using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.Products.LankaEvents.Contracts;
 using LankaConnect.Modules.Forms.Application.Mappings;
-using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
@@ -24,21 +23,18 @@ public class ExportFormResponsesQueryHandler
 {
     private readonly IFormRepository _eventFormRepository;
     private readonly IFormResponseRepository _formResponseRepository;
-    private readonly ICsvExportService _csvExportService;
-    private readonly IExcelExportService _excelExportService;
+    private readonly IFormResponseExporter _formResponseExporter;
     private readonly ILogger<ExportFormResponsesQueryHandler> _logger;
 
     public ExportFormResponsesQueryHandler(
         IFormRepository eventFormRepository,
         IFormResponseRepository formResponseRepository,
-        ICsvExportService csvExportService,
-        IExcelExportService excelExportService,
+        IFormResponseExporter formResponseExporter,
         ILogger<ExportFormResponsesQueryHandler> logger)
     {
         _eventFormRepository = eventFormRepository;
         _formResponseRepository = formResponseRepository;
-        _csvExportService = csvExportService;
-        _excelExportService = excelExportService;
+        _formResponseExporter = formResponseExporter;
         _logger = logger;
     }
 
@@ -176,13 +172,13 @@ public class ExportFormResponsesQueryHandler
 
                 if (request.Format == ExportFormat.Excel)
                 {
-                    fileContent = _excelExportService.ExportFormResponses(formDto, responsesDto);
+                    fileContent = _formResponseExporter.ExportFormResponsesToExcel(formDto, responsesDto);
                     fileName = $"form-{request.FormId}-responses-{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx";
                     contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
                 }
                 else // CSV
                 {
-                    fileContent = _csvExportService.ExportFormResponses(formDto, responsesDto);
+                    fileContent = _formResponseExporter.ExportFormResponsesToCsv(formDto, responsesDto);
                     fileName = $"form-{request.FormId}-responses-{DateTime.UtcNow:yyyyMMddHHmmss}.csv";
                     contentType = "text/csv";
                 }

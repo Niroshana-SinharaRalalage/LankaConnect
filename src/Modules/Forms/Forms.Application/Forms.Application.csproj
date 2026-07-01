@@ -21,7 +21,16 @@
       the transition window (see LayeringRules.cs).
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
-    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <!--
+      Wave 6.a.1 (2026-07-01): Forms.Application previously referenced
+      Products.LankaEvents.Application directly (14 query handlers imported
+      EventFormDto family + ExportResult from ...Application.Common /
+      ...Application.Queries.ExportEventAttendees). Rule 9 boundary violation.
+      Fix: those DTOs + ExportResult moved to Products.LankaEvents.Contracts;
+      Forms.Application now references Contracts only. Rule 9 flipped from
+      [Fact(Skip)] to live [Fact] in the same commit.
+    -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

@@ -10,6 +10,7 @@ using CsvHelper;
 using CsvHelper.Configuration;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.Products.LankaEvents.Contracts;
 
 namespace LankaConnect.Infrastructure.Services.Export;
 
@@ -17,9 +18,28 @@ namespace LankaConnect.Infrastructure.Services.Export;
 /// CSV export service implementation using CsvHelper library.
 /// Phase 6A.68 (Option 2): Restored CsvHelper for RFC 4180 compliant CSV generation.
 /// This provides robust handling of special characters, quotes, and newlines.
+///
+/// Wave 6.a.1 (2026-07-01): also implements <see cref="IFormResponseExporter"/>
+/// so Forms.Application can consume form-response export via a narrow Contracts
+/// port without importing Products.LankaEvents.Application.Common.
 /// </summary>
-public class CsvExportService : ICsvExportService
+public class CsvExportService : ICsvExportService, IFormResponseExporter
 {
+    /// <summary>
+    /// Wave 6.a.1 IFormResponseExporter -- CSV branch.
+    /// </summary>
+    public byte[] ExportFormResponsesToCsv(EventFormDetailDto form, FormResponsesPagedDto responses)
+        => ExportFormResponses(form, responses);
+
+    /// <summary>
+    /// Wave 6.a.1 IFormResponseExporter -- Excel branch is a not-supported no-op
+    /// on the CSV service; callers should resolve IFormResponseExporter via the
+    /// Excel service when they want Excel output. DI wiring points IFormResponseExporter
+    /// at the Excel service for the Excel path.
+    /// </summary>
+    byte[] IFormResponseExporter.ExportFormResponsesToExcel(EventFormDetailDto form, FormResponsesPagedDto responses)
+        => throw new NotSupportedException("CsvExportService does not support Excel; register ExcelExportService as IFormResponseExporter for Excel exports.");
+
     public byte[] ExportEventAttendees(EventAttendeesResponse attendees)
     {
         // Phase 6A.68: Use CsvHelper for RFC 4180 compliant CSV generation

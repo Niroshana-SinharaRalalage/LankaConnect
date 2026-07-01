@@ -44,7 +44,11 @@ function Get-LcAnyMetroAreaId {
 function New-LcTaggedThrowawayUser {
     [CmdletBinding()]
     param(
-        [string]$Tag = $(Get-LcCurrentRunTag),
+        # Wave 9.h.10.2b: Get-LcCurrentRunTag lives in Lc-EventFixtures which
+        # AdminUsers/Auth smokes don't import (deliberately, per architect Q1
+        # ruling that AdminUsers shouldn't pull the fat Events module). Fall
+        # back to a locally-generated tag when the helper isn't loaded.
+        [string]$Tag = $(if (Get-Command Get-LcCurrentRunTag -ErrorAction SilentlyContinue) { Get-LcCurrentRunTag } else { "[SMOKE-9h10-$(Get-Date -Format yyyyMMddHHmmss)]" }),
         [string]$Role = 'EventAttendee'
     )
     $shortTag = $Tag.Trim('[]').Replace('SMOKE-', '').Replace('-', '').Substring(0, [Math]::Min(8, $Tag.Length))

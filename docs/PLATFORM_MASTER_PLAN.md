@@ -5,18 +5,18 @@ MACHINE-READABLE STATUS HEADER (grep-friendly; update with every status flip)
 -->
 ```
 CURRENT_PHASE: Phase A
-CURRENT_WAVE: Wave 6 PLANNED (architect-consult pending)
-CURRENT_WAVE_STATUS: PLANNED — Wave 5 + Wave 9 BOTH SHIPPED + CLOSED 2026-06-30. Wave 5 final close: 20 of 20 Wave 5 repositories (100%) smoke-covered via 182 PASS / 0 FAIL / 79 SKIP / 261 total / 69.73% baseline. Wave 9 final close: 13 sub-waves total (9.a-g + 9.h.1/2/3/4/5/7/8). Wave 6 architect-consult unblocked per [[founder-stated-ordering-is-law]] + [[no-skip-without-valid-reason]] full coverage achieved.
-ACTIVE_WORK: Wave 6 architect-consult on scope (ArchTest hardening; 28-rule blueprint §5 target vs 33 current count; plus the 14+14 violators tracked under Wave 6.X.Y/Z + 4 confirmed REAL platform bugs F16/F17/F18/F20 surfaced by Wave 9.h.2)
-ACTIVE_SUB_SLICE: Wave 6 first sub-slice TBD per architect ruling.
-SEQUENCE_AFTER_WAVE_6: Wave 6.5 (Outbox cutover) -- includes LankaEventsDbContext extraction + EF Configurations move + cross-schema FK policy + transitional [Wave6_5TransitionalException] cleanup.
+CURRENT_WAVE: Wave 6 SHIPPED + CLOSED 2026-07-01 — Wave 6.5 PLANNED (scope-shape architect-consult required)
+CURRENT_WAVE_STATUS: SHIPPED — Wave 6 completed in one session across 6.a.1 (Forms Rule 9 debt resolved via Contracts move) + 6.b (Rules 12 + 13 shipped with 20-class baseline JSON gate). Full ArchTest suite: 53 Pass / 4 Skip / 0 Fail. Wave 5 + Wave 9 remain SHIPPED + CLOSED 2026-06-30 with hardening baseline 240/0/24 at 90.91% pass rate. Wave 6.5 NEXT.
+ACTIVE_WORK: Wave 6.5 scope-shape architect-consult BEFORE execution per architect closeout ruling ("that's a big wave and warrants scope-shape review").
+ACTIVE_SUB_SLICE: Wave 6.5 architect consult first; then execution per ruling. Wave 6.5 scope covers: LankaEventsDbContext extraction + EF Configurations move + cross-schema FK policy + Outbox cutover + Rule 5 legacy services (14 violators) + Rule 9b Payments (11 violators) + transitional [Wave6_5TransitionalException] cleanup (20-class baseline shrink) -- one coherent slice per architect ruling.
+SEQUENCE_AFTER_WAVE_6.5: Wave 7 (Frontend mirror) + Wave 7.X.R (Roslyn analyzers for F17/F20 shape -- trigger-based execution on 3rd instance) + Wave 8 (Production cutover).
 WAVE_5_FULLY_CLOSED: SHIPPED 16 commits across 5.0-5.5.d. Verification: 20 OF 20 Wave 5 repositories smoke-covered (100%). Wave 5.3 finance-cluster (Sponsor/Donation/Collection/SponsorshipPackage/AddOnDefinition/AddOnPurchase/RegistrationPayment/RegistrationAddition/Ticket/TicketScanLog/EventNotificationHistory/EventReminder/VenueLayout/SeatHold/SeatReservation/MetroArea) all exercised via Wave 9.c+9.e+9.f+9.h.3+9.h.5+9.h.7+9.h.8. Wave 5.4 Analytics (EventAnalyticsRepository + EventViewRecordRepository) 3/3 PASS via Wave 9.f. EventRepository + RegistrationRepository via Wave 9.a baseline. NO Wave 5 regressions; 4 pre-existing real platform bugs F16/F17/F18/F20 banked for hardening wave.
 WAVE_9_FULLY_CLOSED: SHIPPED 13 sub-waves total: 9.a (Events fa370be0), 9.b (Auth+Identity a9aa000e), 9.c (Venue+ticketing 5ce9e33f), 9.d (Communications 4f0c6103), 9.e (Finance+business 726c93dc), 9.f (Long tail+scenarios+CI hook acefa6c9), 9.g (closeout 0bb95120 LATER REVERTED), 9.h.1 (fixture infrastructure f4861ab6), 9.h.4 (multipart wrapper 98865010), 9.h.2 (findings resolution 7f0494d6), 9.h.3 (mutator coverage 6ae324c2), 9.h.7 (VenueLayouts coverage 84a0e7ad), 9.h.8 (Wave 5 testable repos 18e4cc9d), 9.h.5 (Stripe-mediated repos 9a22a220).
 WAVE_9_h_6_STILL_DEFERRED: 9.h.6 (LC_DISABLE_WEBHOOK_SIG_VALIDATION staging-only + OAuth issuance + inbox-token Lc-Probe.psm1 + smoke@lankaconnect.app mailbox) stays DEFERRED for founder manual UAT. Audit confirmed 9.h.6 surface is auth/comms (not Wave 5 repository writes), so doesn't block Wave 5 close.
 ONGOING_DISCIPLINE: API smoke suite is the per-slice testing mechanism. Run pwsh ./scripts/smoke/Run-Wave9.ps1 after every Wave 6+ slice OR rely on CI hook auto-running on each push to develop.
-ARCHITECT_REVIEW_REQUIRED: YES — Wave 6 scope ruling needed before execution
-LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) -- Wave 5 + Wave 9 FINAL close 2026-06-30 after 20/20 repo coverage achieved
-LAST_UPDATED: 2026-06-30 (Wave 5 + Wave 9 FINAL CLOSE)
+ARCHITECT_REVIEW_REQUIRED: YES — Wave 6.5 scope-shape ruling required BEFORE execution per architect Wave 6 closeout ("big wave; warrants scope-shape review").
+LAST_UPDATED_BY: Planning Agent (Claude Opus 4.7) -- Wave 6 SHIPPED + CLOSED 2026-07-01 (6.a.1 Forms + 6.b Rules 12+13 baseline gate + Wave 7.X.R tracking entry filed)
+LAST_UPDATED: 2026-07-01 (Wave 6 CLOSE)
 ```
 
 # LankaConnect — Platform Master Plan

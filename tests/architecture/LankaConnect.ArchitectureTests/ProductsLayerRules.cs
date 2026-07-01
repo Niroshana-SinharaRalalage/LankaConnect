@@ -1,4 +1,7 @@
+using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Text.Json;
 using NetArchTest.Rules;
 using LankaConnect.BuildingBlocks.Abstractions;
 
@@ -399,6 +402,105 @@ public sealed class ProductsLayerRules
             .GetResult();
 
         AssertCompliant(result, paymentsApplication.GetName().Name!);
+    }
+
+    /// <summary>
+    /// Rule 12 (Wave 6.b) — the set of types decorated with
+    /// <see cref="Wave6_5TransitionalExceptionAttribute"/> MUST be a subset of the
+    /// baseline captured in <c>Wave6_5TransitionalBaseline.json</c>.
+    ///
+    /// Adding new transitional decorations without editing the baseline JSON is
+    /// a rule failure — the JSON edit forces architect consult per Wave 6.b ruling.
+    /// Removals from the baseline (as Wave 6.5 clears the debt one repository at a
+    /// time) are permitted: the SAME PR that removes the attribute decoration also
+    /// removes the class name from the baseline JSON. Atomic change, single review.
+    /// </summary>
+    /// <remarks>
+    /// Wave 6.b (2026-07-01). See <c>README-BASELINE.md</c> in the same folder for
+    /// the discipline documentation.
+    /// </remarks>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Rule12_Wave6_5TransitionalException_BaselineNotExpanded()
+    {
+        // Locate the baseline JSON next to the assembly.
+        var assemblyDir = Path.GetDirectoryName(typeof(ProductsLayerRules).Assembly.Location)!;
+        // Baseline lives in the source tree at
+        //   tests/architecture/LankaConnect.ArchitectureTests/Wave6_5TransitionalBaseline.json
+        // The csproj must copy it to output; walk up from bin/Debug/net8.0 if needed.
+        var candidates = new[]
+        {
+            Path.Combine(assemblyDir, "Wave6_5TransitionalBaseline.json"),
+            Path.Combine(assemblyDir, "..", "..", "..", "Wave6_5TransitionalBaseline.json")
+        };
+        var baselinePath = candidates.FirstOrDefault(File.Exists);
+        Assert.NotNull(baselinePath);
+
+        var baseline = new HashSet<string>(
+            JsonSerializer.Deserialize<string[]>(File.ReadAllText(baselinePath!))
+            ?? Array.Empty<string>(),
+            StringComparer.Ordinal);
+
+        // Enumerate current decorations across the Products.LankaEvents.Infrastructure assembly.
+        var attributeType = typeof(Wave6_5TransitionalExceptionAttribute);
+        var current = new HashSet<string>(
+            InfrastructureAssembly.GetTypes()
+                .Where(t => t.GetCustomAttributes(attributeType, inherit: false).Any())
+                .Select(t => t.FullName!),
+            StringComparer.Ordinal);
+
+        var newAdditions = current.Except(baseline).OrderBy(x => x).ToList();
+        var removals = baseline.Except(current).OrderBy(x => x).ToList();
+
+        // New additions FAIL the test (require architect consult + baseline edit).
+        // Removals PASS (Wave 6.5 progress); they'll be reconciled the next time the
+        // baseline JSON is edited alongside the attribute removal.
+        if (newAdditions.Count > 0)
+        {
+            Assert.Fail(
+                $"Wave 6.5 transitional baseline expansion detected.\n" +
+                $"New [Wave6_5TransitionalException] classes NOT in baseline:\n" +
+                $"  - {string.Join("\n  - ", newAdditions)}\n" +
+                $"Baseline additions REQUIRE architect consult per Wave 6.b ruling.\n" +
+                $"See tests/architecture/LankaConnect.ArchitectureTests/README-BASELINE.md.\n" +
+                $"If you have architect approval, add the FQCN(s) above to the baseline JSON.");
+        }
+    }
+
+    /// <summary>
+    /// Rule 13 (Wave 6.b) — <c>Products.LankaEvents.Infrastructure</c> types that
+    /// are NOT decorated with <see cref="Wave6_5TransitionalExceptionAttribute"/>
+    /// MUST NOT reference <c>LankaConnect.Infrastructure.Data.AppDbContext</c>
+    /// nor the legacy <c>Repository&lt;T&gt;</c> base class. Both dependencies
+    /// exist ONLY under the transitional escape hatch (Rule 12's baseline).
+    /// </summary>
+    /// <remarks>
+    /// Wave 6.b (2026-07-01) composite rule: together with Rule 12, enforces
+    /// "the transitional escape hatch exists, is size-capped at 20 classes, and
+    /// only opens for two specific dependencies (AppDbContext + Repository&lt;T&gt;)."
+    ///
+    /// Any new user of either dependency in Products.LankaEvents.Infrastructure
+    /// (i.e., a NEW class trying to take the same shortcut) is a rule failure,
+    /// forcing the new class either to (a) refactor to the correct Products
+    /// architecture, OR (b) go through the Rule 12 baseline-expansion process
+    /// with architect consult.
+    /// </remarks>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Rule13_Products_Infrastructure_DoesNotReferenceAppDbContextOrRepositoryBase()
+    {
+        var result = Types.InAssembly(InfrastructureAssembly)
+            .That().DoNotHaveCustomAttribute(typeof(Wave6_5TransitionalExceptionAttribute))
+            // Composition-root exclusion (matches Rule 5 pattern):
+            .And().DoNotHaveName("DependencyInjection")
+            .And().DoNotHaveName("LankaEventsModule")
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Infrastructure.Data.AppDbContext",
+                "LankaConnect.Infrastructure.Data.Repositories.Repository`1")
+            .GetResult();
+
+        AssertCompliant(result, "Products.LankaEvents.Infrastructure (non-baseline classes)");
     }
 
     // ---------- Helpers ----------

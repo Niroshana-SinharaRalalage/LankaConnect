@@ -412,9 +412,16 @@ public class EventNotificationEmailJob
             { "EventStartDate", formattedDate },
             { "EventStartTime", formattedTime },
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87+ Fix: Template expects combined EventDateTime
-            { "EventCity", @event.Location?.Address.City ?? string.Empty },
-            { "EventState", @event.Location?.Address.State ?? string.Empty },
-            { "HasLocation", !string.IsNullOrWhiteSpace(@event.Location?.Address.City) && !string.IsNullOrWhiteSpace(@event.Location?.Address.State) },
+            // Wave9.h.10.5 F22 fix: double-`?.` on Address is REQUIRED because Location
+            // can carry a null Address (e.g. events without a physical location or
+            // partially-filled fixtures). Single `?.` on Location only guards Location
+            // being null; when Location is non-null but Address is null, `.City` throws
+            // NRE. Confirmed via staging Hangfire dashboard: 4x EventNotificationEmailJob
+            // failures with NullReferenceException in BuildTemplateData. Contrast the
+            // sibling GetEventLocationString below which does `Location?.Address == null`.
+            { "EventCity", @event.Location?.Address?.City ?? string.Empty },
+            { "EventState", @event.Location?.Address?.State ?? string.Empty },
+            { "HasLocation", !string.IsNullOrWhiteSpace(@event.Location?.Address?.City) && !string.IsNullOrWhiteSpace(@event.Location?.Address?.State) },
             { "EventUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }, // Alias for EventDetailsUrl
             { "IsFree", isFree }, // event-published uses this name
             { "IsPaid", !isFree }, // event-published conditional

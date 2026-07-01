@@ -144,8 +144,9 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                       ?? "See Event Details";
                 var eventUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
                 var eventLocation = GetEventLocationString(@event);
-                var eventCity = @event.Location?.Address.City ?? string.Empty;
-                var eventState = @event.Location?.Address.State ?? string.Empty;
+                // Wave9.h.10.5 F22 fix: double-`?.` on Address (see EventNotificationEmailJob.BuildTemplateData rationale).
+                var eventCity = @event.Location?.Address?.City ?? string.Empty;
+                var eventState = @event.Location?.Address?.State ?? string.Empty;
                 var hasLocation = !string.IsNullOrWhiteSpace(eventCity) && !string.IsNullOrWhiteSpace(eventState);
 
                 // Organizer contact info

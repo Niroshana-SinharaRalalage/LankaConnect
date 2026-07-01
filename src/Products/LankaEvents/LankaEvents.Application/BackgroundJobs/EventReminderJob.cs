@@ -233,7 +233,8 @@ public class EventReminderJob
                             eventTitle: @event.Title?.Value ?? "Untitled Event",
                             eventStartDate: @event.StartDate.GetValueOrDefault(),
                             eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                            eventLocation: @event.Location?.Address.ToString() ?? "Location TBD",
+                            // Wave9.h.10.5 F22 fix: double-`?.` on Address (see EventNotificationEmailJob.BuildTemplateData rationale).
+                            eventLocation: @event.Location?.Address?.ToString() ?? "Location TBD",
                             quantity: registration.Quantity,
                             hoursUntilEvent: hoursUntilEvent,
                             reminderTimeframe: reminderTimeframe,
@@ -475,7 +476,7 @@ public class EventReminderJob
                         eventTitle: @event.Title?.Value ?? "Untitled Event",
                         eventStartDate: @event.StartDate.GetValueOrDefault(),
                         eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                        eventLocation: @event.Location?.Address.ToString() ?? "Location TBD",
+                        eventLocation: @event.Location?.Address?.ToString() ?? "Location TBD",
                         quantity: registration.Quantity,
                         hoursUntilEvent: hoursUntilEvent,
                         reminderTimeframe: reminderTimeframe,

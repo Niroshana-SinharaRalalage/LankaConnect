@@ -329,4 +329,106 @@ public class EventNotificationEmailJobTests
     }
 
     #endregion
+
+    #region Wave 9.h.10.5 F22 fix — null-Address regression tests
+
+    /// <summary>
+    /// Wave 9.h.10.5 F22 regression test (architect-mandated).
+    /// Prior to the fix, EventNotificationEmailJob.BuildTemplateData used
+    /// `@event.Location?.Address.City` (single-`?.` on Location only). When
+    /// Location was non-null but Address was null, `.City` threw
+    /// NullReferenceException, which killed the Hangfire job silently. The fix
+    /// uses double-`?.` — `@event.Location?.Address?.City`.
+    ///
+    /// This test forces Location.Address to null via reflection (since
+    /// EventLocation.Create rejects null Address at line 37) and verifies the
+    /// job proceeds to dispatch emails instead of throwing.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_WithLocationHavingNullAddress_ShouldNotThrowNullReferenceException()
+    {
+        // Arrange
+        var historyId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var organizerId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        var history = EventNotificationHistory.Create(eventId, organizerId, 0).Value;
+        var @event = CreateTestEventWithNullAddress(eventId, organizerId);
+
+        var recipients = new EventNotificationRecipients(
+            new HashSet<string>(),
+            new RecipientBreakdown(0, 0, 0, 0, 0));
+
+        _mockHistoryRepository
+            .Setup(x => x.GetByIdAsync(historyId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(history);
+
+        _mockEventRepository
+            .Setup(x => x.GetByIdAsync(eventId, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(@event);
+
+        _mockRecipientService
+            .Setup(x => x.ResolveRecipientsAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(recipients);
+
+        _mockRegistrationRepository
+            .Setup(x => x.GetByEventAsync(eventId, It.IsAny<CancellationToken>(), It.IsAny<bool>()))
+            .ReturnsAsync(new List<Registration>());
+
+        _mockUserRepository
+            .Setup(x => x.GetEmailsByUserIdsAsync(It.IsAny<List<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
+
+        _mockEmailUrlHelper
+            .Setup(x => x.BuildEventDetailsUrl(eventId))
+            .Returns($"https://test.com/events/{eventId}");
+
+        // Act
+        Func<Task> act = async () => await _job.ExecuteAsync(historyId, CancellationToken.None);
+
+        // Assert — pre-fix this threw NullReferenceException inside BuildTemplateData.
+        // Post-fix the job runs to completion (with 0 recipients so no SendEmail calls).
+        await act.Should().NotThrowAsync<NullReferenceException>(
+            "double-`?.` on Location?.Address?.City must guard both Location and Address null cases");
+    }
+
+    /// <summary>
+    /// Creates a test Event whose Location.Address is null. EventLocation.Create
+    /// rejects null Address, so we force the field via reflection to reproduce
+    /// the persisted-state edge case (EF core rehydration can bypass the factory
+    /// invariant when a DB row has null address columns).
+    /// </summary>
+    private Event CreateTestEventWithNullAddress(Guid id, Guid organizerId)
+    {
+        var title = EventTitle.Create("Test Event (null address)").Value;
+        var description = EventDescription.Create("Test Description").Value;
+        var startDate = DateTime.UtcNow.AddDays(7);
+        var endDate = startDate.AddHours(2);
+        var address = Address.Create("temp", "temp", "CA", "90001", "USA").Value;
+        var location = EventLocation.Create(address).Value;
+
+        // Force Address to null via reflection to simulate rehydration edge case.
+        var addressField = typeof(EventLocation).GetField("<Address>k__BackingField",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        addressField?.SetValue(location, null);
+
+        var @event = Event.Create(
+            title,
+            description,
+            startDate,
+            endDate,
+            organizerId,
+            100,
+            location
+        ).Value;
+
+        var idField = typeof(Event).BaseType?.GetField("<Id>k__BackingField",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        idField?.SetValue(@event, id);
+
+        return @event;
+    }
+
+    #endregion
 }

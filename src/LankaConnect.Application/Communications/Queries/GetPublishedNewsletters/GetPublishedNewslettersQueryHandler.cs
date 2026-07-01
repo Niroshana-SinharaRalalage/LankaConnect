@@ -87,11 +87,13 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
                         .ToListAsync(cancellationToken))
                     : new List<object>().Select(x => new { NewsletterId = Guid.Empty, EmailGroupId = Guid.Empty }).ToList();
 
+                // F18 fix (2026-06-30): use CLR-typed NewsletterMetroAreaLink junction
+                // (W5.2.d-hotfix2). Same fix as F17 in GetNewslettersByCreatorQueryHandler.
                 var metroAreaJunction = dbContext != null
-                    ? await dbContext.Set<Dictionary<string, object>>("newsletter_metro_areas")
-                        .Where(j => newsletterIds.Contains((Guid)j["newsletter_id"]))
-                        .Select(j => new { NewsletterId = (Guid)j["newsletter_id"], MetroAreaId = (Guid)j["metro_area_id"] })
-                        .ToListAsync(cancellationToken)
+                    ? (await dbContext.Set<NewsletterMetroAreaLink>()
+                        .Where(j => newsletterIds.Contains(j.NewsletterId))
+                        .Select(j => new { j.NewsletterId, j.MetroAreaId })
+                        .ToListAsync(cancellationToken))
                     : new List<object>().Select(x => new { NewsletterId = Guid.Empty, MetroAreaId = Guid.Empty }).ToList();
 
                 // Wave 5.4.d.3 (2026-06-22): batch fetch via IEmailGroupQueries (cross-module Contracts).

@@ -78,11 +78,15 @@ public class GetNewslettersByCreatorQueryHandler : IQueryHandler<GetNewslettersB
                         .ToListAsync(cancellationToken))
                     : new List<object>().Select(x => new { NewsletterId = Guid.Empty, EmailGroupId = Guid.Empty }).ToList();
 
+                // F17 fix (2026-06-30): use CLR-typed NewsletterMetroAreaLink junction
+                // (W5.2.d-hotfix2). The old Dictionary<string,object> shared-type access
+                // throws "Cannot create a DbSet for 'Dictionary<string, object>'" at runtime
+                // once the junction is CLR-typed (see [[read-side-bypass-audit]] memory).
                 var metroAreaJunction = dbContext != null
-                    ? await dbContext.Set<Dictionary<string, object>>("newsletter_metro_areas")
-                        .Where(j => newsletterIds.Contains((Guid)j["newsletter_id"]))
-                        .Select(j => new { NewsletterId = (Guid)j["newsletter_id"], MetroAreaId = (Guid)j["metro_area_id"] })
-                        .ToListAsync(cancellationToken)
+                    ? (await dbContext.Set<NewsletterMetroAreaLink>()
+                        .Where(j => newsletterIds.Contains(j.NewsletterId))
+                        .Select(j => new { j.NewsletterId, j.MetroAreaId })
+                        .ToListAsync(cancellationToken))
                     : new List<object>().Select(x => new { NewsletterId = Guid.Empty, MetroAreaId = Guid.Empty }).ToList();
 
                 // Batch load email group entities

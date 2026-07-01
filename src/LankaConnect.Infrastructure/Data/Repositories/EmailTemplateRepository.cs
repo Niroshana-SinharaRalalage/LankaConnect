@@ -55,9 +55,16 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
                 var query = _dbSet.AsNoTracking();
 
                 // Apply filters
-                // Phase 6A.89 Fix: Use EF.Property to access the underlying column directly for comparisons
+                // F21 fix (Wave 9.h.10.1, 2026-07-01): the Phase 6A.89 fix used
+                // EF.Property<string>(t, "category") which is SHADOW property syntax.
+                // EmailTemplate.Category is a REAL property (typed as the
+                // EmailTemplateCategory value object) with a value converter attached
+                // in EmailTemplateConfiguration -- not a shadow. The shadow-property
+                // lookup fails at runtime with "the specified property does not exist
+                // on the entity type." Compare against the value object directly so
+                // EF Core 8 applies the value converter transparently.
                 if (category != null)
-                    query = query.Where(t => EF.Property<string>(t, "category") == category.Value);
+                    query = query.Where(t => t.Category == category);
 
                 if (emailType.HasValue)
                     query = query.Where(t => t.Type == emailType.Value);
@@ -72,10 +79,10 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
                 }
 
                 // Apply pagination
-                // Phase 6A.89 Fix: Use EF.Property to access the underlying column directly
-                // OrderBy(t => t.Category.Value) fails because EF Core can't translate .Value to SQL
+                // F21 fix: ORDER BY against the value-object property; EF Core 8
+                // applies the converter and generates ORDER BY category.
                 var result = await query
-                    .OrderBy(t => EF.Property<string>(t, "category"))
+                    .OrderBy(t => t.Category)
                     .ThenBy(t => t.Name)
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)
@@ -136,9 +143,10 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
                 var query = _dbSet.AsNoTracking();
 
                 // Apply same filters as GetTemplatesAsync
-                // Phase 6A.89 Fix: Use EF.Property to access the underlying column directly for comparisons
+                // F21 fix (Wave 9.h.10.1): compare against the value-object property;
+                // EmailTemplate.Category is real (with converter), not shadow.
                 if (category != null)
-                    query = query.Where(t => EF.Property<string>(t, "category") == category.Value);
+                    query = query.Where(t => t.Category == category);
 
                 if (emailType.HasValue)
                     query = query.Where(t => t.Type == emailType.Value);
@@ -201,22 +209,14 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
                 if (isActive.HasValue)
                     query = query.Where(t => t.IsActive == isActive.Value);
 
-                // Phase 6A.89 Fix: Use EF.Property to access the underlying column directly for GroupBy
+                // F21 fix (Wave 9.h.10.1): GroupBy the value-object property.
+                // EF Core 8 applies the configured converter and emits GROUP BY category.
                 var result = await query
-                    .GroupBy(t => EF.Property<string>(t, "category"))
-                    .Select(g => new { CategoryValue = g.Key, Count = g.Count() })
+                    .GroupBy(t => t.Category)
+                    .Select(g => new { Category = g.Key, Count = g.Count() })
                     .ToListAsync(cancellationToken);
 
-                // Convert to proper EmailTemplateCategory objects
-                var categoryDict = new Dictionary<EmailTemplateCategory, int>();
-                foreach (var item in result)
-                {
-                    var categoryResult = EmailTemplateCategory.FromValue(item.CategoryValue);
-                    if (categoryResult.IsSuccess)
-                    {
-                        categoryDict[categoryResult.Value] = item.Count;
-                    }
-                }
+                var categoryDict = result.ToDictionary(x => x.Category, x => x.Count);
 
                 stopwatch.Stop();
 

@@ -124,7 +124,8 @@ public class RegistrationCancellationEmailParamsTests
         errors.Should().Contain("UserEmail is required");
         errors.Should().Contain("EventId is required");
         errors.Should().Contain("EventTitle is required");
-        errors.Should().Contain("EventStartDate is required");
+        // Wave 9.h.10.5 F24: EventStartDate is no longer a required field.
+        errors.Should().NotContain("EventStartDate is required");
         errors.Should().Contain("CancelledAt is required");
         // KEY ASSERTION: RegistrationId should NOT be in errors
         errors.Should().NotContain("RegistrationId is required");
@@ -267,8 +268,17 @@ public class RegistrationCancellationEmailParamsTests
     }
 
     [Fact]
-    public void Validate_ShouldFailWhenEventStartDateIsDefault()
+    public void Validate_ShouldAcceptDefaultEventStartDateForTbdEvent()
     {
+        // Wave 9.h.10.5 F24: previously this test asserted the OLD behavior
+        // (validator rejected default EventStartDate). The domain now supports
+        // TBD events (Phase 8YA-2) with a null aggregate StartDate; handler
+        // passes `@event.StartDate.GetValueOrDefault()` which becomes default.
+        // ToDictionary emits "Date TBD" / "Time TBD" as the template fallback.
+        //
+        // Renamed + inverted assertion so this test locks the F24 contract in
+        // place (default is now valid, not rejected).
+        //
         // Arrange
         var emailParams = CreateValidParams();
         emailParams.EventStartDate = default;
@@ -276,9 +286,9 @@ public class RegistrationCancellationEmailParamsTests
         // Act
         var isValid = emailParams.Validate(out var errors);
 
-        // Assert
-        isValid.Should().BeFalse();
-        errors.Should().Contain("EventStartDate is required");
+        // Assert -- default EventStartDate must be accepted for TBD events
+        isValid.Should().BeTrue("TBD events (default(DateTime) EventStartDate) must validate successfully -- ToDictionary renders 'Date TBD' fallback");
+        errors.Should().NotContain(e => e.Contains("EventStartDate"), "EventStartDate is no longer a required field after F24");
     }
 
     [Fact]
@@ -397,6 +407,105 @@ public class RegistrationCancellationEmailParamsTests
             cancelledAt: DateTime.UtcNow,
             refundStatus: "No Refund Required"
         );
+    }
+
+    #endregion
+
+    #region Wave 9.h.10.5 F24 -- TBD-event support (nullable EventStartDate handling)
+
+    /// <summary>
+    /// Wave 9.h.10.5 F24 regression test.
+    /// Prior to the fix, Validate() hard-rejected `EventStartDate == default`
+    /// even though the domain supports TBD events (Phase 8YA-2). The handler
+    /// passes `@event.StartDate.GetValueOrDefault()` which becomes
+    /// `DateTime.MinValue` (== default(DateTime)) for TBD events. Every
+    /// cancellation email for a TBD-event registration was killed silently
+    /// at the validator (Pass 1 probe evidence: 1 VALIDATION-FAIL with
+    /// errors="EventStartDate is required").
+    /// </summary>
+    [Fact]
+    public void Validate_WithDefaultEventStartDate_ShouldAcceptTbdEvent()
+    {
+        // Arrange -- simulate a TBD event where StartDate is null on the
+        // aggregate. Handler passes GetValueOrDefault() = default(DateTime).
+        var emailParams = RegistrationCancellationEmailParams.Create(
+            userId: Guid.NewGuid(),
+            userName: "John Doe",
+            userEmail: "john@example.com",
+            registrationId: Guid.NewGuid(),
+            eventId: Guid.NewGuid(),
+            eventTitle: "Test TBD Event",
+            eventStartDate: default,  // Wave 9.h.10.5 F24: TBD event -> Date TBD fallback
+            timeZoneId: "America/New_York",
+            eventLocation: "123 Main St",
+            cancellationReason: "User cancelled",
+            cancelledAt: DateTime.UtcNow,
+            refundStatus: "No Refund Required"
+        );
+
+        // Act
+        var isValid = emailParams.Validate(out var errors);
+
+        // Assert
+        isValid.Should().BeTrue("TBD events (default(DateTime) EventStartDate) must be accepted -- domain supports Phase 8YA-2 TBD events");
+        errors.Should().NotContain(e => e.Contains("EventStartDate"), "EventStartDate is no longer required after Wave 9.h.10.5 F24");
+    }
+
+    [Fact]
+    public void ToDictionary_WithDefaultEventStartDate_ShouldEmitTbdFallback()
+    {
+        // Arrange -- TBD event
+        var emailParams = RegistrationCancellationEmailParams.Create(
+            userId: Guid.NewGuid(),
+            userName: "Jane Doe",
+            userEmail: "jane@example.com",
+            registrationId: Guid.NewGuid(),
+            eventId: Guid.NewGuid(),
+            eventTitle: "TBD Event",
+            eventStartDate: default,
+            timeZoneId: "America/New_York",
+            eventLocation: "TBD Location",
+            cancellationReason: "User cancelled",
+            cancelledAt: DateTime.UtcNow,
+            refundStatus: "No Refund Required"
+        );
+
+        // Act
+        var dict = emailParams.ToDictionary();
+
+        // Assert -- template body renders "Date TBD" / "Time TBD" instead of
+        // an unreplaced placeholder or an epoch-zero timestamp.
+        dict["EventStartDate"].Should().Be("Date TBD");
+        dict["EventStartTime"].Should().Be("Time TBD");
+        dict["EventDateTime"].ToString().Should().Contain("Date TBD");
+    }
+
+    [Fact]
+    public void ToDictionary_WithRealEventStartDate_ShouldEmitFormattedDate()
+    {
+        // Arrange -- real dated event
+        var startDate = new DateTime(2027, 3, 15, 19, 0, 0, DateTimeKind.Utc);
+        var emailParams = RegistrationCancellationEmailParams.Create(
+            userId: Guid.NewGuid(),
+            userName: "Real User",
+            userEmail: "real@example.com",
+            registrationId: Guid.NewGuid(),
+            eventId: Guid.NewGuid(),
+            eventTitle: "Real Event",
+            eventStartDate: startDate,
+            timeZoneId: "America/New_York",
+            eventLocation: "Real Location",
+            cancellationReason: "User cancelled",
+            cancelledAt: DateTime.UtcNow,
+            refundStatus: "No Refund Required"
+        );
+
+        // Act
+        var dict = emailParams.ToDictionary();
+
+        // Assert -- non-default StartDate renders normally (not "TBD")
+        dict["EventStartDate"].ToString().Should().NotBe("Date TBD");
+        dict["EventStartTime"].ToString().Should().NotBe("Time TBD");
     }
 
     #endregion

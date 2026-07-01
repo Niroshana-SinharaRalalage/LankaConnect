@@ -91,8 +91,11 @@ function New-LcFreeEvent {
     $body = @{
         title                    = "$Tag $TitleSuffix"
         description              = 'Auto-created by Wave 9 API Smoke Suite. Safe to delete.'
-        startDateTime            = $startDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
-        endDateTime              = $endDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
+        # Wave 9.h.10.5 F24 fix: field names on CreateEventCommand are `startDate` +
+        # `endDate` (DateTime?). Previously we sent `startDateTime`/`endDateTime`
+        # which don't match any command property, silently creating TBD events.
+        startDate                = $startDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
+        endDate                  = $endDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
         location                 = @{
             venueName  = 'Smoke Venue'
             address    = '100 Main St'
@@ -168,8 +171,11 @@ function New-LcPaidEvent {
     $body = @{
         title                    = "$Tag $TitleSuffix"
         description              = 'Auto-created by Wave 9 API Smoke Suite. Safe to delete.'
-        startDateTime            = $startDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
-        endDateTime              = $endDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
+        # Wave 9.h.10.5 F24 fix: field names on CreateEventCommand are `startDate` +
+        # `endDate` (DateTime?). Previously we sent `startDateTime`/`endDateTime`
+        # which don't match any command property, silently creating TBD events.
+        startDate                = $startDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
+        endDate                  = $endDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
         location                 = @{
             venueName  = 'Smoke Venue'
             address    = '100 Main St'

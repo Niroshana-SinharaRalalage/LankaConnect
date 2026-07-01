@@ -226,9 +226,20 @@ public class RegistrationCancellationEmailParams : IEmailParameters
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
-        // Format date and time separately for backward compatibility
-        var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
-        var formattedTime = EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId);
+        // Wave 9.h.10.5 F24 fix: TBD events have a null StartDate on the aggregate
+        // (Phase 8YA-2 TBD-event support). Handler passes
+        // `@event.StartDate.GetValueOrDefault()` which becomes DateTime.MinValue
+        // for TBD events; the OLD validator hard-rejected default(DateTime) and
+        // killed template-event-registration-cancellation dispatch entirely (Pass
+        // 1 probe evidence: 1 VALIDATION-FAIL "EventStartDate is required" against
+        // a smoke fixture whose event body sent `startDateTime` instead of
+        // `startDate`, producing a TBD event by field-name mismatch). Rendering
+        // "Date TBD" is the correct fallback for TBD events; the sibling helper
+        // pattern already exists at EventNotificationEmailJob.cs BuildTemplateData
+        // where `Date TBD` is emitted when StartDate is unavailable.
+        var isTbd = EventStartDate == default;
+        var formattedDate = isTbd ? "Date TBD" : EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
+        var formattedTime = isTbd ? "Time TBD" : EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId);
 
         var dict = new Dictionary<string, object>
         {
@@ -328,8 +339,12 @@ public class RegistrationCancellationEmailParams : IEmailParameters
         if (string.IsNullOrWhiteSpace(EventTitle))
             errors.Add("EventTitle is required");
 
-        if (EventStartDate == default)
-            errors.Add("EventStartDate is required");
+        // Wave 9.h.10.5 F24 fix: EventStartDate is OPTIONAL. TBD events legitimately
+        // exist in the domain (Phase 8YA-2 TBD-event support). When null on the
+        // aggregate, ToDictionary emits "Date TBD" / "Time TBD" as the template
+        // fallback. Rejecting default(DateTime) at validation-time contradicted
+        // this design and silently killed cancellation emails for TBD events.
+        // Previously: if (EventStartDate == default) errors.Add("EventStartDate is required");
 
         if (CancelledAt == default)
             errors.Add("CancelledAt is required");

@@ -216,7 +216,14 @@ public class EmailTemplateRepository : Repository<EmailTemplate>, IEmailTemplate
                     .Select(g => new { Category = g.Key, Count = g.Count() })
                     .ToListAsync(cancellationToken);
 
-                var categoryDict = result.ToDictionary(x => x.Category, x => x.Count);
+                // Fold duplicates in memory: EmailTemplateCategory.FromDatabase falls
+                // back to `System` for any raw DB value that doesn't match a canonical
+                // singleton. Multiple SQL groups can therefore materialize to the same
+                // VO (e.g. `System` + a legacy value both collapse to System), which
+                // would collide in ToDictionary. Sum the counts instead.
+                var categoryDict = result
+                    .GroupBy(x => x.Category)
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Count));
 
                 stopwatch.Stop();
 

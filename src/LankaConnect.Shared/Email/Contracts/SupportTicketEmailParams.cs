@@ -193,8 +193,16 @@ public class SupportTicketEmailParams : IEmailParameters
     {
         errors = new List<string>();
 
-        if (UserId == Guid.Empty)
-            errors.Add("UserId is required");
+        // Wave 9.h.10.5 F23 fix: UserId is OPTIONAL for anonymous contact-form
+        // submissions. `ContactController.SubmitContact` is [AllowAnonymous] and
+        // `CreateSupportTicketCommandHandler.cs:128` intentionally passes
+        // `userId: Guid.Empty` when the submitter isn't authenticated (comment
+        // there: "Contact form tickets may not have user IDs"). The previous
+        // hard-reject on Guid.Empty here contradicted that domain rule and killed
+        // every template-support-ticket-confirmation dispatch for anonymous
+        // submissions (Pass 1 probe evidence: 4 VALIDATION-FAIL with errors=
+        // "UserId is required"). ToDictionary does not emit "UserId" so template
+        // rendering is unaffected -- the check was validator-only invariant.
 
         if (string.IsNullOrWhiteSpace(UserName))
             errors.Add("UserName is required");

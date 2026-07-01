@@ -142,6 +142,14 @@ function Test-AddOnsMutatorsFlow {
         }
     }
 
+    # Wave 9.h.10.4 gap-close: DELETE definition image was missing from coverage
+    if ($script:addOnDefId) {
+        Test-LcEndpoint -Report $Report -Section 'addons-mutators' -TestName 'delete add-on definition image' -Endpoint 'DELETE /api/events/{eventId}/add-ons/{definitionId}/image' -Action {
+            $r = Invoke-LcDelete -Path "/api/events/$eventId/add-ons/$($script:addOnDefId)/image"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    }
+
     # Wave 9.h.5: Stripe purchase endpoints DO work - they return 200 with a Stripe
     # CHECKOUT SESSION URL (cs_test_...) and write the pending AddOnPurchase record.
     # We don't need to complete the Stripe flow to verify the W5.3 repo write path.

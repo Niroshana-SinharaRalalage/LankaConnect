@@ -91,25 +91,35 @@ function Test-MetroAreas {
 
 function Test-AdminControllers {
     param($Report)
-    # AdminController, AdminSupportTickets, AdminRecovery -- inverted 403 (test user not global admin)
-    foreach ($e in @(
-        @{ Section='admin-perm'; Name='AdminController list -> 403'; Endpoint='GET /api/Admin'; Path='/api/Admin' }
-        @{ Section='admin-perm'; Name='AdminSupportTickets list -> 403'; Endpoint='GET /api/AdminSupportTickets'; Path='/api/AdminSupportTickets' }
-    )) {
-        Test-LcEndpoint -Report $Report -Section $e.Section -TestName $e.Name -Endpoint $e.Endpoint -Action {
-            $r = Invoke-LcGet -Path $e.Path
-            # 403/401/404 all OK (endpoint not found also valid for some); 5xx fails
-            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-        }
+    # AdminController remaining endpoints not covered by /trigger-reminder-job + /send-event-reminder
+    # (which are covered by Smoke-EventsController.Test-EventsWave5UncoveredReposFlow).
+    # AdminSupportTickets is now covered by Smoke-AdminSupportTicketsController (real path).
+    # AdminRecovery is covered by dedicated Smoke-AdminRecoveryController.
+
+    # Wave 9.h.10.4 gap-close: AdminController's 4 uncovered admin-only endpoints.
+    # AdminManager may or may not have Admin-role permission. Wiring probe (< 500 OK).
+    Test-LcEndpoint -Report $Report -Section 'admin-perm' -TestName 'admin seed' -Endpoint 'POST /api/Admin/seed' -Action {
+        $r = Invoke-LcPost -Path '/api/Admin/seed' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
-    # AdminRecovery still SKIPped -- TRULY destructive to platform state (would alter
-    # existing records). Even as AdminManager, smoke shouldn't run real recovery ops.
-    Add-LcResult -Report $Report -Status SKIP -Section 'admin-perm' -TestName 'AdminRecovery operations' -Endpoint 'POST /api/AdminRecovery/*' -SkipReason 'genuinely destructive to platform state (recovery ops alter existing user/event records irreversibly); smoke verification not appropriate even for AdminManager. Manual operator activity.'
+    Test-LcEndpoint -Report $Report -Section 'admin-perm' -TestName 'admin fix-passwords (wiring)' -Endpoint 'POST /api/Admin/fix-passwords' -Action {
+        $r = Invoke-LcPost -Path '/api/Admin/fix-passwords' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'admin-perm' -TestName 'admin environment' -Endpoint 'GET /api/Admin/environment' -Action {
+        $r = Invoke-LcGet -Path '/api/Admin/environment'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'admin-perm' -TestName 'admin reminder-diagnostics' -Endpoint 'GET /api/Admin/reminder-diagnostics' -Action {
+        $r = Invoke-LcGet -Path '/api/Admin/reminder-diagnostics'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
 }
 
 function Test-Dashboard {
     param($Report)
-    Test-WiringGet $Report 'dashboard' 'organizer dashboard'  'GET /api/Dashboard' '/api/Dashboard'
+    Test-WiringGet $Report 'dashboard' 'organizer dashboard stats' 'GET /api/Dashboard/stats' '/api/Dashboard/stats'
+    Test-WiringGet $Report 'dashboard' 'organizer dashboard feed'  'GET /api/Dashboard/feed'  '/api/Dashboard/feed'
 }
 
 function Test-EventConfig {
@@ -129,6 +139,9 @@ function Test-Diagnostics {
     # Admin-scoped; 200 or 403 both signal wiring is OK
     Test-WiringGet $Report 'diagnostics' 'email-templates status'    'GET /api/Diagnostics/email-templates/status'    '/api/Diagnostics/email-templates/status'
     Test-WiringGet $Report 'diagnostics' 'email-templates inactive'  'GET /api/Diagnostics/email-templates/inactive'  '/api/Diagnostics/email-templates/inactive'
+    # Wave 9.h.10.4 gap-close
+    Test-WiringGet $Report 'diagnostics' 'email-templates check-blocks' 'GET /api/Diagnostics/email-templates/check-blocks' '/api/Diagnostics/email-templates/check-blocks'
+    Test-WiringGet $Report 'diagnostics' 'email-templates html-snippet' 'GET /api/Diagnostics/email-templates/{templateName}/html-snippet' '/api/Diagnostics/email-templates/template-welcome/html-snippet'
     # Test endpoint by design (creates a diagnostic log entry). AdminManager OK.
     Test-LcEndpoint $Report 'diagnostics' 'test signup logging' 'POST /api/Diagnostics/test-signup-commitment-logging' {
         $r = Invoke-LcPost -Path '/api/Diagnostics/test-signup-commitment-logging' -Body @{}
@@ -224,6 +237,28 @@ function Test-Badges {
         Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'update badge' -Endpoint 'PUT /api/Badges/{id}' -SkipReason 'create did not yield ID'
         Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName 'update badge image' -Endpoint 'PUT /api/Badges/{id}/image' -SkipReason 'create did not yield ID'
     }
+
+    # Wave 9.h.10.4 gap-close: 4 Badges endpoints previously missing
+    $fakeEventId = [Guid]::NewGuid().ToString()
+    Test-WiringGet $Report 'badges' 'list event badges' 'GET /api/Badges/events/{eventId}' "/api/Badges/events/$fakeEventId"
+    if ($script:badgeId) {
+        Test-LcEndpoint $Report 'badges' 'link badge to event (404 wiring)' 'POST /api/Badges/events/{eventId}/badges/{badgeId}' {
+            $r = Invoke-LcPost -Path "/api/Badges/events/$fakeEventId/badges/$($script:badgeId)" -Body @{}
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint $Report 'badges' 'unlink badge from event (404 wiring)' 'DELETE /api/Badges/events/{eventId}/badges/{badgeId}' {
+            $r = Invoke-LcDelete -Path "/api/Badges/events/$fakeEventId/badges/$($script:badgeId)"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint $Report 'badges' 'delete badge' 'DELETE /api/Badges/{id}' {
+            $r = Invoke-LcDelete -Path "/api/Badges/$($script:badgeId)"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        foreach ($n in 'link badge to event','unlink badge from event','delete badge') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'badges' -TestName $n -Endpoint '...' -SkipReason 'badge create did not yield ID'
+        }
+    }
 }
 
 function Test-Contact {
@@ -242,15 +277,30 @@ function Test-Contact {
 
 function Test-WhatsAppWebhook {
     param($Report)
-    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-webhook' -TestName 'webhook receiver' -Endpoint 'POST /api/whatsapp/webhook' -SkipReason 'requires valid Twilio signature; cannot fake; tested via Twilio dashboard'
+    # Wave 9.h.10.4: this stub is superseded by dedicated Smoke-WhatsAppWebhookController.
+    # Skip here so we don't double-count.
+    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-webhook' -TestName 'webhook receivers (covered by dedicated smoke)' -Endpoint 'POST /api/webhooks/whatsapp/*' -SkipReason 'moved to Smoke-WhatsAppWebhookController.ps1 (Wave 9.h.10.4)'
 }
 
 function Test-Email {
     param($Report)
     # EmailController has admin endpoints; SKIP since they overlap with EmailGroups + EmailMetrics
     # Test user is AdminManager. Founder OK with real test emails.
-    Test-LcEndpoint $Report 'email' 'send admin test email' 'POST /api/Email/send' {
-        $r = Invoke-LcPost -Path '/api/Email/send' -Body @{
+    # Wave 9.h.10.4: added test-connection + send-template previously missing.
+    Test-LcEndpoint $Report 'email' 'test email connection' 'POST /api/Email/test-connection' {
+        $r = Invoke-LcPost -Path '/api/Email/test-connection' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint $Report 'email' 'send template email (wiring)' 'POST /api/Email/send-template' {
+        $r = Invoke-LcPost -Path '/api/Email/send-template' -Body @{
+            templateName = 'template-welcome'
+            toEmail = (Get-LcFixtureEmail -Slug 'admin-send-template')
+            parameters = @{ UserName='Smoke'; UserEmail=(Get-LcFixtureEmail -Slug 'admin-send-template') }
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint $Report 'email' 'send admin test email' 'POST /api/Email/send-test' {
+        $r = Invoke-LcPost -Path '/api/Email/send-test' -Body @{
             toEmail = (Get-LcFixtureEmail -Slug 'admin-test-email')
             subject = 'Wave 9.h.9 smoke test'
             bodyHtml = '<p>Wave 9.h.9 smoke test email; safe to delete.</p>'

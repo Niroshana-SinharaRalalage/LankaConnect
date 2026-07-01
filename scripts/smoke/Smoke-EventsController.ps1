@@ -599,6 +599,824 @@ function Test-EventsWave5UncoveredReposFlow {
     Remove-LcFixturesByTag | Out-Null
 }
 
+# ============================================================================
+# Wave 9.h.10.4 GAP-CLOSE SUB-SECTIONS (added 2026-07-01)
+# 15 new sub-sections covering the 96 previously-uncovered EventsController
+# endpoints. Every sub-section wrapped in own try/catch by orchestrator.
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Sub-section: extra-reads -- read endpoints not in crud-read/list-and-filter
+# Endpoints: search, check-slug, by-slug/{slug}, nearby, featured,
+#            allowed-registration-modes, my-rsvps, upcoming,
+#            registrations/{registrationId}
+# ----------------------------------------------------------------------------
+function Test-EventsExtraReadsFlow {
+    param([Parameter(Mandatory)]$Report)
+    Test-LcEndpoint -Report $Report -Section 'extra-reads' -TestName 'search events' -Endpoint 'GET /api/Events/search' -Action {
+        $r = Invoke-LcGet -Path '/api/Events/search?query=smoke&pageNumber=1&pageSize=5'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'extra-reads' -TestName 'check slug availability' -Endpoint 'GET /api/Events/check-slug' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/check-slug?slug=smoke-9h10-$(Get-Random -Maximum 99999)"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'extra-reads' -TestName 'get event by vanity slug (404 wiring)' -Endpoint 'GET /api/Events/by-slug/{slug}' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/by-slug/nonexistent-slug-$(Get-Random -Maximum 99999)" -Bearer $null
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'extra-reads' -TestName 'nearby events' -Endpoint 'GET /api/Events/nearby' -Action {
+        $r = Invoke-LcGet -Path '/api/Events/nearby?latitude=40.7128&longitude=-74.0060&radiusKm=50'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'extra-reads' -TestName 'featured events' -Endpoint 'GET /api/Events/featured' -Action {
+        $r = Invoke-LcGet -Path '/api/Events/featured?count=5'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'extra-reads' -TestName 'allowed registration modes' -Endpoint 'GET /api/Events/allowed-registration-modes' -Action {
+        $r = Invoke-LcGet -Path '/api/Events/allowed-registration-modes'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'extra-reads' -TestName 'my rsvps' -Endpoint 'GET /api/Events/my-rsvps' -Action {
+        $r = Invoke-LcGet -Path '/api/Events/my-rsvps?pageNumber=1&pageSize=5'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'extra-reads' -TestName 'upcoming events' -Endpoint 'GET /api/Events/upcoming' -Action {
+        $r = Invoke-LcGet -Path '/api/Events/upcoming?count=5'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    $fakeReg = [Guid]::NewGuid().ToString()
+    Test-LcEndpoint -Report $Report -Section 'extra-reads' -TestName 'registration detail (404 wiring)' -Endpoint 'GET /api/Events/registrations/{registrationId}' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/registrations/$fakeReg"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: event-lifecycle -- state-transition mutators
+# Endpoints: submit, cancel event (organizer, FIRES template-event-cancellation-notifications),
+#            postpone, convert-registration-mode
+# ----------------------------------------------------------------------------
+function Test-EventsLifecycleFlow {
+    param([Parameter(Mandatory)]$Report)
+    $tag = Get-LcCurrentRunTag
+
+    # Fixture: create a draft event we can submit -> cancel -> postpone
+    $fix = New-LcFreeEvent -TitleSuffix 'lifecycle'
+    if (-not $fix.Success) {
+        foreach ($n in 'submit for approval','cancel event (FIRES template-event-cancellation-notifications)','postpone event','convert registration mode') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'event-lifecycle' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+
+    Test-LcEndpoint -Report $Report -Section 'event-lifecycle' -TestName 'submit for approval' -Endpoint 'POST /api/Events/{id}/submit' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/submit" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    # Publish first so cancel-broadcast has attendees
+    Publish-LcEvent -EventId $eventId | Out-Null
+
+    # Register founder as attendee so cancel-event broadcast has a recipient
+    $rsvp = Invoke-LcPost -Path "/api/Events/$eventId/rsvp" -Body @{}
+    if ($rsvp.StatusCode -ge 500) { Write-Host "note: rsvp pre-cancel HTTP $($rsvp.StatusCode)" }
+
+    Test-LcEndpoint -Report $Report -Section 'event-lifecycle' -TestName 'cancel event (FIRES template-event-cancellation-notifications)' -Endpoint 'POST /api/Events/{id}/cancel' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/cancel" -Body @{
+            reason = "$tag Wave 9.h.10.4 smoke cancellation"
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    # Postpone + convert-registration-mode: exercise wiring on a fresh event
+    $fix2 = New-LcFreeEvent -TitleSuffix 'lifecycle2'
+    if ($fix2.Success) {
+        $eventId2 = $fix2.EventId
+        Test-LcEndpoint -Report $Report -Section 'event-lifecycle' -TestName 'postpone event' -Endpoint 'POST /api/Events/{id}/postpone' -Action {
+            $r = Invoke-LcPost -Path "/api/Events/$eventId2/postpone" -Body @{
+                newStartDate = (Get-Date).AddDays(30).ToString('o')
+                reason       = 'Wave 9.h.10.4 smoke postpone'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'event-lifecycle' -TestName 'convert registration mode' -Endpoint 'POST /api/Events/{id}/convert-registration-mode' -Action {
+            $r = Invoke-LcPost -Path "/api/Events/$eventId2/convert-registration-mode" -Body @{
+                targetMode = 'RsvpOnly'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'event-lifecycle' -TestName 'postpone event' -Endpoint 'POST /api/Events/{id}/postpone' -SkipReason 'second fixture failed'
+        Add-LcResult -Report $Report -Status SKIP -Section 'event-lifecycle' -TestName 'convert registration mode' -Endpoint 'POST /api/Events/{id}/convert-registration-mode' -SkipReason 'second fixture failed'
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: event-updates -- PUT mutators
+# Endpoints: PUT /{id}, PUT /organizer-contact, PUT /max-attendees-per-registration
+# ----------------------------------------------------------------------------
+function Test-EventsUpdatesFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'updates'
+    if (-not $fix.Success) {
+        foreach ($n in 'update event','update organizer contact','update max attendees per registration') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'event-updates' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    $tag = Get-LcCurrentRunTag
+
+    Test-LcEndpoint -Report $Report -Section 'event-updates' -TestName 'update event' -Endpoint 'PUT /api/Events/{id}' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId" -Body @{
+            title       = "$tag SmokeEvent (updated)"
+            description = 'Wave 9.h.10.4 update smoke'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'event-updates' -TestName 'update organizer contact' -Endpoint 'PUT /api/Events/{id}/organizer-contact' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/organizer-contact" -Body @{
+            name  = "$tag Organizer"
+            email = (Get-LcFixtureEmail -Slug 'organizer-contact' -Suffix $tag)
+            phone = '+15555550109'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'event-updates' -TestName 'update max attendees per registration' -Endpoint 'PUT /api/Events/{id}/max-attendees-per-registration' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/max-attendees-per-registration" -Body @{ maxAttendees = 4 }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: registration-anonymous
+# Endpoints: register-anonymous (FIRES template-free-event-registration-confirmation
+#            for anonymous attendee)
+# ----------------------------------------------------------------------------
+function Test-EventsAnonymousRegistrationFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'anon-reg'
+    if (-not $fix.Success) {
+        Add-LcResult -Report $Report -Status SKIP -Section 'registration-anon' -TestName 'anonymous register' -Endpoint 'POST /api/Events/{id}/register-anonymous' -SkipReason 'fixture event create failed'
+        return
+    }
+    $eventId = $fix.EventId
+    Publish-LcEvent -EventId $eventId | Out-Null
+
+    Test-LcEndpoint -Report $Report -Section 'registration-anon' -TestName 'anonymous register (FIRES template-free-event-registration-confirmation)' -Endpoint 'POST /api/Events/{id}/register-anonymous' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/register-anonymous" -Bearer $null -Body @{
+            firstName = 'Smoke'
+            lastName  = 'Anon'
+            email     = (Get-LcFixtureEmail -Slug 'anon-registration' -Suffix (Get-Random -Maximum 99999))
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: registration-extras -- PUT rsvp/my-registration + ticket resend/PDF paths
+# Endpoints: PUT /{id}/rsvp, PUT /{eventId}/my-registration, resend-ticket,
+#            rsvp/withdraw-refund, force-cancel-stuck-refund,
+#            my-registration/ticket (GET/PDF/resend-email)
+# ----------------------------------------------------------------------------
+function Test-EventsRegistrationExtrasFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'reg-extras'
+    if (-not $fix.Success) {
+        foreach ($n in 'PUT /rsvp','PUT /my-registration','resend ticket','rsvp/withdraw-refund','force-cancel-stuck-refund','my-registration ticket JSON','my-registration ticket PDF','resend confirmation email') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'registration-extras' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    Publish-LcEvent -EventId $eventId | Out-Null
+    Invoke-LcPost -Path "/api/Events/$eventId/rsvp" -Body @{} | Out-Null
+
+    Test-LcEndpoint -Report $Report -Section 'registration-extras' -TestName 'update rsvp' -Endpoint 'PUT /api/Events/{id}/rsvp' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/rsvp" -Body @{ note = 'wave 9h10.4 update' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'registration-extras' -TestName 'update my registration' -Endpoint 'PUT /api/Events/{eventId}/my-registration' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/my-registration" -Body @{ note = 'wave 9h10.4 my-reg update' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'registration-extras' -TestName 'get my registration ticket (JSON)' -Endpoint 'GET /api/Events/{eventId}/my-registration/ticket' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/my-registration/ticket"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'registration-extras' -TestName 'get my registration ticket (PDF)' -Endpoint 'GET /api/Events/{eventId}/my-registration/ticket/pdf' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/my-registration/ticket/pdf"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'registration-extras' -TestName 'resend my registration ticket email' -Endpoint 'POST /api/Events/{eventId}/my-registration/ticket/resend-email' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/my-registration/ticket/resend-email" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    # RSVP withdraw-refund + force-cancel-stuck-refund only meaningful on paid registrations;
+    # fire wiring probe with 404-expected
+    $fakeReg = [Guid]::NewGuid().ToString()
+    Test-LcEndpoint -Report $Report -Section 'registration-extras' -TestName 'rsvp withdraw-refund (wiring)' -Endpoint 'POST /api/Events/{id}/rsvp/withdraw-refund' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/rsvp/withdraw-refund" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'registration-extras' -TestName 'force cancel stuck refund (wiring)' -Endpoint 'POST /api/Events/{eventId}/registrations/{registrationId}/force-cancel-stuck-refund' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/registrations/$fakeReg/force-cancel-stuck-refund" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'registration-extras' -TestName 'resend ticket (wiring)' -Endpoint 'POST /api/Events/registrations/{registrationId}/resend-ticket' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/registrations/$fakeReg/resend-ticket" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: add-attendees -- Add-Only Attendees flow
+# Endpoints: calculate-addition, add-headcount, add-attendees (FIRES
+#            template-attendees-added-confirmation), pending-addition GET/DELETE
+# ----------------------------------------------------------------------------
+function Test-EventsAddAttendeesFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'add-attend'
+    if (-not $fix.Success) {
+        foreach ($n in 'calculate addition','add headcount','add attendees (FIRES template-attendees-added-confirmation)','get pending addition','delete pending addition') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'add-attendees' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    Publish-LcEvent -EventId $eventId | Out-Null
+    $rsvp = Invoke-LcPost -Path "/api/Events/$eventId/rsvp" -Body @{}
+    if ($rsvp.StatusCode -ge 500) {
+        foreach ($n in 'calculate addition','add headcount','add attendees','get pending addition','delete pending addition') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'add-attendees' -TestName $n -Endpoint '...' -SkipReason 'rsvp fixture failed'
+        }
+        return
+    }
+    # Read my-registration to get the registrationId
+    $myReg = Invoke-LcGet -Path "/api/Events/$eventId/my-registration"
+    $regId = if ($myReg.Body.id) { $myReg.Body.id } elseif ($myReg.Body.registrationId) { $myReg.Body.registrationId } else { $null }
+    if (-not $regId) {
+        foreach ($n in 'calculate addition','add headcount','add attendees','get pending addition','delete pending addition') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'add-attendees' -TestName $n -Endpoint '...' -SkipReason "cannot resolve registrationId (HTTP $($myReg.StatusCode))"
+        }
+        return
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'add-attendees' -TestName 'calculate addition cost' -Endpoint 'POST /api/Events/registrations/{registrationId}/calculate-addition' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/registrations/$regId/calculate-addition" -Body @{ additionalAttendees = 1 }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'add-attendees' -TestName 'add headcount' -Endpoint 'POST /api/Events/registrations/{registrationId}/add-headcount' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/registrations/$regId/add-headcount" -Body @{ additionalAttendees = 1 }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'add-attendees' -TestName 'add attendees (FIRES template-attendees-added-confirmation)' -Endpoint 'POST /api/Events/registrations/{registrationId}/add-attendees' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/registrations/$regId/add-attendees" -Body @{
+            attendees = @(
+                @{ firstName = 'Extra'; lastName = 'Attendee1'; email = (Get-LcFixtureEmail -Slug 'add-attendee' -Suffix '1') }
+            )
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'add-attendees' -TestName 'get pending addition' -Endpoint 'GET /api/Events/registrations/{registrationId}/pending-addition' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/registrations/$regId/pending-addition"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'add-attendees' -TestName 'delete pending addition' -Endpoint 'DELETE /api/Events/registrations/{registrationId}/pending-addition' -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/registrations/$regId/pending-addition"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: refund-requests -- refund-request lifecycle (fires 6 refund templates)
+# Endpoints: POST /refund-requests, GET /refund-requests/me,
+#            POST /refund-requests/me/withdraw, GET /refund-requests,
+#            POST /refund-requests/organizer-initiated,
+#            POST /refund-requests/{id}/approve, POST /refund-requests/{id}/reject
+# NOTE: only attendee-initiated request creation delivers on free event; paid
+#       events + full approval lifecycle require Stripe. Wiring-mode for now.
+# ----------------------------------------------------------------------------
+function Test-EventsRefundRequestsFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'refund-req'
+    if (-not $fix.Success) {
+        foreach ($n in 'create refund request','get my refund requests','withdraw my refund request','list refund requests','organizer-initiated refund','approve refund request','reject refund request') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'refund-requests' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    Publish-LcEvent -EventId $eventId | Out-Null
+
+    Test-LcEndpoint -Report $Report -Section 'refund-requests' -TestName 'create refund request (wiring, free event may 400)' -Endpoint 'POST /api/Events/{eventId}/refund-requests' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/refund-requests" -Body @{
+            reason    = 'Wave 9.h.10.4 smoke refund request'
+            lineItems = @()
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'refund-requests' -TestName 'get my refund requests' -Endpoint 'GET /api/Events/{eventId}/refund-requests/me' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/refund-requests/me"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'refund-requests' -TestName 'withdraw my refund request (FIRES template-refund-withdrawn)' -Endpoint 'POST /api/Events/{eventId}/refund-requests/me/withdraw' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/refund-requests/me/withdraw" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'refund-requests' -TestName 'list all refund requests (organizer view)' -Endpoint 'GET /api/Events/{eventId}/refund-requests' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/refund-requests"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'refund-requests' -TestName 'organizer-initiated refund (wiring, needs paid reg)' -Endpoint 'POST /api/Events/{eventId}/refund-requests/organizer-initiated' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/refund-requests/organizer-initiated" -Body @{
+            registrationId = ([Guid]::NewGuid().ToString())
+            reason         = 'Wave 9.h.10.4 smoke organizer-initiated'
+            lineItems      = @()
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    $fakeRr = [Guid]::NewGuid().ToString()
+    Test-LcEndpoint -Report $Report -Section 'refund-requests' -TestName 'approve refund request (404 wiring, FIRES template-refund-decision on real match)' -Endpoint 'POST /api/Events/{eventId}/refund-requests/{refundRequestId}/approve' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/refund-requests/$fakeRr/approve" -Body @{
+            organizerNotes = 'wave 9h10.4 approve'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'refund-requests' -TestName 'reject refund request (404 wiring, FIRES template-refund-rejected on real match)' -Endpoint 'POST /api/Events/{eventId}/refund-requests/{refundRequestId}/reject' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/refund-requests/$fakeRr/reject" -Body @{
+            organizerNotes = 'wave 9h10.4 reject'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: event-admin-approval -- global admin approval flow
+# Endpoints: GET /admin/pending, POST /admin/{id}/approve, POST /admin/{id}/reject
+# (fires template-event-approval on approve to the organizer)
+# ----------------------------------------------------------------------------
+function Test-EventsAdminApprovalFlow {
+    param([Parameter(Mandatory)]$Report)
+    Test-LcEndpoint -Report $Report -Section 'event-admin-approval' -TestName 'list pending events' -Endpoint 'GET /api/Events/admin/pending' -Action {
+        $r = Invoke-LcGet -Path '/api/Events/admin/pending?pageNumber=1&pageSize=5'
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    $fakeEventId = [Guid]::NewGuid().ToString()
+    Test-LcEndpoint -Report $Report -Section 'event-admin-approval' -TestName 'admin approve event (404 wiring, FIRES template-event-approval on real match)' -Endpoint 'POST /api/Events/admin/{id}/approve' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/admin/$fakeEventId/approve" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'event-admin-approval' -TestName 'admin reject event (404 wiring)' -Endpoint 'POST /api/Events/admin/{id}/reject' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/admin/$fakeEventId/reject" -Body @{ reason = 'wave 9h10.4 reject' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: images-videos -- media CRUD on an event
+# Endpoints: POST /images, PUT /images/{imageId}, DELETE /images/{imageId},
+#            PUT /images/reorder, POST /images/{imageId}/set-primary,
+#            POST /videos, DELETE /videos/{videoId}
+# ----------------------------------------------------------------------------
+function Test-EventsImagesVideosFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'media'
+    if (-not $fix.Success) {
+        foreach ($n in 'upload image','update image','delete image','reorder images','set primary image','add video (URL)','delete video') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'images-videos' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    $fakeImg = [Guid]::NewGuid().ToString()
+    $fakeVid = [Guid]::NewGuid().ToString()
+
+    # Wiring probes (multipart image upload is fiddly; do simple JSON probes)
+    Test-LcEndpoint -Report $Report -Section 'images-videos' -TestName 'upload image (multipart wiring probe - 400 OK)' -Endpoint 'POST /api/Events/{id}/images' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/images" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'images-videos' -TestName 'update image (404 wiring)' -Endpoint 'PUT /api/Events/{eventId}/images/{imageId}' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/images/$fakeImg" -Body @{ altText = 'wave 9h10.4 alt' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'images-videos' -TestName 'delete image (404 wiring)' -Endpoint 'DELETE /api/Events/{eventId}/images/{imageId}' -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/$eventId/images/$fakeImg"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'images-videos' -TestName 'reorder images (empty list wiring)' -Endpoint 'PUT /api/Events/{id}/images/reorder' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/images/reorder" -Body @{ imageIds = @() }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'images-videos' -TestName 'set primary image (404 wiring)' -Endpoint 'POST /api/Events/{id}/images/{imageId}/set-primary' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/images/$fakeImg/set-primary" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'images-videos' -TestName 'add video (URL)' -Endpoint 'POST /api/Events/{id}/videos' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/videos" -Body @{
+            url   = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+            title = 'wave 9h10.4 video'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'images-videos' -TestName 'delete video (404 wiring)' -Endpoint 'DELETE /api/Events/{eventId}/videos/{videoId}' -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/$eventId/videos/$fakeVid"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: waiting-list -- Epic 2 waiting-list features
+# ----------------------------------------------------------------------------
+function Test-EventsWaitingListFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'waitlist'
+    if (-not $fix.Success) {
+        foreach ($n in 'join waiting list','list waiting list','promote from waiting list','leave waiting list') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'waiting-list' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    Publish-LcEvent -EventId $eventId | Out-Null
+
+    Test-LcEndpoint -Report $Report -Section 'waiting-list' -TestName 'join waiting list' -Endpoint 'POST /api/Events/{id}/waiting-list' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/waiting-list" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'waiting-list' -TestName 'list waiting list' -Endpoint 'GET /api/Events/{id}/waiting-list' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/waiting-list"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'waiting-list' -TestName 'promote from waiting list (wiring)' -Endpoint 'POST /api/Events/{id}/waiting-list/promote' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/waiting-list/promote" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'waiting-list' -TestName 'leave waiting list' -Endpoint 'DELETE /api/Events/{id}/waiting-list' -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/$eventId/waiting-list"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: share-ics
+# Endpoints: GET /{id}/ics, POST /{id}/share
+# ----------------------------------------------------------------------------
+function Test-EventsShareIcsFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'share'
+    if (-not $fix.Success) {
+        foreach ($n in 'ics calendar download','share event') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'share-ics' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    Publish-LcEvent -EventId $eventId | Out-Null
+
+    Test-LcEndpoint -Report $Report -Section 'share-ics' -TestName 'ics calendar download' -Endpoint 'GET /api/Events/{id}/ics' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/ics"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'share-ics' -TestName 'share event (email/link)' -Endpoint 'POST /api/Events/{id}/share' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/share" -Body @{
+            recipientEmail = (Get-LcFixtureEmail -Slug 'event-share' -Suffix (Get-Random -Maximum 99999))
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: ticket-tier-config -- GET tiers, PUT modes, PUT/DELETE tiers
+# ----------------------------------------------------------------------------
+function Test-EventsTicketTierConfigFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcPaidEvent -TitleSuffix 'tier-config'
+    if (-not $fix.Success) {
+        foreach ($n in 'get ticket tiers','update ticketing mode','update seating mode','update ticket tier','delete ticket tier') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'ticket-tier-config' -TestName $n -Endpoint '...' -SkipReason 'paid fixture failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    $fakeTierId = [Guid]::NewGuid().ToString()
+
+    Test-LcEndpoint -Report $Report -Section 'ticket-tier-config' -TestName 'get ticket tiers' -Endpoint 'GET /api/Events/{id}/ticket-tiers' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/ticket-tiers"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'ticket-tier-config' -TestName 'update ticketing mode' -Endpoint 'PUT /api/Events/{id}/ticketing-mode' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/ticketing-mode" -Body @{ mode = 'PerAttendeeTicket' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'ticket-tier-config' -TestName 'update seating mode' -Endpoint 'PUT /api/Events/{id}/seating-mode' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/seating-mode" -Body @{ mode = 'GeneralAdmission' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'ticket-tier-config' -TestName 'update ticket tier (404 wiring)' -Endpoint 'PUT /api/Events/{eventId}/ticket-tiers/{tierId}' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/ticket-tiers/$fakeTierId" -Body @{
+            name  = 'Wave9h10.4 Tier'
+            price = 25
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'ticket-tier-config' -TestName 'delete ticket tier (404 wiring)' -Endpoint 'DELETE /api/Events/{eventId}/ticket-tiers/{tierId}' -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/$eventId/ticket-tiers/$fakeTierId"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: signup-lists -- signup list + signup item + commit + open-items
+# Fires template-signup-list-commitment-* on commit, and
+# template-volunteer-commitment-* on volunteer-category signups
+# ----------------------------------------------------------------------------
+function Test-EventsSignupListsFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'signup-lists'
+    if (-not $fix.Success) {
+        foreach ($n in 'list signups','create signup list','update signup list','delete signup list','add signup item','update signup item','delete signup item','reorder signup items','commit signup item (FIRES template-signup-list-commitment-confirmation)','commit signup item ANON','open-items add','open-items add ANON','open-items update','open-items delete','check registration') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'signup-lists' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    Publish-LcEvent -EventId $eventId | Out-Null
+
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'list signups' -Endpoint 'GET /api/Events/{id}/signups' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/signups"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    $signupId = $null
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'create signup list' -Endpoint 'POST /api/Events/{id}/signups' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/signups" -Body @{
+            title       = "Wave9h10.4 SignupList"
+            description = 'wave 9h10.4 smoke signup'
+            category    = 'BringItem'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        $script:__signupId = if ($r.Body.id) { $r.Body.id } elseif ($r.Body -is [string]) { $r.Body.Trim('"') } else { $null }
+    }
+    $signupId = $script:__signupId
+    if (-not $signupId) {
+        foreach ($n in 'update signup list','delete signup list','add signup item','update signup item','delete signup item','reorder signup items','commit signup item (FIRES template-signup-list-commitment-confirmation)','commit signup item ANON','open-items add','open-items add ANON','open-items update','open-items delete','check registration') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'signup-lists' -TestName $n -Endpoint '...' -SkipReason 'signup list create did not yield id'
+        }
+        return
+    }
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'update signup list' -Endpoint 'PUT /api/Events/{eventId}/signups/{signupId}' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/signups/$signupId" -Body @{
+            title       = 'Wave9h10.4 SignupList (updated)'
+            description = 'wave 9h10.4 updated'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    $itemId = $null
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'add signup item' -Endpoint 'POST /api/Events/{eventId}/signups/{signupId}/items' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/signups/$signupId/items" -Body @{
+            name        = 'Wave9h10.4 Item'
+            description = 'test item'
+            quantity    = 3
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        $script:__signupItemId = if ($r.Body.id) { $r.Body.id } elseif ($r.Body -is [string]) { $r.Body.Trim('"') } else { $null }
+    }
+    $itemId = $script:__signupItemId
+    if ($itemId) {
+        Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'update signup item' -Endpoint 'PUT /api/Events/{eventId}/signups/{signupId}/items/{itemId}' -Action {
+            $r = Invoke-LcPut -Path "/api/Events/$eventId/signups/$signupId/items/$itemId" -Body @{
+                name     = 'Wave9h10.4 Item (updated)'
+                quantity = 4
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'reorder signup items' -Endpoint 'PUT /api/Events/{eventId}/signups/{signupId}/items/reorder' -Action {
+            $r = Invoke-LcPut -Path "/api/Events/$eventId/signups/$signupId/items/reorder" -Body @{
+                itemIds = @($itemId)
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'commit signup item (FIRES template-signup-list-commitment-confirmation)' -Endpoint 'POST /api/Events/{eventId}/signups/{signupId}/items/{itemId}/commit' -Action {
+            $r = Invoke-LcPost -Path "/api/Events/$eventId/signups/$signupId/items/$itemId/commit" -Body @{ quantity = 1 }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'commit signup item ANON' -Endpoint 'POST /api/Events/{eventId}/signups/{signupId}/items/{itemId}/commit-anonymous' -Action {
+            $r = Invoke-LcPost -Path "/api/Events/$eventId/signups/$signupId/items/$itemId/commit-anonymous" -Bearer $null -Body @{
+                firstName = 'Smoke'
+                lastName  = 'Anon'
+                email     = (Get-LcFixtureEmail -Slug 'signup-commit-anon' -Suffix (Get-Random -Maximum 99999))
+                quantity  = 1
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'delete signup item' -Endpoint 'DELETE /api/Events/{eventId}/signups/{signupId}/items/{itemId}' -Action {
+            $r = Invoke-LcDelete -Path "/api/Events/$eventId/signups/$signupId/items/$itemId"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        foreach ($n in 'update signup item','reorder signup items','commit signup item (FIRES template-signup-list-commitment-confirmation)','commit signup item ANON','delete signup item') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'signup-lists' -TestName $n -Endpoint '...' -SkipReason 'signup item create did not yield id'
+        }
+    }
+    $fakeItemId = [Guid]::NewGuid().ToString()
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'open-items add' -Endpoint 'POST /api/Events/{eventId}/signups/{signupId}/open-items' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/signups/$signupId/open-items" -Body @{
+            name = 'Wave9h10.4 open item'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'open-items add ANON' -Endpoint 'POST /api/Events/{eventId}/signups/{signupId}/open-items-anonymous' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/signups/$signupId/open-items-anonymous" -Bearer $null -Body @{
+            firstName = 'Smoke'
+            lastName  = 'Anon'
+            email     = (Get-LcFixtureEmail -Slug 'open-item-anon' -Suffix (Get-Random -Maximum 99999))
+            name      = 'wave 9h10.4 anon open item'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'open-items update (404 wiring)' -Endpoint 'PUT /api/Events/{eventId}/signups/{signupId}/open-items/{itemId}' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/signups/$signupId/open-items/$fakeItemId" -Body @{ name = 'updated' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'open-items delete (404 wiring)' -Endpoint 'DELETE /api/Events/{eventId}/signups/{signupId}/open-items/{itemId}' -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/$eventId/signups/$signupId/open-items/$fakeItemId"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'delete signup list' -Endpoint 'DELETE /api/Events/{eventId}/signups/{signupId}' -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/$eventId/signups/$signupId"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'check registration' -Endpoint 'POST /api/Events/{eventId}/check-registration' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/check-registration" -Body @{
+            email = (Get-LcFixtureEmail -Slug 'check-registration' -Suffix (Get-Random -Maximum 99999))
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: forms-full -- Forms CRUD + response lifecycle (fires
+# template-form-response-confirmation/update/cancellation)
+# ----------------------------------------------------------------------------
+function Test-EventsFormsFullFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'forms-full'
+    if (-not $fix.Success) {
+        foreach ($n in 'update form','delete form','close form','reopen form','add question','update question','delete question','reorder questions','update response','delete response','my responses','mine responses','list all responses','public responses','export responses') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'forms-full' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    Publish-LcEvent -EventId $eventId | Out-Null
+
+    $formId = $null
+    $create = Invoke-LcPost -Path "/api/Events/$eventId/forms" -Body @{
+        title       = 'Wave9h10.4 Form'
+        description = 'wave 9h10.4 smoke form'
+    }
+    $formId = if ($create.Body.id) { $create.Body.id } elseif ($create.Body -is [string]) { $create.Body.Trim('"') } else { $null }
+    if (-not $formId) {
+        foreach ($n in 'update form','delete form','close form','reopen form','add question','update question','delete question','reorder questions','update response','delete response','my responses','mine responses','list all responses','public responses','export responses') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'forms-full' -TestName $n -Endpoint '...' -SkipReason 'form create failed'
+        }
+        return
+    }
+
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'update form' -Endpoint 'PUT /api/Events/{id}/forms/{formId}' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/forms/$formId" -Body @{
+            title       = 'Wave9h10.4 Form (updated)'
+            description = 'wave 9h10.4 updated'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'close form' -Endpoint 'POST /api/Events/{id}/forms/{formId}/close' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/forms/$formId/close" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'reopen form' -Endpoint 'POST /api/Events/{id}/forms/{formId}/reopen' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/forms/$formId/reopen" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    $questionId = $null
+    $addQ = Invoke-LcPost -Path "/api/Events/$eventId/forms/$formId/questions" -Body @{
+        text     = 'wave 9h10.4 question?'
+        type     = 'ShortText'
+        required = $false
+    }
+    $questionId = if ($addQ.Body.id) { $addQ.Body.id } elseif ($addQ.Body -is [string]) { $addQ.Body.Trim('"') } else { $null }
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'add question (via wiring probe)' -Endpoint 'POST /api/Events/{id}/forms/{formId}/questions' -Action {
+        if ($addQ.StatusCode -ge 500) { throw "5xx: $($addQ.StatusCode)" }
+    }
+    if ($questionId) {
+        Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'update question' -Endpoint 'PUT /api/Events/{id}/forms/{formId}/questions/{questionId}' -Action {
+            $r = Invoke-LcPut -Path "/api/Events/$eventId/forms/$formId/questions/$questionId" -Body @{
+                text = 'wave 9h10.4 question (updated)?'
+                type = 'ShortText'
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'reorder questions' -Endpoint 'PUT /api/Events/{id}/forms/{formId}/questions/reorder' -Action {
+            $r = Invoke-LcPut -Path "/api/Events/$eventId/forms/$formId/questions/reorder" -Body @{ questionIds = @($questionId) }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+        Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'delete question' -Endpoint 'DELETE /api/Events/{id}/forms/{formId}/questions/{questionId}' -Action {
+            $r = Invoke-LcDelete -Path "/api/Events/$eventId/forms/$formId/questions/$questionId"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
+    } else {
+        foreach ($n in 'update question','reorder questions','delete question') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'forms-full' -TestName $n -Endpoint '...' -SkipReason 'question add did not yield id'
+        }
+    }
+    $fakeRespId = [Guid]::NewGuid().ToString()
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'update response (404 wiring)' -Endpoint 'PUT /api/Events/{id}/forms/{formId}/responses/{responseId}' -Action {
+        $r = Invoke-LcPut -Path "/api/Events/$eventId/forms/$formId/responses/$fakeRespId" -Body @{ answers = @() }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'delete response (404 wiring)' -Endpoint 'DELETE /api/Events/{id}/forms/{formId}/responses/{responseId}' -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/$eventId/forms/$formId/responses/$fakeRespId"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'my responses' -Endpoint 'GET /api/Events/{id}/forms/{formId}/responses/my' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/forms/$formId/responses/my"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'mine responses' -Endpoint 'GET /api/Events/{id}/forms/{formId}/responses/mine' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/forms/$formId/responses/mine"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'list all responses (organizer)' -Endpoint 'GET /api/Events/{id}/forms/{formId}/responses' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/forms/$formId/responses"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'public responses' -Endpoint 'GET /api/Events/{id}/forms/{formId}/responses/public' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/forms/$formId/responses/public"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'export responses' -Endpoint 'GET /api/Events/{id}/forms/{formId}/responses/export' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/forms/$formId/responses/export?format=csv"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'delete form' -Endpoint 'DELETE /api/Events/{id}/forms/{formId}' -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/$eventId/forms/$formId"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# Sub-section: attendee-exports + organizer notifications
+# Endpoints: GET /{eventId}/export, GET /{eventId}/export-all,
+#            POST /{id}/send-notification (FIRES template-organizer-custom-email),
+#            POST /{id}/send-reminder, POST /{id}/attendees/{regId}/resend-confirmation,
+#            GET /{id}/reminder-history
+# ----------------------------------------------------------------------------
+function Test-EventsOrganizerNotificationsFlow {
+    param([Parameter(Mandatory)]$Report)
+    $fix = New-LcFreeEvent -TitleSuffix 'org-notify'
+    if (-not $fix.Success) {
+        foreach ($n in 'export attendees','export all','send notification (FIRES template-organizer-custom-email)','send reminder','resend confirmation','reminder history') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'organizer-notifications' -TestName $n -Endpoint '...' -SkipReason 'fixture event create failed'
+        }
+        return
+    }
+    $eventId = $fix.EventId
+    Publish-LcEvent -EventId $eventId | Out-Null
+    Invoke-LcPost -Path "/api/Events/$eventId/rsvp" -Body @{} | Out-Null
+
+    Test-LcEndpoint -Report $Report -Section 'organizer-notifications' -TestName 'export attendees' -Endpoint 'GET /api/Events/{eventId}/export' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/export?format=csv"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'organizer-notifications' -TestName 'export all (attendees + forms + signups)' -Endpoint 'GET /api/Events/{eventId}/export-all' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/export-all?format=csv"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'organizer-notifications' -TestName 'send organizer notification (FIRES template-organizer-custom-email)' -Endpoint 'POST /api/Events/{id}/send-notification' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/send-notification" -Body @{
+            subject = 'Wave9h10.4 Smoke Custom Email'
+            body    = 'This is a Wave 9.h.10.4 smoke test of template-organizer-custom-email. Safe to ignore.'
+            targetSegment = 'AllAttendees'
+        }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'organizer-notifications' -TestName 'send reminder' -Endpoint 'POST /api/Events/{id}/send-reminder' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/send-reminder" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    $fakeReg = [Guid]::NewGuid().ToString()
+    Test-LcEndpoint -Report $Report -Section 'organizer-notifications' -TestName 'resend confirmation (404 wiring)' -Endpoint 'POST /api/Events/{id}/attendees/{registrationId}/resend-confirmation' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/attendees/$fakeReg/resend-confirmation" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+    Test-LcEndpoint -Report $Report -Section 'organizer-notifications' -TestName 'reminder history' -Endpoint 'GET /api/Events/{id}/reminder-history' -Action {
+        $r = Invoke-LcGet -Path "/api/Events/$eventId/reminder-history"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+}
+
 # ----------------------------------------------------------------------------
 # Sub-section 12: analytics-read - Event analytics endpoints
 # ----------------------------------------------------------------------------
@@ -640,20 +1458,35 @@ function Invoke-EventsControllerSmoke {
 
     # Sub-sections in DAG order
     $allSections = @(
-        @{ Name = 'crud-read';          Func = { Test-EventsCrudReadFlow -Report $report } }
-        @{ Name = 'list-and-filter';    Func = { Test-EventsListAndFilterFlow -Report $report } }
-        @{ Name = 'crud-write';         Func = { Test-EventsCrudWriteFlow -Report $report } }
-        @{ Name = 'rsvp';               Func = { Test-EventsRsvpFlow -Report $report } }
-        @{ Name = 'cancel';             Func = { Test-EventsCancelFlow -Report $report } }
-        @{ Name = 'paid-event';         Func = { Test-EventsPaidEventFlow -Report $report } }
-        @{ Name = 'my-registrations';   Func = { Test-EventsMyRegistrationsFlow -Report $report } }
-        @{ Name = 'attendees';          Func = { Test-EventsAttendeesFlow -Report $report } }
-        @{ Name = 'ticketing';          Func = { Test-EventsTicketingFlow -Report $report } }
-        @{ Name = 'organizer-contacts'; Func = { Test-EventsOrganizerContactFlow -Report $report } }
-        @{ Name = 'email-groups';       Func = { Test-EventsEmailGroupFlow -Report $report } }
-        @{ Name = 'analytics';          Func = { Test-EventsAnalyticsFlow -Report $report } }
-        @{ Name = 'admin';              Func = { Test-EventsAdminFlow -Report $report } }
-        @{ Name = 'wave5-uncovered';    Func = { Test-EventsWave5UncoveredReposFlow -Report $report } }
+        @{ Name = 'crud-read';               Func = { Test-EventsCrudReadFlow -Report $report } }
+        @{ Name = 'list-and-filter';         Func = { Test-EventsListAndFilterFlow -Report $report } }
+        @{ Name = 'extra-reads';             Func = { Test-EventsExtraReadsFlow -Report $report } }
+        @{ Name = 'crud-write';              Func = { Test-EventsCrudWriteFlow -Report $report } }
+        @{ Name = 'event-updates';           Func = { Test-EventsUpdatesFlow -Report $report } }
+        @{ Name = 'event-lifecycle';         Func = { Test-EventsLifecycleFlow -Report $report } }
+        @{ Name = 'rsvp';                    Func = { Test-EventsRsvpFlow -Report $report } }
+        @{ Name = 'cancel';                  Func = { Test-EventsCancelFlow -Report $report } }
+        @{ Name = 'registration-anon';       Func = { Test-EventsAnonymousRegistrationFlow -Report $report } }
+        @{ Name = 'registration-extras';     Func = { Test-EventsRegistrationExtrasFlow -Report $report } }
+        @{ Name = 'add-attendees';           Func = { Test-EventsAddAttendeesFlow -Report $report } }
+        @{ Name = 'refund-requests';         Func = { Test-EventsRefundRequestsFlow -Report $report } }
+        @{ Name = 'paid-event';              Func = { Test-EventsPaidEventFlow -Report $report } }
+        @{ Name = 'my-registrations';        Func = { Test-EventsMyRegistrationsFlow -Report $report } }
+        @{ Name = 'attendees';               Func = { Test-EventsAttendeesFlow -Report $report } }
+        @{ Name = 'ticketing';               Func = { Test-EventsTicketingFlow -Report $report } }
+        @{ Name = 'ticket-tier-config';      Func = { Test-EventsTicketTierConfigFlow -Report $report } }
+        @{ Name = 'signup-lists';            Func = { Test-EventsSignupListsFlow -Report $report } }
+        @{ Name = 'forms-full';              Func = { Test-EventsFormsFullFlow -Report $report } }
+        @{ Name = 'organizer-contacts';      Func = { Test-EventsOrganizerContactFlow -Report $report } }
+        @{ Name = 'email-groups';            Func = { Test-EventsEmailGroupFlow -Report $report } }
+        @{ Name = 'organizer-notifications'; Func = { Test-EventsOrganizerNotificationsFlow -Report $report } }
+        @{ Name = 'images-videos';           Func = { Test-EventsImagesVideosFlow -Report $report } }
+        @{ Name = 'waiting-list';            Func = { Test-EventsWaitingListFlow -Report $report } }
+        @{ Name = 'share-ics';               Func = { Test-EventsShareIcsFlow -Report $report } }
+        @{ Name = 'event-admin-approval';    Func = { Test-EventsAdminApprovalFlow -Report $report } }
+        @{ Name = 'analytics';               Func = { Test-EventsAnalyticsFlow -Report $report } }
+        @{ Name = 'admin';                   Func = { Test-EventsAdminFlow -Report $report } }
+        @{ Name = 'wave5-uncovered';         Func = { Test-EventsWave5UncoveredReposFlow -Report $report } }
     )
 
     $sectionsToRun = if ($Only.Count -gt 0) {

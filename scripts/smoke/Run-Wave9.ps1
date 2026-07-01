@@ -76,6 +76,15 @@ $controllerManifest = @(
     @{ Name = 'Approvals';               Script = 'Smoke-ApprovalsController.ps1';               Invoker = 'Invoke-ApprovalsControllerSmoke' }
     @{ Name = 'Analytics';               Script = 'Smoke-AnalyticsController.ps1';               Invoker = 'Invoke-AnalyticsControllerSmoke' }
     @{ Name = 'LongTail';                Script = 'Smoke-LongTail.ps1';                          Invoker = 'Invoke-LongTailSmoke' }
+    # Wave 9.h.10.4 gap-close (2026-07-01): 7 new controller smokes added to close
+    # 144 previously-uncovered endpoints across the platform.
+    @{ Name = 'AdminSupportTickets';     Script = 'Smoke-AdminSupportTicketsController.ps1';     Invoker = 'Invoke-AdminSupportTicketsControllerSmoke' }
+    @{ Name = 'PhotoAlbums';             Script = 'Smoke-PhotoAlbumsController.ps1';             Invoker = 'Invoke-PhotoAlbumsControllerSmoke' }
+    @{ Name = 'Content';                 Script = 'Smoke-ContentController.ps1';                 Invoker = 'Invoke-ContentControllerSmoke' }
+    @{ Name = 'Notifications';           Script = 'Smoke-NotificationsController.ps1';           Invoker = 'Invoke-NotificationsControllerSmoke' }
+    @{ Name = 'TestCtl';                 Script = 'Smoke-TestController.ps1';                    Invoker = 'Invoke-TestControllerSmoke' }
+    @{ Name = 'AdminRecovery';           Script = 'Smoke-AdminRecoveryController.ps1';           Invoker = 'Invoke-AdminRecoveryControllerSmoke' }
+    @{ Name = 'WhatsAppWebhook';         Script = 'Smoke-WhatsAppWebhookController.ps1';         Invoker = 'Invoke-WhatsAppWebhookControllerSmoke' }
 )
 
 $toRun = if ($OnlyControllers.Count -gt 0) {

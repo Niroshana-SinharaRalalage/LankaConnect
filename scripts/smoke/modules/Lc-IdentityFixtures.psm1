@@ -49,13 +49,21 @@ function New-LcTaggedThrowawayUser {
         # ruling that AdminUsers shouldn't pull the fat Events module). Fall
         # back to a locally-generated tag when the helper isn't loaded.
         [string]$Tag = $(if (Get-Command Get-LcCurrentRunTag -ErrorAction SilentlyContinue) { Get-LcCurrentRunTag } else { "[SMOKE-9h10-$(Get-Date -Format yyyyMMddHHmmss)]" }),
-        [string]$Role = 'EventAttendee'
+        [string]$Role = 'EventAttendee',
+        # Wave 9.h.10.5 Q20 (architect-mandated 2026-07-02): SlugPrefix identifies
+        # which admin-lifecycle action this throwaway is for (`lock`, `unlock`,
+        # `deactivate`, `activate`, `resend`, `downgrade`, `upgrade`). Each fresh
+        # user gets a unique alias `niroshhh+throwaway-user-<slug>-<random>@gmail.com`
+        # so founder inbox filtering can distinguish per-template deliveries.
+        # This closes hypothesis D (state-guard rejection on cumulative state)
+        # by giving every admin action a fresh Active-state user.
+        [string]$SlugPrefix = 'throwaway-user'
     )
     $shortTag = $Tag.Trim('[]').Replace('SMOKE-', '').Replace('-', '').Substring(0, [Math]::Min(8, $Tag.Length))
     # Wave 9.h.10.2: throwaway users route through founder Gmail alias so
     # admin-triggered lifecycle emails (Locked/Unlocked/Activated/Deactivated,
     # plus registration confirmation) actually deliver during smoke runs.
-    $email = Get-LcFixtureEmail -Slug 'throwaway-user' -Suffix "$shortTag-$(Get-Random -Maximum 9999)"
+    $email = Get-LcFixtureEmail -Slug $SlugPrefix -Suffix "$shortTag-$(Get-Random -Maximum 9999)"
     $metroId = Get-LcAnyMetroAreaId
     $body = @{
         firstName             = "$Tag Throwaway"

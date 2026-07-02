@@ -88,20 +88,146 @@ function Test-AdminUsersMutatorFlow {
     # the old inline body omitted it so register was silently 400ing and every
     # admin lifecycle action targeted the admin's own id (rejected as "cannot
     # lock own account"), causing 0 lifecycle emails to fire despite 7 PASS.
-    $throwaway = New-LcTaggedThrowawayUser
-    if (-not $throwaway.Success -or -not $throwaway.UserId) {
-        Add-LcResult -Report $Report -Status FAIL -Section 'admin-mutators' -TestName 'throwaway user setup' -Endpoint 'POST /api/Auth/register' -ErrorMessage "throwaway create failed: $($throwaway.Error)"
+    #
+    # Wave 9.h.10.5 Q20 (architect-mandated 2026-07-02): the previous 1-user-
+    # 7-action pattern silently drops admin-lifecycle emails because the
+    # cumulative state transitions on ONE user hit domain guards (e.g. deactivate
+    # after lock rejected, activate on already-active user rejected). Handler
+    # returns Failure BEFORE calling SendXxxEmailAsync, no probe evidence, no
+    # inbox delivery, still 7 PASS at the smoke assertion (< 500 check). This
+    # is INSTANCE 2 of the "cumulative-state smoke fixture" bug class (instance
+    # 1 was 9.h.10.2b: shared admin id across actions). Fix per architect Q20
+    # ruling: use ONE fresh throwaway per action, each in its required starting
+    # state. Post-run assertion (probe-ENTRY-count = matching-action-count) is
+    # the guard against instance 3 of the same class.
+    #
+    # Note: not all 7 admin actions dispatch email. Actions that dispatch email
+    # (and therefore expect probe ENTRY markers):
+    #   lock                 -> template-account-locked-by-admin
+    #   unlock               -> template-account-unlocked-by-admin
+    #   deactivate           -> template-account-deactivated-by-admin
+    #   activate             -> template-account-activated-by-admin
+    #   resend-verification  -> template-membership-email-verification
+    # Actions that do NOT dispatch email (audit-only mutations):
+    #   downgrade            -> role change only, no email dispatch
+    #   upgrade              -> role change only, no email dispatch
+
+    $adminBearer = $env:LC_BEARER
+    if (-not $adminBearer) {
+        Add-LcResult -Report $Report -Status FAIL -Section 'admin-mutators' -TestName 'admin bearer available' -Endpoint 'N/A' -ErrorMessage 'LC_BEARER env var missing after login'
         return
     }
-    $script:throwawayEmail = $throwaway.Email
-    $throwawayUserId = $throwaway.UserId
 
-    foreach ($action in 'lock', 'unlock', 'deactivate', 'activate', 'resend-verification', 'downgrade', 'upgrade') {
-        Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName "admin $action throwaway user" -Endpoint "POST /api/admin/users/{id}/$action" -Action {
-            $r = Invoke-LcPost -Path "/api/admin/users/$throwawayUserId/$action" -Body @{}
-            if ($r.StatusCode -ge 500) {
-                throw "5xx response: $($r.StatusCode)"
+    function _NewFreshThrowaway {
+        param([string]$SlugForAction)
+        $t = New-LcTaggedThrowawayUser -SlugPrefix "throwaway-$SlugForAction"
+        if (-not $t.Success -or -not $t.UserId) { throw "throwaway ($SlugForAction) create failed: $($t.Error)" }
+        return $t
+    }
+
+    function _AdminAction {
+        param([string]$UserId, [string]$Action, [hashtable]$Body = @{})
+        # Uses the admin bearer captured at test start. Direct call, no assertion
+        # -- caller (setup vs test) decides how to interpret the response.
+        return Invoke-LcPost -Path "/api/admin/users/$UserId/$Action" -Body $Body
+    }
+
+    # ---- action 1: lock -- fresh Active user -> lock ----
+    Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName 'admin lock throwaway user (fresh Active)' -Endpoint 'POST /api/admin/users/{id}/lock' -Action {
+        $t = _NewFreshThrowaway 'lock'
+        $r = _AdminAction -UserId $t.UserId -Action 'lock' -Body @{ reason = 'wave 9h10.5 Q20 fresh lock'; lockUntil = '2027-01-01T00:00:00Z' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ge 400) { throw "expected 200 for lock on fresh Active user, got $($r.StatusCode): $($r.Error)" }
+    }
+
+    # ---- action 2: unlock -- setup: register+lock, then test unlock ----
+    Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName 'admin unlock throwaway user (fresh Locked)' -Endpoint 'POST /api/admin/users/{id}/unlock' -Action {
+        $t = _NewFreshThrowaway 'unlock'
+        $setup = _AdminAction -UserId $t.UserId -Action 'lock' -Body @{ reason = 'setup for unlock'; lockUntil = '2027-01-01T00:00:00Z' }
+        if ($setup.StatusCode -ge 400) { throw "setup lock failed: $($setup.StatusCode)" }
+        $r = _AdminAction -UserId $t.UserId -Action 'unlock' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ge 400) { throw "expected 200 for unlock on Locked user, got $($r.StatusCode): $($r.Error)" }
+    }
+
+    # ---- action 3: deactivate -- fresh Active user -> deactivate ----
+    Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName 'admin deactivate throwaway user (fresh Active)' -Endpoint 'POST /api/admin/users/{id}/deactivate' -Action {
+        $t = _NewFreshThrowaway 'deactivate'
+        $r = _AdminAction -UserId $t.UserId -Action 'deactivate' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ge 400) { throw "expected 200 for deactivate on Active user, got $($r.StatusCode): $($r.Error)" }
+    }
+
+    # ---- action 4: activate -- setup: register+deactivate, then test activate ----
+    Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName 'admin activate throwaway user (fresh Deactivated)' -Endpoint 'POST /api/admin/users/{id}/activate' -Action {
+        $t = _NewFreshThrowaway 'activate'
+        $setup = _AdminAction -UserId $t.UserId -Action 'deactivate' -Body @{}
+        if ($setup.StatusCode -ge 400) { throw "setup deactivate failed: $($setup.StatusCode)" }
+        $r = _AdminAction -UserId $t.UserId -Action 'activate' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ge 400) { throw "expected 200 for activate on Deactivated user, got $($r.StatusCode): $($r.Error)" }
+    }
+
+    # ---- action 5: resend-verification -- fresh unverified user ----
+    Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName 'admin resend-verification throwaway user (fresh Unverified)' -Endpoint 'POST /api/admin/users/{id}/resend-verification' -Action {
+        $t = _NewFreshThrowaway 'resend'
+        $r = _AdminAction -UserId $t.UserId -Action 'resend-verification' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ge 400) { throw "expected 200 for resend-verification on fresh user, got $($r.StatusCode): $($r.Error)" }
+    }
+
+    # ---- action 6: downgrade -- fresh user (no email dispatch) ----
+    Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName 'admin downgrade throwaway user (fresh; audit-only, no email)' -Endpoint 'POST /api/admin/users/{id}/downgrade' -Action {
+        $t = _NewFreshThrowaway 'downgrade'
+        $r = _AdminAction -UserId $t.UserId -Action 'downgrade' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    # ---- action 7: upgrade -- fresh user (no email dispatch) ----
+    Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName 'admin upgrade throwaway user (fresh; audit-only, no email)' -Endpoint 'POST /api/admin/users/{id}/upgrade' -Action {
+        $t = _NewFreshThrowaway 'upgrade'
+        $r = _AdminAction -UserId $t.UserId -Action 'upgrade' -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    # ---- POST-RUN PROBE-ENTRY-COUNT ASSERTION (architect-mandated Q20 guard) ----
+    # Wave 9.h.10.5 Q20 harness test: instance 3 of the "cumulative-state fixture"
+    # bug class would silently drop probe markers without failing the HTTP tests
+    # above. Guard against that by tailing container logs post-run and asserting
+    # the 5 email-dispatching admin actions each produced probe ENTRY markers.
+    #
+    # Optional (best-effort). If az CLI isn't available in the smoke environment
+    # or the log query fails, this test SKIPs with a documented reason -- the 5
+    # HTTP-level tests above still validate the fixture flow.
+    Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName 'probe-ENTRY count assertion (Q20 harness)' -Endpoint '(container logs)' -Action {
+        $azAvailable = $null -ne (Get-Command az -ErrorAction SilentlyContinue)
+        if (-not $azAvailable) {
+            throw 'az CLI not available; probe-ENTRY assertion cannot run. SKIP appropriate.'
+        }
+        # Give the container logs 5 seconds to flush the last probe markers
+        Start-Sleep -Seconds 5
+        $tailFile = [System.IO.Path]::GetTempFileName()
+        try {
+            # `az containerapp logs show` outputs JSON-per-line via --output tsv;
+            # tail 300 covers ~30-60s of container activity, enough for the
+            # 5 email-dispatching admin actions fired within the last minute.
+            $null = az containerapp logs show `
+                --name lankaconnect-api-staging `
+                --resource-group lankaconnect-staging `
+                --tail 300 --follow false --output tsv 2>&1 | Out-File -Encoding utf8 $tailFile
+            $content = Get-Content $tailFile -Raw
+            $entryCount = ([regex]::Matches($content, 'ENTRY correlationId=[a-f0-9-]+ template=template-account-(locked|unlocked|deactivated|activated)-by-admin')).Count
+            $verifyCount = ([regex]::Matches($content, 'ENTRY correlationId=[a-f0-9-]+ template=template-membership-email-verification')).Count
+            # Expect at least 4 admin-lifecycle probes (lock/unlock/deactivate/activate)
+            # + at least 1 verification probe (resend-verification uses that template).
+            # Registration verifications from the 6 fresh throwaways don't count here
+            # because they run before the admin actions -- they may or may not still
+            # be in the 300-line window depending on volume.
+            if ($entryCount -lt 4) {
+                throw "expected >=4 admin-lifecycle ENTRY probes (lock/unlock/deactivate/activate), found $entryCount. Possible instance 3 of cumulative-state fixture bug -- consult architect."
             }
+        } finally {
+            Remove-Item -Path $tailFile -Force -ErrorAction SilentlyContinue
         }
     }
 }

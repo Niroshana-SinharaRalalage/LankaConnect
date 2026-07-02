@@ -59,6 +59,11 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
 
     public async Task Handle(DomainEventNotification<RegistrationConfirmedEvent> notification, CancellationToken cancellationToken)
     {
+        // Wave 9.h.10.5 F27-diag: Console.WriteLine bypasses Serilog filter chain to prove
+        // whether MediatR is actually invoking this handler. If this marker never appears
+        // in container logs during an RSVP, the handler is never called by MediatR.
+        Console.WriteLine($"[W9H10-F27-DIAG] RegistrationConfirmedEventHandler.Handle INVOKED at {DateTime.UtcNow:O} EventId={notification.DomainEvent.EventId} AttendeeId={notification.DomainEvent.AttendeeId}");
+
         var domainEvent = notification.DomainEvent;
 
         using (LogContext.PushProperty("Operation", "RegistrationConfirmed"))

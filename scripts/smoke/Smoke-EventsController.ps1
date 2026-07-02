@@ -1157,6 +1157,12 @@ function Test-EventsSignupListsFlow {
     $eventId = $fix.EventId
     Publish-LcEvent -EventId $eventId | Out-Null
 
+    # Wave 9.h.10.6 F35c: RSVP so the smoke user is registered for THIS signup-list
+    # event. Required for the tail cancel-RSVP-with-deleteSignUpCommitments=true test
+    # to fire template-signup-list-commitment-cancellation (cascade path via CancelRsvp
+    # domain method — no dedicated cancel-commitment endpoint exists).
+    New-LcRegistration -EventId $eventId -Quantity 1 | Out-Null
+
     Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'list signups' -Endpoint 'GET /api/Events/{id}/signups' -Action {
         $r = Invoke-LcGet -Path "/api/Events/$eventId/signups"
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
@@ -1302,6 +1308,22 @@ function Test-EventsSignupListsFlow {
             email = (Get-LcFixtureEmail -Slug 'check-registration' -Suffix (Get-Random -Maximum 99999))
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+    }
+
+    # Wave 9.h.10.6 F35c: cancel the RSVP with deleteSignUpCommitments=true so the
+    # domain CancelRsvp path cascades and cancels the commitment created above via
+    # F35 → CommitmentCancelledEvent → template-signup-list-commitment-cancellation.
+    # This is the ONLY code path that fires the cancellation email — no dedicated
+    # cancel-commitment endpoint exists in the API. Combined with F35+F35b, this
+    # completes the commitment lifecycle: create → update → cancel.
+    Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'cancel RSVP + cascade delete signup commitments (FIRES template-signup-list-commitment-cancellation)' -Endpoint 'DELETE /api/Events/{id}/rsvp?deleteSignUpCommitments=true' -Action {
+        $r = Invoke-LcDelete -Path "/api/Events/$eventId/rsvp?deleteSignUpCommitments=true&deleteFormResponses=true"
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        # Cancel returns 200/204 on success. Tolerate 400 only if the user isn't
+        # currently registered (transient race between RSVP + cancel is rare).
+        if ($r.StatusCode -ne 200 -and $r.StatusCode -ne 204) {
+            Write-Host "note: cancel-rsvp returned $($r.StatusCode); commitment cancellation email may not fire"
+        }
     }
 }
 

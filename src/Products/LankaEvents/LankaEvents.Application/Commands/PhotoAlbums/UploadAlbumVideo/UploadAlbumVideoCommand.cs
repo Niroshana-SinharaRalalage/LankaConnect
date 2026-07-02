@@ -150,7 +150,9 @@ public class UploadAlbumVideoCommandHandler : ICommandHandler<UploadAlbumVideoCo
                     return Result<AlbumPhotoDto>.Failure(addVideoResult.Errors);
                 }
 
-                // 6. Commit changes
+                // 6. Persist album mutation to MediaDbContext + dispatch domain events via AppDbContext.
+                // Wave 9.h.10.6 F30a: same MediaDbContext-not-saved bug as UploadAlbumPhoto.
+                await _photoAlbumRepository.UpdateAsync(album, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 var video = addVideoResult.Value;

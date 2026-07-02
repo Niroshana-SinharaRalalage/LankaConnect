@@ -74,10 +74,11 @@ function Test-PhotoAlbumsFullLifecycle {
     $eventId = $fix.EventId
     $tag = Get-LcCurrentRunTag
 
-    # Register founder alias as an attendee so notify has a real recipient
-    # (registration confirmation delivers to niroshhh + attendee alias)
-    $registerResult = Invoke-LcPost -Path "/api/Events/$eventId/rsvp" -Body @{}
-    if ($registerResult.StatusCode -ge 500) {
+    # Register founder as an attendee so notify has a real recipient (fires
+    # template-photo-album-published to the registered attendee list). Empty-body
+    # RSVP silently failed pre-F30 because the endpoint requires { userId, quantity }.
+    $registerResult = New-LcRegistration -EventId $eventId -Quantity 1
+    if (-not $registerResult.Success -and $registerResult.StatusCode -ge 500) {
         Write-Host "note: rsvp fixture returned $($registerResult.StatusCode); notify smoke will still exercise the endpoint"
     }
 
@@ -114,37 +115,35 @@ function Test-PhotoAlbumsFullLifecycle {
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 
-    # 4. Publish album
+    # Wave 9.h.10.6 F30: photo upload MUST happen before publish (domain rejects empty
+    # albums with "Upload at least one photo or video before publishing"). Previous
+    # order was create → publish → notify → upload, which meant publish 400'd,
+    # notify 400'd, and template-photo-album-published never fired.
+    # Photo upload wiring also had two bugs of its own: called non-existent function
+    # Invoke-LcPostMultipart (real name Invoke-LcMultipart), and passed FilePath/
+    # FieldName/Extra instead of FileBytes/FileFieldName/ExtraFields. Never noticed
+    # because the -IncludePhotoUpload flag was never plumbed through the orchestrator.
+    Test-LcEndpoint -Report $Report -Section 'albums' -TestName 'upload photo (multipart)' -Endpoint 'POST /api/events/{eventId}/albums/{albumId}/photos' -Action {
+        $r = Invoke-LcMultipart -Path "/api/events/$eventId/albums/$($script:albumId)/photos" `
+            -FileFieldName 'image' -FileName 'wave9h10-6-smoke.png' `
+            -ExtraFields @{ caption = 'wave 9.h.10.6 smoke' }
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode) body=$($r.Body | ConvertTo-Json -Compress -Depth 2)" }
+        if ($r.StatusCode -ge 400) { throw "$($r.StatusCode) body=$($r.Body | ConvertTo-Json -Compress -Depth 3)" }
+    }
+    Add-LcResult -Report $Report -Status SKIP -Section 'albums' -TestName 'upload video (multipart)' -Endpoint 'POST /api/events/{eventId}/albums/{albumId}/videos' -SkipReason 'video upload requires a real (non-1x1-png) binary; deferred to dedicated media smoke'
+
+    # 4. Publish album (only succeeds if at least one photo was uploaded above)
     Test-LcEndpoint -Report $Report -Section 'albums' -TestName 'publish album' -Endpoint 'POST /api/events/{eventId}/albums/{albumId}/publish' -Action {
         $r = Invoke-LcPost -Path "/api/events/$eventId/albums/$($script:albumId)/publish" -Body @{}
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ge 400) { throw "$($r.StatusCode) body=$($r.Body | ConvertTo-Json -Compress -Depth 3)" }
     }
 
     # 5. Notify attendees (FIRES template-photo-album-published)
     Test-LcEndpoint -Report $Report -Section 'albums' -TestName 'notify attendees (FIRES template-photo-album-published)' -Endpoint 'POST /api/events/{eventId}/albums/{albumId}/notify' -Action {
         $r = Invoke-LcPost -Path "/api/events/$eventId/albums/$($script:albumId)/notify" -Body @{}
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-    }
-
-    # 6+7. Photo upload + video upload -- multipart is fiddly; wiring-mode exercises without heavy asset
-    if ($IncludePhotoUpload) {
-        Test-LcEndpoint -Report $Report -Section 'albums' -TestName 'upload photo (multipart)' -Endpoint 'POST /api/events/{eventId}/albums/{albumId}/photos' -Action {
-            $tmpImg = New-TemporaryFile
-            $tmpImgPath = $tmpImg.FullName + '.png'
-            Move-Item $tmpImg.FullName $tmpImgPath
-            # tiny 1x1 PNG bytes
-            $pngBytes = [byte[]](0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A,0x00,0x00,0x00,0x0D,0x49,0x48,0x44,0x52,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x01,0x08,0x06,0x00,0x00,0x00,0x1F,0x15,0xC4,0x89,0x00,0x00,0x00,0x0D,0x49,0x44,0x41,0x54,0x78,0x9C,0x62,0x00,0x01,0x00,0x00,0x05,0x00,0x01,0x0D,0x0A,0x2D,0xB4,0x00,0x00,0x00,0x00,0x49,0x45,0x4E,0x44,0xAE,0x42,0x60,0x82)
-            [IO.File]::WriteAllBytes($tmpImgPath, $pngBytes)
-            try {
-                $r = Invoke-LcPostMultipart -Path "/api/events/$eventId/albums/$($script:albumId)/photos" -FilePath $tmpImgPath -FieldName 'image' -Extra @{ caption = 'wave 9.h.10.4 smoke' }
-                if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-            } finally {
-                Remove-Item $tmpImgPath -ErrorAction SilentlyContinue
-            }
-        }
-    } else {
-        Add-LcResult -Report $Report -Status SKIP -Section 'albums' -TestName 'upload photo (multipart)' -Endpoint 'POST /api/events/{eventId}/albums/{albumId}/photos' -SkipReason '-IncludePhotoUpload not set; multipart requires binary image upload'
-        Add-LcResult -Report $Report -Status SKIP -Section 'albums' -TestName 'upload video (multipart)' -Endpoint 'POST /api/events/{eventId}/albums/{albumId}/videos' -SkipReason '-IncludePhotoUpload not set; multipart requires binary video upload'
+        if ($r.StatusCode -ge 400) { throw "$($r.StatusCode) body=$($r.Body | ConvertTo-Json -Compress -Depth 3)" }
     }
 
     # 8. List photos

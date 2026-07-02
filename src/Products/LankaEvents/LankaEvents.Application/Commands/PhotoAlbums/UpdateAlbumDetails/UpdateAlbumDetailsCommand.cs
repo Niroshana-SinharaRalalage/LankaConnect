@@ -102,7 +102,10 @@ public class UpdateAlbumDetailsCommandHandler : ICommandHandler<UpdateAlbumDetai
                     return updateResult;
                 }
 
-                // 5. Commit changes
+                // 5. Persist album mutation to MediaDbContext + dispatch domain events via AppDbContext.
+                // Wave 9.h.10.6 F30a: same MediaDbContext-not-saved bug — Name/Description edits
+                // never persisted pre-fix.
+                await _photoAlbumRepository.UpdateAsync(album, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 stopwatch.Stop();

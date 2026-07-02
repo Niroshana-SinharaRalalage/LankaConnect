@@ -146,7 +146,12 @@ public class UploadAlbumPhotoCommandHandler : ICommandHandler<UploadAlbumPhotoCo
                     return Result<AlbumPhotoDto>.Failure(addPhotoResult.Errors);
                 }
 
-                // 6. Commit changes
+                // 6. Persist album mutation to MediaDbContext + dispatch domain events via AppDbContext.
+                // Wave 9.h.10.6 F30a: repo.UpdateAsync self-saves MediaDbContext (see repo class
+                // remarks) because IUnitOfWork.CommitAsync only saves AppDbContext. Pre-fix, every
+                // upload silently dropped the album mutation (PhotoCount stayed 0, _photos not
+                // persisted), which is why publish always 400'd with 'Upload at least one photo'.
+                await _photoAlbumRepository.UpdateAsync(album, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 var photo = addPhotoResult.Value;

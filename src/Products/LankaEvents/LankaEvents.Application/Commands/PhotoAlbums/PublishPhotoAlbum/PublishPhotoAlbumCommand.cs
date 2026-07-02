@@ -84,7 +84,10 @@ public class PublishPhotoAlbumCommandHandler : ICommandHandler<PublishPhotoAlbum
                     return publishResult;
                 }
 
-                // 4. Commit changes
+                // 4. Persist album mutation to MediaDbContext + dispatch domain events via AppDbContext.
+                // Wave 9.h.10.6 F30a: same MediaDbContext-not-saved bug as UploadAlbumPhoto —
+                // pre-fix, Publish() succeeded in memory but Status stayed Draft in DB.
+                await _photoAlbumRepository.UpdateAsync(album, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 stopwatch.Stop();

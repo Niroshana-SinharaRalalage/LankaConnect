@@ -86,7 +86,9 @@ public class SetAlbumCoverPhotoCommandHandler : ICommandHandler<SetAlbumCoverPho
                     return setCoverResult;
                 }
 
-                // 4. Commit changes
+                // 4. Persist album mutation to MediaDbContext + dispatch domain events via AppDbContext.
+                // Wave 9.h.10.6 F30a: same MediaDbContext-not-saved bug.
+                await _photoAlbumRepository.UpdateAsync(album, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 stopwatch.Stop();

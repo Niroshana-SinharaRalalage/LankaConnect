@@ -190,46 +190,20 @@ function Test-AdminUsersMutatorFlow {
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
 
-    # ---- POST-RUN PROBE-ENTRY-COUNT ASSERTION (architect-mandated Q20 guard) ----
-    # Wave 9.h.10.5 Q20 harness test: instance 3 of the "cumulative-state fixture"
-    # bug class would silently drop probe markers without failing the HTTP tests
-    # above. Guard against that by tailing container logs post-run and asserting
-    # the 5 email-dispatching admin actions each produced probe ENTRY markers.
+    # ---- POST-RUN PROBE-ENTRY-COUNT ASSERTION (Q20 harness) — SUPERSEDED ----
+    # Wave 9.h.10.5 Q20 was a 300-line container-tail probe fired ~5s after the
+    # last admin action, meant to catch instance 3 of the "cumulative-state fixture"
+    # bug class. In practice the 300-line window rotates faster than the assertion
+    # can read it during a full smoke run — Pass 1 saw the assertion FAIL while every
+    # underlying admin action returned 200 and every corresponding email delivered to
+    # the founder inbox (verified in Pass 2 + founder inbox screenshot).
     #
-    # Optional (best-effort). If az CLI isn't available in the smoke environment
-    # or the log query fails, this test SKIPs with a documented reason -- the 5
-    # HTTP-level tests above still validate the fixture flow.
-    Test-LcEndpoint -Report $Report -Section 'admin-mutators' -TestName 'probe-ENTRY count assertion (Q20 harness)' -Endpoint '(container logs)' -Action {
-        $azAvailable = $null -ne (Get-Command az -ErrorAction SilentlyContinue)
-        if (-not $azAvailable) {
-            throw 'az CLI not available; probe-ENTRY assertion cannot run. SKIP appropriate.'
-        }
-        # Give the container logs 5 seconds to flush the last probe markers
-        Start-Sleep -Seconds 5
-        $tailFile = [System.IO.Path]::GetTempFileName()
-        try {
-            # `az containerapp logs show` outputs JSON-per-line via --output tsv;
-            # tail 300 covers ~30-60s of container activity, enough for the
-            # 5 email-dispatching admin actions fired within the last minute.
-            $null = az containerapp logs show `
-                --name lankaconnect-api-staging `
-                --resource-group lankaconnect-staging `
-                --tail 300 --follow false --output tsv 2>&1 | Out-File -Encoding utf8 $tailFile
-            $content = Get-Content $tailFile -Raw
-            $entryCount = ([regex]::Matches($content, 'ENTRY correlationId=[a-f0-9-]+ template=template-account-(locked|unlocked|deactivated|activated)-by-admin')).Count
-            $verifyCount = ([regex]::Matches($content, 'ENTRY correlationId=[a-f0-9-]+ template=template-membership-email-verification')).Count
-            # Expect at least 4 admin-lifecycle probes (lock/unlock/deactivate/activate)
-            # + at least 1 verification probe (resend-verification uses that template).
-            # Registration verifications from the 6 fresh throwaways don't count here
-            # because they run before the admin actions -- they may or may not still
-            # be in the 300-line window depending on volume.
-            if ($entryCount -lt 4) {
-                throw "expected >=4 admin-lifecycle ENTRY probes (lock/unlock/deactivate/activate), found $entryCount. Possible instance 3 of cumulative-state fixture bug -- consult architect."
-            }
-        } finally {
-            Remove-Item -Path $tailFile -Force -ErrorAction SilentlyContinue
-        }
-    }
+    # Wave 9.h.10.6 F34: retired the standalone assertion. F26's rotating-tail
+    # (`_probe-rotating-tail.ps1` at 5s cadence) captures the same probe evidence
+    # continuously across the full suite window and is parsed by `_probe-parse.ps1`
+    # into the union log — that's the canonical delivery evidence now. Keeping the
+    # 7 admin action HTTP tests above; dropping the tail-probe assertion.
+    Add-LcResult -Report $Report -Status SKIP -Section 'admin-mutators' -TestName 'probe-ENTRY count assertion (Q20 harness)' -Endpoint '(container logs)' -SkipReason 'F34 superseded: rotating-tail (F26 at 5s cadence) + probe-parse (F26) union log is the canonical email delivery evidence. The 7 admin action HTTP tests + Pass 3 rotating-tail evidence together prove the flow — no need for the 300-line-window race condition.'
 }
 
 # ============================================================================

@@ -437,36 +437,33 @@ function Test-EventsOrganizerContactFlow {
         if ($null -eq $r.Body.organizerContacts) { throw 'organizerContacts field missing' }
     }
 
-    # Organizer contacts CRUD on a fresh event fixture
+    # Organizer contacts on a fresh event fixture.
+    # Wave 9.h.10.6 F29: the previous POST /api/Events/{id}/organizer-contacts endpoint
+    # never existed (returned 404). The real API is a batch replace via PUT /organizer-contacts
+    # taking { publishOrganizerContact, contacts: [{ contactName, contactEmail, contactPhone, isPrimary }] }.
+    # No per-contact PATCH / DELETE endpoint exists (batch replace is the only mutator).
     $ocfix = New-LcFreeEvent
     if ($ocfix.Success) {
         $tag = Get-LcCurrentRunTag
-        $script:ocContactId = $null
-        Test-LcEndpoint -Report $Report -Section 'organizer-contacts' -TestName 'add organizer contact' -Endpoint 'POST /api/Events/{id}/organizer-contacts' -Action {
-            $r = Invoke-LcPost -Path "/api/Events/$($ocfix.EventId)/organizer-contacts" -Body @{
-                name = "$tag SmokeContact"
-                role = 'Coordinator'
-                email = (Get-LcFixtureEmail -Slug 'event-organizer-contact' -Suffix $tag)
-                phone = '+15555550199'
+        Test-LcEndpoint -Report $Report -Section 'organizer-contacts' -TestName 'batch replace organizer contacts' -Endpoint 'PUT /api/Events/{id}/organizer-contact' -Action {
+            # F29: real route is singular /organizer-contact (batch-replace).
+            $r = Invoke-LcPut -Path "/api/Events/$($ocfix.EventId)/organizer-contact" -Body @{
+                eventId                  = $ocfix.EventId
+                publishOrganizerContact  = $true
+                contacts                 = @(
+                    @{
+                        contactName  = "$tag SmokeContact"
+                        contactEmail = (Get-LcFixtureEmail -Slug 'event-organizer-contact' -Suffix $tag)
+                        contactPhone = '+15555550199'
+                        isPrimary    = $true
+                    }
+                )
             }
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-            if ($r.Body.id) { $script:ocContactId = $r.Body.id }
+            if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
         }
-        if ($script:ocContactId) {
-            Test-LcEndpoint -Report $Report -Section 'organizer-contacts' -TestName 'update organizer contact' -Endpoint 'PATCH /api/Events/{id}/organizer-contacts/{contactId}' -Action {
-                $r = Invoke-LcPatch -Path "/api/Events/$($ocfix.EventId)/organizer-contacts/$($script:ocContactId)" -Body @{
-                    role = 'Lead Coordinator'
-                }
-                if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-            }
-            Test-LcEndpoint -Report $Report -Section 'organizer-contacts' -TestName 'delete organizer contact' -Endpoint 'DELETE /api/Events/{id}/organizer-contacts/{contactId}' -Action {
-                $r = Invoke-LcDelete -Path "/api/Events/$($ocfix.EventId)/organizer-contacts/$($script:ocContactId)"
-                if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-            }
-        } else {
-            Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'update organizer contact' -Endpoint '...' -SkipReason 'create did not yield id'
-            Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'delete organizer contact' -Endpoint '...' -SkipReason 'create did not yield id'
-        }
+        Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'update organizer contact' -Endpoint 'PATCH /api/Events/{id}/organizer-contacts/{contactId}' -SkipReason 'no single-contact PATCH endpoint; batch PUT is the only mutator'
+        Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'delete organizer contact' -Endpoint 'DELETE /api/Events/{id}/organizer-contacts/{contactId}' -SkipReason 'no single-contact DELETE endpoint; batch PUT is the only mutator'
     } else {
         Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'organizer contacts CRUD' -Endpoint '...' -SkipReason 'fixture event create failed'
     }
@@ -853,9 +850,15 @@ function Test-EventsAddAttendeesFlow {
         }
         return
     }
-    # Read my-registration to get the registrationId
+    # Read my-registration to get the registrationId.
+    # Wave 9.h.10.6 F29: /my-registration wraps in Result<T> shape { value: { id: ... }, isSuccess, ... }.
+    # Previous parsing checked Body.id/Body.registrationId directly and silently missed nested Body.value.id.
     $myReg = Invoke-LcGet -Path "/api/Events/$eventId/my-registration"
-    $regId = if ($myReg.Body.id) { $myReg.Body.id } elseif ($myReg.Body.registrationId) { $myReg.Body.registrationId } else { $null }
+    $regId = if ($myReg.Body.value.id) { $myReg.Body.value.id }
+             elseif ($myReg.Body.value.registrationId) { $myReg.Body.value.registrationId }
+             elseif ($myReg.Body.id) { $myReg.Body.id }
+             elseif ($myReg.Body.registrationId) { $myReg.Body.registrationId }
+             else { $null }
     if (-not $regId) {
         foreach ($n in 'calculate addition','add headcount','add attendees','get pending addition','delete pending addition') {
             Add-LcResult -Report $Report -Status SKIP -Section 'add-attendees' -TestName $n -Endpoint '...' -SkipReason "cannot resolve registrationId (HTTP $($myReg.StatusCode))"
@@ -1151,13 +1154,22 @@ function Test-EventsSignupListsFlow {
     }
     $signupId = $null
     Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'create signup list' -Endpoint 'POST /api/Events/{id}/signups' -Action {
+        # Wave 9.h.10.6 F29: CreateSignUpListRequest requires Items[] (400s without it).
+        # Send empty array to satisfy validator; downstream 'add signup item' test adds real items.
+        # HasMandatoryItems etc + Kind are also required to avoid model-binding null-refs.
         $r = Invoke-LcPost -Path "/api/Events/$eventId/signups" -Body @{
-            title       = "Wave9h10.4 SignupList"
-            description = 'wave 9h10.4 smoke signup'
-            category    = 'BringItem'
+            category            = 'BringItem'
+            description         = 'wave 9h10.4 smoke signup'
+            hasMandatoryItems   = $false
+            hasPreferredItems   = $false
+            hasSuggestedItems   = $false
+            hasOpenItems        = $true
+            kind                = 'Items'
+            items               = @()
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-        $script:__signupId = if ($r.Body.id) { $r.Body.id } elseif ($r.Body -is [string]) { $r.Body.Trim('"') } else { $null }
+        if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
+        $script:__signupId = if ($r.Body.value.id) { $r.Body.value.id } elseif ($r.Body.id) { $r.Body.id } elseif ($r.Body -is [string]) { $r.Body.Trim('"') } else { $null }
     }
     $signupId = $script:__signupId
     if (-not $signupId) {
@@ -1301,12 +1313,15 @@ function Test-EventsFormsFullFlow {
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
     $questionId = $null
+    # Wave 9.h.10.6 F29: AddFormQuestionCommand fields are QuestionText/QuestionType/IsRequired/SortOrder,
+    # not text/type/required. Previous smoke shape triggered 400 model-binding fail silently (smoke tolerated non-5xx).
     $addQ = Invoke-LcPost -Path "/api/Events/$eventId/forms/$formId/questions" -Body @{
-        text     = 'wave 9h10.4 question?'
-        type     = 'ShortText'
-        required = $false
+        questionText = 'wave 9h10.4 question?'
+        questionType = 'ShortText'
+        isRequired   = $false
+        sortOrder    = 0
     }
-    $questionId = if ($addQ.Body.id) { $addQ.Body.id } elseif ($addQ.Body -is [string]) { $addQ.Body.Trim('"') } else { $null }
+    $questionId = if ($addQ.Body.value.id) { $addQ.Body.value.id } elseif ($addQ.Body.id) { $addQ.Body.id } elseif ($addQ.Body -is [string]) { $addQ.Body.Trim('"') } else { $null }
     Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'add question (via wiring probe)' -Endpoint 'POST /api/Events/{id}/forms/{formId}/questions' -Action {
         if ($addQ.StatusCode -ge 500) { throw "5xx: $($addQ.StatusCode)" }
     }

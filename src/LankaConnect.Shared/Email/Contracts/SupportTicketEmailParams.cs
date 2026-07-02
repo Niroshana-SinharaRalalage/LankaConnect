@@ -155,6 +155,11 @@ public class SupportTicketEmailParams : IEmailParameters
             { "UserName", UserName },
             { "TicketNumber", TicketNumber },
             { "TicketReference", TicketNumber },  // Alias for templates expecting TicketReference
+            // Wave 9.h.10.6 F32: template-support-ticket-confirmation subject line contains
+            // `Reference #{{ReferenceId}}` but ToDictionary previously never emitted a
+            // ReferenceId key so the placeholder rendered unreplaced. Founder inbox proof:
+            // "We Received Your Message - Reference #{{ReferenceId}}" — literal double-brace.
+            { "ReferenceId", TicketNumber },
             { "Subject", Subject },
             { "Category", Category },
             { "Priority", Priority },

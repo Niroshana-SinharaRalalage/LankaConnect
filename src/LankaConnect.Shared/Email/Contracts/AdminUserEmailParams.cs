@@ -180,7 +180,14 @@ public class AdminUserEmailParams : IEmailParameters
             { "Year", DateTime.UtcNow.Year }  // Footer param
         };
 
-        // Add LockUntil for locked account templates
+        // Add LockUntil for locked account templates.
+        // Wave 9.h.10.6 F32: always emit the LockUntil key with a fallback string
+        // when not set. Pre-fix, calls that omitted LockUntil left the placeholder
+        // `{{LockUntil}}` unreplaced in the rendered subject/body (founder inbox
+        // proof: "Your LankaConnect Account Has Been Temporarily Locked ... 🔒
+        // Account Status 🔒 Account Locked If You can n..." with literal
+        // {{LockUntil}} in the preview text). HasLockExpiration flag lets
+        // templates conditionally render the "will unlock at" sentence.
         if (LockUntil.HasValue)
         {
             dict["LockUntil"] = LockUntil.Value.ToString("MMMM dd, yyyy h:mm tt");
@@ -188,6 +195,7 @@ public class AdminUserEmailParams : IEmailParameters
         }
         else
         {
+            dict["LockUntil"] = "Indefinite";
             dict["HasLockExpiration"] = false;
         }
 

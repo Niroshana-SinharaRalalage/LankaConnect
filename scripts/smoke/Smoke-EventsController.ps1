@@ -1363,13 +1363,26 @@ function Test-EventsFormsFullFlow {
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
     }
+    # Wave 9.h.10.6 F36b: publish form BEFORE close/reopen. Domain lifecycle is
+    # Draft → Active → Closed → Active (via reopen). Pre-fix the smoke went
+    # create → close → reopen without publish, so close silently 400'd ('Only
+    # Active forms can be closed'), reopen silently 400'd ('Only Closed forms can
+    # be reopened'), form stayed in Draft, and submit-response 400'd with 'This
+    # form is not currently accepting responses' — silent all the way down.
+    Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'publish form' -Endpoint 'POST /api/Events/{id}/forms/{formId}/publish' -Action {
+        $r = Invoke-LcPost -Path "/api/Events/$eventId/forms/$formId/publish" -Body @{}
+        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
+    }
     Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'close form' -Endpoint 'POST /api/Events/{id}/forms/{formId}/close' -Action {
         $r = Invoke-LcPost -Path "/api/Events/$eventId/forms/$formId/close" -Body @{}
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
     }
     Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'reopen form' -Endpoint 'POST /api/Events/{id}/forms/{formId}/reopen' -Action {
         $r = Invoke-LcPost -Path "/api/Events/$eventId/forms/$formId/reopen" -Body @{}
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
     }
     $questionId = $null
     # Wave 9.h.10.6 F29: AddFormQuestionCommand fields are QuestionText/QuestionType/IsRequired/SortOrder,
@@ -1396,20 +1409,9 @@ function Test-EventsFormsFullFlow {
             $r = Invoke-LcPut -Path "/api/Events/$eventId/forms/$formId/questions/reorder" -Body @{ questionIds = @($questionId) }
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
         }
-        Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'delete question' -Endpoint 'DELETE /api/Events/{id}/forms/{formId}/questions/{questionId}' -Action {
-            $r = Invoke-LcDelete -Path "/api/Events/$eventId/forms/$formId/questions/$questionId"
-            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-        }
-    } else {
-        foreach ($n in 'update question','reorder questions','delete question') {
-            Add-LcResult -Report $Report -Status SKIP -Section 'forms-full' -TestName $n -Endpoint '...' -SkipReason 'question add did not yield id'
-        }
-    }
-    # Wave 9.h.10.6 F36: submit a form response so template-form-response-confirmation
-    # actually fires. Requires a valid questionId from the F29 fix above. Pre-fix the
-    # smoke never called POST /responses — only tested update/delete with fake ids —
-    # so the confirmation email was silent in every prior run.
-    if ($questionId) {
+        # Wave 9.h.10.6 F36 (Pass 4 reorder): submit response BEFORE delete question
+        # so the form still has a question to answer + form is still in Active state
+        # (F36b's publish). Requires questionId from F29's questionText/questionType fix.
         Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'submit form response (FIRES template-form-response-confirmation)' -Endpoint 'POST /api/Events/{id}/forms/{formId}/responses' -Action {
             $r = Invoke-LcPost -Path "/api/Events/$eventId/forms/$formId/responses" -Body @{
                 respondentEmail = (Get-LcFixtureEmail -Slug 'template-form-response-confirmation' -Suffix (Get-Random -Maximum 9999))
@@ -1421,8 +1423,14 @@ function Test-EventsFormsFullFlow {
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
             if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
         }
+        Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'delete question' -Endpoint 'DELETE /api/Events/{id}/forms/{formId}/questions/{questionId}' -Action {
+            $r = Invoke-LcDelete -Path "/api/Events/$eventId/forms/$formId/questions/$questionId"
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        }
     } else {
-        Add-LcResult -Report $Report -Status SKIP -Section 'forms-full' -TestName 'submit form response (FIRES template-form-response-confirmation)' -Endpoint 'POST /api/Events/{id}/forms/{formId}/responses' -SkipReason 'question add did not yield id — cannot submit response without a question to answer'
+        foreach ($n in 'update question','reorder questions','submit form response (FIRES template-form-response-confirmation)','delete question') {
+            Add-LcResult -Report $Report -Status SKIP -Section 'forms-full' -TestName $n -Endpoint '...' -SkipReason 'question add did not yield id'
+        }
     }
 
     $fakeRespId = [Guid]::NewGuid().ToString()

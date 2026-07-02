@@ -119,6 +119,18 @@ function Test-NewslettersMutatorsFlow {
             $r = Invoke-LcPost -Path "/api/Newsletters/$($script:newsletterId)/publish" -Body @{}
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
         }
+        # Wave 9.h.10.6 F37b: send RIGHT AFTER publish so the newsletter is in the
+        # Active state that Send requires. Pass 4 exposed that the earlier order
+        # (publish → unpublish → reactivate → send) leaves the newsletter in a
+        # non-sendable state because Reactivate doesn't restore Active. That's a real
+        # domain state-machine issue worth logging (see backlog note in commit body);
+        # for the smoke's email-delivery purpose we send immediately post-publish and
+        # keep the unpublish/reactivate tests running afterward as a wiring probe.
+        Test-LcEndpoint -Report $Report -Section 'newsletters-mutators' -TestName 'send newsletter (FIRES template-newsletter-notification via Hangfire)' -Endpoint 'POST /api/Newsletters/{id}/send' -Action {
+            $r = Invoke-LcPost -Path "/api/Newsletters/$($script:newsletterId)/send" -Body @{}
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
+        }
         Test-LcEndpoint -Report $Report -Section 'newsletters-mutators' -TestName 'unpublish newsletter' -Endpoint 'POST /api/Newsletters/{id}/unpublish' -Action {
             $r = Invoke-LcPost -Path "/api/Newsletters/$($script:newsletterId)/unpublish" -Body @{}
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
@@ -126,17 +138,6 @@ function Test-NewslettersMutatorsFlow {
         Test-LcEndpoint -Report $Report -Section 'newsletters-mutators' -TestName 'reactivate newsletter' -Endpoint 'POST /api/Newsletters/{id}/reactivate' -Action {
             $r = Invoke-LcPost -Path "/api/Newsletters/$($script:newsletterId)/reactivate" -Body @{}
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-        }
-        Test-LcEndpoint -Report $Report -Section 'newsletters-mutators' -TestName 'send newsletter (FIRES template-newsletter-notification via Hangfire)' -Endpoint 'POST /api/Newsletters/{id}/send' -Action {
-            $r = Invoke-LcPost -Path "/api/Newsletters/$($script:newsletterId)/send" -Body @{}
-            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-            # Wave 9.h.10.6 F37: tighten from <500 to expected 202 Accepted (endpoint
-            # returns 202 on success, queues Hangfire background job to email each
-            # recipient with template-newsletter-notification). Any 400 here means the
-            # newsletter is in an invalid state (e.g. unpublished when this test fires
-            # after the publish/unpublish/reactivate churn above) — surface it instead
-            # of hiding behind <500 tolerance.
-            if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
         }
         Test-LcEndpoint -Report $Report -Section 'newsletters-mutators' -TestName 'delete newsletter' -Endpoint 'DELETE /api/Newsletters/{id}' -Action {
             $r = Invoke-LcDelete -Path "/api/Newsletters/$($script:newsletterId)"

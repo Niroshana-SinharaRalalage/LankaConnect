@@ -127,9 +127,16 @@ function Test-NewslettersMutatorsFlow {
             $r = Invoke-LcPost -Path "/api/Newsletters/$($script:newsletterId)/reactivate" -Body @{}
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
         }
-        Test-LcEndpoint -Report $Report -Section 'newsletters-mutators' -TestName 'send newsletter (real ACS email send)' -Endpoint 'POST /api/Newsletters/{id}/send' -Action {
+        Test-LcEndpoint -Report $Report -Section 'newsletters-mutators' -TestName 'send newsletter (FIRES template-newsletter-notification via Hangfire)' -Endpoint 'POST /api/Newsletters/{id}/send' -Action {
             $r = Invoke-LcPost -Path "/api/Newsletters/$($script:newsletterId)/send" -Body @{}
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            # Wave 9.h.10.6 F37: tighten from <500 to expected 202 Accepted (endpoint
+            # returns 202 on success, queues Hangfire background job to email each
+            # recipient with template-newsletter-notification). Any 400 here means the
+            # newsletter is in an invalid state (e.g. unpublished when this test fires
+            # after the publish/unpublish/reactivate churn above) — surface it instead
+            # of hiding behind <500 tolerance.
+            if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
         }
         Test-LcEndpoint -Report $Report -Section 'newsletters-mutators' -TestName 'delete newsletter' -Endpoint 'DELETE /api/Newsletters/{id}' -Action {
             $r = Invoke-LcDelete -Path "/api/Newsletters/$($script:newsletterId)"

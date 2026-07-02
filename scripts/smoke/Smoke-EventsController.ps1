@@ -1163,15 +1163,16 @@ function Test-EventsSignupListsFlow {
     }
     $signupId = $null
     Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'create signup list' -Endpoint 'POST /api/Events/{id}/signups' -Action {
-        # Wave 9.h.10.6 F29: CreateSignUpListRequest requires Items[] (400s without it).
+        # Wave 9.h.10.6 F29 + F35: CreateSignUpListRequest requires Items[] (400s without it).
         # Send empty array to satisfy validator; downstream 'add signup item' test adds real items.
-        # HasMandatoryItems etc + Kind are also required to avoid model-binding null-refs.
+        # F35: enable ALL category flags so downstream add-item + commit tests can freely
+        # choose any category without hitting 'X category is not enabled for this sign-up list'.
         $r = Invoke-LcPost -Path "/api/Events/$eventId/signups" -Body @{
             category            = 'BringItem'
             description         = 'wave 9h10.4 smoke signup'
-            hasMandatoryItems   = $false
-            hasPreferredItems   = $false
-            hasSuggestedItems   = $false
+            hasMandatoryItems   = $true
+            hasPreferredItems   = $true
+            hasSuggestedItems   = $true
             hasOpenItems        = $true
             kind                = 'Items'
             items               = @()
@@ -1196,13 +1197,22 @@ function Test-EventsSignupListsFlow {
     }
     $itemId = $null
     Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'add signup item' -Endpoint 'POST /api/Events/{eventId}/signups/{signupId}/items' -Action {
+        # Wave 9.h.10.6 F35: AddSignUpItemCommand fields are ItemDescription/ItemType/
+        # ItemCategory/TargetQuantity, not name/description/quantity. Old body 400'd
+        # on 'The ItemDescription field is required'; smoke tolerated it as PASS on
+        # non-5xx and $itemId stayed null → 4 downstream tests (update / reorder /
+        # commit / commit-anon / delete signup item) all SKIPed with 'signup item
+        # create did not yield id'. Commit is what fires
+        # template-signup-list-commitment-confirmation → silent gap in every prior run.
         $r = Invoke-LcPost -Path "/api/Events/$eventId/signups/$signupId/items" -Body @{
-            name        = 'Wave9h10.4 Item'
-            description = 'test item'
-            quantity    = 3
+            itemDescription = 'Wave9h10.6 Item'
+            itemType        = 'Quantity'     # enum: Quantity | Slot
+            itemCategory    = 'Mandatory'    # enum: Mandatory | Preferred | Suggested | Open
+            targetQuantity  = 3
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
-        $script:__signupItemId = if ($r.Body.id) { $r.Body.id } elseif ($r.Body -is [string]) { $r.Body.Trim('"') } else { $null }
+        if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
+        $script:__signupItemId = if ($r.Body.value.id) { $r.Body.value.id } elseif ($r.Body.id) { $r.Body.id } elseif ($r.Body -is [string]) { $r.Body.Trim('"') } else { $null }
     }
     $itemId = $script:__signupItemId
     if ($itemId) {
@@ -1220,8 +1230,26 @@ function Test-EventsSignupListsFlow {
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
         }
         Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'commit signup item (FIRES template-signup-list-commitment-confirmation)' -Endpoint 'POST /api/Events/{eventId}/signups/{signupId}/items/{itemId}/commit' -Action {
-            $r = Invoke-LcPost -Path "/api/Events/$eventId/signups/$signupId/items/$itemId/commit" -Body @{ quantity = 1 }
+            # Wave 9.h.10.6 F35: commit endpoint requires userId in body (server-side check
+            # returns 400 'User ID is required'). Pre-fix the smoke sent only `{ quantity = 1 }`
+            # so every commit 400'd and template-signup-list-commitment-confirmation never fired.
+            $r = Invoke-LcPost -Path "/api/Events/$eventId/signups/$signupId/items/$itemId/commit" -Body @{
+                userId   = (Get-LcUserId)
+                quantity = 1
+            }
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
+        }
+        # Wave 9.h.10.6 F35: a second commit call by the same user with a different
+        # quantity triggers the UpdateCommitment domain path → CommitmentUpdatedEvent
+        # → template-signup-list-commitment-update. Previously never exercised.
+        Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'update signup commitment (FIRES template-signup-list-commitment-update)' -Endpoint 'POST /api/Events/{eventId}/signups/{signupId}/items/{itemId}/commit' -Action {
+            $r = Invoke-LcPost -Path "/api/Events/$eventId/signups/$signupId/items/$itemId/commit" -Body @{
+                userId   = (Get-LcUserId)
+                quantity = 2   # changed from 1 above → triggers UpdateCommitment path
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
         }
         Test-LcEndpoint -Report $Report -Section 'signup-lists' -TestName 'commit signup item ANON' -Endpoint 'POST /api/Events/{eventId}/signups/{signupId}/items/{itemId}/commit-anonymous' -Action {
             $r = Invoke-LcPost -Path "/api/Events/$eventId/signups/$signupId/items/$itemId/commit-anonymous" -Bearer $null -Body @{
@@ -1355,6 +1383,26 @@ function Test-EventsFormsFullFlow {
             Add-LcResult -Report $Report -Status SKIP -Section 'forms-full' -TestName $n -Endpoint '...' -SkipReason 'question add did not yield id'
         }
     }
+    # Wave 9.h.10.6 F36: submit a form response so template-form-response-confirmation
+    # actually fires. Requires a valid questionId from the F29 fix above. Pre-fix the
+    # smoke never called POST /responses — only tested update/delete with fake ids —
+    # so the confirmation email was silent in every prior run.
+    if ($questionId) {
+        Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'submit form response (FIRES template-form-response-confirmation)' -Endpoint 'POST /api/Events/{id}/forms/{formId}/responses' -Action {
+            $r = Invoke-LcPost -Path "/api/Events/$eventId/forms/$formId/responses" -Body @{
+                respondentEmail = (Get-LcFixtureEmail -Slug 'template-form-response-confirmation' -Suffix (Get-Random -Maximum 9999))
+                respondentName  = 'F36 Form Submitter'
+                answers         = @(
+                    @{ questionId = $questionId; textValue = 'wave 9.h.10.6 F36 answer' }
+                )
+            }
+            if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+            if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
+        }
+    } else {
+        Add-LcResult -Report $Report -Status SKIP -Section 'forms-full' -TestName 'submit form response (FIRES template-form-response-confirmation)' -Endpoint 'POST /api/Events/{id}/forms/{formId}/responses' -SkipReason 'question add did not yield id — cannot submit response without a question to answer'
+    }
+
     $fakeRespId = [Guid]::NewGuid().ToString()
     Test-LcEndpoint -Report $Report -Section 'forms-full' -TestName 'update response (404 wiring)' -Endpoint 'PUT /api/Events/{id}/forms/{formId}/responses/{responseId}' -Action {
         $r = Invoke-LcPut -Path "/api/Events/$eventId/forms/$formId/responses/$fakeRespId" -Body @{ answers = @() }

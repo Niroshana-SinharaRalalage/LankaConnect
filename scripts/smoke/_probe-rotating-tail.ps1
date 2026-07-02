@@ -33,7 +33,13 @@
 param(
     [Parameter(Mandatory)][string]$CaptureDir,
     [string]$Revision,
-    [int]$IntervalSeconds = 20
+    # Wave 9.h.10.5 F28 (2026-07-02): default reduced from 20s -> 5s.
+    # Pass 1 evidence showed high-burst windows (e.g. RSVP CommitAsync fires
+    # ~100 lines in a single second) rotated critical log lines out of the
+    # `az containerapp logs show --tail 300` buffer BETWEEN 20s snapshots.
+    # 5s interval keeps the 300-line window <= ~60 lines/s tolerance, which
+    # comfortably covers observed burst rates on staging.
+    [int]$IntervalSeconds = 5
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

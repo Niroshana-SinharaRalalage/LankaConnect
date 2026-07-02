@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Infrastructure.WhatsApp.Services;
@@ -20,15 +21,41 @@ public class WhatsAppWebhookController : ControllerBase
     private readonly IWhatsAppWebhookProcessor _processor;
     private readonly TwilioWhatsAppWebhookProcessor _twilioProcessor;
     private readonly ILogger<WhatsAppWebhookController> _logger;
+    // Wave 9.h.10.6 F31b: config-driven shared-secret verification.
+    // When `Webhook:WhatsApp:SharedSecret` is set, incoming POSTs must carry a
+    // matching `X-Webhook-Secret` header or the request is rejected 401. When
+    // the config is empty (default), the endpoint accepts unsigned requests —
+    // preserves the pre-fix behaviour for backwards compatibility. Ship + set
+    // the env var + configure Event Grid to include the header when ready.
+    private readonly string? _sharedSecret;
 
     public WhatsAppWebhookController(
         IWhatsAppWebhookProcessor processor,
         TwilioWhatsAppWebhookProcessor twilioProcessor,
+        IConfiguration configuration,
         ILogger<WhatsAppWebhookController> logger)
     {
         _processor = processor;
         _twilioProcessor = twilioProcessor;
+        _sharedSecret = configuration["Webhook:WhatsApp:SharedSecret"];
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Wave 9.h.10.6 F31b: constant-time compare against the configured shared secret.
+    /// Returns true when the check is disabled (no secret configured) or when the
+    /// header matches; false when the secret is configured and the header is
+    /// missing / doesn't match.
+    /// </summary>
+    private bool VerifySharedSecret(string? providedSecret)
+    {
+        if (string.IsNullOrWhiteSpace(_sharedSecret))
+            return true; // strict mode disabled
+        if (string.IsNullOrWhiteSpace(providedSecret))
+            return false;
+        var a = System.Text.Encoding.UTF8.GetBytes(_sharedSecret);
+        var b = System.Text.Encoding.UTF8.GetBytes(providedSecret);
+        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(a, b);
     }
 
     /// <summary>
@@ -37,6 +64,7 @@ public class WhatsAppWebhookController : ControllerBase
     /// </summary>
     /// <param name="payload">Raw JSON payload from Event Grid</param>
     /// <param name="eventType">Event Grid event type header (aeg-event-type)</param>
+    /// <param name="providedSecret">Wave 9.h.10.6 F31b: shared secret from X-Webhook-Secret header, matched against Webhook:WhatsApp:SharedSecret config</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>200 OK on success, 500 on processing failure</returns>
     [HttpPost("status")]
@@ -46,10 +74,22 @@ public class WhatsAppWebhookController : ControllerBase
     public async Task<IActionResult> HandleDeliveryStatus(
         [FromBody] JsonElement payload,
         [FromHeader(Name = "aeg-event-type")] string? eventType,
+        [FromHeader(Name = "X-Webhook-Secret")] string? providedSecret,
         CancellationToken ct)
     {
         try
         {
+            // Wave 9.h.10.6 F31b: enforce shared-secret when configured. Subscription
+            // handshake is a one-shot flow and doesn't carry the header, so we allow
+            // it through — the incoming validationCode is a challenge Event Grid
+            // controls anyway.
+            if (!VerifySharedSecret(providedSecret) &&
+                !string.Equals(eventType, "SubscriptionValidation", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("[F31b] WhatsApp status webhook rejected: missing or mismatched X-Webhook-Secret");
+                return Unauthorized();
+            }
+
             // Step 1: Handle Azure Event Grid subscription validation handshake.
             // When registering a webhook, Event Grid sends a SubscriptionValidation event
             // that we must echo back the validationCode to confirm ownership.
@@ -105,6 +145,7 @@ public class WhatsAppWebhookController : ControllerBase
     public async Task<IActionResult> HandleTwilioDeliveryStatus(
         [FromForm] Dictionary<string, string> formData,
         [FromHeader(Name = "X-Twilio-Signature")] string? twilioSignature,
+        [FromHeader(Name = "X-Webhook-Secret")] string? providedSecret,
         CancellationToken ct)
     {
         try
@@ -124,8 +165,21 @@ public class WhatsAppWebhookController : ControllerBase
                     return Forbid();
                 }
             }
+            else if (VerifySharedSecret(providedSecret))
+            {
+                // Wave 9.h.10.6 F31b: no X-Twilio-Signature but shared-secret verified — proceed.
+                _logger.LogInformation("[F31b] Twilio webhook accepted via X-Webhook-Secret fallback.");
+            }
             else
             {
+                // Wave 9.h.10.6 F31b: reject when neither Twilio signature nor shared secret
+                // is presented AND the strict-mode secret is configured. When the secret is
+                // empty (dev / pre-fix rollout), keep the pre-fix permissive behaviour.
+                if (!string.IsNullOrWhiteSpace(_sharedSecret))
+                {
+                    _logger.LogWarning("[F31b] Twilio webhook rejected: no signature and no matching X-Webhook-Secret");
+                    return Unauthorized();
+                }
                 _logger.LogWarning("[Phase 7B] No X-Twilio-Signature header. Processing anyway (staging mode).");
             }
 

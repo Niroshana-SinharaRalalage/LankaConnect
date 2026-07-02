@@ -1081,7 +1081,11 @@ function Test-EventsShareIcsFlow {
 
     Test-LcEndpoint -Report $Report -Section 'share-ics' -TestName 'ics calendar download' -Endpoint 'GET /api/Events/{id}/ics' -Action {
         $r = Invoke-LcGet -Path "/api/Events/$eventId/ics"
-        if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        # Wave 9.h.10.6 F31a: assert 200 (or 422 TBD-date), not just <500 — the old
+        # tolerance hid an NRE on null EventLocation.Address for months.
+        if ($r.StatusCode -eq 200) { return }
+        if ($r.StatusCode -eq 422) { return }  # TBD dates: valid failure mode
+        throw "expected 200 (or 422 TBD) got $($r.StatusCode)"
     }
     Test-LcEndpoint -Report $Report -Section 'share-ics' -TestName 'share event (email/link)' -Endpoint 'POST /api/Events/{id}/share' -Action {
         $r = Invoke-LcPost -Path "/api/Events/$eventId/share" -Body @{

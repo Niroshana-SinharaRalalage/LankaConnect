@@ -183,6 +183,18 @@ public class GetEventIcsQueryHandler : IQueryHandler<GetEventIcsQuery, string>
     {
         var parts = new List<string>();
 
+        // Wave 9.h.10.6 F31a: EventLocation.Address is nullable in practice — the EF Core
+        // private constructor sets `Address = null!` and any event created without the
+        // flat LocationAddress/City/... fields ends up with a hydrated EventLocation whose
+        // Address is null. Pre-fix this threw NRE at BuildLocationText → 500 for every
+        // .ics export on such events. Fall back to Name / empty when Address is unavailable.
+        if (location.Address == null)
+        {
+            if (!string.IsNullOrWhiteSpace(location.Name))
+                parts.Add(location.Name);
+            return string.Join(", ", parts);
+        }
+
         if (!string.IsNullOrWhiteSpace(location.Address.Street))
             parts.Add(location.Address.Street);
 

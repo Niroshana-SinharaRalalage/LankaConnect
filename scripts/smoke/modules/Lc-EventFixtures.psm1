@@ -96,16 +96,18 @@ function New-LcFreeEvent {
         # which don't match any command property, silently creating TBD events.
         startDate                = $startDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
         endDate                  = $endDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
-        location                 = @{
-            venueName  = 'Smoke Venue'
-            address    = '100 Main St'
-            city       = 'Boston'
-            stateName  = 'Massachusetts'
-            country    = 'USA'
-            postalCode = '02110'
-            latitude   = 42.36
-            longitude  = -71.06
-        }
+        # Wave 9.h.10.6 F31a: CreateEventCommand uses FLAT location fields
+        # (LocationAddress/LocationCity/...), not a nested { address, city, ... } object.
+        # Pre-fix the nested object silently dropped during model binding, leaving events
+        # with null Address which broke /ics export with NRE.
+        locationName             = 'Smoke Venue'
+        locationAddress          = '100 Main St'
+        locationCity             = 'Boston'
+        locationState            = 'Massachusetts'
+        locationCountry          = 'USA'
+        locationZipCode          = '02110'
+        locationLatitude         = 42.36
+        locationLongitude        = -71.06
         isFreeEvent              = $true
         capacity                 = $Capacity
         requiresRegistration     = $true
@@ -176,16 +178,18 @@ function New-LcPaidEvent {
         # which don't match any command property, silently creating TBD events.
         startDate                = $startDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
         endDate                  = $endDt.ToString('yyyy-MM-ddTHH:mm:ssZ')
-        location                 = @{
-            venueName  = 'Smoke Venue'
-            address    = '100 Main St'
-            city       = 'Boston'
-            stateName  = 'Massachusetts'
-            country    = 'USA'
-            postalCode = '02110'
-            latitude   = 42.36
-            longitude  = -71.06
-        }
+        # Wave 9.h.10.6 F31a: CreateEventCommand uses FLAT location fields
+        # (LocationAddress/LocationCity/...), not a nested { address, city, ... } object.
+        # Pre-fix the nested object silently dropped during model binding, leaving events
+        # with null Address which broke /ics export with NRE.
+        locationName             = 'Smoke Venue'
+        locationAddress          = '100 Main St'
+        locationCity             = 'Boston'
+        locationState            = 'Massachusetts'
+        locationCountry          = 'USA'
+        locationZipCode          = '02110'
+        locationLatitude         = 42.36
+        locationLongitude        = -71.06
         isFreeEvent              = $false
         ticketPriceAmount        = $TicketPrice
         ticketPriceCurrency      = 'USD'

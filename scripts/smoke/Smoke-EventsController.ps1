@@ -675,9 +675,12 @@ function Test-EventsLifecycleFlow {
     # Publish first so cancel-broadcast has attendees
     Publish-LcEvent -EventId $eventId | Out-Null
 
-    # Register founder as attendee so cancel-event broadcast has a recipient
-    $rsvp = Invoke-LcPost -Path "/api/Events/$eventId/rsvp" -Body @{}
-    if ($rsvp.StatusCode -ge 500) { Write-Host "note: rsvp pre-cancel HTTP $($rsvp.StatusCode)" }
+    # Register founder as attendee so cancel-event broadcast has a recipient.
+    # Wave 9.h.10.6 F33: empty-body RSVP silently 400'd pre-fix (endpoint requires
+    # { userId, quantity }); the cancel-event broadcast then fired with 0 recipients
+    # and template-event-cancellation-notifications never sent.
+    $rsvp = New-LcRegistration -EventId $eventId -Quantity 1
+    if (-not $rsvp.Success) { Write-Host "note: rsvp pre-cancel HTTP $($rsvp.StatusCode)" }
 
     Test-LcEndpoint -Report $Report -Section 'event-lifecycle' -TestName 'cancel event (FIRES template-event-cancellation-notifications)' -Endpoint 'POST /api/Events/{id}/cancel' -Action {
         $r = Invoke-LcPost -Path "/api/Events/$eventId/cancel" -Body @{
@@ -788,7 +791,8 @@ function Test-EventsRegistrationExtrasFlow {
     }
     $eventId = $fix.EventId
     Publish-LcEvent -EventId $eventId | Out-Null
-    Invoke-LcPost -Path "/api/Events/$eventId/rsvp" -Body @{} | Out-Null
+    # Wave 9.h.10.6 F33: use New-LcRegistration helper — empty body -Body @{} silently 400'd.
+    New-LcRegistration -EventId $eventId -Quantity 1 | Out-Null
 
     Test-LcEndpoint -Report $Report -Section 'registration-extras' -TestName 'update rsvp' -Endpoint 'PUT /api/Events/{id}/rsvp' -Action {
         $r = Invoke-LcPut -Path "/api/Events/$eventId/rsvp" -Body @{ note = 'wave 9h10.4 update' }
@@ -843,8 +847,9 @@ function Test-EventsAddAttendeesFlow {
     }
     $eventId = $fix.EventId
     Publish-LcEvent -EventId $eventId | Out-Null
-    $rsvp = Invoke-LcPost -Path "/api/Events/$eventId/rsvp" -Body @{}
-    if ($rsvp.StatusCode -ge 500) {
+    # Wave 9.h.10.6 F33: use New-LcRegistration helper — empty body -Body @{} silently 400'd.
+    $rsvp = New-LcRegistration -EventId $eventId -Quantity 1
+    if (-not $rsvp.Success) {
         foreach ($n in 'calculate addition','add headcount','add attendees','get pending addition','delete pending addition') {
             Add-LcResult -Report $Report -Status SKIP -Section 'add-attendees' -TestName $n -Endpoint '...' -SkipReason 'rsvp fixture failed'
         }
@@ -1403,7 +1408,8 @@ function Test-EventsOrganizerNotificationsFlow {
     }
     $eventId = $fix.EventId
     Publish-LcEvent -EventId $eventId | Out-Null
-    Invoke-LcPost -Path "/api/Events/$eventId/rsvp" -Body @{} | Out-Null
+    # Wave 9.h.10.6 F33: use New-LcRegistration helper — empty body -Body @{} silently 400'd.
+    New-LcRegistration -EventId $eventId -Quantity 1 | Out-Null
 
     Test-LcEndpoint -Report $Report -Section 'organizer-notifications' -TestName 'export attendees' -Endpoint 'GET /api/Events/{eventId}/export' -Action {
         $r = Invoke-LcGet -Path "/api/Events/$eventId/export?format=csv"

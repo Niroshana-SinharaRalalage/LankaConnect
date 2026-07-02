@@ -40,11 +40,18 @@ function Test-NewsletterPublicFlow {
     # Founder OK with real subscribe emails. Confirm/unsubscribe with token are
     # genuinely state-dependent (need actual email token).
     Test-LcEndpoint -Report $Report -Section 'newsletter-public' -TestName 'subscribe' -Endpoint 'POST /api/Newsletter/subscribe' -Action {
+        # Wave 9.h.10.6 F33: SubscribeToNewsletterCommand requires either metro area
+        # selection OR subscribeToAllLocations=true. Pre-fix, the smoke sent neither,
+        # got 400 'Either specify metro areas or select to receive all locations',
+        # smoke tolerated <500 as PASS, and the confirmation email never fired.
+        # Use subscribeToAllLocations=true so the flow reaches the send-email path.
         $r = Invoke-LcPost -Path '/api/Newsletter/subscribe' -Bearer $null -Body @{
-            email = (Get-LcFixtureEmail -Slug 'template-newsletter-subscription-confirmation' -Suffix (Get-Random -Maximum 9999))
-            name  = 'Smoke Subscriber'
+            email                    = (Get-LcFixtureEmail -Slug 'template-newsletter-subscription-confirmation' -Suffix (Get-Random -Maximum 9999))
+            name                     = 'Smoke Subscriber'
+            receiveAllLocations      = $true
         }
         if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
+        if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
     }
     Test-LcEndpoint -Report $Report -Section 'newsletter-public' -TestName 'unsubscribe (POST by email)' -Endpoint 'POST /api/Newsletter/unsubscribe' -Action {
         $r = Invoke-LcPost -Path '/api/Newsletter/unsubscribe' -Bearer $null -Body @{

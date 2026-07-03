@@ -1,20 +1,24 @@
-using LankaConnect.Application.Common;
-using LankaConnect.Modules.Media.Domain;
-using LankaConnect.Modules.Media.Domain.Entities;
-using LankaConnect.Modules.Media.Domain.Enums;
-using LankaConnect.Modules.Media.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
+using LankaConnect.Modules.Media.Contracts.IntegrationEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Products.LankaEvents.Application.EventHandlers;
 
 /// <summary>
-/// Handles the PhotoAlbumPublished domain event.
-/// Log-only: Email notifications are now sent explicitly via SendAlbumNotificationCommand.
-/// This handler is kept for audit/logging purposes.
+/// Wave 6.5.b canary: subscribes to <see cref="PhotoAlbumPublishedIntegrationEventV1"/>
+/// dispatched via the outbox — replaces the previous subscription to
+/// <c>DomainEventNotification&lt;PhotoAlbumPublishedDomainEvent&gt;</c>. Log-only
+/// (email notifications are sent explicitly via <c>SendAlbumNotificationCommand</c>);
+/// the handler exists as an audit trail proving the outbox dispatch reached its
+/// subscriber.
 /// </summary>
-public class PhotoAlbumPublishedEmailHandler : INotificationHandler<DomainEventNotification<PhotoAlbumPublishedDomainEvent>>
+/// <remarks>
+/// This is the "one consumer wired" acceptance criterion per architect Q4 ruling
+/// (2026-07-02). Dispatch path: MediaDbContext.Outbox → <c>OutboxProcessor&lt;MediaDbContext&gt;</c>
+/// → <c>MediatRIntegrationEventDispatcher</c> → this handler. When the outbox row
+/// is marked ProcessedAt non-null, this log line proves the round-trip completed.
+/// </remarks>
+public class PhotoAlbumPublishedEmailHandler : INotificationHandler<PhotoAlbumPublishedIntegrationEventV1>
 {
     private readonly ILogger<PhotoAlbumPublishedEmailHandler> _logger;
 
@@ -24,15 +28,15 @@ public class PhotoAlbumPublishedEmailHandler : INotificationHandler<DomainEventN
     }
 
     public Task Handle(
-        DomainEventNotification<PhotoAlbumPublishedDomainEvent> notification,
+        PhotoAlbumPublishedIntegrationEventV1 notification,
         CancellationToken cancellationToken)
     {
-        var domainEvent = notification.DomainEvent;
-
         _logger.LogInformation(
-            "PhotoAlbumPublished: AlbumId={AlbumId}, EventId={EventId}, EventTitle={EventTitle}, AlbumName={AlbumName}. " +
-            "Email notifications are sent separately via SendAlbumNotificationCommand.",
-            domainEvent.AlbumId, domainEvent.EventId, domainEvent.EventTitle, domainEvent.AlbumName);
+            "PhotoAlbumPublishedIntegrationEventV1 received (via outbox): " +
+            "AlbumId={AlbumId}, OwningEventId={OwningEventId}, EventTitle={EventTitle}, AlbumName={AlbumName}, PublishedBy={UserId}. " +
+            "Email notifications sent separately via SendAlbumNotificationCommand.",
+            notification.AlbumId, notification.OwningEventId, notification.EventTitle,
+            notification.AlbumName, notification.PublishedByUserId);
 
         return Task.CompletedTask;
     }

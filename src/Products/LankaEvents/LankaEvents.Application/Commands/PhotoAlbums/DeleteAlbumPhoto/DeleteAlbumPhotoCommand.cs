@@ -7,6 +7,8 @@ using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
+using LankaConnect.Modules.Media.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -27,18 +29,21 @@ public class DeleteAlbumPhotoCommandHandler : ICommandHandler<DeleteAlbumPhotoCo
 {
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
     private readonly IAlbumImageService _albumImageService;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly MediaDbContext _mediaContext;
     private readonly ILogger<DeleteAlbumPhotoCommandHandler> _logger;
 
     public DeleteAlbumPhotoCommandHandler(
         IPhotoAlbumRepository photoAlbumRepository,
         IAlbumImageService albumImageService,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        MediaDbContext mediaContext,
         ILogger<DeleteAlbumPhotoCommandHandler> logger)
     {
         _photoAlbumRepository = photoAlbumRepository;
         _albumImageService = albumImageService;
         _unitOfWork = unitOfWork;
+        _mediaContext = mediaContext;
         _logger = logger;
     }
 
@@ -101,10 +106,8 @@ public class DeleteAlbumPhotoCommandHandler : ICommandHandler<DeleteAlbumPhotoCo
                         request.PhotoId, deleteResult.Error);
                 }
 
-                // 4. Persist album mutation to MediaDbContext + dispatch domain events via AppDbContext.
-                // Wave 9.h.10.6 F30a: same MediaDbContext-not-saved bug.
-                await _photoAlbumRepository.UpdateAsync(album, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // 4. Wave 6.5.b: atomic multi-context commit. Replaces the F30a workaround.
+                await _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, cancellationToken);
 
                 stopwatch.Stop();
 

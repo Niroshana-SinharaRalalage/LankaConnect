@@ -15,11 +15,13 @@ namespace LankaConnect.Modules.Media.Infrastructure.Repositories;
 /// not used (would create a transitional edge to the monolith assembly).
 /// </summary>
 /// <remarks>
-/// AddAsync + Update + Delete are self-saving (call <c>SaveChangesAsync</c>
-/// internally) because <c>IUnitOfWork.CommitAsync</c> still only saves
-/// AppDbContext — the multi-context atomicity refactor is deferred to the
-/// D5 outbox-pattern roll-out ahead of production cutover. Mirrors the W4.0b
-/// NotificationRepository pattern.
+/// Wave 6.5.b retired the self-saving pattern that used to live here (the class
+/// remark documenting it was deleted along with the SaveChangesAsync calls
+/// inside AddAsync/UpdateAsync/DeleteAsync). Callers now use
+/// <see cref="LankaConnect.Application.Common.Interfaces.IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken)"/>
+/// so AppDbContext + MediaDbContext commit atomically inside a single Postgres
+/// transaction — the F30a class of production data-loss cannot recur through
+/// this repository.
 /// </remarks>
 public class PhotoAlbumRepository : IPhotoAlbumRepository
 {
@@ -111,22 +113,24 @@ public class PhotoAlbumRepository : IPhotoAlbumRepository
 
     public async Task AddAsync(PhotoAlbum entity, CancellationToken cancellationToken = default)
     {
+        // Wave 6.5.b: SaveChangesAsync deleted here (was line 117 pre-fix). The
+        // caller MUST invoke IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _mediaContext }, ct)
+        // to persist. The change tracker holds the row until commit.
         await _dbSet.AddAsync(entity, cancellationToken);
-        // W4.2: self-save (see class remarks) — caller's IUnitOfWork.Commit saves
-        // AppDbContext only and would leave this row uncommitted otherwise.
-        await _context.SaveChangesAsync(cancellationToken);
     }
 
     public Task UpdateAsync(PhotoAlbum entity, CancellationToken cancellationToken = default)
     {
+        // Wave 6.5.b: SaveChangesAsync deleted. Same caller contract as AddAsync.
         _dbSet.Update(entity);
-        return _context.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
     public Task DeleteAsync(PhotoAlbum entity, CancellationToken cancellationToken = default)
     {
+        // Wave 6.5.b: SaveChangesAsync deleted. Same caller contract as AddAsync.
         _dbSet.Remove(entity);
-        return _context.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
     public async Task<IReadOnlyList<PhotoAlbum>> GetAllAsync(CancellationToken cancellationToken = default)

@@ -8,7 +8,9 @@ using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
+using LankaConnect.Modules.Media.Infrastructure.Data;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -30,18 +32,21 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
 {
     private readonly IEventRepository _eventRepository;
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly MediaDbContext _mediaContext;
     private readonly ILogger<CreatePhotoAlbumCommandHandler> _logger;
 
     public CreatePhotoAlbumCommandHandler(
         IEventRepository eventRepository,
         IPhotoAlbumRepository photoAlbumRepository,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        MediaDbContext mediaContext,
         ILogger<CreatePhotoAlbumCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _photoAlbumRepository = photoAlbumRepository;
         _unitOfWork = unitOfWork;
+        _mediaContext = mediaContext;
         _logger = logger;
     }
 
@@ -124,9 +129,11 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
 
                 var album = createResult.Value;
 
-                // 6. Add to repository and commit
+                // 6. Wave 6.5.b: Add + atomic multi-context commit. Repository AddAsync no longer
+                //    self-saves — the ChangeTracker holds the row until the multi-context commit
+                //    persists it alongside AppDbContext state atomically.
                 await _photoAlbumRepository.AddAsync(album, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, cancellationToken);
 
                 stopwatch.Stop();
 

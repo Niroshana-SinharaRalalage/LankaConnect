@@ -6,7 +6,9 @@ using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
+using LankaConnect.Modules.Media.Infrastructure.Data;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -25,18 +27,21 @@ public class DeletePhotoAlbumCommandHandler : ICommandHandler<DeletePhotoAlbumCo
 {
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
     private readonly IAzureBlobStorageService _blobStorageService;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly MediaDbContext _mediaContext;
     private readonly ILogger<DeletePhotoAlbumCommandHandler> _logger;
 
     public DeletePhotoAlbumCommandHandler(
         IPhotoAlbumRepository photoAlbumRepository,
         IAzureBlobStorageService blobStorageService,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        MediaDbContext mediaContext,
         ILogger<DeletePhotoAlbumCommandHandler> logger)
     {
         _photoAlbumRepository = photoAlbumRepository;
         _blobStorageService = blobStorageService;
         _unitOfWork = unitOfWork;
+        _mediaContext = mediaContext;
         _logger = logger;
     }
 
@@ -79,11 +84,11 @@ public class DeletePhotoAlbumCommandHandler : ICommandHandler<DeletePhotoAlbumCo
                 }
             }
 
-            // Delete the album (cascade will delete photos from DB).
-            // W4.2: DeleteAsync is self-saving on the new IPhotoAlbumRepository contract;
-            // the IUnitOfWork.CommitAsync below remains for AppDbContext-scoped audit writes.
+            // Wave 6.5.b: Delete + atomic multi-context commit. Repository DeleteAsync no
+            // longer self-saves — the ChangeTracker holds the Removed entity until the
+            // multi-context commit persists the delete atomically with AppDbContext.
             await _photoAlbumRepository.DeleteAsync(album, cancellationToken);
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, cancellationToken);
 
             _logger.LogInformation(
                 "Photo album {AlbumId} deleted successfully with {PhotoCount} photos cleaned up",

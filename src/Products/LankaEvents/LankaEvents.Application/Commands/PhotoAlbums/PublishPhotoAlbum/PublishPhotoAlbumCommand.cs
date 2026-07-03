@@ -3,10 +3,13 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Media.Contracts.IntegrationEvents;
 using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
+using LankaConnect.Modules.Media.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -24,16 +27,22 @@ public record PublishPhotoAlbumCommand(
 public class PublishPhotoAlbumCommandHandler : ICommandHandler<PublishPhotoAlbumCommand>
 {
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly MediaDbContext _mediaContext;
+    private readonly IIntegrationEventOutbox<MediaDbContext> _outbox;
     private readonly ILogger<PublishPhotoAlbumCommandHandler> _logger;
 
     public PublishPhotoAlbumCommandHandler(
         IPhotoAlbumRepository photoAlbumRepository,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        MediaDbContext mediaContext,
+        IIntegrationEventOutbox<MediaDbContext> outbox,
         ILogger<PublishPhotoAlbumCommandHandler> logger)
     {
         _photoAlbumRepository = photoAlbumRepository;
         _unitOfWork = unitOfWork;
+        _mediaContext = mediaContext;
+        _outbox = outbox;
         _logger = logger;
     }
 
@@ -84,11 +93,20 @@ public class PublishPhotoAlbumCommandHandler : ICommandHandler<PublishPhotoAlbum
                     return publishResult;
                 }
 
-                // 4. Persist album mutation to MediaDbContext + dispatch domain events via AppDbContext.
-                // Wave 9.h.10.6 F30a: same MediaDbContext-not-saved bug as UploadAlbumPhoto —
-                // pre-fix, Publish() succeeded in memory but Status stayed Draft in DB.
-                await _photoAlbumRepository.UpdateAsync(album, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // 4. Enqueue integration event to MediaDbContext.Outbox (staged, not saved).
+                //    Wave 6.5.b canary — retires the F30a workaround permanently. Row lands
+                //    atomically with the Status flip in step 5's multi-context commit.
+                await _outbox.EnqueueAsync(new PhotoAlbumPublishedIntegrationEventV1(
+                    AlbumId: album.Id,
+                    OwningEventId: album.EventId,
+                    EventTitle: album.EventTitle,
+                    AlbumName: album.Name,
+                    PublishedByUserId: request.UserId), cancellationToken);
+
+                // 5. Atomic multi-context commit: AppDbContext (domain event dispatch) +
+                //    MediaDbContext (album Status flip + outbox row) in ONE Postgres transaction.
+                //    F30a workaround (repo.UpdateAsync + single-context CommitAsync) deleted here.
+                await _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, cancellationToken);
 
                 stopwatch.Stop();
 

@@ -18,6 +18,14 @@
     <ProjectReference Include="..\..\..\Modules\Forms\Forms.Contracts\Forms.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Modules\Payments\Payments.Contracts\Payments.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Modules\Scheduling\Scheduling.Contracts\Scheduling.Contracts.csproj" />
+    <!-- Wave 6.5.b canary: emits Media integration events (PhotoAlbumPublishedIntegrationEventV1
+         + PhotoUploadedToAlbumIntegrationEventV1) via the outbox from LankaEvents PhotoAlbum handlers. -->
+    <ProjectReference Include="..\..\..\Modules\Media\Media.Contracts\Media.Contracts.csproj" />
+    <!-- Wave 6.5.b canary: MediaDbContext + MediaModule extension needed by handlers migrating
+         to _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, ct). Legitimate cross-module
+         reference because Products.LankaEvents.Application hosts the PhotoAlbum command handlers
+         per the Phase A carve-out; Wave 6.5.e will eventually relocate them into Media.Application. -->
+    <ProjectReference Include="..\..\..\Modules\Media\Media.Infrastructure\Media.Infrastructure.csproj" />
 
     <!-- Wave 5.0 TRANSITIONAL (2026-06-26): until the per-capability Application migration
          (Wave 6) cuts the Modules → LankaConnect.Application edges, LankaEvents handlers

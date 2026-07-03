@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Infrastructure.Data;
 using LankaConnect.Modules.Media.Infrastructure.Repositories;
@@ -49,6 +50,14 @@ public static class MediaModule
         }, ServiceLifetime.Scoped);
 
         services.AddScoped<IPhotoAlbumRepository, PhotoAlbumRepository>();
+
+        // Wave 6.5.b canary: wire per-module outbox (producer scoped +
+        // OutboxProcessor hosted). The IIntegrationEventOutbox<MediaDbContext>
+        // adapter is registered by the composition root (LankaConnect.API) via
+        // LankaConnect.Infrastructure — it depends on both this project and the
+        // legacy Infrastructure adapter, so it lives up the graph rather than
+        // in this per-module extension.
+        services.AddModuleOutbox<MediaDbContext>();
 
         return services;
     }

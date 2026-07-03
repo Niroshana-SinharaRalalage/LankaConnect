@@ -4,11 +4,14 @@ using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Modules.Media.Contracts.IntegrationEvents;
 using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
+using LankaConnect.Modules.Media.Infrastructure.Data;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -32,18 +35,24 @@ public class UploadAlbumPhotoCommandHandler : ICommandHandler<UploadAlbumPhotoCo
 {
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
     private readonly IAlbumImageService _albumImageService;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly MediaDbContext _mediaContext;
+    private readonly IIntegrationEventOutbox<MediaDbContext> _outbox;
     private readonly ILogger<UploadAlbumPhotoCommandHandler> _logger;
 
     public UploadAlbumPhotoCommandHandler(
         IPhotoAlbumRepository photoAlbumRepository,
         IAlbumImageService albumImageService,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        MediaDbContext mediaContext,
+        IIntegrationEventOutbox<MediaDbContext> outbox,
         ILogger<UploadAlbumPhotoCommandHandler> logger)
     {
         _photoAlbumRepository = photoAlbumRepository;
         _albumImageService = albumImageService;
         _unitOfWork = unitOfWork;
+        _mediaContext = mediaContext;
+        _outbox = outbox;
         _logger = logger;
     }
 
@@ -146,15 +155,18 @@ public class UploadAlbumPhotoCommandHandler : ICommandHandler<UploadAlbumPhotoCo
                     return Result<AlbumPhotoDto>.Failure(addPhotoResult.Errors);
                 }
 
-                // 6. Persist album mutation to MediaDbContext + dispatch domain events via AppDbContext.
-                // Wave 9.h.10.6 F30a: repo.UpdateAsync self-saves MediaDbContext (see repo class
-                // remarks) because IUnitOfWork.CommitAsync only saves AppDbContext. Pre-fix, every
-                // upload silently dropped the album mutation (PhotoCount stayed 0, _photos not
-                // persisted), which is why publish always 400'd with 'Upload at least one photo'.
-                await _photoAlbumRepository.UpdateAsync(album, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // 6. Wave 6.5.b: enqueue V1 integration event + atomic multi-context commit.
+                //    Replaces the F30a workaround (repo.UpdateAsync + single-context CommitAsync).
+                var uploadedPhoto = addPhotoResult.Value;
+                await _outbox.EnqueueAsync(new PhotoUploadedToAlbumIntegrationEventV1(
+                    AlbumId: album.Id,
+                    PhotoId: uploadedPhoto.Id,
+                    OwningEventId: album.EventId,
+                    UploaderUserId: request.UploaderId,
+                    IsVideo: false), cancellationToken);
+                await _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, cancellationToken);
 
-                var photo = addPhotoResult.Value;
+                var photo = uploadedPhoto;
                 stopwatch.Stop();
 
                 _logger.LogInformation(

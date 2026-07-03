@@ -113,6 +113,14 @@ try
 
     // W4.2 (2026-06-06) — Media module composition.
     builder.Services.AddMediaModule(builder.Configuration);
+    // Wave 6.5.b canary: adapter binding IIntegrationEventOutbox<MediaDbContext>
+    // (LankaConnect.Application facade) to the concrete
+    // OutboxIntegrationEventDispatcher<MediaDbContext> (BuildingBlocks.Infrastructure).
+    // Composition-root lives here because the adapter references both projects and
+    // BuildingBlocks cannot reference LankaConnect upward.
+    builder.Services.AddScoped<
+        LankaConnect.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Modules.Media.Infrastructure.Data.MediaDbContext>,
+        LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Modules.Media.Infrastructure.Data.MediaDbContext>>();
 
     // W4.3 (2026-06-06) — Forms module composition. Registers FormsDbContext
     // (cross-schema overrides for events.event_forms / form_questions /

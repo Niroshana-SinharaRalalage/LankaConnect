@@ -1,6 +1,8 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
+using LankaConnect.Modules.Notifications.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Modules.Identity.Application.Commands.Users.AdminUpgradeUser;
 using LankaConnect.Domain.Common;
@@ -33,7 +35,7 @@ public class AdminUpgradeUserCommandHandlerTests
     private readonly Mock<ICurrentUserService> _currentUserService;
     private readonly Mock<ITypedEmailService> _typedEmailService;
     private readonly Mock<IApplicationUrlsService> _urlsService;
-    private readonly Mock<IUnitOfWork> _unitOfWork;
+    private readonly Mock<IMultiContextUnitOfWork> _unitOfWork;
     private readonly AdminUpgradeUserCommandHandler _handler;
 
     public AdminUpgradeUserCommandHandlerTests()
@@ -44,7 +46,10 @@ public class AdminUpgradeUserCommandHandlerTests
         _currentUserService = new Mock<ICurrentUserService>();
         _typedEmailService = new Mock<ITypedEmailService>();
         _urlsService = new Mock<IApplicationUrlsService>();
-        _unitOfWork = LankaConnect.Application.Tests.TestHelpers.MockRepository.CreateUnitOfWork();
+        // Wave 6.5.c: mock the multi-context UoW; both overloads return 0 by default
+        _unitOfWork = new Mock<IMultiContextUnitOfWork>();
+        _unitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        _unitOfWork.Setup(x => x.CommitAsync(It.IsAny<DbContext[]>(), It.IsAny<CancellationToken>())).ReturnsAsync(0);
 
         _urlsService.Setup(x => x.FrontendBaseUrl).Returns("https://staging.example.com");
 
@@ -52,6 +57,9 @@ public class AdminUpgradeUserCommandHandlerTests
             .Setup(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(TypedEmailSendResult.Ok("corr-1", 10));
 
+        // Wave 6.5.c: NotificationsDbContext ctor arg. Passing null! into an unused mock ref
+        // because the test suite never exercises the DbContext directly — mock UoW absorbs
+        // the CommitAsync call.
         _handler = new AdminUpgradeUserCommandHandler(
             _userRepository.Object,
             _notificationRepository.Object,
@@ -60,6 +68,7 @@ public class AdminUpgradeUserCommandHandlerTests
             _typedEmailService.Object,
             _urlsService.Object,
             _unitOfWork.Object,
+            notificationsContext: null!,
             NullLogger<AdminUpgradeUserCommandHandler>.Instance);
     }
 
@@ -81,7 +90,8 @@ public class AdminUpgradeUserCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         target.Role.Should().Be(UserRole.EventOrganizer);
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        // Wave 6.5.c: handler now calls the multi-context overload
+        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<DbContext[]>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -122,7 +132,9 @@ public class AdminUpgradeUserCommandHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Insufficient permissions");
+        // Wave 6.5.c: assert neither commit overload was called
         _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<DbContext[]>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -199,7 +211,9 @@ public class AdminUpgradeUserCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("already an Event Organizer");
         _auditLogRepository.Verify(x => x.AddAsync(It.IsAny<AdminAuditLog>(), It.IsAny<CancellationToken>()), Times.Never);
+        // Wave 6.5.c: assert neither commit overload was called
         _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<DbContext[]>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -373,7 +387,8 @@ public class AdminUpgradeUserCommandHandlerTests
         // Role change committed even if email send blew up
         result.IsSuccess.Should().BeTrue();
         target.Role.Should().Be(UserRole.EventOrganizer);
-        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        // Wave 6.5.c: handler now calls the multi-context overload
+        _unitOfWork.Verify(x => x.CommitAsync(It.IsAny<DbContext[]>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion

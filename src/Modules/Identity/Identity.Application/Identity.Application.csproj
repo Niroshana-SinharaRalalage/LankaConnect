@@ -27,6 +27,13 @@
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
     <ProjectReference Include="..\Identity.Domain\Identity.Domain.csproj" />
+    <!-- Wave 6.5.c: NotificationsDbContext type reference needed by the 3 handlers
+         (AdminUpgradeUser, ApproveRoleUpgrade, RejectRoleUpgrade) that call
+         _unitOfWork.CommitAsync(new DbContext[] { _notificationsContext }, ct).
+         Transitional cross-module edge — inversion to integration-event pattern
+         (Identity publishes RoleUpgradeApproved event; Notifications subscribes)
+         is a follow-up beyond Wave 6.5. -->
+    <ProjectReference Include="..\..\Notifications\Notifications.Infrastructure\Notifications.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

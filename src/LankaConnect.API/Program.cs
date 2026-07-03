@@ -110,6 +110,12 @@ try
     // AddInfrastructure so the AppDbContext + Repository<T> base are available
     // for the NotificationRepository transitional edge.
     builder.Services.AddNotificationsModule(builder.Configuration);
+    // Wave 6.5.c: adapter binding IIntegrationEventOutbox<NotificationsDbContext>
+    // (LankaConnect.Application facade) to the concrete
+    // OutboxIntegrationEventDispatcher<NotificationsDbContext> (BuildingBlocks.Infrastructure).
+    builder.Services.AddScoped<
+        LankaConnect.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Modules.Notifications.Infrastructure.Data.NotificationsDbContext>,
+        LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Modules.Notifications.Infrastructure.Data.NotificationsDbContext>>();
 
     // W4.2 (2026-06-06) — Media module composition.
     builder.Services.AddMediaModule(builder.Configuration);

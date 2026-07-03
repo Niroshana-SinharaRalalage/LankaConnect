@@ -13,6 +13,8 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Modules.Notifications.Domain.Enums;
+using LankaConnect.Modules.Notifications.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
@@ -36,7 +38,8 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
     private readonly ICurrentUserService _currentUserService;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationUrlsService _urlsService;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly NotificationsDbContext _notificationsContext;
     private readonly ILogger<ApproveRoleUpgradeCommandHandler> _logger;
 
     public ApproveRoleUpgradeCommandHandler(
@@ -46,7 +49,8 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
         ICurrentUserService currentUserService,
         ITypedEmailService typedEmailService,
         IApplicationUrlsService urlsService,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        NotificationsDbContext notificationsContext,
         ILogger<ApproveRoleUpgradeCommandHandler> logger)
     {
         _userRepository = userRepository;
@@ -56,6 +60,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
         _typedEmailService = typedEmailService;
         _urlsService = urlsService;
         _unitOfWork = unitOfWork;
+        _notificationsContext = notificationsContext;
         _logger = logger;
     }
 
@@ -177,7 +182,8 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
                     "ApproveRoleUpgrade: Admin audit log created - AdminUserId={AdminUserId}, TargetUserId={TargetUserId}",
                     _currentUserService.UserId, user.Id);
 
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // Wave 6.5.c: atomic multi-context commit — AppDbContext + NotificationsDbContext.
+                await _unitOfWork.CommitAsync(new DbContext[] { _notificationsContext }, cancellationToken);
 
                 // Phase 6A.75: Send email notification for EventOrganizer role approval
                 if (user.Role == UserRole.EventOrganizer)

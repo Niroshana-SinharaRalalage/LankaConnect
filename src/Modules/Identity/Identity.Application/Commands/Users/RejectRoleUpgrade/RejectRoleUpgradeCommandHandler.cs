@@ -7,6 +7,8 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Modules.Notifications.Domain.Enums;
+using LankaConnect.Modules.Notifications.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -21,18 +23,21 @@ public class RejectRoleUpgradeCommandHandler : ICommandHandler<RejectRoleUpgrade
 {
     private readonly IUserRepository _userRepository;
     private readonly INotificationRepository _notificationRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly NotificationsDbContext _notificationsContext;
     private readonly ILogger<RejectRoleUpgradeCommandHandler> _logger;
 
     public RejectRoleUpgradeCommandHandler(
         IUserRepository userRepository,
         INotificationRepository notificationRepository,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        NotificationsDbContext notificationsContext,
         ILogger<RejectRoleUpgradeCommandHandler> logger)
     {
         _userRepository = userRepository;
         _notificationRepository = notificationRepository;
         _unitOfWork = unitOfWork;
+        _notificationsContext = notificationsContext;
         _logger = logger;
     }
 
@@ -120,7 +125,8 @@ public class RejectRoleUpgradeCommandHandler : ICommandHandler<RejectRoleUpgrade
                         user.Id, notificationResult.Error);
                 }
 
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // Wave 6.5.c: atomic multi-context commit — AppDbContext + NotificationsDbContext.
+                await _unitOfWork.CommitAsync(new DbContext[] { _notificationsContext }, cancellationToken);
 
                 stopwatch.Stop();
 

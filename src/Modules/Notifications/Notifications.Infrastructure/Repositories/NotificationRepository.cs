@@ -18,13 +18,11 @@ namespace LankaConnect.Modules.Notifications.Infrastructure.Repositories;
 /// after Notification migrated to <see cref="LankaConnect.BuildingBlocks.Domain.Entity{TId}"/>.
 /// </para>
 /// <para>
-/// W4.0b (2026-06-06): pivoted from <c>AppDbContext</c> to <see cref="NotificationsDbContext"/>
-/// per ENTERPRISE_ARCHITECTURE_BLUEPRINT.md Wave 4 capability extraction.
-/// AddAsync + Update now call <c>SaveChangesAsync</c> internally (self-saving repository
-/// pattern) because <c>IUnitOfWork.CommitAsync</c> still saves only AppDbContext —
-/// extending UnitOfWork to multi-context atomicity is deferred to the outbox-pattern
-/// roll-out (D5 in ADR). Acceptable in pre-launch context per architect ruling
-/// 2026-06-06; revisit when outbox dispatcher lands ahead of production cutover.
+/// Wave 6.5.c (2026-07-03): retired the W4.0b self-saving pattern. AddAsync + Update
+/// stage on the <see cref="NotificationsDbContext"/> ChangeTracker; callers use
+/// <see cref="LankaConnect.Application.Common.Interfaces.IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken)"/>
+/// so state changes + outbox rows commit atomically inside a single Postgres transaction.
+/// The F30a class of production data-loss cannot recur through this repository.
 /// </para>
 /// </remarks>
 public class NotificationRepository : INotificationRepository
@@ -58,10 +56,9 @@ public class NotificationRepository : INotificationRepository
         using (LogContext.PushProperty("EntityType", nameof(Notification)))
         using (LogContext.PushProperty("EntityId", notification.Id))
         {
+            // Wave 6.5.c: SaveChangesAsync deleted. Caller MUST invoke
+            // IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _notificationsContext }, ct).
             await _dbSet.AddAsync(notification, cancellationToken);
-            // W4.0b: self-save (see class remarks) — caller's IUnitOfWork.Commit
-            // saves AppDbContext only and would leave this row uncommitted otherwise.
-            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -71,9 +68,8 @@ public class NotificationRepository : INotificationRepository
         using (LogContext.PushProperty("EntityType", nameof(Notification)))
         using (LogContext.PushProperty("EntityId", notification.Id))
         {
+            // Wave 6.5.c: SaveChanges deleted. Same caller contract as AddAsync.
             _dbSet.Update(notification);
-            // W4.0b: self-save (see class remarks).
-            _context.SaveChanges();
         }
     }
 

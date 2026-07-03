@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Modules.Notifications.Infrastructure.Data;
 using LankaConnect.Modules.Notifications.Infrastructure.Repositories;
@@ -75,6 +76,13 @@ public static class NotificationsModule
         }, ServiceLifetime.Scoped);
 
         services.AddScoped<INotificationRepository, NotificationRepository>();
+
+        // Wave 6.5.c: per-module outbox wiring (producer scoped + OutboxProcessor
+        // hosted). The IIntegrationEventOutbox<NotificationsDbContext> adapter is
+        // registered by the composition root (LankaConnect.API) via
+        // LankaConnect.Infrastructure — it depends on both this project and the
+        // BuildingBlocks concrete, so it lives up the graph rather than here.
+        services.AddModuleOutbox<NotificationsDbContext>();
 
         // W3.8 fix Phase A (2026-06-04) — register MediatR handlers from the
         // Notifications.Application assembly. The host's outer `AddApplication(...)`

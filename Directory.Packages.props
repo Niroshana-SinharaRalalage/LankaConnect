@@ -42,6 +42,8 @@
     <PackageVersion Include="Npgsql" Version="8.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.19" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.19" />
+    <!-- Wave 6.5.a (2026-07-03): Sqlite for multi-context transaction rollback tests. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.19" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
   </ItemGroup>
   <!-- MediatR for CQRS -->

@@ -27,6 +27,14 @@
     <ProjectReference Include="..\Modules\Identity\Identity.Contracts\Identity.Contracts.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
     <ProjectReference Include="..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
+
+    <!-- Wave 6.5.a (2026-07-03): outbox adapter classes (IntegrationEventOutbox, module-context
+         registration extensions) live in this project because they bridge the LankaConnect.Application
+         facade (IIntegrationEventOutbox<TDbContext>) to the BuildingBlocks.Infrastructure concrete
+         (OutboxIntegrationEventDispatcher<TDbContext>). BuildingBlocks cannot reference the
+         LankaConnect namespace (upward reference), so the adapter sits here. -->
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

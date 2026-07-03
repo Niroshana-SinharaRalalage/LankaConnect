@@ -21,6 +21,8 @@
     </PackageReference>
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <!-- Wave 6.5.a: Sqlite for real transactional tests (InMemory doesn't support rollback semantics). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Serilog" />
@@ -69,6 +71,8 @@
     <Compile Include="Data\Migrations\Phase7C2bReapplyDecomposedLocationTests.cs" />
     <!-- Phase 7C.2b Chunk 2b: transformation-logic invariants for Phase7C3a registration/lifecycle migration -->
     <Compile Include="Data\Migrations\Phase7C3aDecomposeLocationTests.cs" />
+    <!-- Wave 6.5.a: multi-context UnitOfWork atomicity + rollback tests. -->
+    <Compile Include="Data\UnitOfWorkMultiContextTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

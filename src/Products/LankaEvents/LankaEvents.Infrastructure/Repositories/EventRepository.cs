@@ -1,8 +1,8 @@
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Products.LankaEvents.Infrastructure.Common;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Services;
@@ -10,17 +10,15 @@ using LankaConnect.Infrastructure.Helpers;
 using System.Diagnostics;
 using Serilog.Context;
 
-using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
-[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
-public class EventRepository : Repository<Event>, IEventRepository
+public class EventRepository : ProductRepositoryBase<Event>, IEventRepository
 {
     private readonly IGeoLocationService _geoLocationService;
     private readonly ILogger<EventRepository> _repoLogger;
 
     public EventRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         IGeoLocationService geoLocationService,
         ILogger<EventRepository> logger) : base(context)
     {

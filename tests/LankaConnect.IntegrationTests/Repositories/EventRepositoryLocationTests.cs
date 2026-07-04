@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -9,6 +10,7 @@ using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;  // Wave 6.5.f.5: LankaEventsDbContext resolution
 using LankaConnect.Products.LankaEvents.Infrastructure.Repositories;  // W5.3.c2: EventRepository relocated
 using LankaConnect.IntegrationTests.Common;
 
@@ -17,6 +19,11 @@ namespace LankaConnect.IntegrationTests.Repositories;
 /// <summary>
 /// Integration tests for Event Repository location-based queries using PostGIS.
 /// Epic 2 Phase 1 Day 3 - Tests radius searches, city searches, and nearest events.
+/// Wave 6.5.f.5 (2026-07-03): EventRepository ctor retyped to LankaEventsDbContext.
+/// AppDbContext still held for CommitAsync() (multi-context UoW pattern lives at
+/// the handler edge, not in these low-level infra integration tests). These
+/// tests are Docker-dependent and remain compile-only under the current
+/// no-local-Postgres policy per CLAUDE.md §5.
 /// </summary>
 public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
 {
@@ -24,6 +31,16 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
     private AppDbContext _context = null!;
     private readonly IGeoLocationService _geoLocationService = new GeoLocationService();
     private readonly ILogger<EventRepository> _logger = NullLogger<EventRepository>.Instance;
+
+    // Wave 6.5.f.5: resolve LankaEventsDbContext through a scoped provider so the
+    // EventRepository ctor (now LankaEventsDbContext-parameterized) type-checks + the
+    // scope stays live for the test body. Docker-dependent test — runtime execution
+    // remains gated on the docker-compose PostgreSQL fixture per CLAUDE.md §5.
+    private LankaEventsDbContext ResolveLankaEventsDbContext()
+    {
+        var scope = Factory.Services.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<LankaEventsDbContext>();
+    }
 
     [Fact]
     public async Task GetEventsByRadiusAsync_Should_Return_Events_Within_25_Miles()
@@ -51,7 +68,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             city: "Kandy");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(colomboEvent);
         await _repository.AddAsync(mountLaviniaEvent);
@@ -94,7 +111,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             city: "Nuwara Eliya");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(colomboEvent);
         await _repository.AddAsync(gampahaEvent);
@@ -133,7 +150,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             city: "Galle");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(colomboEvent);
         await _repository.AddAsync(kandyEvent);
@@ -176,7 +193,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             startDate: DateTime.UtcNow.AddDays(-7));
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(publishedEvent);
         await _repository.AddAsync(draftEvent);
@@ -202,7 +219,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             city: "Kandy");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(event1);
         await _context.CommitAsync();
@@ -228,7 +245,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             title: "Event Without Location");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(eventWithLocation);
         await _repository.AddAsync(eventWithoutLocation);
@@ -265,7 +282,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             city: "Kandy");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(colomboEvent1);
         await _repository.AddAsync(colomboEvent2);
@@ -291,7 +308,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             city: "Colombo");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(event1);
         await _context.CommitAsync();
@@ -326,7 +343,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             state: "Central Province");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(westernColombo);
         await _repository.AddAsync(centralColombo);
@@ -351,7 +368,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             city: "Colombo");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(event1);
         await _context.CommitAsync();
@@ -374,7 +391,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             city: "Colombo");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(event1);
         await _context.CommitAsync();
@@ -412,7 +429,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             city: "Negombo");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(farthestEvent);  // Add in random order
         await _repository.AddAsync(closestEvent);
@@ -442,7 +459,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
                 city: "City" + i);
 
             _context = DbContext;
-            _repository = new EventRepository(_context, _geoLocationService, _logger);
+            _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
             await _repository.AddAsync(@event);
         }
@@ -476,7 +493,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             startDate: DateTime.UtcNow.AddDays(7));
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(publishedEvent);
         await _repository.AddAsync(draftEvent);
@@ -504,7 +521,7 @@ public class EventRepositoryLocationTests : DockerComposeWebApiTestBase
             title: "Event Without Coordinates");
 
         _context = DbContext;
-        _repository = new EventRepository(_context, _geoLocationService, _logger);
+        _repository = new EventRepository(ResolveLankaEventsDbContext(), _geoLocationService, _logger);
 
         await _repository.AddAsync(eventWithCoordinates);
         await _repository.AddAsync(eventWithoutCoordinates);

@@ -165,17 +165,22 @@ public sealed class LankaEventsDbContext : DbContext
         modelBuilder.Ignore<LankaConnect.Modules.Identity.Domain.Entities.User>();
         modelBuilder.Ignore<LankaConnect.Modules.Identity.Domain.ValueObjects.RefreshToken>();
 
-        // Cross-module junction + entity cleanup: EventConfiguration declares
-        // navigations to junction CLR types (EventEmailGroupLink) and to
-        // aggregates in other modules (Badge/EventBadge, EmailGroup). Those
-        // configurations remain owned by AppDbContext and were NOT moved by
-        // Wave 6.5.e — trying to map them here would require importing the
-        // full Communications + Badges schema. Ignore them so LankaEventsDbContext
-        // stays scoped to the Event family.
-        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.EventEmailGroupLink>();
+        // Wave 6.5.f.5-hotfix (2026-07-04): EventEmailGroupLink + EventBadge are
+        // Products-owned junction entities; their configs were physically relocated
+        // to Products/LankaEvents/LankaEvents.Infrastructure/Configurations in the
+        // same commit and are now picked up by ApplyConfigurationsFromAssembly at
+        // line 146. Removing the two Ignore<>() calls that were installed by 6.5.e
+        // — they collided with EventConfiguration.HasMany(e => e.EmailGroupLinks)
+        // and HasMany(e => e.Badges) and produced 46 API smoke failures on staging
+        // before the hotfix. Architect ruling docs/architect-consults/2026-07-04-*.
+        //
+        // The far-principal Communications.EmailGroup and Badges.Badge STAY Ignored —
+        // those are cross-module principals owned by other bounded contexts. Junction
+        // FKs (EmailGroupId, BadgeId) remain scalar. Cross-module hydration happens
+        // at the application layer via IEmailGroupRepository / IBadgeRepository per
+        // Blueprint §7.8.
         modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup>();
         modelBuilder.Ignore<LankaConnect.Domain.Badges.Badge>();
-        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge>();
 
         base.OnModelCreating(modelBuilder);
     }

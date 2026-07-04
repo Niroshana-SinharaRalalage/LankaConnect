@@ -2,12 +2,20 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 
 /// <summary>
-/// EF Core configuration for EventBadge join entity
-/// Phase 6A.25: Badge Management System
-/// Phase 6A.28: Added duration and expiration fields
+/// EF Core configuration for EventBadge join entity.
+/// Phase 6A.25: Badge Management System.
+/// Phase 6A.28: Duration and expiration fields.
+/// Wave 6.5.f.5-hotfix (2026-07-04): physically relocated from
+/// <c>LankaConnect.Infrastructure.Data.Configurations</c> to Products/LankaEvents
+/// per architect ruling §2.2. The <c>HasOne(eb =&gt; eb.Badge)</c> block was
+/// removed because it forced <c>Badge</c> (a cross-module principal owned by
+/// <c>LankaConnect.Domain.Badges</c>) to be mapped in LankaEventsDbContext.
+/// <c>BadgeId</c> stays as a scalar FK column; the CLR navigation property
+/// <c>EventBadge.Badge</c> becomes unmapped. Cross-module hydration moves to
+/// the application layer via <c>IBadgeRepository</c> per Blueprint §7.8.
 /// </summary>
 public class EventBadgeConfiguration : IEntityTypeConfiguration<EventBadge>
 {
@@ -75,13 +83,11 @@ public class EventBadgeConfiguration : IEntityTypeConfiguration<EventBadge>
             .HasDatabaseName("IX_EventBadges_ExpiresAt")
             .HasFilter("\"ExpiresAt\" IS NOT NULL");
 
-        // Relationships
-        builder.HasOne(eb => eb.Badge)
-            .WithMany()
-            .HasForeignKey(eb => eb.BadgeId)
-            .OnDelete(DeleteBehavior.Restrict); // Don't cascade delete badges when event badge is deleted
-
+        // Wave 6.5.f.5-hotfix: HasOne(eb => eb.Badge) block REMOVED. That block
+        // forced Badge (cross-module principal) into LankaEventsDbContext's model,
+        // which the un-Ignore of EventBadge would then require. Keeping BadgeId as
+        // a scalar FK keeps the module boundary clean per Blueprint §7.8.
         // Note: Event relationship is not configured here because EventBadge
-        // is part of the Event aggregate and managed through Event navigation
+        // is part of the Event aggregate and managed through Event navigation.
     }
 }

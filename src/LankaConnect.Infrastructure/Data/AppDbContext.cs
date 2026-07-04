@@ -204,14 +204,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new UserConfiguration());
-        // Wave 5.4.c.0 (2026-06-13). Junction CLR entity for the Event <-> EmailGroup M2M
-        // that replaced the typed-nav configuration in EventConfiguration. Entity-level
-        // shape (table, key, columns, indexes) lives in EventEmailGroupLinkConfiguration;
-        // the Event-side relationship (HasMany(e => e.EmailGroupLinks)) lives in
-        // EventConfiguration following the codebase Images/Videos/SignUpLists pattern.
-        // EventEmailGroupLink must also appear in the configuredEntityTypes whitelist
-        // (search for it below) — otherwise the sweep loop calls Ignore() on it.
-        modelBuilder.ApplyConfiguration(new EventEmailGroupLinkConfiguration());
+        // Wave 6.5.f.5-hotfix (2026-07-04): EventEmailGroupLinkConfiguration relocated
+        // to Products.LankaEvents.Infrastructure.Configurations; the ApplyConfigurationsFromAssembly
+        // sweep at line 203 picks it up. The class type still needs to be in the
+        // configuredEntityTypes whitelist below so the fallback Ignore-unknown pass
+        // does not un-map it. Original explicit ApplyConfiguration call removed
+        // per architect ruling §2.1.
         // Wave 5.4.d.1b (2026-06-22). Mirror of the EventEmailGroupLink registration
         // for the Newsletter side. Replaces the Phase 6A.74 typed M2M nav.
         modelBuilder.ApplyConfiguration(new NewsletterEmailGroupLinkConfiguration());
@@ -262,7 +260,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Badge entity configurations (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new BadgeConfiguration());
-        modelBuilder.ApplyConfiguration(new EventBadgeConfiguration());
+        // Wave 6.5.f.5-hotfix (2026-07-04): EventBadgeConfiguration relocated
+        // to Products.LankaEvents.Infrastructure.Configurations; the sweep at line 203
+        // picks it up. Explicit ApplyConfiguration removed per architect ruling §2.2.
 
         // Wave 6.5.e: EventOrganizerContact + EventSlugAlias configurations moved to
         // LankaEvents.Infrastructure (registered above via the assembly sweep).

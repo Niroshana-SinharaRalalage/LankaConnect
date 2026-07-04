@@ -31,6 +31,15 @@
       [Fact(Skip)] to live [Fact] in the same commit.
     -->
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />
+    <!-- Wave 6.5.d TRANSITIONAL EDGE (2026-07-03): FormsDbContext type reference needed by
+         the 13 Forms command handlers that call
+         _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, ct).
+         Same-module Application → Infrastructure edge is normally forbidden by
+         the Modules_Forms_Application_DoesNotDependOnInfraOrWebOrLayeredMonolith
+         ArchTest; the rule is relaxed transitionally to permit this edge until
+         the Forms handlers relocate to a Products-owning assembly (Wave 6.5.f/g)
+         or a DbContext-accessor abstraction lands in BuildingBlocks.Application. -->
+    <ProjectReference Include="..\Forms.Infrastructure\Forms.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

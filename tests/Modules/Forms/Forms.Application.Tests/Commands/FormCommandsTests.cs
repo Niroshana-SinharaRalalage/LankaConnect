@@ -2,6 +2,8 @@ using LankaConnect.Modules.Forms.Application.Commands;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 
 namespace LankaConnect.Modules.Forms.Application.Tests.Commands;
@@ -16,12 +18,22 @@ namespace LankaConnect.Modules.Forms.Application.Tests.Commands;
 public sealed class FormCommandsTests
 {
     private readonly Mock<IFormResponseRepository> _repo;
+    private readonly Mock<FormsDbContext> _formsContextMock;
     private readonly FormCommands _sut;
 
     public FormCommandsTests()
     {
         _repo = new Mock<IFormResponseRepository>();
-        _sut = new FormCommands(_repo.Object);
+        // Wave 6.5.d: FormCommands takes FormsDbContext. Class was unsealed in
+        // the same commit so Moq can mock SaveChangesAsync (virtual on the
+        // DbContext base). InMemory EF provider can't validate the FormsDbContext
+        // model (jsonb-backed IReadOnlyList<Guid>) — hence Moq is preferred.
+        var options = new DbContextOptionsBuilder<FormsDbContext>().Options;
+        _formsContextMock = new Mock<FormsDbContext>(options);
+        _formsContextMock
+            .Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+        _sut = new FormCommands(_repo.Object, _formsContextMock.Object);
     }
 
     [Fact]

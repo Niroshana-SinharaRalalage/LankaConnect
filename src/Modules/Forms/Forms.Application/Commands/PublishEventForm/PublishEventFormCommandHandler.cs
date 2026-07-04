@@ -4,9 +4,11 @@ using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Infrastructure.Data;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -15,16 +17,19 @@ namespace LankaConnect.Modules.Forms.Application.Commands.PublishEventForm;
 public class PublishEventFormCommandHandler : ICommandHandler<PublishEventFormCommand>
 {
     private readonly IFormRepository _eventFormRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly FormsDbContext _formsContext;
     private readonly ILogger<PublishEventFormCommandHandler> _logger;
 
     public PublishEventFormCommandHandler(
         IFormRepository eventFormRepository,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        FormsDbContext formsContext,
         ILogger<PublishEventFormCommandHandler> logger)
     {
         _eventFormRepository = eventFormRepository;
         _unitOfWork = unitOfWork;
+        _formsContext = formsContext;
         _logger = logger;
     }
 
@@ -74,8 +79,14 @@ public class PublishEventFormCommandHandler : ICommandHandler<PublishEventFormCo
                     return publishResult;
                 }
 
+                // Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
+                // TODO Wave 6.5.d-followup: emit FormPublishedIntegrationEventV1 via the
+                // outbox (Forms.Contracts wire ABI). Deferred from this slice so 6.5.d
+                // ships as a pure self-save retirement + multi-context UoW migration;
+                // integration-event contracts land in a follow-up alongside their
+                // downstream consumer.
                 await _eventFormRepository.UpdateAsync(form, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
 
                 stopwatch.Stop();
 

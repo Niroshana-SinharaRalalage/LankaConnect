@@ -241,6 +241,18 @@ public sealed class LayeringRules
     /// every module today. Add `"LankaConnect.Shared"` back to the ban list
     /// once BuildingBlocks.Shared (or a Communications.Contracts elevation)
     /// owns those abstractions.
+    ///
+    /// Wave 6.5.d (2026-07-03) — also relaxed `LankaConnect.Modules.Forms.Infrastructure`
+    /// because the 13 Forms command handlers now inject <c>FormsDbContext</c> to
+    /// call <c>IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _formsContext }, ct)</c>
+    /// (Outbox cutover — retires the F30a-shape self-saving repository pattern).
+    /// Same-module Application → Infrastructure edge is normally forbidden;
+    /// the transitional relaxation persists until either (a) the handlers
+    /// relocate to a Products-owning assembly in Wave 6.5.f/g, or
+    /// (b) a DbContext-accessor abstraction lands in BuildingBlocks.Application
+    /// that hides the concrete DbContext from Application. The reverse edge
+    /// (Forms.Infrastructure → Forms.Application) was dropped in the same
+    /// commit to keep the graph acyclic.
     /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]
@@ -251,7 +263,8 @@ public sealed class LayeringRules
         var result = Types.InAssembly(assembly)
             .Should()
             .NotHaveDependencyOnAny(
-                "LankaConnect.Modules.Forms.Infrastructure",
+                // Wave 6.5.d: Forms.Infrastructure removed from the ban list (transitional
+                // — see summary block above). Forms.Api stays banned.
                 "LankaConnect.Modules.Forms.Api",
                 "LankaConnect.BuildingBlocks.Infrastructure",
                 "LankaConnect.BuildingBlocks.Web",

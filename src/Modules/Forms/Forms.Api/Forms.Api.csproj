@@ -16,6 +16,8 @@
     <ProjectReference Include="..\Forms.Contracts\Forms.Contracts.csproj" />
     <ProjectReference Include="..\Forms.Infrastructure\Forms.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+    <!-- Wave 6.5.d: AddModuleOutbox&lt;FormsDbContext&gt;() DI extension lives here. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
   </ItemGroup>
 
   <!--

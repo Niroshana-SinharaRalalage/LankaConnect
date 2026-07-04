@@ -1,4 +1,5 @@
 using FluentValidation;
+using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using LankaConnect.Modules.Forms.Application.Commands;
 using LankaConnect.Modules.Forms.Application.Queries;
 using LankaConnect.Modules.Forms.Contracts;
@@ -57,6 +58,13 @@ public static class FormsModule
 
         services.AddScoped<IFormRepository, FormRepository>();
         services.AddScoped<IFormResponseRepository, FormResponseRepository>();
+
+        // Wave 6.5.d: per-module outbox wiring (producer scoped + OutboxProcessor
+        // hosted). The IIntegrationEventOutbox<FormsDbContext> adapter is
+        // registered by the composition root (LankaConnect.API) via
+        // LankaConnect.Infrastructure — it depends on both this project and the
+        // BuildingBlocks concrete, so it lives up the graph rather than here.
+        services.AddModuleOutbox<FormsDbContext>();
 
         // Wave 5.3b (2026-06-11): cross-module Contracts surface — IFormQueries +
         // IFormCommands. Cross-module consumers (Wave 5.3d EventHandlers in

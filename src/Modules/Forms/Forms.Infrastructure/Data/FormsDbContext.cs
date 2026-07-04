@@ -21,7 +21,13 @@ namespace LankaConnect.Modules.Forms.Infrastructure.Data;
 /// four entities now live under the default schema (<c>forms</c>, per
 /// <see cref="HasDefaultSchema"/>).
 /// </remarks>
-public sealed class FormsDbContext : DbContext
+// Wave 6.5.d (2026-07-03): unsealed so FormCommandsTests can subclass the DbContext
+// to override SaveChangesAsync (see FormCommandsTestDouble in the test project).
+// The InMemory EF provider cannot validate the FormsDbContext model (FormResponse
+// uses jsonb-backed IReadOnlyList<Guid> — not a primitive collection), so a
+// Moq-mockable path was preferred. FormsDbContext was previously sealed as an
+// idiomatic safeguard; no production consumer subclasses it.
+public class FormsDbContext : DbContext
 {
     /// <summary>Postgres schema for all Forms-owned tables (post-Wave 4.9.4).</summary>
     public const string SchemaName = "forms";

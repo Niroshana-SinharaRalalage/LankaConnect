@@ -4,10 +4,12 @@ using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Infrastructure.Data;
 using System.Security.Cryptography;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -27,16 +29,19 @@ namespace LankaConnect.Modules.Forms.Application.Commands.DeleteFormResponse;
 public class DeleteFormResponseCommandHandler : ICommandHandler<DeleteFormResponseCommand>
 {
     private readonly IFormResponseRepository _formResponseRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly FormsDbContext _formsContext;
     private readonly ILogger<DeleteFormResponseCommandHandler> _logger;
 
     public DeleteFormResponseCommandHandler(
         IFormResponseRepository formResponseRepository,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        FormsDbContext formsContext,
         ILogger<DeleteFormResponseCommandHandler> logger)
     {
         _formResponseRepository = formResponseRepository;
         _unitOfWork = unitOfWork;
+        _formsContext = formsContext;
         _logger = logger;
     }
 
@@ -153,8 +158,9 @@ public class DeleteFormResponseCommandHandler : ICommandHandler<DeleteFormRespon
                 // Hard delete (GDPR compliant - users control their data)
                 await _formResponseRepository.DeleteAsync(response, cancellationToken);
 
-                // Commit transaction (cascade delete will remove FormAnswers via EF Core configuration)
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // Commit transaction (cascade delete will remove FormAnswers via EF Core configuration).
+                // Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
+                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
 
                 stopwatch.Stop();
 

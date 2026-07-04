@@ -133,22 +133,35 @@ public sealed class LankaEventsDbContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
 
-        // Default schema for the Event family. Configurations that cross into
-        // `communications` or `analytics` override this via explicit
-        // .ToTable(name, "schema") calls in the moved config files.
-        modelBuilder.HasDefaultSchema(SchemaName);
+        // Wave 6.5.f.5-hotfix2b (2026-07-04, Rule 5i.1 REVISED + Rule 5i.2 per fourth
+        // architect consult): HasDefaultSchema("events") REMOVED. It's a model-level
+        // annotation applied at ModelFinalizingConvention time and cannot be overridden
+        // per-entity in EF Core 8 — it overwrote `.ToTable(name, null)` and
+        // `SetSchema(null)` for the three public-schema entities (TicketTier,
+        // TicketScanLog, EventEmailGroupLink) whose physical table lives in `public`.
+        // Aligns LankaEventsDbContext with the AppDbContext.ConfigureSchemas pattern
+        // (per-entity two-arg ToTable, no HasDefaultSchema). All 22 non-exception
+        // configs already carry explicit .ToTable(name, "<schema>") per Rule 5i (see
+        // hotfix2 commit f25003a1). The three exception configs use single-arg
+        // .ToTable(name) — resolves to null schema, matching physical.
+        // Ruling: docs/architect-consults/2026-07-04-wave-6-5-f-hotfix2b-hasdefaultschema-override-ruling.md.
 
         // Apply every IEntityTypeConfiguration<T> in the LankaEvents.Infrastructure
-        // assembly. Wave 6.5.e physically relocated ~36 config classes from
-        // LankaConnect.Infrastructure.Data.Configurations into
-        // LankaConnect.Products.LankaEvents.Infrastructure.Configurations —
-        // the sweep below picks them up automatically.
+        // assembly. Wave 6.5.e physically relocated ~36 config classes.
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(LankaEventsDbContext).Assembly);
 
-        // Module-owned operational tables — `events.outbox`, etc.
+        // Module-owned operational tables. Rule 5i.2: shared BuildingBlocks configs
+        // (OutboxMessageConfiguration, DeadLetterMessageConfiguration,
+        // IdempotencyKeyConfiguration) use single-arg .ToTable(name) inside the config
+        // for cross-module reuse. The OWNING per-module DbContext pins the schema
+        // explicitly with modelBuilder.Entity<T>().ToTable(name, moduleSchema)
+        // immediately AFTER ApplyConfiguration.
         modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
         modelBuilder.ApplyConfiguration(new DeadLetterMessageConfiguration());
         modelBuilder.ApplyConfiguration(new IdempotencyKeyConfiguration());
+        modelBuilder.Entity<OutboxMessage>().ToTable("outbox", SchemaName);
+        modelBuilder.Entity<DeadLetterMessage>().ToTable("outbox_dead_letter", SchemaName);
+        modelBuilder.Entity<IdempotencyKey>().ToTable("idempotency_keys", SchemaName);
 
         // Cross-module reference cleanup. Several moved configs
         // (EventNotificationHistory, Ticket, TicketScanLog) declare

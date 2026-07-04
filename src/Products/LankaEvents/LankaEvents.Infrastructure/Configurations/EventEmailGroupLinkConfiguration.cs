@@ -28,7 +28,11 @@ public class EventEmailGroupLinkConfiguration : IEntityTypeConfiguration<EventEm
 {
     public void Configure(EntityTypeBuilder<EventEmailGroupLink> builder)
     {
-        builder.ToTable("event_email_groups", "events"); // Rule 5i: explicit schema
+        // Wave 6.5.f.5-hotfix2b (2026-07-04, Rule 5i.1 REVISED per fourth architect
+        // consult): physical `public.event_email_groups` (per migration
+        // 20251216051336_AddEventEmailGroups — junction pre-dates events-schema
+        // convention). Single-arg ToTable resolves to null schema.
+        builder.ToTable("event_email_groups");
 
         builder.HasKey(l => new { l.EventId, l.EmailGroupId });
 

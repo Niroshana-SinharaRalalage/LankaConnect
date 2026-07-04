@@ -14,7 +14,7 @@ public class SeatHoldConfiguration : IEntityTypeConfiguration<SeatHold>
 {
     public void Configure(EntityTypeBuilder<SeatHold> builder)
     {
-        builder.ToTable("seat_holds");
+        builder.ToTable("seat_holds", "events"); // Rule 5i: explicit schema
 
         builder.HasKey(h => h.Id);
 

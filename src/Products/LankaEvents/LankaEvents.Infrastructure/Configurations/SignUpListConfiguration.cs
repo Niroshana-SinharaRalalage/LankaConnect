@@ -9,6 +9,9 @@ public class SignUpListConfiguration : IEntityTypeConfiguration<SignUpList>
 {
     public void Configure(EntityTypeBuilder<SignUpList> builder)
     {
+        // Wave 6.5.f.5-hotfix2 (Rule 5i): explicit two-arg ToTable per revised parity rule.
+        builder.ToTable("sign_up_lists", "events");
+
         builder.HasKey(s => s.Id);
 
         builder.Property(s => s.Id)

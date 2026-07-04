@@ -13,7 +13,7 @@ public class EventImageConfiguration : IEntityTypeConfiguration<EventImage>
 {
     public void Configure(EntityTypeBuilder<EventImage> builder)
     {
-        builder.ToTable("EventImages");
+        builder.ToTable("EventImages", "events"); // Rule 5i: explicit schema
 
         // Primary key
         builder.HasKey(ei => ei.Id);

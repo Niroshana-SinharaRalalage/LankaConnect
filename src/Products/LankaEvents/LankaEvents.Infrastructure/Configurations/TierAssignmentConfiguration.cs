@@ -15,7 +15,7 @@ public class TierAssignmentConfiguration : IEntityTypeConfiguration<TierAssignme
 {
     public void Configure(EntityTypeBuilder<TierAssignment> builder)
     {
-        builder.ToTable("tier_assignments");
+        builder.ToTable("tier_assignments", "events"); // Rule 5i: explicit schema
 
         // Composite PK — no BaseEntity.Id; uniqueness is (tier, kind, target).
         builder.HasKey(a => new { a.TierId, a.AssignableKind, a.AssignableId });

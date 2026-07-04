@@ -2,7 +2,7 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 
 /// <summary>
 /// EF Core configuration for the EventEmailGroupLink junction CLR entity.
@@ -10,17 +10,28 @@ namespace LankaConnect.Infrastructure.Data.Configurations;
 /// <c>UsingEntity&lt;Dictionary&lt;string, object&gt;&gt;</c> typed-nav
 /// configuration on Event. Same physical table, columns, composite PK,
 /// indexes — EF-snapshot-only rebaseline.
+/// Wave 6.5.f.5-hotfix (2026-07-04): physically relocated from
+/// <c>LankaConnect.Infrastructure.Data.Configurations</c> to Products/LankaEvents
+/// per architect ruling §2.1 — junction entity is Products-owned, its config
+/// belongs with it. Enables un-Ignore in LankaEventsDbContext.OnModelCreating.
 /// </summary>
 /// <remarks>
 /// Entity-level config only. The Event-side relationship
 /// (<c>HasMany(e =&gt; e.EmailGroupLinks)</c>) lives in
 /// <c>EventConfiguration</c> and follows the standard codebase pattern
 /// for backing-field navigations (mirrors Images / Videos / SignUpLists).
+/// The far-principal <c>EmailGroup</c> is deliberately NOT navigated —
+/// <c>EmailGroupId</c> stays scalar so LankaEventsDbContext's model remains
+/// free of Communications-module types per Blueprint §7.8.
 /// </remarks>
 public class EventEmailGroupLinkConfiguration : IEntityTypeConfiguration<EventEmailGroupLink>
 {
     public void Configure(EntityTypeBuilder<EventEmailGroupLink> builder)
     {
+        // Wave 6.5.f.5-hotfix2b (2026-07-04, Rule 5i.1 REVISED per fourth architect
+        // consult): physical `public.event_email_groups` (per migration
+        // 20251216051336_AddEventEmailGroups — junction pre-dates events-schema
+        // convention). Single-arg ToTable resolves to null schema.
         builder.ToTable("event_email_groups");
 
         builder.HasKey(l => new { l.EventId, l.EmailGroupId });

@@ -30,7 +30,7 @@ public class RefundRequestConfiguration : IEntityTypeConfiguration<RefundRequest
 {
     public void Configure(EntityTypeBuilder<RefundRequest> builder)
     {
-        builder.ToTable("refund_requests");
+        builder.ToTable("refund_requests", "events"); // Rule 5i: explicit schema
 
         builder.HasKey(r => r.Id);
         builder.Property(r => r.Id).ValueGeneratedNever();

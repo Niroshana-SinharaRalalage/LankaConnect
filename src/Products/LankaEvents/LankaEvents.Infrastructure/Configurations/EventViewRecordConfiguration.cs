@@ -11,7 +11,9 @@ public class EventViewRecordConfiguration : IEntityTypeConfiguration<EventViewRe
 {
     public void Configure(EntityTypeBuilder<EventViewRecord> builder)
     {
-        builder.ToTable("event_view_records");
+        // Wave 6.5.f.5-hotfix2: cross-schema fix per Rule 5i. Physical table is
+        // `analytics.event_view_records` per Phase 6A analytics migration.
+        builder.ToTable("event_view_records", "analytics");
 
         builder.HasKey(v => v.Id);
 

@@ -12,7 +12,10 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 {
     public void Configure(EntityTypeBuilder<Ticket> builder)
     {
-        builder.ToTable("Tickets");
+        // Wave 6.5.f.5-hotfix2: PascalCase → snake_case + explicit schema per Rule 5i.
+        // Physical Postgres table is `events.tickets` (lowercase) per Phase 6A ticketing
+        // migration. LankaEventsDbContext was hitting 42P01 on this until this fix.
+        builder.ToTable("tickets", "events");
 
         builder.HasKey(t => t.Id);
 

@@ -25,6 +25,11 @@ public class TicketTierConfiguration : IEntityTypeConfiguration<TicketTier>
 {
     public void Configure(EntityTypeBuilder<TicketTier> builder)
     {
+        // Wave 6.5.f.5-hotfix2b (2026-07-04, Rule 5i.1 REVISED per fourth architect
+        // consult): physical Postgres table lives in `public` schema (per creation
+        // migration 20260415203751_AddTicketTiers). Single-arg ToTable resolves to
+        // null schema — no `HasDefaultSchema("events")` on LankaEventsDbContext to
+        // override. Ruling: docs/architect-consults/2026-07-04-wave-6-5-f-hotfix2b-hasdefaultschema-override-ruling.md.
         builder.ToTable("ticket_tiers");
 
         builder.HasKey(t => t.Id);

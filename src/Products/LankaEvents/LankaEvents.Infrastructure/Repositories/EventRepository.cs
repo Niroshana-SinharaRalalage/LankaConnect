@@ -877,15 +877,19 @@ public class EventRepository : ProductRepositoryBase<Event>, IEventRepository
     }
 
     /// <summary>
-    /// Phase 6A.28: Gets all events that have at least one expired badge assignment
-    /// Used by ExpiredBadgeCleanupJob to clean up expired EventBadge assignments
+    /// Phase 6A.28: Gets all events that have at least one expired badge assignment.
+    /// Used by ExpiredBadgeCleanupJob to clean up expired EventBadge assignments.
+    /// Wave 6.5.f.5-hotfix (2026-07-04): dropped the `.ThenInclude(eb => eb.Badge)`
+    /// cross-module hydration per architect ruling §2.2. Badge is owned by
+    /// `LankaConnect.Domain.Badges` and is NOT mapped in LankaEventsDbContext; the
+    /// `EventBadge.Badge` navigation property is now unmapped. Callers needing
+    /// Badge metadata hydrate via `IBadgeRepository` at the application layer.
     /// </summary>
     public async Task<IReadOnlyList<Event>> GetEventsWithExpiredBadgesAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
         return await _dbSet
             .Include(e => e.Badges)
-                .ThenInclude(eb => eb.Badge)
             .Where(e => e.Badges.Any(eb => eb.ExpiresAt.HasValue && eb.ExpiresAt < now))
             .ToListAsync(cancellationToken);
     }

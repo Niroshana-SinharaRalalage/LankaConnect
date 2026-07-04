@@ -149,9 +149,22 @@ jobs:
           # media.outbox, forms.outbox operational tables and the per-module
           # __EFMigrationsHistory tables did not exist on staging. Each context is
           # applied sequentially; failure of any one aborts the deploy.
-          for MODULE in "Notifications" "Media" "Forms"; do
+          #
+          # Wave 6.5.f.5-hotfix2e (2026-07-04): LankaEventsDbContext added. Wave 6.5.e
+          # extracted the Products-owned DbContext but did not update this workflow —
+          # meaning events.outbox / events.outbox_dead_letter / events.idempotency_keys
+          # were never created on staging. OutboxProcessor<LankaEventsDbContext> tick
+          # was failing with `42P01: relation "events.outbox" does not exist` every
+          # poll interval, and Event reads were 500-ing with DatabaseConfigurationError.
+          # Note the DIFFERENT path shape: LankaEvents is a Product not a Module, so
+          # it lives under `../Products/LankaEvents/` not `../Modules/`.
+          for MODULE in "Notifications" "Media" "Forms" "LankaEvents"; do
             CONTEXT_NAME="${MODULE}DbContext"
-            PROJECT_PATH="../Modules/${MODULE}/${MODULE}.Infrastructure/${MODULE}.Infrastructure.csproj"
+            if [ "$MODULE" = "LankaEvents" ]; then
+              PROJECT_PATH="../Products/${MODULE}/${MODULE}.Infrastructure/${MODULE}.Infrastructure.csproj"
+            else
+              PROJECT_PATH="../Modules/${MODULE}/${MODULE}.Infrastructure/${MODULE}.Infrastructure.csproj"
+            fi
             echo ""
             echo "Applying ${CONTEXT_NAME} migrations to staging database..."
 

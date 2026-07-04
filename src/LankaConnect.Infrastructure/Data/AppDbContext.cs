@@ -204,14 +204,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new UserConfiguration());
-        // Wave 5.4.c.0 (2026-06-13). Junction CLR entity for the Event <-> EmailGroup M2M
-        // that replaced the typed-nav configuration in EventConfiguration. Entity-level
-        // shape (table, key, columns, indexes) lives in EventEmailGroupLinkConfiguration;
-        // the Event-side relationship (HasMany(e => e.EmailGroupLinks)) lives in
-        // EventConfiguration following the codebase Images/Videos/SignUpLists pattern.
-        // EventEmailGroupLink must also appear in the configuredEntityTypes whitelist
-        // (search for it below) — otherwise the sweep loop calls Ignore() on it.
-        modelBuilder.ApplyConfiguration(new EventEmailGroupLinkConfiguration());
+        // Wave 6.5.f.5-hotfix (2026-07-04): EventEmailGroupLinkConfiguration relocated
+        // to Products.LankaEvents.Infrastructure.Configurations; the ApplyConfigurationsFromAssembly
+        // sweep at line 203 picks it up. The class type still needs to be in the
+        // configuredEntityTypes whitelist below so the fallback Ignore-unknown pass
+        // does not un-map it. Original explicit ApplyConfiguration call removed
+        // per architect ruling §2.1.
         // Wave 5.4.d.1b (2026-06-22). Mirror of the EventEmailGroupLink registration
         // for the Newsletter side. Replaces the Phase 6A.74 typed M2M nav.
         modelBuilder.ApplyConfiguration(new NewsletterEmailGroupLinkConfiguration());
@@ -262,7 +260,28 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Badge entity configurations (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new BadgeConfiguration());
-        modelBuilder.ApplyConfiguration(new EventBadgeConfiguration());
+        // Wave 6.5.f.5-hotfix (2026-07-04): EventBadgeConfiguration relocated
+        // to Products.LankaEvents.Infrastructure.Configurations; the sweep at line 203
+        // picks it up. Explicit ApplyConfiguration removed per architect ruling §2.2.
+
+        // Wave 6.5.f.5-hotfix2c (2026-07-04): explicit EventBadge → Badge FK override
+        // following the Rule 5i.2 pattern (shared/moved config generic; owning DbContext
+        // pins module-specific relationship semantics). Hotfix1 §2.2 deleted the
+        // HasOne(eb => eb.Badge) block from EventBadgeConfiguration to keep the moved
+        // config free of cross-module type references — correct for LankaEventsDbContext
+        // (Badge is Ignored there). Incorrect for AppDbContext: EF's RelationshipDiscovery
+        // convention still saw EventBadge.Badge navigation and inferred a Cascade FK,
+        // silently reversing the intentional Restrict on badges.event_badges. Physical
+        // Postgres has FK_event_badges_badges_BadgeId with Restrict since the original
+        // creation migration (20251211184730_AddEmailGroups.cs line 61). Restore it here
+        // explicitly. AppDbContext already references Badge and EventBadge — no new
+        // cross-module reference introduced.
+        // Ruling: docs/architect-consults/2026-07-04-wave-6-5-f-hotfix2c-appdbcontext-drift-ruling.md
+        modelBuilder.Entity<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge>()
+            .HasOne(eb => eb.Badge)
+            .WithMany()
+            .HasForeignKey(eb => eb.BadgeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Wave 6.5.e: EventOrganizerContact + EventSlugAlias configurations moved to
         // LankaEvents.Infrastructure (registered above via the assembly sweep).
@@ -438,78 +457,51 @@ public class AppDbContext : DbContext, IApplicationDbContext
     {
         // Identity schema
         modelBuilder.Entity<User>().ToTable("users", "identity");
-        
-        // Events schema
-        modelBuilder.Entity<Event>().ToTable("events", "events");
-        modelBuilder.Entity<Registration>().ToTable("registrations", "events");
-        modelBuilder.Entity<SignUpList>().ToTable("sign_up_lists", "events");
-        modelBuilder.Entity<SignUpItem>().ToTable("sign_up_items", "events");
-        modelBuilder.Entity<SignUpCommitment>().ToTable("sign_up_commitments", "events");
-        modelBuilder.Entity<MetroArea>().ToTable("metro_areas", "events");
-        modelBuilder.Entity<EventTemplate>().ToTable("event_templates", "events"); // Phase 6A.8
-        modelBuilder.Entity<EventImage>().ToTable("EventImages", "events"); // Epic 2 Phase 2
-        modelBuilder.Entity<EventVideo>().ToTable("EventVideos", "events"); // Epic 2 Phase 2
-        
-        // Community schema  
+
+        // Wave 6.5.f.5-hotfix2 (2026-07-04): LankaEvents entity ToTable overrides
+        // relocated INTO their respective IEntityTypeConfiguration files in
+        // Products/LankaEvents/LankaEvents.Infrastructure/Configurations per architect
+        // ruling Option E + Rule 5i. Applied to both DbContexts via
+        // ApplyConfigurationsFromAssembly (line 203). Removed from here so mapping
+        // intent lives with the entity in exactly ONE place. Entities affected:
+        // Event, Registration, SignUpList, SignUpItem, SignUpCommitment, MetroArea,
+        // EventTemplate, EventImage, EventVideo, Ticket, TicketTier, TierAssignment,
+        // RefundRequest, RefundRequestLineItem, VenueLayout, VenueZone, VenueTable,
+        // VenueDecoration, Seat, SeatHold, SeatReservation, RegistrationAddition,
+        // RegistrationPayment, Donation, EventBadge, EventAnalytics, EventViewRecord,
+        // EventNotificationHistory (has explicit .ToTable("event_notification_history",
+        // "communications") in its moved config file).
+
+        // Community schema
         modelBuilder.Entity<ForumTopic>().ToTable("topics", "community");
         modelBuilder.Entity<Reply>().ToTable("replies", "community");
-        
+
         // Business schema
         modelBuilder.Entity<Business>().ToTable("businesses", "business");
         modelBuilder.Entity<Service>().ToTable("services", "business");
         modelBuilder.Entity<Review>().ToTable("reviews", "business");
-        
+
         // Communications schema
         modelBuilder.Entity<EmailMessage>().ToTable("email_messages", "communications");
         modelBuilder.Entity<EmailTemplate>().ToTable("email_templates", "communications");
         modelBuilder.Entity<UserEmailPreferences>().ToTable("user_email_preferences", "communications");
         modelBuilder.Entity<NewsletterSubscriber>().ToTable("newsletter_subscribers", "communications");
         modelBuilder.Entity<Newsletter>().ToTable("newsletters", "communications"); // Phase 6A.74: Newsletter/News Alert Feature
-        modelBuilder.Entity<NewsletterEmailHistory>().ToTable("newsletter_email_history", "communications"); // Phase 6A.74 Part 13: Newsletter email send history
-        modelBuilder.Entity<EventNotificationHistory>().ToTable("event_notification_history", "communications"); // Phase 6A.61: Event notification history tracking
-        modelBuilder.Entity<EmailMetricRecord>().ToTable("email_metrics", "communications"); // Phase 6A.89: Email metrics persistence
-        modelBuilder.Entity<EmailFailureDetail>().ToTable("email_failure_details", "communications"); // Phase 6A.99: Email failure details persistence
-        modelBuilder.Entity<WhatsAppMessageRecord>().ToTable("whatsapp_messages", "communications"); // Phase 7A: WhatsApp Integration
-        modelBuilder.Entity<WhatsAppTemplate>().ToTable("whatsapp_templates", "communications"); // Phase 7A: WhatsApp Integration
-        modelBuilder.Entity<UserWhatsAppPreferences>().ToTable("user_whatsapp_preferences", "communications"); // Phase 7A: WhatsApp Integration
-        modelBuilder.Entity<WhatsAppWebhookEvent>().ToTable("whatsapp_webhook_events", "communications"); // Phase 7A: WhatsApp Integration
+        modelBuilder.Entity<NewsletterEmailHistory>().ToTable("newsletter_email_history", "communications"); // Phase 6A.74 Part 13
+        modelBuilder.Entity<EmailMetricRecord>().ToTable("email_metrics", "communications"); // Phase 6A.89
+        modelBuilder.Entity<EmailFailureDetail>().ToTable("email_failure_details", "communications"); // Phase 6A.99
+        modelBuilder.Entity<WhatsAppMessageRecord>().ToTable("whatsapp_messages", "communications"); // Phase 7A
+        modelBuilder.Entity<WhatsAppTemplate>().ToTable("whatsapp_templates", "communications"); // Phase 7A
+        modelBuilder.Entity<UserWhatsAppPreferences>().ToTable("user_whatsapp_preferences", "communications"); // Phase 7A
+        modelBuilder.Entity<WhatsAppWebhookEvent>().ToTable("whatsapp_webhook_events", "communications"); // Phase 7A
 
-        // Analytics schema (Epic 2 Phase 3)
-        modelBuilder.Entity<EventAnalytics>().ToTable("event_analytics", "analytics");
-        modelBuilder.Entity<EventViewRecord>().ToTable("event_view_records", "analytics");
-
-        // W4.0b: Notification table mapping moved to NotificationsDbContext (notifications schema).
-
-        // Tickets schema (Phase 6A.24)
-        modelBuilder.Entity<Ticket>().ToTable("tickets", "events");
-
-        // Phase 6A.148: refund approval workflow tables — events schema (matches Registration)
-        modelBuilder.Entity<RefundRequest>().ToTable("refund_requests", "events");
-        modelBuilder.Entity<RefundRequestLineItem>().ToTable("refund_request_line_items", "events");
-
-        // Venue Seating tables (Phase 2: Seat Booking + Slice 2+3A)
-        modelBuilder.Entity<VenueLayout>().ToTable("venue_layouts", "events");
-        modelBuilder.Entity<VenueZone>().ToTable("venue_zones", "events");
-        modelBuilder.Entity<VenueTable>().ToTable("venue_tables", "events"); // Slice 2+3A
-        modelBuilder.Entity<VenueDecoration>().ToTable("venue_decorations", "events"); // Slice 2+3A
-        modelBuilder.Entity<Seat>().ToTable("seats", "events");
-        modelBuilder.Entity<SeatHold>().ToTable("seat_holds", "events");
-        modelBuilder.Entity<SeatReservation>().ToTable("seat_reservations", "events");
-        modelBuilder.Entity<TierAssignment>().ToTable("tier_assignments", "events"); // Slice 4 Release N
-
-        // Registration Addition tables (Add-Only Attendees Feature)
-        modelBuilder.Entity<RegistrationAddition>().ToTable("registration_additions", "events");
-        modelBuilder.Entity<RegistrationPayment>().ToTable("registration_payments", "events");
-
-        // Donation table (Standalone Donation System)
-        modelBuilder.Entity<Donation>().ToTable("donations", "events");
-
-        // Badges schema (Phase 6A.25)
+        // Badges schema (Phase 6A.25) — Badge stays here (cross-module principal;
+        // owned by LankaConnect.Domain.Badges, mapped exclusively by AppDbContext).
+        // EventBadge relocated to Products.LankaEvents (per hotfix2 §3.3.6).
         modelBuilder.Entity<Badge>().ToTable("badges", "badges");
-        modelBuilder.Entity<EventBadge>().ToTable("event_badges", "badges");
 
         // Custom Form tables (events schema)
-        // W4.3: Forms entity table mappings moved to FormsDbContext (events schema cross-schema overrides).
+        // W4.3: Forms entity table mappings moved to FormsDbContext.
 
         // Tax schema (Phase 6A.X)
         // Migration 20260114170149 created in public schema, will be moved to reference_data schema

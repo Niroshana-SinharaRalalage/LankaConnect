@@ -13,7 +13,7 @@ public class EventVideoConfiguration : IEntityTypeConfiguration<EventVideo>
 {
     public void Configure(EntityTypeBuilder<EventVideo> builder)
     {
-        builder.ToTable("EventVideos");
+        builder.ToTable("EventVideos", "events"); // Rule 5i: explicit schema
 
         // Primary key
         builder.HasKey(ev => ev.Id);

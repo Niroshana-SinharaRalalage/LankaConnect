@@ -19,6 +19,10 @@ public class TicketScanLogConfiguration : IEntityTypeConfiguration<TicketScanLog
 {
     public void Configure(EntityTypeBuilder<TicketScanLog> builder)
     {
+        // Wave 6.5.f.5-hotfix2b (2026-07-04, Rule 5i.1 REVISED per fourth architect
+        // consult): physical `public.TicketScanLogs` (per migration
+        // 20260513195620_Phase6A141_AddTicketScanLog). Single-arg ToTable resolves to
+        // null schema — no HasDefaultSchema on LankaEventsDbContext to override.
         builder.ToTable("TicketScanLogs");
 
         builder.HasKey(l => l.Id);

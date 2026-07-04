@@ -13,7 +13,7 @@ public class VenueLayoutConfiguration : IEntityTypeConfiguration<VenueLayout>
 {
     public void Configure(EntityTypeBuilder<VenueLayout> builder)
     {
-        builder.ToTable("venue_layouts");
+        builder.ToTable("venue_layouts", "events"); // Rule 5i: explicit schema
 
         builder.HasKey(v => v.Id);
 

@@ -165,7 +165,20 @@ try
     // Wave 5.0 (2026-06-26) — LankaEvents product composition. Empty seam today;
     // populates as the Event family migrates from legacy LankaConnect.Domain to LankaConnect.Products.LankaEvents.Domain (Wave 5.1-5.4 SHIPPED; Wave 5.5.b namespace cleanup 2026-06-29)
     // in W5.1 through W5.7.
-    builder.Services.AddLankaEventsModule();
+    //
+    // Wave 6.5.e (2026-07-03): configuration argument added so the module
+    // extension can register LankaEventsDbContext + AddModuleOutbox<LankaEventsDbContext>().
+    // No repository is switched to the new context in this wave — the 20
+    // LankaEvents repositories continue to inject AppDbContext through the
+    // transitional edge until Wave 6.5.f cuts them over one at a time.
+    builder.Services.AddLankaEventsModule(builder.Configuration);
+    // Wave 6.5.e: adapter binding IIntegrationEventOutbox<LankaEventsDbContext>
+    // (LankaConnect.Application facade) to the concrete
+    // OutboxIntegrationEventDispatcher<LankaEventsDbContext> (BuildingBlocks.Infrastructure).
+    // Mirrors the Wave 6.5.b (Media) + Wave 6.5.c (Notifications) adapter bindings.
+    builder.Services.AddScoped<
+        LankaConnect.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext>,
+        LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext>>();
 
     // Add JWT Authentication and Authorization
     builder.Services.AddJwtAuthentication(builder.Configuration);

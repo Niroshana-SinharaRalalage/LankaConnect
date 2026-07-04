@@ -186,13 +186,24 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // This must be called before applying configurations
         modelBuilder.HasPostgresExtension("postgis");
 
+        // Wave 6.5.e (2026-07-03): The Event-family IEntityTypeConfiguration<T>
+        // classes physically relocated to LankaConnect.Products.LankaEvents.Infrastructure.
+        // AppDbContext cannot ProjectReference LankaEvents.Infrastructure (that would
+        // close the Wave 5 transitional-edge cycle: LankaEvents.Infrastructure already
+        // references LankaConnect.Infrastructure for AppDbContext + Repository<T>).
+        // Instead, load the assembly by name at OnModelCreating time — the assembly
+        // is guaranteed to be in the load closure of any host that starts AppDbContext
+        // because LankaConnect.API references LankaEvents.Api → LankaEvents.Infrastructure.
+        // Dual mapping is intentional and temporary per architect ruling §6.5.e — the
+        // moved configs run under BOTH DbContexts (this sweep, and LankaEventsDbContext's
+        // ApplyConfigurationsFromAssembly) so the 20 not-yet-cutover LankaEvents
+        // repositories continue to work through the transitional edge until Wave 6.5.f.
+        var lankaEventsInfrastructureAssembly = System.Reflection.Assembly.Load(
+            new System.Reflection.AssemblyName("LankaConnect.Products.LankaEvents.Infrastructure"));
+        modelBuilder.ApplyConfigurationsFromAssembly(lankaEventsInfrastructureAssembly);
+
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new UserConfiguration());
-        modelBuilder.ApplyConfiguration(new TicketTierConfiguration()); // Multi-tier ticketing (must be before EventConfiguration to avoid shared-type Money conflict)
-        // W5.2.a-fix (2026-06-28): EventPassConfiguration + PassPurchaseConfiguration
-        // ApplyConfiguration calls removed -- feature deleted per founder ruling.
-        // See docs/architecture/W52A_TABLE_DRIFT_INVESTIGATION.md.
-        modelBuilder.ApplyConfiguration(new EventConfiguration());
         // Wave 5.4.c.0 (2026-06-13). Junction CLR entity for the Event <-> EmailGroup M2M
         // that replaced the typed-nav configuration in EventConfiguration. Entity-level
         // shape (table, key, columns, indexes) lives in EventEmailGroupLinkConfiguration;
@@ -207,33 +218,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // W5.2.d-hotfix2 (2026-06-28): junction CLR for Newsletter -> MetroArea M2M;
         // replaces broken _metroAreaEntities shadow nav from W5.1.
         modelBuilder.ApplyConfiguration(new NewsletterMetroAreaLinkConfiguration());
-        // Phase 6A.154: EventSlugAliasConfiguration — order-independent.
-        // EventConfiguration declares HasMany(e => e.SlugAliases) as a scalar
-        // VanitySlug column (NOT OwnsOne), so EF Core 8 doesn't shadow-map
-        // the child during owned-entity discovery. Mirrors EventOrganizerContact
-        // (registered later at line 271 with no ordering issues).
-        modelBuilder.ApplyConfiguration(new EventSlugAliasConfiguration());
-        modelBuilder.ApplyConfiguration(new EventImageConfiguration()); // Epic 2 Phase 2
-        modelBuilder.ApplyConfiguration(new EventVideoConfiguration()); // Epic 2 Phase 2
 
-        // Phase 6A.148: Refund approval workflow — MUST apply BEFORE RegistrationConfiguration
-        // (which calls HasMany(r => r.RefundRequests)). If RegistrationConfiguration runs first,
-        // EF auto-derives RefundRequest as a dependent entity and then ignores the explicit
-        // configuration when it's applied later ("first mapped explicitly and then ignored").
-        modelBuilder.ApplyConfiguration(new RefundRequestConfiguration());
-        modelBuilder.ApplyConfiguration(new RefundRequestLineItemConfiguration());
-
-        modelBuilder.ApplyConfiguration(new RegistrationConfiguration());
-        // Phase 7F-B: registration-mode conversion audit (architect-approved 2026-04-30)
-        modelBuilder.ApplyConfiguration(new RegistrationModeConversionConfiguration());
-        modelBuilder.ApplyConfiguration(new RegistrationModeConversionRowConfiguration());
-        modelBuilder.ApplyConfiguration(new SignUpListConfiguration()); // Sign-up lists
-        modelBuilder.ApplyConfiguration(new SignUpItemConfiguration()); // Sign-up items (category-based)
-        modelBuilder.ApplyConfiguration(new SignUpCommitmentConfiguration()); // User commitments
         modelBuilder.ApplyConfiguration(new ForumTopicConfiguration());
         modelBuilder.ApplyConfiguration(new ReplyConfiguration());
-        modelBuilder.ApplyConfiguration(new MetroAreaConfiguration()); // Phase 5
-        modelBuilder.ApplyConfiguration(new EventTemplateConfiguration()); // Phase 6A.8
 
         // Business entity configurations
         modelBuilder.ApplyConfiguration(new BusinessConfiguration());
@@ -248,53 +235,37 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new NewsletterSubscriberConfiguration());
         modelBuilder.ApplyConfiguration(new NewsletterConfiguration()); // Phase 6A.74: Newsletter/News Alert Feature
         modelBuilder.ApplyConfiguration(new NewsletterEmailHistoryConfiguration()); // Phase 6A.74 Part 13 Issue #1: Newsletter email history
-        modelBuilder.ApplyConfiguration(new EventNotificationHistoryConfiguration()); // Phase 6A.61: Event notification history tracking
+        // Wave 6.5.e: EventNotificationHistoryConfiguration moved to LankaEvents.Infrastructure
+        // (registered above via the LankaEvents.Infrastructure assembly sweep).
         modelBuilder.ApplyConfiguration(new EmailMetricRecordConfiguration()); // Phase 6A.89: Email metrics persistence
         modelBuilder.ApplyConfiguration(new EmailFailureDetailConfiguration()); // Phase 6A.99: Email failure details persistence
 
-        // Analytics entity configurations (Epic 2 Phase 3)
-        modelBuilder.ApplyConfiguration(new EventAnalyticsConfiguration());
-        modelBuilder.ApplyConfiguration(new EventViewRecordConfiguration());
+        // Wave 6.5.e: EventAnalytics, EventViewRecord configurations moved to
+        // LankaEvents.Infrastructure (registered above via the assembly sweep).
 
-        // Ticket entity configuration (Phase 6A.24)
-        modelBuilder.ApplyConfiguration(new TicketConfiguration());
+        // Wave 6.5.e: Ticket + TicketScanLog + TicketTier + TierAssignment configurations
+        // moved to LankaEvents.Infrastructure (registered above via the assembly sweep).
 
-        // Phase 6A.141: Ticket scan audit log
-        modelBuilder.ApplyConfiguration(new TicketScanLogConfiguration());
+        // Phase 6A.148 refund configurations are applied via the LankaEvents.Infrastructure
+        // sweep above (moved in Wave 6.5.e).
 
-        // Phase 6A.148 refund configurations are applied earlier (before RegistrationConfiguration)
-        // to avoid the "first mapped explicitly and then ignored" trap.
+        // Wave 6.5.e: Venue Seating configurations (VenueLayout, VenueZone, VenueTable,
+        // VenueDecoration, Seat, SeatHold, SeatReservation) moved to LankaEvents.Infrastructure
+        // (registered above via the assembly sweep).
 
-        // Venue Seating entity configurations (Phase 2: Seat Booking + Slice 2+3A expansion)
-        modelBuilder.ApplyConfiguration(new VenueLayoutConfiguration());
-        modelBuilder.ApplyConfiguration(new VenueZoneConfiguration());
-        modelBuilder.ApplyConfiguration(new VenueTableConfiguration()); // Slice 2+3A
-        modelBuilder.ApplyConfiguration(new VenueDecorationConfiguration()); // Slice 2+3A
-        modelBuilder.ApplyConfiguration(new SeatConfiguration());
-        modelBuilder.ApplyConfiguration(new SeatHoldConfiguration());
-        modelBuilder.ApplyConfiguration(new SeatReservationConfiguration());
-        modelBuilder.ApplyConfiguration(new TierAssignmentConfiguration()); // Slice 4 Release N
+        // Wave 6.5.e: RegistrationAddition + RegistrationPayment configurations moved to
+        // LankaEvents.Infrastructure (registered above via the assembly sweep).
 
-        // Registration Addition entity configurations (Add-Only Attendees Feature)
-        modelBuilder.ApplyConfiguration(new RegistrationAdditionConfiguration());
-        modelBuilder.ApplyConfiguration(new RegistrationPaymentConfiguration());
-
-        // Donation entity configuration (Standalone Donation System)
-        modelBuilder.ApplyConfiguration(new DonationEntityConfiguration());
-
-        // Financial Feature configurations (Collections, Sponsors, Add-ons)
-        modelBuilder.ApplyConfiguration(new CollectionEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new SponsorEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new AddOnDefinitionEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new AddOnPurchaseEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new SponsorshipPackageEntityConfiguration()); // Phase 6A.156: organizer-defined sponsorship packages
+        // Wave 6.5.e: Donation + Collection + Sponsor + SponsorshipPackage + AddOnDefinition
+        // + AddOnPurchase configurations moved to LankaEvents.Infrastructure (registered
+        // above via the assembly sweep).
 
         // Badge entity configurations (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new BadgeConfiguration());
         modelBuilder.ApplyConfiguration(new EventBadgeConfiguration());
 
-        // Organizer Contact entity configuration (Multiple Organizer Contacts)
-        modelBuilder.ApplyConfiguration(new EventOrganizerContactConfiguration());
+        // Wave 6.5.e: EventOrganizerContact + EventSlugAlias configurations moved to
+        // LankaEvents.Infrastructure (registered above via the assembly sweep).
 
         // Email Group entity configuration (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new EmailGroupConfiguration());

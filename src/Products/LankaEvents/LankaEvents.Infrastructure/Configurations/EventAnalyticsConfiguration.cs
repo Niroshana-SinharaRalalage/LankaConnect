@@ -11,7 +11,9 @@ public class EventAnalyticsConfiguration : IEntityTypeConfiguration<EventAnalyti
 {
     public void Configure(EntityTypeBuilder<EventAnalytics> builder)
     {
-        builder.ToTable("event_analytics");
+        // Wave 6.5.f.5-hotfix2: cross-schema fix per Rule 5i. Physical table is
+        // `analytics.event_analytics` per Phase 6A analytics migration.
+        builder.ToTable("event_analytics", "analytics");
 
         builder.HasKey(a => a.Id);
 

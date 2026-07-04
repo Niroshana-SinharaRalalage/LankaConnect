@@ -28,7 +28,7 @@ public class EventEmailGroupLinkConfiguration : IEntityTypeConfiguration<EventEm
 {
     public void Configure(EntityTypeBuilder<EventEmailGroupLink> builder)
     {
-        builder.ToTable("event_email_groups");
+        builder.ToTable("event_email_groups", "events"); // Rule 5i: explicit schema
 
         builder.HasKey(l => new { l.EventId, l.EmailGroupId });
 

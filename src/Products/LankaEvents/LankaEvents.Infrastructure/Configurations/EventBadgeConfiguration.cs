@@ -21,7 +21,11 @@ public class EventBadgeConfiguration : IEntityTypeConfiguration<EventBadge>
 {
     public void Configure(EntityTypeBuilder<EventBadge> builder)
     {
-        builder.ToTable("event_badges");
+        // Wave 6.5.f.5-hotfix2: cross-schema fix per Rule 5i. Physical Postgres
+        // table is `badges.event_badges` per Phase 6A.25 migration — the config
+        // relocation in hotfix1 wrongly resolved to `events.event_badges` via
+        // LankaEventsDbContext's HasDefaultSchema("events") default.
+        builder.ToTable("event_badges", "badges");
 
         // Primary key
         builder.HasKey(eb => eb.Id);

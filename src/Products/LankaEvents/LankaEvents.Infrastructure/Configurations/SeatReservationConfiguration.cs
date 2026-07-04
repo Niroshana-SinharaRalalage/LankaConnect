@@ -13,7 +13,7 @@ public class SeatReservationConfiguration : IEntityTypeConfiguration<SeatReserva
 {
     public void Configure(EntityTypeBuilder<SeatReservation> builder)
     {
-        builder.ToTable("seat_reservations");
+        builder.ToTable("seat_reservations", "events"); // Rule 5i: explicit schema
 
         builder.HasKey(r => r.Id);
 

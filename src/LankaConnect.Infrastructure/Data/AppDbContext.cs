@@ -438,78 +438,51 @@ public class AppDbContext : DbContext, IApplicationDbContext
     {
         // Identity schema
         modelBuilder.Entity<User>().ToTable("users", "identity");
-        
-        // Events schema
-        modelBuilder.Entity<Event>().ToTable("events", "events");
-        modelBuilder.Entity<Registration>().ToTable("registrations", "events");
-        modelBuilder.Entity<SignUpList>().ToTable("sign_up_lists", "events");
-        modelBuilder.Entity<SignUpItem>().ToTable("sign_up_items", "events");
-        modelBuilder.Entity<SignUpCommitment>().ToTable("sign_up_commitments", "events");
-        modelBuilder.Entity<MetroArea>().ToTable("metro_areas", "events");
-        modelBuilder.Entity<EventTemplate>().ToTable("event_templates", "events"); // Phase 6A.8
-        modelBuilder.Entity<EventImage>().ToTable("EventImages", "events"); // Epic 2 Phase 2
-        modelBuilder.Entity<EventVideo>().ToTable("EventVideos", "events"); // Epic 2 Phase 2
-        
-        // Community schema  
+
+        // Wave 6.5.f.5-hotfix2 (2026-07-04): LankaEvents entity ToTable overrides
+        // relocated INTO their respective IEntityTypeConfiguration files in
+        // Products/LankaEvents/LankaEvents.Infrastructure/Configurations per architect
+        // ruling Option E + Rule 5i. Applied to both DbContexts via
+        // ApplyConfigurationsFromAssembly (line 203). Removed from here so mapping
+        // intent lives with the entity in exactly ONE place. Entities affected:
+        // Event, Registration, SignUpList, SignUpItem, SignUpCommitment, MetroArea,
+        // EventTemplate, EventImage, EventVideo, Ticket, TicketTier, TierAssignment,
+        // RefundRequest, RefundRequestLineItem, VenueLayout, VenueZone, VenueTable,
+        // VenueDecoration, Seat, SeatHold, SeatReservation, RegistrationAddition,
+        // RegistrationPayment, Donation, EventBadge, EventAnalytics, EventViewRecord,
+        // EventNotificationHistory (has explicit .ToTable("event_notification_history",
+        // "communications") in its moved config file).
+
+        // Community schema
         modelBuilder.Entity<ForumTopic>().ToTable("topics", "community");
         modelBuilder.Entity<Reply>().ToTable("replies", "community");
-        
+
         // Business schema
         modelBuilder.Entity<Business>().ToTable("businesses", "business");
         modelBuilder.Entity<Service>().ToTable("services", "business");
         modelBuilder.Entity<Review>().ToTable("reviews", "business");
-        
+
         // Communications schema
         modelBuilder.Entity<EmailMessage>().ToTable("email_messages", "communications");
         modelBuilder.Entity<EmailTemplate>().ToTable("email_templates", "communications");
         modelBuilder.Entity<UserEmailPreferences>().ToTable("user_email_preferences", "communications");
         modelBuilder.Entity<NewsletterSubscriber>().ToTable("newsletter_subscribers", "communications");
         modelBuilder.Entity<Newsletter>().ToTable("newsletters", "communications"); // Phase 6A.74: Newsletter/News Alert Feature
-        modelBuilder.Entity<NewsletterEmailHistory>().ToTable("newsletter_email_history", "communications"); // Phase 6A.74 Part 13: Newsletter email send history
-        modelBuilder.Entity<EventNotificationHistory>().ToTable("event_notification_history", "communications"); // Phase 6A.61: Event notification history tracking
-        modelBuilder.Entity<EmailMetricRecord>().ToTable("email_metrics", "communications"); // Phase 6A.89: Email metrics persistence
-        modelBuilder.Entity<EmailFailureDetail>().ToTable("email_failure_details", "communications"); // Phase 6A.99: Email failure details persistence
-        modelBuilder.Entity<WhatsAppMessageRecord>().ToTable("whatsapp_messages", "communications"); // Phase 7A: WhatsApp Integration
-        modelBuilder.Entity<WhatsAppTemplate>().ToTable("whatsapp_templates", "communications"); // Phase 7A: WhatsApp Integration
-        modelBuilder.Entity<UserWhatsAppPreferences>().ToTable("user_whatsapp_preferences", "communications"); // Phase 7A: WhatsApp Integration
-        modelBuilder.Entity<WhatsAppWebhookEvent>().ToTable("whatsapp_webhook_events", "communications"); // Phase 7A: WhatsApp Integration
+        modelBuilder.Entity<NewsletterEmailHistory>().ToTable("newsletter_email_history", "communications"); // Phase 6A.74 Part 13
+        modelBuilder.Entity<EmailMetricRecord>().ToTable("email_metrics", "communications"); // Phase 6A.89
+        modelBuilder.Entity<EmailFailureDetail>().ToTable("email_failure_details", "communications"); // Phase 6A.99
+        modelBuilder.Entity<WhatsAppMessageRecord>().ToTable("whatsapp_messages", "communications"); // Phase 7A
+        modelBuilder.Entity<WhatsAppTemplate>().ToTable("whatsapp_templates", "communications"); // Phase 7A
+        modelBuilder.Entity<UserWhatsAppPreferences>().ToTable("user_whatsapp_preferences", "communications"); // Phase 7A
+        modelBuilder.Entity<WhatsAppWebhookEvent>().ToTable("whatsapp_webhook_events", "communications"); // Phase 7A
 
-        // Analytics schema (Epic 2 Phase 3)
-        modelBuilder.Entity<EventAnalytics>().ToTable("event_analytics", "analytics");
-        modelBuilder.Entity<EventViewRecord>().ToTable("event_view_records", "analytics");
-
-        // W4.0b: Notification table mapping moved to NotificationsDbContext (notifications schema).
-
-        // Tickets schema (Phase 6A.24)
-        modelBuilder.Entity<Ticket>().ToTable("tickets", "events");
-
-        // Phase 6A.148: refund approval workflow tables — events schema (matches Registration)
-        modelBuilder.Entity<RefundRequest>().ToTable("refund_requests", "events");
-        modelBuilder.Entity<RefundRequestLineItem>().ToTable("refund_request_line_items", "events");
-
-        // Venue Seating tables (Phase 2: Seat Booking + Slice 2+3A)
-        modelBuilder.Entity<VenueLayout>().ToTable("venue_layouts", "events");
-        modelBuilder.Entity<VenueZone>().ToTable("venue_zones", "events");
-        modelBuilder.Entity<VenueTable>().ToTable("venue_tables", "events"); // Slice 2+3A
-        modelBuilder.Entity<VenueDecoration>().ToTable("venue_decorations", "events"); // Slice 2+3A
-        modelBuilder.Entity<Seat>().ToTable("seats", "events");
-        modelBuilder.Entity<SeatHold>().ToTable("seat_holds", "events");
-        modelBuilder.Entity<SeatReservation>().ToTable("seat_reservations", "events");
-        modelBuilder.Entity<TierAssignment>().ToTable("tier_assignments", "events"); // Slice 4 Release N
-
-        // Registration Addition tables (Add-Only Attendees Feature)
-        modelBuilder.Entity<RegistrationAddition>().ToTable("registration_additions", "events");
-        modelBuilder.Entity<RegistrationPayment>().ToTable("registration_payments", "events");
-
-        // Donation table (Standalone Donation System)
-        modelBuilder.Entity<Donation>().ToTable("donations", "events");
-
-        // Badges schema (Phase 6A.25)
+        // Badges schema (Phase 6A.25) — Badge stays here (cross-module principal;
+        // owned by LankaConnect.Domain.Badges, mapped exclusively by AppDbContext).
+        // EventBadge relocated to Products.LankaEvents (per hotfix2 §3.3.6).
         modelBuilder.Entity<Badge>().ToTable("badges", "badges");
-        modelBuilder.Entity<EventBadge>().ToTable("event_badges", "badges");
 
         // Custom Form tables (events schema)
-        // W4.3: Forms entity table mappings moved to FormsDbContext (events schema cross-schema overrides).
+        // W4.3: Forms entity table mappings moved to FormsDbContext.
 
         // Tax schema (Phase 6A.X)
         // Migration 20260114170149 created in public schema, will be moved to reference_data schema

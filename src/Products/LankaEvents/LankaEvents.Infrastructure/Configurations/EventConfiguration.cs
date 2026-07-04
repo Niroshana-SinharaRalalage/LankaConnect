@@ -17,6 +17,11 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Id)
             .ValueGeneratedNever();
 
+        // Wave 6.5.f.5-hotfix2 (Rule 5i): explicit two-arg ToTable so LankaEventsDbContext
+        // does not default the table name to the DbSet property name (which would produce
+        // `events.Events` and fail with 42P01 against physical `events.events`).
+        builder.ToTable("events", "events");
+
         // Configure EventTitle value object
         builder.OwnsOne(e => e.Title, title =>
         {

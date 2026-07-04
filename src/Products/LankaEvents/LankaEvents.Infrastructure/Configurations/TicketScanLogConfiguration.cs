@@ -19,7 +19,7 @@ public class TicketScanLogConfiguration : IEntityTypeConfiguration<TicketScanLog
 {
     public void Configure(EntityTypeBuilder<TicketScanLog> builder)
     {
-        builder.ToTable("TicketScanLogs");
+        builder.ToTable("TicketScanLogs", "events"); // Rule 5i: explicit schema (PascalCase matches physical)
 
         builder.HasKey(l => l.Id);
         builder.Property(l => l.Id).ValueGeneratedNever();

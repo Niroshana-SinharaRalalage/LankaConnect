@@ -16,7 +16,7 @@ public class RefundRequestLineItemConfiguration : IEntityTypeConfiguration<Refun
 {
     public void Configure(EntityTypeBuilder<RefundRequestLineItem> builder)
     {
-        builder.ToTable("refund_request_line_items");
+        builder.ToTable("refund_request_line_items", "events"); // Rule 5i: explicit schema
 
         builder.HasKey(li => li.Id);
         builder.Property(li => li.Id).ValueGeneratedNever();

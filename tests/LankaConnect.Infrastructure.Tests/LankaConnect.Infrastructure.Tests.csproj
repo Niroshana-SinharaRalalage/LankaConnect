@@ -86,6 +86,8 @@
     <Compile Include="Data\UnitOfWorkMultiContextTests.cs" />
     <!-- Wave 6.5.f.5-hotfix: parity tests guarding against the Ignore<> trap. -->
     <Compile Include="Data\LankaEventsDbContextModelParityTests.cs" />
+    <!-- Wave 6.5.f.5-hotfix2: schema + table-name parity per revised Rule 5e (assertions 2 + 3). -->
+    <Compile Include="Data\LankaEventsDbContextTableParityTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

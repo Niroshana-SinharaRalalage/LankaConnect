@@ -12,7 +12,7 @@ public class VenueDecorationConfiguration : IEntityTypeConfiguration<VenueDecora
 {
     public void Configure(EntityTypeBuilder<VenueDecoration> builder)
     {
-        builder.ToTable("venue_decorations");
+        builder.ToTable("venue_decorations", "events"); // Rule 5i: explicit schema
 
         builder.HasKey(d => d.Id);
 

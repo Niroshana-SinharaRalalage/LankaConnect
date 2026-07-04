@@ -69,7 +69,7 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 
     public void Configure(EntityTypeBuilder<Registration> builder)
     {
-        builder.ToTable("registrations", t =>
+        builder.ToTable("registrations", "events", t => // Rule 5i: explicit schema
         {
             // Session 21: Updated constraint to support both legacy and new multi-attendee formats
             // Valid scenarios:

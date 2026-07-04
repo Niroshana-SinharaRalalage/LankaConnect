@@ -25,7 +25,7 @@ public class TicketTierConfiguration : IEntityTypeConfiguration<TicketTier>
 {
     public void Configure(EntityTypeBuilder<TicketTier> builder)
     {
-        builder.ToTable("ticket_tiers");
+        builder.ToTable("ticket_tiers", "events"); // Rule 5i: explicit schema
 
         builder.HasKey(t => t.Id);
 

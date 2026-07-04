@@ -1,24 +1,22 @@
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Products.LankaEvents.Infrastructure.Common;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using System.Diagnostics;
 using Serilog.Context;
 
-using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
-[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
-public class RegistrationRepository : Repository<Registration>, IRegistrationRepository
+public class RegistrationRepository : ProductRepositoryBase<Registration>, IRegistrationRepository
 {
     private readonly ILogger<RegistrationRepository> _repoLogger;
 
     public RegistrationRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<RegistrationRepository> logger) : base(context)
     {
         _repoLogger = logger;

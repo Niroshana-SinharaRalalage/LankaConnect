@@ -1,9 +1,13 @@
 using System.Reflection;
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 namespace LankaConnect.Products.LankaEvents.Api;
@@ -23,9 +27,27 @@ namespace LankaConnect.Products.LankaEvents.Api;
 /// </summary>
 public static class LankaEventsModule
 {
+    /// <summary>Per-context migrations history table name (EF convention).</summary>
+    public const string MigrationsHistoryTable = "__EFMigrationsHistory";
+
     public static IServiceCollection AddLankaEventsModule(this IServiceCollection services)
+        => services.AddLankaEventsModule(configuration: null);
+
+    public static IServiceCollection AddLankaEventsModule(
+        this IServiceCollection services,
+        IConfiguration? configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        // Wave 6.5.e (2026-07-03): register LankaEventsDbContext + per-product
+        // outbox pipeline. Only wires when the caller supplies IConfiguration;
+        // legacy no-arg call sites (early Wave 5.0-5.4 slice landings) fall
+        // through to the MediatR / AutoMapper / repository-DI block below and
+        // rely on AddInfrastructure() to keep AppDbContext registered.
+        if (configuration is not null)
+        {
+            AddLankaEventsDbContext(services, configuration);
+        }
 
         // Wave 5.2.b (2026-06-28): register MediatR handlers from the LankaEvents.Application
         // assembly so the 225+ Commands + 101+ Queries moved out of
@@ -119,5 +141,45 @@ public static class LankaEventsModule
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.IEventViewRecordRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventViewRecordRepository>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Wave 6.5.e (2026-07-03): registers <see cref="LankaEventsDbContext"/>
+    /// against the same Postgres connection AppDbContext uses, plus the
+    /// per-product outbox pipeline
+    /// (<c>AddModuleOutbox&lt;LankaEventsDbContext&gt;()</c> — producer scoped +
+    /// hosted <see cref="OutboxProcessor{TDbContext}"/>). The
+    /// <c>IIntegrationEventOutbox&lt;LankaEventsDbContext&gt;</c> adapter is
+    /// registered by the composition root
+    /// (<c>LankaConnect.API.Program.cs</c>) because it depends on the legacy
+    /// <c>LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox&lt;T&gt;</c>
+    /// concrete — matching the Media + Notifications pattern.
+    /// </summary>
+    private static void AddLankaEventsDbContext(IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException(
+                "ConnectionStrings:DefaultConnection is required to register LankaEventsDbContext.");
+
+        services.AddDbContext<LankaEventsDbContext>(options =>
+        {
+            options.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                npgsqlOptions.MigrationsAssembly(typeof(LankaEventsDbContext).Assembly.GetName().Name);
+                npgsqlOptions.MigrationsHistoryTable(MigrationsHistoryTable, LankaEventsDbContext.SchemaName);
+                npgsqlOptions.UseNetTopologySuite(); // Event aggregate uses PostGIS spatial types
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(5),
+                    errorCodesToAdd: null);
+                npgsqlOptions.CommandTimeout(30);
+            });
+        }, ServiceLifetime.Scoped);
+
+        // Wave 6.5.e: per-product outbox wiring (producer scoped +
+        // OutboxProcessor hosted). The IIntegrationEventOutbox<LankaEventsDbContext>
+        // adapter is registered by the composition root (LankaConnect.API) —
+        // see Program.cs.
+        services.AddModuleOutbox<LankaEventsDbContext>();
     }
 }

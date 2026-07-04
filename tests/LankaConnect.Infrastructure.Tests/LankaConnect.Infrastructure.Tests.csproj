@@ -44,6 +44,17 @@
     <ProjectReference Include="..\..\src\Modules\Notifications\Notifications.Infrastructure\Notifications.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Media\Media.Infrastructure\Media.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Forms\Forms.Infrastructure\Forms.Infrastructure.csproj" />
+
+    <!-- Wave 6.5.e (2026-07-03): AppDbContext.OnModelCreating loads
+         LankaConnect.Products.LankaEvents.Infrastructure by name via
+         Assembly.Load(...) to pull in the relocated Event-family EF configurations.
+         The test project doesn't get that assembly transitively through
+         LankaConnect.Infrastructure (the module reference direction is
+         LankaEvents.Infrastructure -> LankaConnect.Infrastructure, not the
+         other way), so building the AppDbContext model in-process would throw
+         FileNotFoundException. Adding this ProjectReference copies the .dll
+         into the test output directory. -->
+    <ProjectReference Include="..\..\src\Products\LankaEvents\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
   </ItemGroup>
 
   <!-- Temporarily exclude ALL existing test files to get clean baseline for TDD -->

@@ -4,9 +4,11 @@ using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Infrastructure.Data;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -15,16 +17,19 @@ namespace LankaConnect.Modules.Forms.Application.Commands.DeleteEventForm;
 public class DeleteEventFormCommandHandler : ICommandHandler<DeleteEventFormCommand>
 {
     private readonly IFormRepository _eventFormRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly FormsDbContext _formsContext;
     private readonly ILogger<DeleteEventFormCommandHandler> _logger;
 
     public DeleteEventFormCommandHandler(
         IFormRepository eventFormRepository,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        FormsDbContext formsContext,
         ILogger<DeleteEventFormCommandHandler> logger)
     {
         _eventFormRepository = eventFormRepository;
         _unitOfWork = unitOfWork;
+        _formsContext = formsContext;
         _logger = logger;
     }
 
@@ -72,8 +77,9 @@ public class DeleteEventFormCommandHandler : ICommandHandler<DeleteEventFormComm
                     return Result.Failure("Cannot delete a form that has responses. Close the form instead.");
                 }
 
+                // Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
                 await _eventFormRepository.DeleteAsync(form, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
 
                 stopwatch.Stop();
 

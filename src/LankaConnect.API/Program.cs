@@ -132,6 +132,12 @@ try
     // (cross-schema overrides for events.event_forms / form_questions /
     // form_responses / form_answers) + IFormRepository + IFormResponseRepository.
     builder.Services.AddFormsModule(builder.Configuration);
+    // Wave 6.5.d: adapter binding IIntegrationEventOutbox<FormsDbContext>
+    // (LankaConnect.Application facade) to the concrete
+    // OutboxIntegrationEventDispatcher<FormsDbContext> (BuildingBlocks.Infrastructure).
+    builder.Services.AddScoped<
+        LankaConnect.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Modules.Forms.Infrastructure.Data.FormsDbContext>,
+        LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Modules.Forms.Infrastructure.Data.FormsDbContext>>();
 
     // W5.4.b (2026-06-13) — Communications module composition. Registers the
     // cross-module Contracts surface (IEmailGroupQueries). The underlying

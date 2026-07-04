@@ -4,6 +4,7 @@ using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Infrastructure.Data;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -11,6 +12,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -20,18 +22,21 @@ public class CreateEventFormCommandHandler : ICommandHandler<CreateEventFormComm
 {
     private readonly IFormRepository _eventFormRepository;
     private readonly IEventRepository _eventRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly FormsDbContext _formsContext;
     private readonly ILogger<CreateEventFormCommandHandler> _logger;
 
     public CreateEventFormCommandHandler(
         IFormRepository eventFormRepository,
         IEventRepository eventRepository,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        FormsDbContext formsContext,
         ILogger<CreateEventFormCommandHandler> logger)
     {
         _eventFormRepository = eventFormRepository;
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _formsContext = formsContext;
         _logger = logger;
     }
 
@@ -125,9 +130,9 @@ public class CreateEventFormCommandHandler : ICommandHandler<CreateEventFormComm
                     }
                 }
 
-                // Persist
+                // Persist. Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
                 await _eventFormRepository.AddAsync(form, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
 
                 stopwatch.Stop();
 

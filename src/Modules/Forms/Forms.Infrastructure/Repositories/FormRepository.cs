@@ -10,10 +10,16 @@ namespace LankaConnect.Modules.Forms.Infrastructure.Repositories;
 
 /// <summary>
 /// Hand-rolled <see cref="IFormRepository"/> per ADR-010. W4.3 capability
-/// extraction — injects <see cref="FormsDbContext"/> directly; AddAsync +
-/// UpdateAsync + DeleteAsync are self-saving (W4.0b NotificationRepository
-/// pattern; multi-context UoW refactor deferred to D5 outbox roll-out).
+/// extraction — injects <see cref="FormsDbContext"/> directly.
 /// </summary>
+/// <remarks>
+/// Wave 6.5.d (2026-07-03): retired the W4.0b self-saving pattern. AddAsync +
+/// UpdateAsync + DeleteAsync stage on the <see cref="FormsDbContext"/> ChangeTracker;
+/// callers use
+/// <see cref="LankaConnect.Application.Common.Interfaces.IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken)"/>
+/// so state changes + outbox rows commit atomically inside a single Postgres transaction.
+/// The F30a class of production data-loss cannot recur through this repository.
+/// </remarks>
 public class FormRepository : IFormRepository
 {
     private readonly FormsDbContext _context;
@@ -59,19 +65,22 @@ public class FormRepository : IFormRepository
 
     public async Task AddAsync(Form entity, CancellationToken cancellationToken = default)
     {
+        // Wave 6.5.d: SaveChangesAsync deleted. Caller MUST invoke
+        // IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _formsContext }, ct).
         await _dbSet.AddAsync(entity, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
     }
 
     public Task UpdateAsync(Form entity, CancellationToken cancellationToken = default)
     {
+        // Wave 6.5.d: SaveChangesAsync deleted. Same caller contract as AddAsync.
         _dbSet.Update(entity);
-        return _context.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
     public Task DeleteAsync(Form entity, CancellationToken cancellationToken = default)
     {
+        // Wave 6.5.d: SaveChangesAsync deleted. Same caller contract as AddAsync.
         _dbSet.Remove(entity);
-        return _context.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 }

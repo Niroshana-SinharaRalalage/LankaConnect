@@ -4,12 +4,14 @@ using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Infrastructure.Data;
 using System.Security.Cryptography;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -20,20 +22,23 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
     private readonly IFormRepository _eventFormRepository;
     private readonly IFormResponseRepository _formResponseRepository;
     private readonly IEventRepository _eventRepository; // Phase 6A.114: Added for performance optimization
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly FormsDbContext _formsContext;
     private readonly ILogger<UpdateFormResponseCommandHandler> _logger;
 
     public UpdateFormResponseCommandHandler(
         IFormRepository eventFormRepository,
         IFormResponseRepository formResponseRepository,
         IEventRepository eventRepository, // Phase 6A.114: Added for performance optimization
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork,
+        FormsDbContext formsContext,
         ILogger<UpdateFormResponseCommandHandler> logger)
     {
         _eventFormRepository = eventFormRepository;
         _formResponseRepository = formResponseRepository;
         _eventRepository = eventRepository; // Phase 6A.114: Added for performance optimization
         _unitOfWork = unitOfWork;
+        _formsContext = formsContext;
         _logger = logger;
     }
 
@@ -279,8 +284,9 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
                         request.ResponseId, form.Id, @event.Id);
                 }
 
+                // Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
                 await _formResponseRepository.UpdateAsync(response, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
 
                 stopwatch.Stop();
 

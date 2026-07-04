@@ -7,7 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Forms.Application\Forms.Application.csproj" />
+    <!-- Wave 6.5.d (2026-07-03): removed the dormant reverse edge
+         Forms.Infrastructure → Forms.Application. The 13 command handlers now
+         inject FormsDbContext directly (multi-context UoW pattern), so
+         Forms.Application must reference Forms.Infrastructure. Two-way project
+         references are forbidden — dropping the unused reverse edge (no
+         `using LankaConnect.Modules.Forms.Application` in this assembly per
+         2026-07-03 grep) enables the correct one-way flow. -->
     <ProjectReference Include="..\Forms.Domain\Forms.Domain.csproj" />
     <ProjectReference Include="..\Forms.Contracts\Forms.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />

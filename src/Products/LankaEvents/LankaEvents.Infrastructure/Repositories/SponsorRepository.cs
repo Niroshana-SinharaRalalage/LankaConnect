@@ -1,28 +1,26 @@
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Common;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using System.Diagnostics;
 using Serilog.Context;
 
-using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository implementation for Sponsor operations.
 /// Part of the standalone Sponsor system for events.
 /// </summary>
-[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
-public class SponsorRepository : Repository<Sponsor>, ISponsorRepository
+public class SponsorRepository : ProductRepositoryBase<Sponsor>, ISponsorRepository
 {
     private readonly ILogger<SponsorRepository> _repoLogger;
 
     public SponsorRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<SponsorRepository> logger) : base(context)
     {
         _repoLogger = logger;

@@ -1,11 +1,10 @@
-using LankaConnect.BuildingBlocks.Abstractions;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Common;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using System.Diagnostics;
 using Serilog.Context;
 
@@ -15,13 +14,12 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Repository implementation for AddOnDefinition operations.
 /// Includes atomic stock management methods using raw SQL.
 /// </summary>
-[Wave6_5TransitionalException("Uses legacy AppDbContext + Repository<T> base via W5.0 transitional ProjectReference; Wave 6.5 will extract LankaEventsDbContext")]
-public class AddOnDefinitionRepository : Repository<AddOnDefinition>, IAddOnDefinitionRepository
+public class AddOnDefinitionRepository : ProductRepositoryBase<AddOnDefinition>, IAddOnDefinitionRepository
 {
     private readonly ILogger<AddOnDefinitionRepository> _repoLogger;
 
     public AddOnDefinitionRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<AddOnDefinitionRepository> logger) : base(context)
     {
         _repoLogger = logger;

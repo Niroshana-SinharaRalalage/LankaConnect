@@ -1,6 +1,5 @@
-using LankaConnect.BuildingBlocks.Abstractions;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Common; // W6.5.f.1: ProductRepositoryBase<T>
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;   // W6.5.f.1: LankaEventsDbContext
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Analytics;
@@ -16,13 +15,12 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Provides data access for analytics tracking
 /// Phase 6A.X: Enhanced with comprehensive observability logging
 /// </summary>
-[Wave6_5TransitionalException("Uses legacy AppDbContext + Repository<T> base via W5.0 transitional ProjectReference; Wave 6.5 will extract LankaEventsDbContext")]
-public class EventAnalyticsRepository : Repository<EventAnalytics>, IEventAnalyticsRepository
+public class EventAnalyticsRepository : ProductRepositoryBase<EventAnalytics>, IEventAnalyticsRepository
 {
     private readonly ILogger<EventAnalyticsRepository> _repoLogger;
 
     public EventAnalyticsRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<EventAnalyticsRepository> logger) : base(context)
     {
         _repoLogger = logger;

@@ -1,14 +1,12 @@
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
 using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using Serilog.Context;
 using System.Diagnostics;
 
-using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
@@ -16,14 +14,13 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Uses direct SQL with Npgsql for efficiency and to avoid complex EF Core setup
 /// Phase 6A.X: Enhanced with comprehensive observability logging
 /// </summary>
-[Wave6_5TransitionalException("Uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class EventReminderRepository : IEventReminderRepository
 {
-    private readonly AppDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly ILogger<EventReminderRepository> _logger;
 
     public EventReminderRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<EventReminderRepository> logger)
     {
         _context = context;

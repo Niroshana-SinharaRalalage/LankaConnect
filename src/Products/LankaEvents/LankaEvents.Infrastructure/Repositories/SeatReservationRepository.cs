@@ -1,25 +1,23 @@
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Common;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Serilog.Context;
 
-using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Phase 2B: Repository implementation for SeatReservation operations.
 /// Reservations are created on payment completion and hard-deleted on cancellation (V1).
 /// </summary>
-[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
-public class SeatReservationRepository : Repository<SeatReservation>, ISeatReservationRepository
+public class SeatReservationRepository : ProductRepositoryBase<SeatReservation>, ISeatReservationRepository
 {
     private readonly ILogger<SeatReservationRepository> _repoLogger;
 
     public SeatReservationRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<SeatReservationRepository> logger) : base(context)
     {
         _repoLogger = logger;

@@ -1,14 +1,8 @@
 [
   "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.AddOnPurchaseRepository",
-  "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventNotificationHistoryRepository",
-  "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventReminderRepository",
   "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventRepository",
   "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.RegistrationAdditionRepository",
   "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.RegistrationPaymentRepository",
   "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.RegistrationRepository",
-  "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.SeatHoldRepository",
-  "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.SeatReservationRepository",
-  "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.TicketRepository",
-  "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.TicketScanLogRepository",
-  "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.VenueLayoutRepository"
+  "LankaConnect.Products.LankaEvents.Infrastructure.Repositories.TicketRepository"
 ]

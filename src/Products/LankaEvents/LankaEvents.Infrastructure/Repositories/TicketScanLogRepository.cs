@@ -1,11 +1,9 @@
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
@@ -15,13 +13,12 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// <c>DbSet.AddAsync</c> and persisted by the caller's <c>SaveChangesAsync</c>
 /// inside whatever transaction the caller has open.
 /// </summary>
-[Wave6_5TransitionalException("Uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class TicketScanLogRepository : ITicketScanLogRepository
 {
-    private readonly AppDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly ILogger<TicketScanLogRepository> _logger;
 
-    public TicketScanLogRepository(AppDbContext context, ILogger<TicketScanLogRepository> logger)
+    public TicketScanLogRepository(LankaEventsDbContext context, ILogger<TicketScanLogRepository> logger)
     {
         _context = context;
         _logger = logger;

@@ -1,6 +1,4 @@
-using LankaConnect.BuildingBlocks.Abstractions;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Application.Repositories;
@@ -14,15 +12,14 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Phase 6A.61: Repository implementation for EventNotificationHistory tracking
 /// Phase 6A.X: Enhanced with comprehensive observability logging
 /// </summary>
-[Wave6_5TransitionalException("Uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
 public class EventNotificationHistoryRepository : IEventNotificationHistoryRepository
 {
-    private readonly AppDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly DbSet<EventNotificationHistory> _dbSet;
     private readonly ILogger<EventNotificationHistoryRepository> _repoLogger;
 
     public EventNotificationHistoryRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<EventNotificationHistoryRepository> logger)
     {
         _context = context;

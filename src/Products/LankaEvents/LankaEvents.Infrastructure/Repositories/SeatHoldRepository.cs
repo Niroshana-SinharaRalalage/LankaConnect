@@ -1,5 +1,5 @@
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Common;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
@@ -8,20 +8,18 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using System.Diagnostics;
 using Serilog.Context;
 
-using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Phase 2B: Repository implementation for SeatHold operations.
 /// Supports the seat hold lifecycle and cleanup service queries.
 /// </summary>
-[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
-public class SeatHoldRepository : Repository<SeatHold>, ISeatHoldRepository
+public class SeatHoldRepository : ProductRepositoryBase<SeatHold>, ISeatHoldRepository
 {
     private readonly ILogger<SeatHoldRepository> _repoLogger;
 
     public SeatHoldRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<SeatHoldRepository> logger) : base(context)
     {
         _repoLogger = logger;

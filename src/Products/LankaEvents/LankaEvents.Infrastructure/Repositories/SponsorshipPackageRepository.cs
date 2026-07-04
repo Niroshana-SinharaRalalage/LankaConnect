@@ -1,14 +1,13 @@
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
 using System.Diagnostics;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Common;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
@@ -21,13 +20,12 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// All read/write paths wrap structured-logging context (<see cref="LogContext"/>)
 /// + Stopwatch + try/catch per CLAUDE.md Section 4 observability rule.
 /// </summary>
-[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
-public class SponsorshipPackageRepository : Repository<SponsorshipPackage>, ISponsorshipPackageRepository
+public class SponsorshipPackageRepository : ProductRepositoryBase<SponsorshipPackage>, ISponsorshipPackageRepository
 {
     private readonly ILogger<SponsorshipPackageRepository> _repoLogger;
 
     public SponsorshipPackageRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<SponsorshipPackageRepository> logger) : base(context)
     {
         _repoLogger = logger;

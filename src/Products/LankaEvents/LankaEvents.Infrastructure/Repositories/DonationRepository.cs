@@ -1,12 +1,11 @@
-using LankaConnect.BuildingBlocks.Abstractions;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Common;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using System.Diagnostics;
 using Serilog.Context;
 
@@ -16,13 +15,12 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Repository implementation for Donation operations.
 /// Part of the standalone Donation system for events.
 /// </summary>
-[Wave6_5TransitionalException("Uses legacy AppDbContext + Repository<T> base via W5.0 transitional ProjectReference; Wave 6.5 will extract LankaEventsDbContext")]
-public class DonationRepository : Repository<Donation>, IDonationRepository
+public class DonationRepository : ProductRepositoryBase<Donation>, IDonationRepository
 {
     private readonly ILogger<DonationRepository> _repoLogger;
 
     public DonationRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<DonationRepository> logger) : base(context)
     {
         _repoLogger = logger;

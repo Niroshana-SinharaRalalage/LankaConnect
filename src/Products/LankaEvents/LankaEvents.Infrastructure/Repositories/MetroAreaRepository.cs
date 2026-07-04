@@ -3,12 +3,11 @@ using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Infrastructure.Common;
-using LankaConnect.Infrastructure.Data;                 // W5.3.a1: AppDbContext
-using LankaConnect.Infrastructure.Data.Repositories;    // W5.3.a1: Repository<T> base
+using LankaConnect.Products.LankaEvents.Infrastructure.Common; // W6.5.f.1: ProductRepositoryBase<T>
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;   // W6.5.f.1: LankaEventsDbContext
 using System.Diagnostics;
 using Serilog.Context;
 
-using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
@@ -18,13 +17,12 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Phase 6A Event Notifications: Supports both full state names and abbreviations
 /// Phase 6A.X: Enhanced with comprehensive logging pattern
 /// </summary>
-[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
-public class MetroAreaRepository : Repository<MetroArea>, IMetroAreaRepository
+public class MetroAreaRepository : ProductRepositoryBase<MetroArea>, IMetroAreaRepository
 {
     private readonly ILogger<MetroAreaRepository> _repoLogger;
 
     public MetroAreaRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<MetroAreaRepository> logger) : base(context)
     {
         _repoLogger = logger;

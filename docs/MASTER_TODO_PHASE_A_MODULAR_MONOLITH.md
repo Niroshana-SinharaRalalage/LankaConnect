@@ -15,6 +15,23 @@
 
 ---
 
+## 🚨 SPRINT NOTICE — 2026-07-06 → 2026-07-19 (Consult #9 approved)
+
+**This document is FROZEN for the duration of the 2-week bulk-move sprint.**
+
+- **Authoritative plan for the sprint:** [MASTER_TODO_SPRINT_TWO_WEEK_BULK_MOVE.md](MASTER_TODO_SPRINT_TWO_WEEK_BULK_MOVE.md)
+- **Architect ruling:** [architect-consults/2026-07-04-two-week-bulk-move-sprint-plan.md](architect-consults/2026-07-04-two-week-bulk-move-sprint-plan.md)
+- **Scope cut from this doc for the sprint window:**
+  - **Wave 4.9.1** (retroactive testing gap-fill, ~33h) — **DELETED per Consult #9 L2** (accepted-debt; Wave 9 smoke covers forward safety)
+  - **Wave 7** (Frontend Mirror, ~180h) — **MOVED to Phase A.5** ([PHASE_A_5_PLAN.md](PHASE_A_5_PLAN.md))
+  - **Wave 8** (Production Cutover, ~150h) — **MOVED to Phase A.5** ([PHASE_A_5_PLAN.md](PHASE_A_5_PLAN.md))
+- **Wave 4.9.2** physical-column tracks — **FOLDED into module extractions during Days 4-5** per Consult #9 L1
+- Sprint completion = Phase A backend structural refactor DONE. Production still runs off pre-refactor branch.
+
+Post-sprint (2026-07-20+): resume normal doc discipline against this file for Phase A.5.
+
+---
+
 ## Quick Index (Unified Wave#.# Numbering — 2026-06-08)
 
 > **One numbering system.** Every work item is `Wave#.#` (Wave.Task) or `Wave#.#.#` for sub-tasks. No `W#` shorthand, no Stage/G/Layer/Phase parallel hierarchies anywhere.
@@ -38,8 +55,8 @@
 | **Wave5** | Products carve-out (`Products/LankaEvents`) | ✅ **SHIPPED + CLOSED 2026-06-30 (FINAL)** — All 16 commits 5.0-5.5.d landed. **20 of 20 Wave 5 repositories (100%) smoke-covered** per founder ruling *"test Wave 5 completely using API test suite before unblock Wave 6"*. Coverage breakdown: Wave 9.a (Event/Registration) + Wave 9.c (VenueLayouts/AddOns/SeatingMetrics reads) + Wave 9.e (Sponsor/SponsorshipPackage/Donation/Collection reads) + Wave 9.f (Analytics x2 + MetroArea) + Wave 9.h.3 (mutator coverage for Sponsor/SponsorshipPackage/AddOnDefinition/Donation/Collection writes) + Wave 9.h.7 (VenueLayout/SeatHold/SeatReservation full CRUD) + Wave 9.h.8 (TicketScanLog/EventNotificationHistory/EventReminder) + Wave 9.h.5 (AddOnPurchase/Ticket/RegistrationPayment/RegistrationAddition via Stripe-mediated endpoints without completing Stripe). Final smoke baseline: 182/0/79 / 69.73%. NO Wave 5 regressions; 4 pre-existing real platform bugs F16/F17/F18/F20 banked for hardening. Wave 6.5 carryover (DbContext + EF Configs + cross-schema FK + Outbox) unchanged. | 3 days code + 2.5 days Wave 9 verification |
 | **Wave6** | ArchTest hardening (Rules 12 + 13 added; 6.5-debt Skip-facts kept for baseline gate + Payments dep) — 33 total rules | ✅ **SHIPPED + CLOSED 2026-07-01** — Wave 6.a.1 (`67320cef`) resolved 14 Forms Rule 9 violations via Contracts move + `IFormResponseExporter` port; Rule 9b new Skip-fact for 11 Payments (deferred to Wave 6.5). Wave 6.b (this session) added Rules 12 (`ForbidNewInstancesOfWave6_5TransitionalException` baseline JSON gate) + 13 (`ForbidDirectAppDbContextReferenceFromProducts_OrRepositoryBase` composite). Full ArchTest: 53 Pass / 4 Skip / 0 Fail (was 50/5/0 pre-Wave-6). 20-class baseline captured in `tests/architecture/LankaConnect.ArchitectureTests/Wave6_5TransitionalBaseline.json` with `README-BASELINE.md` discipline pointer. | 1 day actual |
 | **Wave6.5** | Outbox cutover + Rule 5/9b un-skip + LankaEventsDbContext extraction (8 sub-slices, ~14 sessions). Per architect ruling `docs/architect-consults/2026-07-02-wave-6-5-scope-shape.md`: **6.5.a** multi-context `IUnitOfWork.CommitAsync` + `IIntegrationEventOutbox<TDbContext>` façade + `AddModuleOutbox<T>()` DI (1 session) → **6.5.b** PhotoAlbum canary — retires F30a workaround, 7 handlers + repo + 2 V1 events (1 session) → **6.5.c** Notifications self-save retirement (0.5 session) → **6.5.d** Forms + FormResponse twin (0.5 session) → **6.5.e** `LankaEventsDbContext` extraction + EF configs relocation + operational-tables migration (2 sessions) → **6.5.f.1-6** 20-class baseline shrinkage in 5 clusters + AppDbContext dual-mapping cleanup (4 sessions) → **6.5.g** Rule 9b Payments un-skip (11-12 handlers → integration events) BEFORE 6.5.f.4 payment cluster (2 sessions) → **6.5.h** Rule 5 legacy Infrastructure un-skip (14 services + 7 webhook handlers → integration events) last (2 sessions). Retires 4 self-saving repos + 20 baseline classes + 11-12 Payments violators + 14 legacy Infrastructure violators = ~50 classes touched across 15-25 commits. 7 hard-STOP triggers documented. Founder approved full-scope sequential execution 2026-07-03. | 🟡 IN-PROGRESS (6.5.a kickoff) | ~14 sessions ≈ 2.5-3 wk |
-| **Wave7** | Frontend mirror (Turborepo + feature packages) | ⏳ Pending | ~6 wk |
-| **Wave8** | Production cutover + stabilization | ⏳ Pending | ~5 wk |
+| **Wave7** | Frontend mirror (Turborepo + feature packages) | ⏸️ **MOVED to [Phase A.5](PHASE_A_5_PLAN.md)** (Consult #9, 2026-07-04) | ~6 wk (post-sprint) |
+| **Wave8** | Production cutover + stabilization | ⏸️ **MOVED to [Phase A.5](PHASE_A_5_PLAN.md)** (Consult #9, 2026-07-04) | ~5 wk (post-sprint) |
 | **Wave9** | **API Smoke Suite** — 13 sub-waves total (9.a-g + 9.h.1/2/3/4/5/7/8 shipped; 9.h.6 founder-manual-UAT deferred) | ✅ **SHIPPED + CLOSED 2026-06-30 (FINAL)** — 13 commits total: 9.a `fa370be0` / 9.b `a9aa000e` / 9.c `5ce9e33f` / 9.d `4f0c6103` / 9.e `726c93dc` / 9.f `acefa6c9` / 9.g `0bb95120` (LATER REVERTED) / 9.h.1 `f4861ab6` / 9.h.4 `98865010` / 9.h.2 `7f0494d6` / 9.h.3 `6ae324c2` / 9.h.7 `84a0e7ad` / 9.h.8 `18e4cc9d` / 9.h.5 `9a22a220`. Final baseline: 182 PASS / 0 FAIL / 79 SKIP / 261 total / 69.73%. **20 of 20 Wave 5 repositories smoke-covered** (founder-mandated full coverage achieved). 9.h.6 surface (auth/comms/webhook -- NOT Wave 5 repos) DEFERRED for founder manual UAT. 4 confirmed REAL platform bugs F16/F17/F18/F20 banked for hardening. CI hook live (deploy-staging.yml). | 2.5 days actual |
 
 ### Wave4.9 Task Tree (replaces all prior Stage/G/Phase numbering)
@@ -56,7 +73,7 @@
 | **Wave4.9.0.6** | CI `full-test-suite-must-be-green` job in `pr-validation.yml` (`concurrency.cancel-in-progress: true`; parallel to deploy-staging) | ⏳ Pending | — |
 | **Wave4.9.0.7** | CI develop-push auto-file GitHub Issue on test failure (labels: `test-failure`, `develop`, `auto-filed`; 24h dedup) | ⏳ Pending | — |
 
-**Wave4.9.1 — Retroactive testing-coverage gap-fill** (backfills Wave 0-4 testing debt; runs in parallel with new Wave4 work)
+**Wave4.9.1 — Retroactive testing-coverage gap-fill** — ❌ **DELETED per Consult #9 L2 (2026-07-04)** — 33h of retroactive backfill accepted as debt. Wave 9 API smoke suite + Wave 4.9.0 pre-push + CI green gates already catch forward regressions. Rows below preserved for audit trail only; no work planned.
 
 | Task | Description | Status | Commit |
 |---|---|---|---|

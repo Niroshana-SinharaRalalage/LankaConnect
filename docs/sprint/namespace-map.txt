@@ -1,0 +1,82 @@
+# Namespace Map — Bulk-Move Day 2
+# Format: <old-namespace> => <new-namespace>
+# Comments start with #. Blank lines ignored.
+#
+# This file is the input to scripts/sprint/Rewrite-Namespaces.ps1 Phase 2 (repo-wide using rewrite).
+# Phase 1 derives new namespaces from physical location — this file only governs Phase 2.
+#
+# Order matters: MOST-SPECIFIC first. A rewrite of "LankaConnect.Domain" would clobber
+# "LankaConnect.Domain.Business" if it ran first. List sub-namespaces before parents.
+#
+# Draft populated based on bulk-move-manifest.md target folders. Grep-verify Sat 2026-07-05.
+
+# --- Domain → target modules ---
+LankaConnect.Domain.Analytics => LankaConnect.Products.LankaEvents.Domain.Analytics
+LankaConnect.Domain.Badges => LankaConnect.Products.LankaEvents.Domain.Badges
+LankaConnect.Domain.Billing => LankaConnect.Modules.Payments.Domain.Billing
+LankaConnect.Domain.Communications => LankaConnect.Modules.Communications.Domain
+LankaConnect.Domain.Community => LankaConnect.Modules.Communications.Domain.Community
+LankaConnect.Domain.CulturalIntelligence => LankaConnect.Modules.CulturalIntelligence.Domain
+LankaConnect.Domain.ReferenceData => LankaConnect.SharedKernel.Cultural.ReferenceData
+LankaConnect.Domain.Support => LankaConnect.Modules.Communications.Domain.Support
+LankaConnect.Domain.Tax => LankaConnect.Modules.Payments.Domain.Tax
+
+# Common → BuildingBlocks.Domain (base primitives)
+LankaConnect.Domain.Common.Abstractions => LankaConnect.BuildingBlocks.Domain.Abstractions
+LankaConnect.Domain.Common.Configuration => LankaConnect.BuildingBlocks.Domain.Configuration
+LankaConnect.Domain.Common.Contracts => LankaConnect.BuildingBlocks.Domain.Contracts
+LankaConnect.Domain.Common.Entities => LankaConnect.BuildingBlocks.Domain.Entities
+LankaConnect.Domain.Common.Enums => LankaConnect.BuildingBlocks.Domain.Enums
+LankaConnect.Domain.Common.Exceptions => LankaConnect.BuildingBlocks.Domain.Exceptions
+LankaConnect.Domain.Common.Models => LankaConnect.BuildingBlocks.Domain.Models
+LankaConnect.Domain.Common => LankaConnect.BuildingBlocks.Domain
+LankaConnect.Domain.Shared => LankaConnect.BuildingBlocks.Domain.Shared
+
+# Business → LEGACY-KEEP-ALIVE STUB (Phase B — LankaBusiness not created)
+LankaConnect.Domain.Business => LankaConnect.Legacy.Domain.Business
+
+# --- Application → target modules ---
+LankaConnect.Application.Analytics => LankaConnect.Products.LankaEvents.Application.Analytics
+LankaConnect.Application.Auth => LankaConnect.Modules.Identity.Application.Auth
+LankaConnect.Application.Badges => LankaConnect.Products.LankaEvents.Application.Badges
+LankaConnect.Application.Billing => LankaConnect.Modules.Payments.Application.Billing
+LankaConnect.Application.Communications => LankaConnect.Modules.Communications.Application
+LankaConnect.Application.Contact => LankaConnect.Modules.Communications.Application.Contact
+LankaConnect.Application.CulturalIntelligence => LankaConnect.Modules.CulturalIntelligence.Application
+LankaConnect.Application.Common => LankaConnect.BuildingBlocks.Application.Common
+LankaConnect.Application.Interfaces => LankaConnect.BuildingBlocks.Application.Interfaces
+LankaConnect.Application.MetroAreas => LankaConnect.SharedKernel.Geo.MetroAreas
+LankaConnect.Application.ReferenceData => LankaConnect.SharedKernel.Cultural.ReferenceData
+LankaConnect.Application.Support => LankaConnect.Modules.Communications.Application.Support
+LankaConnect.Application.Users => LankaConnect.Modules.Identity.Application.Users
+LankaConnect.Application.Dashboard => LankaConnect.Hosts.AllInOne.Dashboard
+LankaConnect.Application.Businesses => LankaConnect.Legacy.Application.Businesses
+
+# --- Infrastructure → target modules ---
+LankaConnect.Infrastructure.BackgroundServices => LankaConnect.Hosts.AllInOne.BackgroundServices
+LankaConnect.Infrastructure.Common => LankaConnect.BuildingBlocks.Infrastructure.Common
+LankaConnect.Infrastructure.Data.Configurations => LankaConnect.SPLIT_PER_ENTITY
+LankaConnect.Infrastructure.Data.Interceptors => LankaConnect.BuildingBlocks.Infrastructure.Data.Interceptors
+LankaConnect.Infrastructure.Data.Repositories => LankaConnect.SPLIT_PER_REPO
+LankaConnect.Infrastructure.Data => LankaConnect.SPLIT_PER_ENTITY
+LankaConnect.Infrastructure.Email => LankaConnect.Modules.Communications.Infrastructure.Email
+LankaConnect.Infrastructure.Events => LankaConnect.Products.LankaEvents.Infrastructure.EventServices
+LankaConnect.Infrastructure.Helpers => LankaConnect.BuildingBlocks.Infrastructure.Helpers
+LankaConnect.Infrastructure.Outbox => LankaConnect.BuildingBlocks.Infrastructure.Outbox
+LankaConnect.Infrastructure.Payments => LankaConnect.Modules.Payments.Infrastructure
+LankaConnect.Infrastructure.Storage => LankaConnect.Modules.Media.Infrastructure.Storage
+LankaConnect.Infrastructure.Templates => LankaConnect.Modules.Communications.Infrastructure.Templates
+LankaConnect.Infrastructure.WhatsApp => LankaConnect.Modules.Communications.Infrastructure.WhatsApp
+
+# --- API → target modules ---
+# Controllers are hand-mapped in bulk-move-manifest.md; namespace pattern uniform:
+LankaConnect.API.Controllers => LankaConnect.SPLIT_PER_CONTROLLER
+
+# --- Shared → Communications.Contracts ---
+LankaConnect.Shared.Email => LankaConnect.Modules.Communications.Contracts.Email
+LankaConnect.Shared.WhatsApp => LankaConnect.Modules.Communications.Contracts.WhatsApp
+
+# --- Special sentinels ---
+# LankaConnect.SPLIT_PER_ENTITY = handled by Agent D per-file with manual review
+# LankaConnect.SPLIT_PER_REPO   = handled by Agent D per-file with manual review
+# LankaConnect.SPLIT_PER_CONTROLLER = handled by Agent E per-controller with manifest table

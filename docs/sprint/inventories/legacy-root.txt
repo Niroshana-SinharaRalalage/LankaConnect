@@ -1,0 +1,7 @@
+src/LankaConnect/Application/Businesses/Common/ServiceDto.cs
+src/LankaConnect/Application/Common/Models/MultiLanguage/HeritageLanguageModels.cs
+src/LankaConnect/Application/Common/Models/MultiLanguage/LanguageRoutingModels.cs
+src/LankaConnect/Application/Common/Models/Performance/CulturalLoadImpact.cs
+src/LankaConnect/Application/Common/Models/Security/ConsentManagement.cs
+src/LankaConnect/Application/Common/Models/Security/DataMinimization.cs
+src/LankaConnect/Application/Common/Models/Security/DataSubjectRights.cs

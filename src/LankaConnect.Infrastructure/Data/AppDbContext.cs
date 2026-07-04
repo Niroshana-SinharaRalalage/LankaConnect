@@ -264,6 +264,25 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // to Products.LankaEvents.Infrastructure.Configurations; the sweep at line 203
         // picks it up. Explicit ApplyConfiguration removed per architect ruling §2.2.
 
+        // Wave 6.5.f.5-hotfix2c (2026-07-04): explicit EventBadge → Badge FK override
+        // following the Rule 5i.2 pattern (shared/moved config generic; owning DbContext
+        // pins module-specific relationship semantics). Hotfix1 §2.2 deleted the
+        // HasOne(eb => eb.Badge) block from EventBadgeConfiguration to keep the moved
+        // config free of cross-module type references — correct for LankaEventsDbContext
+        // (Badge is Ignored there). Incorrect for AppDbContext: EF's RelationshipDiscovery
+        // convention still saw EventBadge.Badge navigation and inferred a Cascade FK,
+        // silently reversing the intentional Restrict on badges.event_badges. Physical
+        // Postgres has FK_event_badges_badges_BadgeId with Restrict since the original
+        // creation migration (20251211184730_AddEmailGroups.cs line 61). Restore it here
+        // explicitly. AppDbContext already references Badge and EventBadge — no new
+        // cross-module reference introduced.
+        // Ruling: docs/architect-consults/2026-07-04-wave-6-5-f-hotfix2c-appdbcontext-drift-ruling.md
+        modelBuilder.Entity<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge>()
+            .HasOne(eb => eb.Badge)
+            .WithMany()
+            .HasForeignKey(eb => eb.BadgeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Wave 6.5.e: EventOrganizerContact + EventSlugAlias configurations moved to
         // LankaEvents.Infrastructure (registered above via the assembly sweep).
 

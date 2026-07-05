@@ -1,7 +1,6 @@
 using LankaConnect.BuildingBlocks.Contracts.IntegrationEvents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-
 namespace LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 
 /// <summary>

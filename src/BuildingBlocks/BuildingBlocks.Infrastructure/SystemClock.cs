@@ -1,5 +1,4 @@
 using LankaConnect.BuildingBlocks.Application.Abstractions;
-
 namespace LankaConnect.BuildingBlocks.Infrastructure;
 
 /// <summary>

@@ -4,7 +4,6 @@ using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Common;
 
 // Wave 6.5.f.0 (2026-07-03): Products-owned repository base for the LankaEvents

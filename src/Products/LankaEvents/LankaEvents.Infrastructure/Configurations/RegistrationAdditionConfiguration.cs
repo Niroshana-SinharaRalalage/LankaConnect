@@ -8,7 +8,6 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 
 /// <summary>

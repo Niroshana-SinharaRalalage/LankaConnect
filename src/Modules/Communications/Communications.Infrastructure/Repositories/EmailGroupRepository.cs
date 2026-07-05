@@ -6,7 +6,6 @@ using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using System.Diagnostics;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Communications.Infrastructure.Repositories;
 
 /// <summary>

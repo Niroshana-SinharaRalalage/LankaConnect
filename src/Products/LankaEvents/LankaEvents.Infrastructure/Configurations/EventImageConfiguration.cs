@@ -2,7 +2,6 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 
 /// <summary>

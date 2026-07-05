@@ -10,7 +10,6 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 
 /// <summary>

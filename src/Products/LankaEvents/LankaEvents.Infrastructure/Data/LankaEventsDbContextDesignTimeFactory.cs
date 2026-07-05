@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Data;
 
 /// <summary>

@@ -4,7 +4,6 @@ using LankaConnect.Domain.Analytics;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Data;
 
 /// <summary>

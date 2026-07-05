@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Payments.Entities;
-
 namespace LankaConnect.Modules.Payments.Infrastructure.Repositories;
 
 /// <summary>

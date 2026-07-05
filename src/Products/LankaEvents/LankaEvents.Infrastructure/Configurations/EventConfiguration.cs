@@ -5,7 +5,6 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 
 public class EventConfiguration : IEntityTypeConfiguration<Event>

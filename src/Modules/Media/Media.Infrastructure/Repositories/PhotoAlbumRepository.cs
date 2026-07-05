@@ -5,7 +5,6 @@ using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Infrastructure.Data;
 using Serilog;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Media.Infrastructure.Repositories;
 
 /// <summary>

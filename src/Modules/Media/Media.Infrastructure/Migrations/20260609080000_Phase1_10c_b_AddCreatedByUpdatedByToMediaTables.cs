@@ -1,9 +1,7 @@
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
-
-namespace LankaConnect.Modules.Media.Infrastructure.Migrations
-{
+namespace LankaConnect.Modules.Media.Infrastructure.Migrations {
     /// <summary>
     /// Wave4.9.2.10c.b Phase 1.10c.b (2026-06-09) — adds physical
     /// <c>created_by</c> and <c>updated_by</c> columns on the 2 Media

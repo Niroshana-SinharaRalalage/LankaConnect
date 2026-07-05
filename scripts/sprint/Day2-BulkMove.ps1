@@ -122,7 +122,7 @@ switch ($Agent) {
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Domain/Analytics"              -DstFolder "src/Products/LankaEvents/LankaEvents.Domain/Analytics"              -DryRun:$DryRun
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Domain/Badges"                 -DstFolder "src/Products/LankaEvents/LankaEvents.Domain/Badges"                 -DryRun:$DryRun
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Domain/Billing"                -DstFolder "src/Modules/Payments/Payments.Domain/Billing"                       -DryRun:$DryRun
-        Move-FolderRecursive -SrcFolder "src/LankaConnect.Domain/Business"               -DstFolder "src/LankaConnect.Legacy/Domain/Business"                            -DryRun:$DryRun
+        # Business STAYS Day 2 -- handled Day 10 as rename LankaConnect.Domain -> LankaConnect.Domain.Legacy
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Domain/Communications"         -DstFolder "src/Modules/Communications/Communications.Domain"                   -DryRun:$DryRun
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Domain/Community"              -DstFolder "src/Modules/Communications/Communications.Domain/Community"        -DryRun:$DryRun
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Domain/CulturalIntelligence"   -DstFolder "src/Modules/CulturalIntelligence/CulturalIntelligence.Domain"       -DryRun:$DryRun
@@ -141,7 +141,7 @@ switch ($Agent) {
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Application/Auth"                -DstFolder "src/Modules/Identity/Identity.Application/Auth"                      -DryRun:$DryRun
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Application/Badges"              -DstFolder "src/Products/LankaEvents/LankaEvents.Application/Badges"             -DryRun:$DryRun
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Application/Billing"             -DstFolder "src/Modules/Payments/Payments.Application/Billing"                   -DryRun:$DryRun
-        Move-FolderRecursive -SrcFolder "src/LankaConnect.Application/Businesses"          -DstFolder "src/LankaConnect.Legacy/Application/Businesses"                      -DryRun:$DryRun
+        # Businesses STAYS Day 2 -- handled Day 10 as rename LankaConnect.Application -> LankaConnect.Application.Legacy
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Application/Common"              -DstFolder "src/BuildingBlocks/BuildingBlocks.Application/Common"                -DryRun:$DryRun
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Application/Communications"      -DstFolder "src/Modules/Communications/Communications.Application"               -DryRun:$DryRun
         Move-FolderRecursive -SrcFolder "src/LankaConnect.Application/Contact"             -DstFolder "src/Modules/Communications/Communications.Application/Contact"       -DryRun:$DryRun

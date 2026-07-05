@@ -161,9 +161,22 @@ public static class LankaEventsModule
             ?? throw new InvalidOperationException(
                 "ConnectionStrings:DefaultConnection is required to register LankaEventsDbContext.");
 
+        // Sprint Day 1 fix (2026-07-05): mirror AppDbContext's NpgsqlDataSourceBuilder
+        // pattern with EnableDynamicJson(). SignUpListConfiguration maps a shadow
+        // Property<List<string>>("_predefinedItems") to jsonb; Npgsql 8+ requires
+        // opt-in for dynamic JSON serialization of List<T> types. Without this,
+        // any query loading a SignUpList throws:
+        //   System.NotSupportedException: Type 'List`1' required dynamic JSON
+        //   serialization, which requires an explicit opt-in
+        // Same construction as LankaConnect.Infrastructure.DependencyInjection.
+        var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
+        dataSourceBuilder.EnableDynamicJson();
+        dataSourceBuilder.UseNetTopologySuite();
+        var dataSource = dataSourceBuilder.Build();
+
         services.AddDbContext<LankaEventsDbContext>(options =>
         {
-            options.UseNpgsql(connectionString, npgsqlOptions =>
+            options.UseNpgsql(dataSource, npgsqlOptions =>
             {
                 npgsqlOptions.MigrationsAssembly(typeof(LankaEventsDbContext).Assembly.GetName().Name);
                 npgsqlOptions.MigrationsHistoryTable(MigrationsHistoryTable, LankaEventsDbContext.SchemaName);

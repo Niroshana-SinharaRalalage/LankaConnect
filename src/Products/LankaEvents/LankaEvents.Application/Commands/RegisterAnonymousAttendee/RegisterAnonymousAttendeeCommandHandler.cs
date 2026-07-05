@@ -13,7 +13,6 @@ using LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
 using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.RegisterAnonymousAttendee;
 
 /// <summary>

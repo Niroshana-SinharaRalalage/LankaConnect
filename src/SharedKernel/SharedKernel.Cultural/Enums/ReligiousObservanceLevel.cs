@@ -1,4 +1,4 @@
-namespace LankaConnect.SharedKernel.Cultural;
+namespace LankaConnect.SharedKernel.Cultural.Enums;
 
 /// <summary>
 /// Religious observance severity levels affecting scheduling-conflict resolution.

@@ -6,7 +6,6 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AddTicketTier;
 
 public class AddTicketTierCommandHandler : ICommandHandler<AddTicketTierCommand, Guid>

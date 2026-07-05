@@ -12,7 +12,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using System.Text.Json;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ConvertRegistrationMode;
 
 /// <summary>

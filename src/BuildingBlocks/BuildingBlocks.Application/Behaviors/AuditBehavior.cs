@@ -2,7 +2,6 @@ using System.Text.Json;
 using LankaConnect.BuildingBlocks.Application.Abstractions;
 using MediatR;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.BuildingBlocks.Application.Behaviors;
 
 /// <summary>

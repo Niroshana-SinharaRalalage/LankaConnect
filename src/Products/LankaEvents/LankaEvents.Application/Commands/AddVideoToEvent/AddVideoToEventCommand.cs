@@ -3,7 +3,6 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using MediatR;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AddVideoToEvent;
 
 /// <summary>

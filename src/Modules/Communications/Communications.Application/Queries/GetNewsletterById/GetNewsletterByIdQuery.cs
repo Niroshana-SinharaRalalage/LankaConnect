@@ -1,6 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
-
 namespace LankaConnect.Modules.Communications.Application.Queries.GetNewsletterById;
 
 /// <summary>

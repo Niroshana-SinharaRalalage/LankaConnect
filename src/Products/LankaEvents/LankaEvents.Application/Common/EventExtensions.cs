@@ -3,7 +3,6 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Shared.Email.Helpers;
-
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 /// <summary>

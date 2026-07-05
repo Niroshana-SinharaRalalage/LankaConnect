@@ -1,4 +1,4 @@
-namespace LankaConnect.SharedKernel.Cultural;
+namespace LankaConnect.SharedKernel.Cultural.Enums;
 
 /// <summary>
 /// Comprehensive geographic regions for Sri Lankan diaspora communities and local provinces.

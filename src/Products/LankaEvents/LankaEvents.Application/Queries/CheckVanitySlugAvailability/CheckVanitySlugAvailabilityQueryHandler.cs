@@ -4,7 +4,6 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.CheckVanitySlugAvailability;
 
 public class CheckVanitySlugAvailabilityQueryHandler : IQueryHandler<CheckVanitySlugAvailabilityQuery, VanitySlugAvailabilityResult>

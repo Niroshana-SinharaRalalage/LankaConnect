@@ -6,7 +6,6 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreateVenueLayout;
 
 public class CreateVenueLayoutCommandHandler : ICommandHandler<CreateVenueLayoutCommand, VenueLayoutDto>

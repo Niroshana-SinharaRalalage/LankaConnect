@@ -8,7 +8,6 @@ using LankaConnect.Domain.Communications;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Communications.Application.Commands.DeleteEmailGroup;
 
 /// <summary>

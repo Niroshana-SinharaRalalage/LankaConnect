@@ -1,5 +1,4 @@
 using FluentValidation;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ResendAttendeeConfirmation;
 
 /// <summary>

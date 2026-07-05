@@ -4,7 +4,6 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
-
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 /// <summary>

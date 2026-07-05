@@ -3,7 +3,6 @@ using LankaConnect.Products.LankaEvents.Application.Repositories;
 using LankaConnect.Domain.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventReminderHistory;
 
 /// <summary>

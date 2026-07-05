@@ -1,6 +1,5 @@
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Services;
 
 /// <summary>

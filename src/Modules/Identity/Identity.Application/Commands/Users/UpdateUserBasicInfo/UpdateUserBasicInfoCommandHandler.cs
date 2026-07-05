@@ -10,7 +10,6 @@ using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdateUserBasicInfo;
 
 /// <summary>

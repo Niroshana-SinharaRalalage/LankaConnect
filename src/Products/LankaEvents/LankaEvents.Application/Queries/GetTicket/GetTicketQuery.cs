@@ -7,7 +7,6 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetTicket;
 
 /// <summary>

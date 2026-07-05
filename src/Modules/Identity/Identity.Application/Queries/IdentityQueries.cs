@@ -6,7 +6,6 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.Modules.Identity.Application.Mappings;
 using LankaConnect.Modules.Identity.Contracts;
-
 namespace LankaConnect.Modules.Identity.Application.Queries;
 
 /// <summary>

@@ -7,7 +7,6 @@ using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.LinkExternalProvider;
 
 /// <summary>

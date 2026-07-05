@@ -1,5 +1,4 @@
 using FluentValidation;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.CreateUser;
 
 public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>

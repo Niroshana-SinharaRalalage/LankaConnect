@@ -11,7 +11,6 @@ using LankaConnect.Modules.Notifications.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.RejectRoleUpgrade;
 
 /// <summary>

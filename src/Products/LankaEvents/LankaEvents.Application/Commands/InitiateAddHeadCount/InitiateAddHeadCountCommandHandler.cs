@@ -12,7 +12,6 @@ using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddHeadCount;
 
 /// <summary>

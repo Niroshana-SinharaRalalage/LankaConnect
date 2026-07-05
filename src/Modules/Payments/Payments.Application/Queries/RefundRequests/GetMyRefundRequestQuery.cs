@@ -1,5 +1,4 @@
 using LankaConnect.Application.Common.Interfaces;
-
 namespace LankaConnect.Modules.Payments.Application.Queries.RefundRequests;
 
 /// <summary>

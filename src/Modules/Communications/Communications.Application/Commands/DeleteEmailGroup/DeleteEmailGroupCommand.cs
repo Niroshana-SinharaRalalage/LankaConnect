@@ -1,6 +1,5 @@
 using LankaConnect.Domain.Common;
 using MediatR;
-
 namespace LankaConnect.Modules.Communications.Application.Commands.DeleteEmailGroup;
 
 /// <summary>

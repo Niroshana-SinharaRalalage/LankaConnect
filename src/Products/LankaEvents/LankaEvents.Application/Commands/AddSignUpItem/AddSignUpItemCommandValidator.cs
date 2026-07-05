@@ -1,6 +1,5 @@
 using FluentValidation;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AddSignUpItem;
 
 /// <summary>

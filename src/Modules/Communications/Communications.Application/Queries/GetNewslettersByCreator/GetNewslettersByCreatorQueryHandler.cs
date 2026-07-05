@@ -11,7 +11,6 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Communications.Application.Queries.GetNewslettersByCreator;
 
 /// <summary>

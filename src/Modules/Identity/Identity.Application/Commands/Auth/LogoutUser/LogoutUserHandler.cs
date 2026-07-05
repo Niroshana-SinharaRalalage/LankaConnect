@@ -11,7 +11,6 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Domain.Shared.ValueObjects;
 using DomainUserRepository = LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository;
 using DomainUnitOfWork = LankaConnect.Domain.Common.IUnitOfWork;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LogoutUser;
 
 public class LogoutUserHandler : IRequestHandler<LogoutUserCommand, Result>

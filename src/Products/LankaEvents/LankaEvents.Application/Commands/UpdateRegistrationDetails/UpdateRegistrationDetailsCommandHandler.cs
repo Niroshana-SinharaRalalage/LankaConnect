@@ -6,7 +6,6 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateRegistrationDetails;
 
 /// <summary>

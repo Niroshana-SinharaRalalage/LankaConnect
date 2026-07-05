@@ -10,7 +10,6 @@ using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.PhotoAlbums.GetAlbumByEventId;
 
 /// <summary>

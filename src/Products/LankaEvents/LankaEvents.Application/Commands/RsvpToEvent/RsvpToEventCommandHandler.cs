@@ -10,7 +10,6 @@ using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
 
 // Session 23: Updated to support Stripe payment integration for paid events

@@ -4,7 +4,6 @@ using LankaConnect.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventRegistrationByEmail;
 
 /// <summary>

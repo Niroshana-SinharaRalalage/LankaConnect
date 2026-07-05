@@ -5,7 +5,6 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventByVanitySlug;
 
 public class GetEventByVanitySlugQueryHandler : IQueryHandler<GetEventByVanitySlugQuery, EventDto?>

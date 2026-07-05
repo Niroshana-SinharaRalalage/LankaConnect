@@ -6,7 +6,6 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetLayoutPublishReadiness;
 
 /// <summary>

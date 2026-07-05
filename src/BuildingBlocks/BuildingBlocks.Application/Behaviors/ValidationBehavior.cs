@@ -1,7 +1,6 @@
 using FluentValidation;
 using FluentValidation.Results;
 using MediatR;
-
 namespace LankaConnect.BuildingBlocks.Application.Behaviors;
 
 /// <summary>

@@ -1,7 +1,6 @@
 using LankaConnect.Application.Common;
 using LankaConnect.Domain.Common;
 using MediatR;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.SendEventNotification;
 
 /// <summary>

@@ -8,7 +8,6 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdatePreferredMetroAreas;
 
 /// <summary>

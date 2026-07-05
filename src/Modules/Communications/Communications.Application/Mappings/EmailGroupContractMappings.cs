@@ -1,6 +1,5 @@
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Contracts;
-
 namespace LankaConnect.Modules.Communications.Application.Mappings;
 
 /// <summary>

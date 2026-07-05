@@ -1,5 +1,4 @@
 using LankaConnect.Domain.Shared.Enums;
-
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 /// <summary>

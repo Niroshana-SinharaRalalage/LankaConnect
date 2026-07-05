@@ -7,7 +7,6 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetTicketTiers;
 
 public class GetTicketTiersQueryHandler : IQueryHandler<GetTicketTiersQuery, IReadOnlyList<TicketTierDto>>

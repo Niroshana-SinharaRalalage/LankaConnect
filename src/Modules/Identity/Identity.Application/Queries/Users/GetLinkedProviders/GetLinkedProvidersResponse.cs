@@ -1,6 +1,5 @@
 using LankaConnect.Modules.Identity.Domain.Enums;
 using System.Text.Json.Serialization;
-
 namespace LankaConnect.Modules.Identity.Application.Queries.Users.GetLinkedProviders;
 
 /// <summary>

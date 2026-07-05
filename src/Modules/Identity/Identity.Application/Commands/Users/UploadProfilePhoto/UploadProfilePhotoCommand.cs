@@ -1,6 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Http;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UploadProfilePhoto;
 
 /// <summary>

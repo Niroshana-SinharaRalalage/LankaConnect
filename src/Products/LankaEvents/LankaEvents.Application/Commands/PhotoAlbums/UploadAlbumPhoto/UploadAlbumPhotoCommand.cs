@@ -14,7 +14,6 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.UploadAlbumPhoto;
 
 /// <summary>

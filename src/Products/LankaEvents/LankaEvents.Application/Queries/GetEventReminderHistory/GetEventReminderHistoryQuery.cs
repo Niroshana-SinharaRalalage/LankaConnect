@@ -1,7 +1,6 @@
 using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Domain.Common;
 using MediatR;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventReminderHistory;
 
 /// <summary>

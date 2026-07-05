@@ -11,7 +11,6 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;
 
 /// <summary>

@@ -1,0 +1,143 @@
+using System.Diagnostics;
+using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
+namespace LankaConnect.Products.LankaEvents.Application.Badges.BackgroundJobs;
+
+/// <summary>
+/// Background job that runs daily to clean up expired badge assignments
+/// Phase 6A.27: Original design for Badge-level expiration
+/// Phase 6A.28: Redesigned for EventBadge-level expiration (duration-based)
+///
+/// New Responsibilities (Phase 6A.28):
+/// 1. Find all events with expired EventBadge assignments (EventBadge.ExpiresAt &lt; now)
+/// 2. Remove expired EventBadge assignments from events
+/// 3. Badge entities themselves no longer expire - only assignments do
+/// </summary>
+public class ExpiredBadgeCleanupJob
+{
+    private readonly IEventRepository _eventRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<ExpiredBadgeCleanupJob> _logger;
+
+    public ExpiredBadgeCleanupJob(
+        IEventRepository eventRepository,
+        IUnitOfWork unitOfWork,
+        ILogger<ExpiredBadgeCleanupJob> logger)
+    {
+        _eventRepository = eventRepository;
+        _unitOfWork = unitOfWork;
+        _logger = logger;
+    }
+
+    public async Task ExecuteAsync()
+    {
+        using (LogContext.PushProperty("Operation", "ExpiredBadgeCleanup"))
+        using (LogContext.PushProperty("EntityType", "EventBadge"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation("ExpiredBadgeCleanupJob START: Beginning expired badge assignment cleanup");
+
+            try
+            {
+                // 1. Get all events with at least one expired badge assignment
+                var eventsWithExpiredBadges = await _eventRepository.GetEventsWithExpiredBadgesAsync();
+
+                if (!eventsWithExpiredBadges.Any())
+                {
+                    stopwatch.Stop();
+                    _logger.LogInformation(
+                        "ExpiredBadgeCleanupJob COMPLETE: No expired badge assignments found, Duration={ElapsedMs}ms",
+                        stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "ExpiredBadgeCleanupJob: Found {Count} events with expired badge assignments",
+                    eventsWithExpiredBadges.Count);
+
+                var totalAssignmentsRemoved = 0;
+                var totalEventsUpdated = 0;
+
+                // 2. For each event, remove all expired badge assignments
+                foreach (var @event in eventsWithExpiredBadges)
+                {
+                    try
+                    {
+                        var removedCount = RemoveExpiredBadgesFromEvent(@event);
+                        if (removedCount > 0)
+                        {
+                            _eventRepository.Update(@event);
+                            totalAssignmentsRemoved += removedCount;
+                            totalEventsUpdated++;
+                            _logger.LogInformation(
+                                "ExpiredBadgeCleanupJob: Removed {Count} expired badge assignments from event {EventId}",
+                                removedCount, @event.Id);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "ExpiredBadgeCleanupJob: Error processing event {EventId}",
+                            @event.Id);
+                    }
+                }
+
+                // 3. Commit all changes
+                await _unitOfWork.CommitAsync();
+
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "ExpiredBadgeCleanupJob COMPLETE: Duration={ElapsedMs}ms, AssignmentsRemoved={AssignmentCount}, EventsUpdated={EventCount}",
+                    stopwatch.ElapsedMilliseconds, totalAssignmentsRemoved, totalEventsUpdated);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex,
+                    "ExpiredBadgeCleanupJob FAILED: Duration={ElapsedMs}ms",
+                    stopwatch.ElapsedMilliseconds);
+                throw; // Re-throw for Hangfire retry
+            }
+        }
+    }
+
+    private int RemoveExpiredBadgesFromEvent(Event @event)
+    {
+        var removedCount = 0;
+
+        // Get all expired badge assignments for this event
+        var expiredAssignments = @event.Badges
+            .Where(eb => eb.IsExpired())
+            .Select(eb => eb.BadgeId)
+            .ToList();
+
+        foreach (var badgeId in expiredAssignments)
+        {
+            try
+            {
+                var removeResult = @event.RemoveBadge(badgeId);
+                if (removeResult.IsSuccess)
+                {
+                    removedCount++;
+                }
+                else
+                {
+                    _logger.LogWarning("ExpiredBadgeCleanupJob: Failed to remove badge {BadgeId} from event {EventId}: {Errors}",
+                        badgeId, @event.Id, string.Join(", ", removeResult.Errors));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ExpiredBadgeCleanupJob: Error removing badge {BadgeId} from event {EventId}",
+                    badgeId, @event.Id);
+            }
+        }
+
+        return removedCount;
+    }
+}

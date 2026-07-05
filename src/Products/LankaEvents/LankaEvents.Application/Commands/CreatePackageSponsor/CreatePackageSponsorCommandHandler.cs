@@ -8,7 +8,6 @@ using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreatePackageSponsor;
 
 /// <summary>

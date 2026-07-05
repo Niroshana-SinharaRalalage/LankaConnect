@@ -5,7 +5,6 @@ using LankaConnect.Modules.Media.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
 namespace LankaConnect.Modules.Media.Api;
 
 /// <summary>

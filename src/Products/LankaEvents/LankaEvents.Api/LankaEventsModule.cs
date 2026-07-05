@@ -9,7 +9,6 @@ using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
-
 namespace LankaConnect.Products.LankaEvents.Api;
 
 /// <summary>

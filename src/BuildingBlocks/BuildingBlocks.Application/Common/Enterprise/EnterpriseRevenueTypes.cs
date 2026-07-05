@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Security;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Security;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.BuildingBlocks.Application.Common.Enterprise;
 
 #region Revenue Recovery Coordination Result

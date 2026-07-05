@@ -2,12 +2,12 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LankaConnect.API.Extensions;
-using LankaConnect.Application.Communications.WhatsApp.Commands.EnableWhatsApp;
-using LankaConnect.Application.Communications.WhatsApp.Commands.DisableWhatsApp;
-using LankaConnect.Application.Communications.WhatsApp.Commands.RequestPhoneVerification;
-using LankaConnect.Application.Communications.WhatsApp.Commands.VerifyWhatsAppPhone;
-using LankaConnect.Application.Communications.WhatsApp.Commands.UpdateWhatsAppPreferences;
-using LankaConnect.Application.Communications.WhatsApp.Queries.GetWhatsAppPreferences;
+using LankaConnect.Modules.Communications.Application.WhatsApp.Commands.EnableWhatsApp;
+using LankaConnect.Modules.Communications.Application.WhatsApp.Commands.DisableWhatsApp;
+using LankaConnect.Modules.Communications.Application.WhatsApp.Commands.RequestPhoneVerification;
+using LankaConnect.Modules.Communications.Application.WhatsApp.Commands.VerifyWhatsAppPhone;
+using LankaConnect.Modules.Communications.Application.WhatsApp.Commands.UpdateWhatsAppPreferences;
+using LankaConnect.Modules.Communications.Application.WhatsApp.Queries.GetWhatsAppPreferences;
 namespace LankaConnect.Modules.Communications.Api.Controllers;
 
 /// <summary>

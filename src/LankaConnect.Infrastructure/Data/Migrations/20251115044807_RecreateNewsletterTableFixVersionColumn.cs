@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     public partial class RecreateNewsletterTableFixVersionColumn : Migration

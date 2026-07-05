@@ -1,6 +1,6 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
-using LankaConnect.API.Controllers;
+using LankaConnect.SPLIT_PER_CONTROLLER;
 using LankaConnect.Products.LankaEvents.Application.Common;
 using Xunit;
 

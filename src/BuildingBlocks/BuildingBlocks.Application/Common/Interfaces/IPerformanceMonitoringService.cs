@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LankaConnect.Application.Common.Models.Performance;
-using LankaConnect.Application.Common.Models.MultiLanguage;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
+using LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>
@@ -34,7 +34,7 @@ public interface IPerformanceMonitoringService
     /// Ensures cultural intelligence and routing accuracy meets quality standards
     /// </summary>
     /// <returns>System health validation with cultural intelligence metrics</returns>
-    Task<LankaConnect.Application.Common.Models.Performance.SystemHealthValidation> ValidateSystemHealthAndAccuracyAsync();
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.Performance.SystemHealthValidation> ValidateSystemHealthAndAccuracyAsync();
 
     /// <summary>
     /// Benchmark performance against cultural event scaling requirements
@@ -42,5 +42,5 @@ public interface IPerformanceMonitoringService
     /// </summary>
     /// <param name="culturalEventScenarios">Cultural event traffic scenarios for benchmarking</param>
     /// <returns>Performance benchmark results with scaling validation</returns>
-    Task<CulturalEventPerformanceBenchmark> BenchmarkCulturalEventScalingAsync(List<LankaConnect.Application.Common.Models.Performance.CulturalEventScenario> culturalEventScenarios);
+    Task<CulturalEventPerformanceBenchmark> BenchmarkCulturalEventScalingAsync(List<LankaConnect.BuildingBlocks.Application.Common.Models.Performance.CulturalEventScenario> culturalEventScenarios);
 }

@@ -1,7 +1,7 @@
 using AutoMapper;
-using LankaConnect.Application.Badges.DTOs;
+using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Domain.Badges;
+using LankaConnect.Products.LankaEvents.Domain.Badges;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
@@ -73,16 +73,16 @@ public class EventMappingProfile : Profile
             // Phase 8YA-2 TODO: render TimeZoneAbbreviation as null on TBD events.
             .ForMember(dest => dest.TimeZoneAbbreviation, opt => opt.MapFrom(src =>
                 (src.TimeZoneId != null && src.StartDate.HasValue)
-                    ? LankaConnect.Shared.Email.Helpers.EmailDateTimeHelper.GetTimezoneAbbreviation(src.TimeZoneId, src.StartDate.Value)
+                    ? LankaConnect.Modules.Communications.Contracts.Email.Helpers.EmailDateTimeHelper.GetTimezoneAbbreviation(src.TimeZoneId, src.StartDate.Value)
                     : null))
             // Legacy ticket price mapping (nullable - backward compatibility)
             .ForMember(dest => dest.TicketPriceAmount, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Amount : (decimal?)null))
-            .ForMember(dest => dest.TicketPriceCurrency, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Currency : (LankaConnect.Domain.Shared.Enums.Currency?)null))
+            .ForMember(dest => dest.TicketPriceCurrency, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Currency : (LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency?)null))
             // Session 21: Dual pricing mapping (from TicketPricing value object)
             .ForMember(dest => dest.AdultPriceAmount, opt => opt.MapFrom(src => src.Pricing != null ? src.Pricing.AdultPrice.Amount : (decimal?)null))
-            .ForMember(dest => dest.AdultPriceCurrency, opt => opt.MapFrom(src => src.Pricing != null ? src.Pricing.AdultPrice.Currency : (LankaConnect.Domain.Shared.Enums.Currency?)null))
+            .ForMember(dest => dest.AdultPriceCurrency, opt => opt.MapFrom(src => src.Pricing != null ? src.Pricing.AdultPrice.Currency : (LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency?)null))
             .ForMember(dest => dest.ChildPriceAmount, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.ChildPrice != null ? src.Pricing.ChildPrice.Amount : (decimal?)null))
-            .ForMember(dest => dest.ChildPriceCurrency, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.ChildPrice != null ? src.Pricing.ChildPrice.Currency : (LankaConnect.Domain.Shared.Enums.Currency?)null))
+            .ForMember(dest => dest.ChildPriceCurrency, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.ChildPrice != null ? src.Pricing.ChildPrice.Currency : (LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency?)null))
             .ForMember(dest => dest.ChildAgeLimit, opt => opt.MapFrom(src => src.Pricing != null ? src.Pricing.ChildAgeLimit : (int?)null))
             .ForMember(dest => dest.HasDualPricing, opt => opt.MapFrom(src => src.Pricing != null && src.Pricing.HasChildPricing))
             // Phase 6D: Group tiered pricing mapping
@@ -123,7 +123,7 @@ public class EventMappingProfile : Profile
                         AdultPriceAmount = t.AdultPrice.Amount,
                         AdultPriceCurrency = t.AdultPrice.Currency,
                         ChildPriceAmount = t.ChildPrice != null ? t.ChildPrice.Amount : (decimal?)null,
-                        ChildPriceCurrency = t.ChildPrice != null ? t.ChildPrice.Currency : (LankaConnect.Domain.Shared.Enums.Currency?)null,
+                        ChildPriceCurrency = t.ChildPrice != null ? t.ChildPrice.Currency : (LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency?)null,
                         ChildAgeLimit = t.ChildAgeLimit,
                         HasChildPricing = t.HasChildPricing,
                         Capacity = t.Capacity,

@@ -1,12 +1,12 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.ReferenceData.Entities;
-using LankaConnect.Domain.ReferenceData.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using System.Diagnostics;
 
-namespace LankaConnect.Infrastructure.Data.Repositories.ReferenceData;
+namespace LankaConnect.SPLIT_PER_ENTITY.Repositories.ReferenceData;
 
 /// <summary>
 /// Repository implementation for unified reference data

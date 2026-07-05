@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Contracts; // W4.7.b
-using LankaConnect.Shared.Email.Contracts;
-using LankaConnect.Shared.Email.Services;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Serilog.Context;
 namespace LankaConnect.Modules.Communications.Application.Commands.SendBusinessNotification;
 

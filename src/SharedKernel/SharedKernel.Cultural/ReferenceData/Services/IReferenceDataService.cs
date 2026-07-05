@@ -1,4 +1,4 @@
-using LankaConnect.Application.ReferenceData.DTOs;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.DTOs;
 namespace LankaConnect.SharedKernel.Cultural.ReferenceData.Services;
 
 /// <summary>

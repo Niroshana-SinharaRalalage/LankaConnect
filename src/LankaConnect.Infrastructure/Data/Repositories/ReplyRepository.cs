@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Community;
+using LankaConnect.Modules.Communications.Domain.Community;
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
 
 /// <summary>
 /// Repository implementation for Reply entity

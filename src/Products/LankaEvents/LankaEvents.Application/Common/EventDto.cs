@@ -1,7 +1,7 @@
-using LankaConnect.Application.Badges.DTOs;
-using LankaConnect.Application.Communications.Common;
+using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
+using LankaConnect.Modules.Communications.Application.Common;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 public record EventDto
@@ -314,5 +314,5 @@ public record EventVideoDto
     public DateTime UploadedAt { get; init; }
 }
 
-// Phase 6A.32: EmailGroupSummaryDto moved to LankaConnect.Application.Communications.Common
+// Phase 6A.32: EmailGroupSummaryDto moved to LankaConnect.Modules.Communications.Application.Common
 // to avoid Swagger schema conflicts (duplicate schemaId error)

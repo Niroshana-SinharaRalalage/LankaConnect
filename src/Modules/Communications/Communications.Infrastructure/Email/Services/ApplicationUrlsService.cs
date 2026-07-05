@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Infrastructure.Email.Configuration;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
 using Microsoft.Extensions.Options;
 namespace LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 

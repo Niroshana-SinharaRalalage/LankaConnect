@@ -1,7 +1,7 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.ValueObjects;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Common.Security;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Domain.Security;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Security;
 
 /// <summary>
@@ -33,7 +33,7 @@ public class CulturalSecurityMetrics
     public Dictionary<string, object> ExtendedMetrics { get; set; } = new();
 }
 
-// SecurityViolation moved to Domain layer: LankaConnect.Domain.Common.Security.SecurityViolation
+// SecurityViolation moved to Domain layer: LankaConnect.BuildingBlocks.Domain.Security.SecurityViolation
 // This follows Clean Architecture principles where domain entities belong in the Domain layer
 
 /// <summary>

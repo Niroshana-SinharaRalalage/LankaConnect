@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.Modules.Communications.Domain.Enums;
 namespace LankaConnect.Modules.Communications.Domain.Services;
 
 /// <summary>

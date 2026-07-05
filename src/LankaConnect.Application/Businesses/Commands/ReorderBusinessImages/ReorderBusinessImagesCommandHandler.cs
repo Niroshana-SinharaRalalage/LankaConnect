@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Domain.Business;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

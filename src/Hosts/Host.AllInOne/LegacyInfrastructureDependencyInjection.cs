@@ -17,7 +17,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using System.Text;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -27,36 +27,36 @@ using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
-using LankaConnect.Domain.Community;
+using LankaConnect.Modules.Communications.Domain.Community;
 using LankaConnect.Modules.Notifications.Domain;
-using LankaConnect.Domain.Badges;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.ReferenceData.Interfaces;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Interfaces;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
-using LankaConnect.Infrastructure.Storage.Configuration;
-using LankaConnect.Infrastructure.Storage.Services;
+using LankaConnect.Products.LankaEvents.Domain.Badges;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
+using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.SPLIT_PER_ENTITY.Repositories;
+using LankaConnect.Modules.Media.Infrastructure.Storage.Configuration;
+using LankaConnect.Modules.Media.Infrastructure.Storage.Services;
 using LankaConnect.Infrastructure.Security;
-using LankaConnect.Infrastructure.Email.Configuration;
-using LankaConnect.Infrastructure.Email.Services;
-using LankaConnect.Infrastructure.Email.Interfaces;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Interfaces;
 using LankaConnect.Infrastructure.Services;
-using LankaConnect.Application.Communications.BackgroundJobs;
-using LankaConnect.Application.Common.Options;
-using LankaConnect.Shared.Email.Extensions;
-using LankaConnect.Infrastructure.Payments.Configuration;
-using LankaConnect.Infrastructure.Payments.Services;
+using LankaConnect.Modules.Communications.Application.BackgroundJobs;
+using LankaConnect.BuildingBlocks.Application.Common.Options;
+using LankaConnect.Modules.Communications.Contracts.Email.Extensions;
+using LankaConnect.Modules.Payments.Infrastructure.Configuration;
+using LankaConnect.Modules.Payments.Infrastructure.Services;
 using LankaConnect.Infrastructure.Services.Tickets;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
-using LankaConnect.Domain.Tax.Repositories;
-using LankaConnect.Domain.Support;
+using LankaConnect.Modules.Payments.Domain.Tax.Repositories;
+using LankaConnect.Modules.Communications.Domain.Support;
 using LankaConnect.Products.LankaEvents.Application.Services;
-using LankaConnect.Infrastructure.WhatsApp.Configuration;
-using LankaConnect.Infrastructure.WhatsApp.Services;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.Modules.Communications.Infrastructure.WhatsApp.Configuration;
+using LankaConnect.Modules.Communications.Infrastructure.WhatsApp.Services;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using Stripe;
 using Serilog;
 namespace LankaConnect.Host.AllInOne;
@@ -256,7 +256,7 @@ public static class DependencyInjection
         // Completes the Event-family Repository carve-out begun in Wave 5.3.
 
         // Add Reference Data Repository (Phase 6A.47)
-        services.AddScoped<IReferenceDataRepository, LankaConnect.Infrastructure.Data.Repositories.ReferenceData.ReferenceDataRepository>();
+        services.AddScoped<IReferenceDataRepository, LankaConnect.SPLIT_PER_ENTITY.Repositories.ReferenceData.ReferenceDataRepository>();
 
         // Phase 6A.89: Add Support/Feedback Repositories
         services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
@@ -372,20 +372,20 @@ public static class DependencyInjection
         // - ITypedEmailService enables strongly-typed email parameters with compile-time safety
         // - InfrastructureTypedEmailService directly uses AzureEmailService (no bridge pattern)
         // - All handlers now use ITypedEmailService only (no legacy Dictionary approach)
-        services.AddSingleton<LankaConnect.Shared.Email.Observability.IEmailLogger,
-            LankaConnect.Shared.Email.Extensions.DefaultEmailLogger>();
-        services.AddScoped<LankaConnect.Shared.Email.Services.ITypedEmailService,
-            LankaConnect.Infrastructure.Email.Services.InfrastructureTypedEmailService>();
+        services.AddSingleton<LankaConnect.Modules.Communications.Contracts.Email.Observability.IEmailLogger,
+            LankaConnect.Modules.Communications.Contracts.Email.Extensions.DefaultEmailLogger>();
+        services.AddScoped<LankaConnect.Modules.Communications.Contracts.Email.Services.ITypedEmailService,
+            LankaConnect.Modules.Communications.Infrastructure.Email.Services.InfrastructureTypedEmailService>();
 
         // Phase 6A.148.W5.6.B.OBS3 — durable suppression-row writer for D9/D12 webhook paths.
-        services.AddScoped<LankaConnect.Infrastructure.Email.Services.IRefundDispatchAuditService,
-            LankaConnect.Infrastructure.Email.Services.RefundDispatchAuditService>();
+        services.AddScoped<LankaConnect.Modules.Communications.Infrastructure.Email.Services.IRefundDispatchAuditService,
+            LankaConnect.Modules.Communications.Infrastructure.Email.Services.RefundDispatchAuditService>();
 
         // Phase 6A.89: Override IEmailMetrics with DatabaseEmailMetrics for persistence
         // This fixes the data loss issue where metrics disappeared after container restart
         // DatabaseEmailMetrics uses hybrid approach: in-memory cache + periodic DB flush
         services.AddSingleton<DatabaseEmailMetrics>();
-        services.AddSingleton<LankaConnect.Shared.Email.Observability.IEmailMetrics>(sp =>
+        services.AddSingleton<LankaConnect.Modules.Communications.Contracts.Email.Observability.IEmailMetrics>(sp =>
             sp.GetRequiredService<DatabaseEmailMetrics>());
         services.AddHostedService(sp => sp.GetRequiredService<DatabaseEmailMetrics>());
 
@@ -435,7 +435,7 @@ public static class DependencyInjection
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IEventNotificationRecipientService, LankaConnect.Products.LankaEvents.Application.Services.EventNotificationRecipientService>();
 
         // Phase 6A.74: Newsletter Recipient Service
-        services.AddScoped<LankaConnect.Application.Communications.Services.INewsletterRecipientService, LankaConnect.Infrastructure.Services.NewsletterRecipientService>();
+        services.AddScoped<LankaConnect.Modules.Communications.Application.Services.INewsletterRecipientService, LankaConnect.Infrastructure.Services.NewsletterRecipientService>();
 
         // Phase 6A.74 Part 13: Event-to-Metro Area Matcher for Newsletter Recipient Bucketing
         services.AddScoped<LankaConnect.Infrastructure.Services.EventMetroAreaMatcher>();
@@ -444,8 +444,8 @@ public static class DependencyInjection
         services.AddTransient<NewsletterEmailJob>();
 
         // Phase 7A.3: WhatsApp Background Jobs
-        services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.NewsletterWhatsAppJob>();
-        services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.EventDetailsWhatsAppJob>();
+        services.AddTransient<LankaConnect.Modules.Communications.Application.BackgroundJobs.NewsletterWhatsAppJob>();
+        services.AddTransient<LankaConnect.Modules.Communications.Application.BackgroundJobs.EventDetailsWhatsAppJob>();
 
         // Phase 6A.61: Event Notification Background Jobs
         services.AddTransient<LankaConnect.Products.LankaEvents.Application.BackgroundJobs.EventNotificationEmailJob>();

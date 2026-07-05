@@ -1,6 +1,6 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 namespace LankaConnect.Modules.Communications.Application.Commands.SendBusinessNotification;
 
 /// <summary>
@@ -42,4 +42,4 @@ public class SendBusinessNotificationResponse
     }
 }
 
-// Note: BusinessNotificationType is now defined in LankaConnect.Shared.Email.Contracts
+// Note: BusinessNotificationType is now defined in LankaConnect.Modules.Communications.Contracts.Email.Contracts

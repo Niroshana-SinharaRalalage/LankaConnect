@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
 
 /// <summary>
 /// Repository implementation for UserEmailPreferences entities

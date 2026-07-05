@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Host.AllInOne.Services.Tickets;

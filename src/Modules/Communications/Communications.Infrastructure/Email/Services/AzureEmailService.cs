@@ -1,19 +1,19 @@
 using System.Text.RegularExpressions;
 using Azure;
 using Azure.Communication.Email;
-using LankaConnect.Application.Common.DTOs;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Communications.ValueObjects;
-using LankaConnect.Infrastructure.Email.Configuration;
+using LankaConnect.BuildingBlocks.Application.Common.DTOs;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using EmailValueObject = LankaConnect.Domain.Shared.ValueObjects.Email;
-using DomainEmailMessage = LankaConnect.Domain.Communications.Entities.EmailMessage;
+using EmailValueObject = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
+using DomainEmailMessage = LankaConnect.Modules.Communications.Domain.Entities.EmailMessage;
 using AzureEmailMessage = Azure.Communication.Email.EmailMessage;
 using AzureEmailAttachment = Azure.Communication.Email.EmailAttachment;
-using DtoEmailAttachment = LankaConnect.Application.Common.DTOs.EmailAttachment;
+using DtoEmailAttachment = LankaConnect.BuildingBlocks.Application.Common.DTOs.EmailAttachment;
 namespace LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 
 /// <summary>

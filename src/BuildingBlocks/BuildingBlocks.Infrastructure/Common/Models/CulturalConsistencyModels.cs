@@ -1,7 +1,7 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 using LankaConnect.SharedKernel.Cultural.Enums;
-using LankaConnect.Domain.Shared;
+using LankaConnect.BuildingBlocks.Domain.Shared;
 namespace LankaConnect.BuildingBlocks.Infrastructure.Common.Models;
 
 /// <summary>

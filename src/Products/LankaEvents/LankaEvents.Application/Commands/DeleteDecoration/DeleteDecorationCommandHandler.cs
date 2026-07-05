@@ -1,6 +1,6 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Services;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;

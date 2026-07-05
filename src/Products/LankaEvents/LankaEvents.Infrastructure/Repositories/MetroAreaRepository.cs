@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Infrastructure.Common;
+using LankaConnect.BuildingBlocks.Infrastructure.Common;
 using LankaConnect.Products.LankaEvents.Infrastructure.Common; // W6.5.f.1: ProductRepositoryBase<T>
 using LankaConnect.Products.LankaEvents.Infrastructure.Data;   // W6.5.f.1: LankaEventsDbContext
 using System.Diagnostics;

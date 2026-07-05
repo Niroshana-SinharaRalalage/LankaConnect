@@ -64,7 +64,7 @@ public record AdminUserStatisticsDto
 }
 
 // Wave 4.6.c.3 (2026-06-24): PagedResultDto<T> extracted to
-// LankaConnect.Application.Common.Models.PagedResultDto so legacy consumers
+// LankaConnect.BuildingBlocks.Application.Common.Models.PagedResultDto so legacy consumers
 // (UserMappingProfile, GetSupportTicketsPagedQuery, etc.) can keep using it
 // without taking an Identity.Application ProjectReference (which would create
 // a circular ref Identity.Application -> LankaConnect.Application -> Identity.Application).

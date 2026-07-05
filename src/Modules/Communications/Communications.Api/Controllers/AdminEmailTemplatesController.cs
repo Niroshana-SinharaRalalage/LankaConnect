@@ -2,9 +2,9 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LankaConnect.API.Extensions;
-using LankaConnect.Application.Communications.Queries.GetEmailTemplates;
-using LankaConnect.Application.Communications.Queries.GetEmailTemplateById;
-using LankaConnect.Application.Communications.Commands.UpdateEmailTemplate;
+using LankaConnect.Modules.Communications.Application.Queries.GetEmailTemplates;
+using LankaConnect.Modules.Communications.Application.Queries.GetEmailTemplateById;
+using LankaConnect.Modules.Communications.Application.Commands.UpdateEmailTemplate;
 namespace LankaConnect.Modules.Communications.Api.Controllers;
 
 /// <summary>
@@ -48,10 +48,10 @@ public class AdminEmailTemplatesController : BaseController<AdminEmailTemplatesC
             User.TryGetUserId(), category, isActive, search, page);
 
         // Parse category if provided
-        LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory? domainCategory = null;
+        LankaConnect.Modules.Communications.Domain.ValueObjects.EmailTemplateCategory? domainCategory = null;
         if (!string.IsNullOrEmpty(category))
         {
-            var categoryResult = LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory.FromValue(category);
+            var categoryResult = LankaConnect.Modules.Communications.Domain.ValueObjects.EmailTemplateCategory.FromValue(category);
             if (categoryResult.IsSuccess)
             {
                 domainCategory = categoryResult.Value;

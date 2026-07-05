@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System.Text.Json;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
 
 public class BusinessConfiguration : IEntityTypeConfiguration<Business>
 {

@@ -1,5 +1,5 @@
 using LankaConnect.Products.LankaEvents.Contracts;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
 namespace LankaConnect.Products.LankaEvents.Application.Queries.ExportDonations;
 

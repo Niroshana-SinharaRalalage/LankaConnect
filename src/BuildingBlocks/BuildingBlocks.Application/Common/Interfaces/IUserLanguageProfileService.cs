@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LankaConnect.Application.Common.Models.Routing;
-using LankaConnect.Application.Common.Models.MultiLanguage;
-using LankaConnect.Application.Common.Routing;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Routing;
+using LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage;
+using LankaConnect.BuildingBlocks.Application.Common.Routing;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>
@@ -21,7 +21,7 @@ public interface IUserLanguageProfileService
     /// </summary>
     /// <param name="userProfile">Complete user language profile</param>
     /// <returns>Storage success confirmation</returns>
-    Task<bool> StoreMultiLanguageProfileAsync(LankaConnect.Application.Common.Models.Routing.MultiLanguageUserProfile userProfile);
+    Task<bool> StoreMultiLanguageProfileAsync(LankaConnect.BuildingBlocks.Application.Common.Models.Routing.MultiLanguageUserProfile userProfile);
 
     /// <summary>
     /// Retrieve multi-language user profile with cache optimization
@@ -29,7 +29,7 @@ public interface IUserLanguageProfileService
     /// </summary>
     /// <param name="userId">User identifier</param>
     /// <returns>Complete user language profile or null if not found</returns>
-    Task<LankaConnect.Application.Common.Models.Routing.MultiLanguageUserProfile?> GetMultiLanguageProfileAsync(Guid userId);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.Routing.MultiLanguageUserProfile?> GetMultiLanguageProfileAsync(Guid userId);
 
     /// <summary>
     /// Update user language preferences with incremental learning
@@ -38,7 +38,7 @@ public interface IUserLanguageProfileService
     /// <param name="userId">User identifier</param>
     /// <param name="languageInteractions">Recent language interaction data</param>
     /// <returns>Updated profile with learning integration</returns>
-    Task<LankaConnect.Application.Common.Models.Routing.MultiLanguageUserProfile> UpdateLanguagePreferencesAsync(Guid userId, List<LankaConnect.Application.Common.Models.MultiLanguage.LanguageInteractionData> languageInteractions);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.Routing.MultiLanguageUserProfile> UpdateLanguagePreferencesAsync(Guid userId, List<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.LanguageInteractionData> languageInteractions);
 
     /// <summary>
     /// Bulk update user profiles for community-wide language pattern changes
@@ -46,5 +46,5 @@ public interface IUserLanguageProfileService
     /// </summary>
     /// <param name="communityUpdates">Community language profile updates</param>
     /// <returns>Bulk update result summary</returns>
-    Task<LankaConnect.Application.Common.Routing.BulkProfileUpdateResult> BulkUpdateCommunityLanguageProfilesAsync(List<LankaConnect.Application.Common.Models.MultiLanguage.CommunityLanguageProfileUpdate> communityUpdates);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Routing.BulkProfileUpdateResult> BulkUpdateCommunityLanguageProfilesAsync(List<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.CommunityLanguageProfileUpdate> communityUpdates);
 }

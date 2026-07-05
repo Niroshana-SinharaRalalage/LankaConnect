@@ -1,4 +1,4 @@
-using LankaConnect.Application.Common.Exceptions;
+using LankaConnect.BuildingBlocks.Application.Common.Exceptions;
 using FluentAssertions;
 
 namespace LankaConnect.Application.Tests.Common;

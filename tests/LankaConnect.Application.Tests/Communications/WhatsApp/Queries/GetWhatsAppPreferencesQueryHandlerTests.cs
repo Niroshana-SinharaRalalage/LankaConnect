@@ -1,6 +1,6 @@
-using LankaConnect.Application.Communications.WhatsApp.Queries.GetWhatsAppPreferences;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Modules.Communications.Application.WhatsApp.Queries.GetWhatsAppPreferences;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Tests.Communications.WhatsApp.Queries;

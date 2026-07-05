@@ -1,12 +1,12 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Exceptions;
-using DomainUnitOfWork = LankaConnect.Domain.Common.IUnitOfWork;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Exceptions;
+using DomainUnitOfWork = LankaConnect.BuildingBlocks.Domain.IUnitOfWork;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 

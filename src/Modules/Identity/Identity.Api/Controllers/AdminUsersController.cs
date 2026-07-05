@@ -1,4 +1,4 @@
-using LankaConnect.Application.Common.Models;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +13,7 @@ using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUserDetails;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUsersPaged;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUserStatistics;
-using LankaConnect.Application.Communications.Commands.SendEmailVerification;
+using LankaConnect.Modules.Communications.Application.Commands.SendEmailVerification;
 using LankaConnect.Modules.Identity.Domain.Enums;
 namespace LankaConnect.Modules.Identity.Api.Controllers;
 

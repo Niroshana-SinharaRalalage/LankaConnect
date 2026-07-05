@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Common;
-using LankaConnect.Domain.Common;
-using DomainEmailMessage = LankaConnect.Domain.Communications.Entities.EmailMessage;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.BuildingBlocks.Domain;
+using DomainEmailMessage = LankaConnect.Modules.Communications.Domain.Entities.EmailMessage;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Contracts; // W4.7.b
 using Serilog.Context;
 namespace LankaConnect.Modules.Communications.Application.Queries.GetEmailStatus;
@@ -171,37 +171,37 @@ public class GetEmailStatusQueryHandler : IRequestHandler<GetEmailStatusQuery, R
         };
     }
 
-    private static LankaConnect.Domain.Communications.Enums.EmailType? ConvertEmailType(Communications.Common.EmailType? appEmailType)
+    private static LankaConnect.Modules.Communications.Domain.Enums.EmailType? ConvertEmailType(Communications.Common.EmailType? appEmailType)
     {
         if (!appEmailType.HasValue) return null;
         
         return appEmailType.Value switch
         {
-            Communications.Common.EmailType.EmailVerification => LankaConnect.Domain.Communications.Enums.EmailType.EmailVerification,
-            Communications.Common.EmailType.PasswordReset => LankaConnect.Domain.Communications.Enums.EmailType.PasswordReset,
-            Communications.Common.EmailType.Welcome => LankaConnect.Domain.Communications.Enums.EmailType.Welcome,
-            Communications.Common.EmailType.BusinessNotification => LankaConnect.Domain.Communications.Enums.EmailType.BusinessNotification,
-            Communications.Common.EmailType.SystemAlert => LankaConnect.Domain.Communications.Enums.EmailType.EventNotification,
-            Communications.Common.EmailType.Marketing => LankaConnect.Domain.Communications.Enums.EmailType.Marketing,
-            _ => LankaConnect.Domain.Communications.Enums.EmailType.Transactional
+            Communications.Common.EmailType.EmailVerification => LankaConnect.Modules.Communications.Domain.Enums.EmailType.EmailVerification,
+            Communications.Common.EmailType.PasswordReset => LankaConnect.Modules.Communications.Domain.Enums.EmailType.PasswordReset,
+            Communications.Common.EmailType.Welcome => LankaConnect.Modules.Communications.Domain.Enums.EmailType.Welcome,
+            Communications.Common.EmailType.BusinessNotification => LankaConnect.Modules.Communications.Domain.Enums.EmailType.BusinessNotification,
+            Communications.Common.EmailType.SystemAlert => LankaConnect.Modules.Communications.Domain.Enums.EmailType.EventNotification,
+            Communications.Common.EmailType.Marketing => LankaConnect.Modules.Communications.Domain.Enums.EmailType.Marketing,
+            _ => LankaConnect.Modules.Communications.Domain.Enums.EmailType.Transactional
         };
     }
 
-    private static LankaConnect.Domain.Communications.Enums.EmailStatus? ConvertEmailStatus(Communications.Common.EmailStatus? appEmailStatus)
+    private static LankaConnect.Modules.Communications.Domain.Enums.EmailStatus? ConvertEmailStatus(Communications.Common.EmailStatus? appEmailStatus)
     {
         if (!appEmailStatus.HasValue) return null;
         
         return appEmailStatus.Value switch
         {
-            Communications.Common.EmailStatus.Pending => LankaConnect.Domain.Communications.Enums.EmailStatus.Pending,
-            Communications.Common.EmailStatus.Queued => LankaConnect.Domain.Communications.Enums.EmailStatus.Queued,
-            Communications.Common.EmailStatus.Sending => LankaConnect.Domain.Communications.Enums.EmailStatus.Sending,
-            Communications.Common.EmailStatus.Sent => LankaConnect.Domain.Communications.Enums.EmailStatus.Sent,
-            Communications.Common.EmailStatus.Delivered => LankaConnect.Domain.Communications.Enums.EmailStatus.Delivered,
-            Communications.Common.EmailStatus.Failed => LankaConnect.Domain.Communications.Enums.EmailStatus.Failed,
-            Communications.Common.EmailStatus.Bounced => LankaConnect.Domain.Communications.Enums.EmailStatus.Bounced,
-            Communications.Common.EmailStatus.Cancelled => LankaConnect.Domain.Communications.Enums.EmailStatus.Rejected,
-            _ => LankaConnect.Domain.Communications.Enums.EmailStatus.Failed
+            Communications.Common.EmailStatus.Pending => LankaConnect.Modules.Communications.Domain.Enums.EmailStatus.Pending,
+            Communications.Common.EmailStatus.Queued => LankaConnect.Modules.Communications.Domain.Enums.EmailStatus.Queued,
+            Communications.Common.EmailStatus.Sending => LankaConnect.Modules.Communications.Domain.Enums.EmailStatus.Sending,
+            Communications.Common.EmailStatus.Sent => LankaConnect.Modules.Communications.Domain.Enums.EmailStatus.Sent,
+            Communications.Common.EmailStatus.Delivered => LankaConnect.Modules.Communications.Domain.Enums.EmailStatus.Delivered,
+            Communications.Common.EmailStatus.Failed => LankaConnect.Modules.Communications.Domain.Enums.EmailStatus.Failed,
+            Communications.Common.EmailStatus.Bounced => LankaConnect.Modules.Communications.Domain.Enums.EmailStatus.Bounced,
+            Communications.Common.EmailStatus.Cancelled => LankaConnect.Modules.Communications.Domain.Enums.EmailStatus.Rejected,
+            _ => LankaConnect.Modules.Communications.Domain.Enums.EmailStatus.Failed
         };
     }
 }

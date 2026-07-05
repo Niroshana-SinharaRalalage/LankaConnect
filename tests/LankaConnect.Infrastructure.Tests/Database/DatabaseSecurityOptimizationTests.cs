@@ -9,12 +9,12 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Text;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Notifications;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Notifications;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Community;
-using LankaConnect.Domain.Common.Database;
+using LankaConnect.Modules.Communications.Domain.Community;
+using LankaConnect.BuildingBlocks.Domain.Database;
 using LankaConnect.Infrastructure.Database;
 using LankaConnect.Infrastructure.Security;
 using LankaConnect.Infrastructure.Monitoring;
@@ -1051,7 +1051,7 @@ namespace LankaConnect.Infrastructure.Tests.Database
         public string Algorithm { get; set; }
     }
 
-    // CONSOLIDATED: Use LankaConnect.Domain.Common.Database.SecurityLevel
+    // CONSOLIDATED: Use LankaConnect.BuildingBlocks.Domain.Database.SecurityLevel
 
     public class CulturalContent
     {
@@ -1168,7 +1168,7 @@ namespace LankaConnect.Infrastructure.Tests.Database
         COMPLIANCE_VIOLATION
     }
 
-    // Note: IncidentSeverity enum moved to canonical location: LankaConnect.Domain.Common.Notifications.IncidentSeverity
+    // Note: IncidentSeverity enum moved to canonical location: LankaConnect.BuildingBlocks.Domain.Notifications.IncidentSeverity
     // Use Domain enum instead for consistency
 
     public enum VerificationLevel

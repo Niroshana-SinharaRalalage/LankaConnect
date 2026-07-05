@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Shared.Email.Observability;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Contracts.Email.Observability;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Application.Common.DTOs;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Infrastructure.Email.Configuration;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.DTOs;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
 using Microsoft.Extensions.Options;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 
 /// <summary>

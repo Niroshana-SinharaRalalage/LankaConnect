@@ -1,6 +1,6 @@
 using FluentAssertions;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.SPLIT_PER_ENTITY;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;

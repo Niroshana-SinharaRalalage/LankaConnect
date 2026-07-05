@@ -2,9 +2,9 @@ using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService mo
 using System.Diagnostics;
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

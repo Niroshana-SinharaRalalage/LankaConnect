@@ -8,7 +8,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 /// Phase 6A.25: Badge Management System.
 /// Phase 6A.28: Duration and expiration fields.
 /// Wave 6.5.f.5-hotfix (2026-07-04): physically relocated from
-/// <c>LankaConnect.Infrastructure.Data.Configurations</c> to Products/LankaEvents
+/// <c>LankaConnect.SPLIT_PER_ENTITY.Configurations</c> to Products/LankaEvents
 /// per architect ruling §2.2. The <c>HasOne(eb =&gt; eb.Badge)</c> block was
 /// removed because it forced <c>Badge</c> (a cross-module principal owned by
 /// <c>LankaConnect.Domain.Badges</c>) to be mapped in LankaEventsDbContext.

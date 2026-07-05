@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.Email.Observability;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Observability;
 
 /// <summary>
 /// Phase 6A.86: Metrics collection interface for email operations.

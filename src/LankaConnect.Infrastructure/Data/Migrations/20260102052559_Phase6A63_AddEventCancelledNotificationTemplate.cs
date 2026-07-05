@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     public partial class Phase6A63_AddEventCancelledNotificationTemplate : Migration
@@ -53,8 +53,8 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 <tr>
                                     <td style=""padding: 20px;"">
                                         <h2 style=""margin: 0 0 15px 0; color: #8B1538; font-size: 20px;"">{{EventTitle}}</h2>
-                                        <p style=""margin: 5px 0; color: #666; font-size: 14px;""><strong>📅 Date:</strong> {{EventStartDate}} at {{EventStartTime}}</p>
-                                        <p style=""margin: 5px 0; color: #666; font-size: 14px;""><strong>📍 Location:</strong> {{EventLocation}}</p>
+                                        <p style=""margin: 5px 0; color: #666; font-size: 14px;""><strong>?? Date:</strong> {{EventStartDate}} at {{EventStartTime}}</p>
+                                        <p style=""margin: 5px 0; color: #666; font-size: 14px;""><strong>?? Location:</strong> {{EventLocation}}</p>
                                     </td>
                                 </tr>
                             </table>
@@ -111,7 +111,7 @@ Thank you for your understanding.
 ---
 LankaConnect
 Sri Lankan Community Hub
-© 2025 LankaConnect. All rights reserved.',
+� 2025 LankaConnect. All rights reserved.',
                     NOW(),
                     NOW(),
                     'Events',

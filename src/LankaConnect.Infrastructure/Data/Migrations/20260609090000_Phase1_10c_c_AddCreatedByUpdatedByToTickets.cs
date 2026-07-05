@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <summary>
     /// Wave4.9.2.10c.c Phase 1.10c.c (2026-06-09) — adds physical

@@ -198,6 +198,7 @@ function Update-Usings {
     )
 
     $content = Get-Content -Raw -LiteralPath $FilePath
+    if ($null -eq $content) { return 0 }  # skip empty files
     $original = $content
     $changes = 0
 

@@ -1,4 +1,4 @@
-using LankaConnect.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 namespace LankaConnect.Host.AllInOne.Services;
 

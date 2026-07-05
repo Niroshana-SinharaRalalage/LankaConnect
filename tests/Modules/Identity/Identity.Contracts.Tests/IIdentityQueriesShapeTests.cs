@@ -136,7 +136,7 @@ public sealed class IIdentityQueriesShapeTests
     {
         // W4.6.a architect Risk #2 Option C ruling: ICurrentUserService moves
         // to Identity.Contracts; IJwtTokenService stays in legacy
-        // LankaConnect.Application.Common.Interfaces (signature takes User type).
+        // LankaConnect.BuildingBlocks.Application.Common.Interfaces (signature takes User type).
         typeof(ICurrentUserService).Namespace.Should().Be("LankaConnect.Modules.Identity.Contracts");
     }
 }

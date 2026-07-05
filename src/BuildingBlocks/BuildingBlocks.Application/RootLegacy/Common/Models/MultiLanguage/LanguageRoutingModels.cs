@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 
-namespace LankaConnect.Application.Common.Models.MultiLanguage
+namespace LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage
 {
     public class CommunityLanguageProfileUpdate : LegacyBaseEntity
     {

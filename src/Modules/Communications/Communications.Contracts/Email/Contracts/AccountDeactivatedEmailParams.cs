@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.Email.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.100: Template-specific typed parameters for account deactivated by admin emails.

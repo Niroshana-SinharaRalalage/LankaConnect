@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Exceptions;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -10,12 +10,12 @@ namespace LankaConnect.Application.Businesses.Commands.DeleteBusiness;
 public class DeleteBusinessCommandHandler : ICommandHandler<DeleteBusinessCommand>
 {
     private readonly IBusinessRepository _businessRepository;
-    private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
+    private readonly LankaConnect.BuildingBlocks.Domain.IUnitOfWork _unitOfWork;
     private readonly ILogger<DeleteBusinessCommandHandler> _logger;
 
     public DeleteBusinessCommandHandler(
         IBusinessRepository businessRepository,
-        LankaConnect.Domain.Common.IUnitOfWork unitOfWork,
+        LankaConnect.BuildingBlocks.Domain.IUnitOfWork unitOfWork,
         ILogger<DeleteBusinessCommandHandler> logger)
     {
         _businessRepository = businessRepository;

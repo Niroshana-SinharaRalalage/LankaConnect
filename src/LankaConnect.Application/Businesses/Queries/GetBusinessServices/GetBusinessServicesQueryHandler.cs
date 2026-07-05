@@ -1,9 +1,9 @@
 using AutoMapper;
 using LankaConnect.Application.Businesses.Common;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Domain.Business;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Exceptions;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Exceptions;
 
 namespace LankaConnect.Application.Businesses.Queries.GetBusinessServices;
 

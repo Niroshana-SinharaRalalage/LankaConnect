@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Support.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Support.Enums;
 namespace LankaConnect.Modules.Communications.Domain.Support.DomainEvents;
 
 /// <summary>

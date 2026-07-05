@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <summary>
     /// Wave4.9.2.10b Phase 1.10b (2026-06-09) — events schema signups +

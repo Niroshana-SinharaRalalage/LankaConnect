@@ -1,5 +1,5 @@
-using LankaConnect.Application.Communications.Queries.GetEmailTemplateById;
-using LankaConnect.Domain.Common;
+using LankaConnect.Modules.Communications.Application.Queries.GetEmailTemplateById;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 namespace LankaConnect.Modules.Communications.Application.Commands.UpdateEmailTemplate;
 

@@ -1,14 +1,14 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.Enums;
 using LankaConnect.Domain.Enterprise;
-using LankaConnect.Domain.Common.Models;
-using LankaConnect.Domain.Common.Monitoring;
-using LankaConnect.Domain.Common.ValueObjects;
-using LankaConnect.Domain.Common.Security;
-using LankaConnect.Domain.Common.Recovery;
-using LankaConnect.Domain.Common.Database;
-using MultiLanguageModels = LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels;
+using LankaConnect.BuildingBlocks.Domain.Models;
+using LankaConnect.BuildingBlocks.Domain.Monitoring;
+using LankaConnect.BuildingBlocks.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Security;
+using LankaConnect.BuildingBlocks.Domain.Recovery;
+using LankaConnect.BuildingBlocks.Domain.Database;
+using MultiLanguageModels = LankaConnect.BuildingBlocks.Domain.Database.MultiLanguageRoutingModels;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 public interface IReviewRepository : IRepository<Review>

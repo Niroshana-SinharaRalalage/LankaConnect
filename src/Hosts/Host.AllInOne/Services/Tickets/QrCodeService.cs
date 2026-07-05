@@ -1,4 +1,4 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
 using QRCoder;
 namespace LankaConnect.Host.AllInOne.Services.Tickets;

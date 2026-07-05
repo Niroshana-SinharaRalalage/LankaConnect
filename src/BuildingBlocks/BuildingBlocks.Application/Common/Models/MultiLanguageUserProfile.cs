@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 using System;
 using System.Collections.Generic;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models;

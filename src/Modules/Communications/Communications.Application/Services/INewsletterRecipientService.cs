@@ -1,4 +1,4 @@
-using LankaConnect.Application.Communications.Common;
+using LankaConnect.Modules.Communications.Application.Common;
 namespace LankaConnect.Modules.Communications.Application.Services;
 
 /// <summary>

@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Database;
-using LankaConnect.Domain.Common.Notifications;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Database;
+using LankaConnect.BuildingBlocks.Domain.Notifications;
 namespace LankaConnect.BuildingBlocks.Application.Common.Security;
 
 #region Cross-Border Security Result
@@ -268,7 +268,7 @@ public enum ComplianceLevel
     FullyCompliant
 }
 
-// Note: SecurityLevel enum moved to canonical location: LankaConnect.Domain.Common.Database.DatabaseSecurityModels.SecurityLevel
+// Note: SecurityLevel enum moved to canonical location: LankaConnect.BuildingBlocks.Domain.Database.DatabaseSecurityModels.SecurityLevel
 // Use Domain enum instead for consistency
 
 #endregion
@@ -592,7 +592,7 @@ public enum SecurityIncidentType
     CrossBorderSecurityViolation
 }
 
-// Note: IncidentSeverity enum moved to canonical location: LankaConnect.Domain.Common.Notifications.IncidentSeverity
+// Note: IncidentSeverity enum moved to canonical location: LankaConnect.BuildingBlocks.Domain.Notifications.IncidentSeverity
 // Use Domain enum instead for consistency
 
 #endregion

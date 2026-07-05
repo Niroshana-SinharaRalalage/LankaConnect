@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Exceptions;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Exceptions;
 namespace LankaConnect.Products.LankaEvents.Domain.Badges;
 
 /// <summary>

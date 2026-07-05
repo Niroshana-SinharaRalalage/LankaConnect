@@ -1,8 +1,8 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Analytics.Common;
-using LankaConnect.Domain.Analytics;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Application.Analytics.Common;
+using LankaConnect.Products.LankaEvents.Domain.Analytics;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Products.LankaEvents.Application.Analytics.Queries.GetEventAnalytics;
 
 /// <summary>

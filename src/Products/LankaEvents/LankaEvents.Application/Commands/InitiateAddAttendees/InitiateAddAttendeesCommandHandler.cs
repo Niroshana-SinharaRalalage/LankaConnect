@@ -1,13 +1,13 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Queries.CalculateAdditionPrice;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -162,7 +162,7 @@ public class InitiateAddAttendeesCommandHandler
                 }
 
                 // Step 4: Create Money value objects
-                var currency = Enum.Parse<LankaConnect.Domain.Shared.Enums.Currency>(pricing.Currency, true);
+                var currency = Enum.Parse<LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency>(pricing.Currency, true);
                 var previousTotalPriceResult = Money.Create(pricing.CurrentTotalPaid, currency);
                 var newTotalPriceResult = Money.Create(pricing.NewTotalPrice, currency);
                 var additionalAmountResult = Money.Create(pricing.AdditionalAmount, currency);

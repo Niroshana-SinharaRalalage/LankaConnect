@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

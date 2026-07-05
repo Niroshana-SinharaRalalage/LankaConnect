@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.Email.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.97: Single source of truth for ALL email template parameter names.

@@ -1,21 +1,21 @@
-ï»¿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     public partial class Phase7C2_RemoveDuplicateLocationFromSignupCommitmentTemplates : Migration
     {
-        // Phase 7C.2 â€” Bug A fix: the COMMITMENT DETAILS card in the five signup/volunteer
+        // Phase 7C.2 — Bug A fix: the COMMITMENT DETAILS card in the five signup/volunteer
         // commitment email templates duplicates Event Date + Location rows that already appear
         // in the EVENT DETAILS card further down. The duplication leaks the GPS-coordinate
         // suffix produced by EventLocation.ToString(). This migration surgically strips ONLY
         // the commitment-card duplicates; the EVENT DETAILS card location row is rewritten
         // separately in the next migration (Phase7C2_RewriteEventLocationInSignupCommitmentTemplates).
         //
-        // The regex anchors on the "Event Date" label (unique to the commitment card â€” the
+        // The regex anchors on the "Event Date" label (unique to the commitment card — the
         // event-details card uses "Date &amp; Time") then consumes up to the {{EventLocation}}
         // placeholder's closing </tr>, covering both sibling rows in one pass. REGEXP_REPLACE
         // (not REPLACE) handles the multi-line whitespace variations between seed migrations.
@@ -164,7 +164,7 @@ $migration$;
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Phase 7C.2 â€” the commitment-card duplicate rows are NOT re-inserted on Down().
+            // Phase 7C.2 — the commitment-card duplicate rows are NOT re-inserted on Down().
             // Their original HTML carried inline styles that evolved across multiple seed
             // migrations with non-deterministic whitespace, so a faithful restore cannot be
             // expressed as a single SQL string. Rolling back this migration is intentionally

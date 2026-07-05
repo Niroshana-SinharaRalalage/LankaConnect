@@ -1,9 +1,9 @@
-ï»¿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <summary>
     /// Phase 6A.102: Comprehensive production database sync from staging.
@@ -108,7 +108,7 @@ Best regards,
 {{OrganizerName}}
 {{OrganizerEmail}}
 
-Â© {{Year}} LankaConnect. All rights reserved.',
+© {{Year}} LankaConnect. All rights reserved.',
     html_template = '<!doctype html>
 <html xmlns=""http://www.w3.org/1999/xhtml"" lang=""en"">
     <head>
@@ -1027,7 +1027,7 @@ If you have any questions, please contact us at {{SupportEmail}}.
 Welcome back!
 LankaConnect Team
 
-Â© {{Year}} LankaConnect. All rights reserved.',
+© {{Year}} LankaConnect. All rights reserved.',
     html_template = '<!doctype html>
 <html xmlns=""http://www.w3.org/1999/xhtml"" lang=""en"">
     <head>
@@ -1652,7 +1652,7 @@ If you believe this was done in error or would like to request reactivation, ple
 
 LankaConnect Team
 
-Â© {{Year}} LankaConnect. All rights reserved.',
+© {{Year}} LankaConnect. All rights reserved.',
     html_template = '<!doctype html>
 <html xmlns=""http://www.w3.org/1999/xhtml"" lang=""en"">
     <head>
@@ -2209,7 +2209,7 @@ If you believe this was done in error or have questions, please contact us at {{
 
 LankaConnect Team
 
-Â© {{Year}} LankaConnect. All rights reserved.',
+© {{Year}} LankaConnect. All rights reserved.',
     html_template = '<!doctype html>
 <html xmlns=""http://www.w3.org/1999/xhtml"" lang=""en"">
     <head>
@@ -2885,7 +2885,7 @@ If you have any questions, please contact us at {{SupportEmail}}.
 Best regards,
 LankaConnect Team
 
-Â© {{Year}} LankaConnect. All rights reserved.',
+© {{Year}} LankaConnect. All rights reserved.',
     html_template = '<!doctype html>
 <html xmlns=""http://www.w3.org/1999/xhtml"" lang=""en"">
     <head>
@@ -23607,7 +23607,7 @@ The LankaConnect Team
 
 Questions? Contact us at {{SupportEmail}}
 
-Â© {{Year}} LankaConnect. All rights reserved.',
+© {{Year}} LankaConnect. All rights reserved.',
     html_template = '<!doctype html>
 <html xmlns=""http://www.w3.org/1999/xhtml"" lang=""en"">
     <head>
@@ -24248,7 +24248,7 @@ If you have any further questions, please reply to this email or contact us at {
 Best regards,
 The LankaConnect Support Team
 
-Â© {{Year}} LankaConnect. All rights reserved.',
+© {{Year}} LankaConnect. All rights reserved.',
     html_template = '<!doctype html>
 <html xmlns=""http://www.w3.org/1999/xhtml"" lang=""en"">
     <head>

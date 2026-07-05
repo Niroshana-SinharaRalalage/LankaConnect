@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 namespace LankaConnect.BuildingBlocks.Domain.Shared;
 
 /// <summary>

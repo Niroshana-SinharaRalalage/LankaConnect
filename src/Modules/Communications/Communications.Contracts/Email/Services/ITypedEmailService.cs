@@ -1,6 +1,6 @@
-using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
-namespace LankaConnect.Shared.Email.Services;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Services;
 
 /// <summary>
 /// Phase 6A.100: Interface for typed email sending operations.

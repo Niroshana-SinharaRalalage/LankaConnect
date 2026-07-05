@@ -1,6 +1,6 @@
-using LankaConnect.Application.Common.Options;
-using LankaConnect.Application.ReferenceData.DTOs;
-using LankaConnect.Application.ReferenceData.Services;
+using LankaConnect.BuildingBlocks.Application.Common.Options;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.DTOs;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 namespace LankaConnect.Host.AllInOne.Controllers;

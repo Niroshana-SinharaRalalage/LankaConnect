@@ -2,9 +2,9 @@ using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Common.Constants;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Constants;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
@@ -13,12 +13,12 @@ using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Infrastructure.Services;
-using LankaConnect.Application.Common.DTOs;
+using LankaConnect.BuildingBlocks.Application.Common.DTOs;
 using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Domain.Shared.Enums;
-using LankaConnect.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
 
 namespace LankaConnect.Infrastructure.Tests.Services;
 
@@ -582,7 +582,7 @@ public class RegistrationEmailServiceTests
 
     private User CreateTestUser()
     {
-        var email = LankaConnect.Domain.Shared.ValueObjects.Email.Create("test@example.com").Value;
+        var email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create("test@example.com").Value;
         var userResult = User.Create(email, "John", "Doe");
 
         return userResult.Value;

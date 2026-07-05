@@ -1,6 +1,6 @@
-using LankaConnect.Shared.Email.Helpers;
+using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 
-namespace LankaConnect.Shared.Email.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.100: Template-specific typed parameters for preliminary registration payment emails.

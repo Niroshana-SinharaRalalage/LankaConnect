@@ -1,7 +1,7 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Common;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
 namespace LankaConnect.Modules.Communications.Application.Queries.GetEmailTemplates;
 
 /// <summary>
@@ -13,7 +13,7 @@ namespace LankaConnect.Modules.Communications.Application.Queries.GetEmailTempla
 /// <param name="PageNumber">Page number for pagination</param>
 /// <param name="PageSize">Page size for pagination</param>
 public record GetEmailTemplatesQuery(
-    LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory? Category = null,
+    LankaConnect.Modules.Communications.Domain.ValueObjects.EmailTemplateCategory? Category = null,
     bool? IsActive = null,
     string? SearchTerm = null,
     int PageNumber = 1,

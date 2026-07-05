@@ -1,8 +1,8 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
-using LankaConnect.Application.Badges.DTOs;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Badges;
-using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Domain.Badges;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 namespace LankaConnect.Products.LankaEvents.Application.Badges.Queries.GetBadges;

@@ -1,6 +1,6 @@
 using System;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Notifications;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Notifications;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
 
 /// <summary>

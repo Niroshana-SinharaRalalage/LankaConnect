@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using System.Text.Json;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
 
 public class EmailMessageConfiguration : IEntityTypeConfiguration<EmailMessage>
 {

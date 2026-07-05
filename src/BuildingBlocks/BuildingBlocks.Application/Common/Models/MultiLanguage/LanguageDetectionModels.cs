@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Common.Database;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Domain.Database;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage;
 
 /// <summary>

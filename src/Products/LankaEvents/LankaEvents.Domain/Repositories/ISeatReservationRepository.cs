@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 namespace LankaConnect.Products.LankaEvents.Domain.Repositories;
 

@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Modules.CulturalIntelligence.Domain.ValueObjects;
 
 public record SacredEventRecoveryResult(

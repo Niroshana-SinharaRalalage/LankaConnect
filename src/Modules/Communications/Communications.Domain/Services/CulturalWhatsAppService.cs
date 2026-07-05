@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Common;
-using static LankaConnect.Domain.Communications.Services.EmailCulturalOptimizer;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.BuildingBlocks.Domain;
+using static LankaConnect.Modules.Communications.Domain.Services.EmailCulturalOptimizer;
 namespace LankaConnect.Modules.Communications.Domain.Services;
 
 /// <summary>

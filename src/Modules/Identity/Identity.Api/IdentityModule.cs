@@ -1,5 +1,5 @@
 using FluentValidation;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Identity.Application.Commands;
 using LankaConnect.Modules.Identity.Application.Queries;
 using LankaConnect.Modules.Identity.Contracts;
@@ -60,7 +60,7 @@ public static class IdentityModule
         // from LankaConnect.Infrastructure.DependencyInjection alongside the
         // physical file move into Identity.Infrastructure.Security. Mirrors
         // the W4.4.d.2 PaymentsModule repository registration pattern.
-        // Ports stay in LankaConnect.Application.Common.Interfaces per
+        // Ports stay in LankaConnect.BuildingBlocks.Application.Common.Interfaces per
         // architect Risk #2 Option C (signatures take User type so the ports
         // cannot promote to Contracts purity). ICurrentUserService is the
         // exception -- it moved to Identity.Contracts at 4.6.a.

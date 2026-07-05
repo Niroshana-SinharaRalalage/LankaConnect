@@ -1,4 +1,4 @@
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.SPLIT_PER_ENTITY;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

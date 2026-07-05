@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Models;
-using LankaConnect.Domain.CulturalIntelligence.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
+using LankaConnect.Modules.CulturalIntelligence.Domain.ValueObjects;
 namespace LankaConnect.Modules.CulturalIntelligence.Application.Models;
 
 public record MultiCulturalRecoveryResult(

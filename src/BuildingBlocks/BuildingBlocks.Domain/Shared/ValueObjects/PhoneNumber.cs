@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using System.Text.RegularExpressions;
 namespace LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 

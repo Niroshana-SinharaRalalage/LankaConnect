@@ -2,7 +2,7 @@ using LankaConnect.Domain.Business;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
 
 public class ServiceConfiguration : IEntityTypeConfiguration<Service>
 {

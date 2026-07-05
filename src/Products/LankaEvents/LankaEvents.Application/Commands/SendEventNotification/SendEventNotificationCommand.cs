@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.SendEventNotification;
 

@@ -1,4 +1,4 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.SetSeatingMode;
 

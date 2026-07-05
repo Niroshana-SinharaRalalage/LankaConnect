@@ -1,6 +1,6 @@
-using LankaConnect.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.Services;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using MediatR;

@@ -1,5 +1,5 @@
 using LankaConnect.Domain.Business.Enums;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.Domain.Business.Specifications;
 

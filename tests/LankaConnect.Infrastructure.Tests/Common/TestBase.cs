@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.SPLIT_PER_ENTITY;
 using Serilog;
 using Serilog.Extensions.Logging;
 using Serilog.Sinks.InMemory;

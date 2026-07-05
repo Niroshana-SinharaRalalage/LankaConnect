@@ -1,5 +1,5 @@
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 namespace LankaConnect.Modules.Payments.Application.Commands.RefundRequests;
 
 /// <summary>

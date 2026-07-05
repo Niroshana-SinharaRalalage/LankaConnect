@@ -1,5 +1,5 @@
 using AutoMapper;
-using LankaConnect.Application.MetroAreas.Common;
+using LankaConnect.SharedKernel.Geo.MetroAreas.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 namespace LankaConnect.BuildingBlocks.Application.Common.Mappings;

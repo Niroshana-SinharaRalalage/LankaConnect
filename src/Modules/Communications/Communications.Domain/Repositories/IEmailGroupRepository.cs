@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Entities;
 namespace LankaConnect.Modules.Communications.Domain.Repositories;
 

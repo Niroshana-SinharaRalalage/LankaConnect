@@ -1,4 +1,4 @@
-using SharedHelper = LankaConnect.Shared.Email.Helpers.EmailDateTimeHelper;
+using SharedHelper = LankaConnect.Modules.Communications.Contracts.Email.Helpers.EmailDateTimeHelper;
 namespace LankaConnect.BuildingBlocks.Application.Common.Helpers;
 
 /// <summary>
@@ -6,7 +6,7 @@ namespace LankaConnect.BuildingBlocks.Application.Common.Helpers;
 /// Delegates to the Shared project's EmailDateTimeHelper for actual implementation.
 ///
 /// This wrapper exists for backward compatibility with existing Application layer code.
-/// New code can directly reference LankaConnect.Shared.Email.Helpers.EmailDateTimeHelper.
+/// New code can directly reference LankaConnect.Modules.Communications.Contracts.Email.Helpers.EmailDateTimeHelper.
 /// </summary>
 public static class EmailDateTimeHelper
 {

@@ -1,9 +1,9 @@
-using LankaConnect.Infrastructure.Data.Migrations.Resources;
+using LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <summary>
     /// Phase 7C.2 recovery — restores the authoritative pre-damage bodies for the five

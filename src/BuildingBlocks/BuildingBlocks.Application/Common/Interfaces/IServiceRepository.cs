@@ -1,8 +1,8 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Common.Monitoring;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Domain.Monitoring;
 using LankaConnect.Domain.Business;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 public interface IServiceRepository : IRepository<Service>

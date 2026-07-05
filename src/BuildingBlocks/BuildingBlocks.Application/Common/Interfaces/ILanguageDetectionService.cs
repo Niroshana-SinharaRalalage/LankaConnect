@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LankaConnect.Application.Common.Models.MultiLanguage;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>

@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     /// <summary>
@@ -21,7 +21,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // Transform existing attendees JSONB data:
             // - Convert 'age' (int) to 'age_category' (string: "Adult" or "Child")
             // - Add 'gender' field as null
-            // - Age <= 18 → "Child", Age > 18 → "Adult"
+            // - Age <= 18 ? "Child", Age > 18 ? "Adult"
             // NOTE: This migration is idempotent and safe to run on empty databases
             migrationBuilder.Sql(@"
                 DO $$
@@ -54,7 +54,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             // Reverse transformation: Convert age_category back to age
-            // Adult → 25 (default adult age), Child → 10 (default child age)
+            // Adult ? 25 (default adult age), Child ? 10 (default child age)
             // NOTE: This migration is idempotent and safe to run on empty databases
             migrationBuilder.Sql(@"
                 DO $$

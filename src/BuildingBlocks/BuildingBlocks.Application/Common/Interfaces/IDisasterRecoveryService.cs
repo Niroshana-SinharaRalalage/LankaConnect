@@ -1,8 +1,8 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared;
-using LankaConnect.Application.Common.Models;
-using LankaConnect.Domain.CulturalIntelligence;
-using LankaConnect.Domain.Common.Database;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Shared;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
+using LankaConnect.Modules.CulturalIntelligence.Domain;
+using LankaConnect.BuildingBlocks.Domain.Database;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>
@@ -53,7 +53,7 @@ public interface IDisasterRecoveryService
     /// </summary>
     /// <param name="failoverContext">Disaster recovery failover context</param>
     /// <returns>Failover execution status with cultural intelligence preservation</returns>
-    Task<LankaConnect.Application.Common.Models.LanguageRoutingFailoverResult> ExecuteCrossRegionLanguageRoutingFailoverAsync(LankaConnect.Application.Common.Models.Routing.DisasterRecoveryFailoverContext failoverContext);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.LanguageRoutingFailoverResult> ExecuteCrossRegionLanguageRoutingFailoverAsync(LankaConnect.BuildingBlocks.Application.Common.Models.Routing.DisasterRecoveryFailoverContext failoverContext);
 
     /// <summary>
     /// Preserve cultural intelligence state during disaster recovery scenarios
@@ -63,7 +63,7 @@ public interface IDisasterRecoveryService
     /// <param name="culturalIntelligenceState">Current cultural intelligence state</param>
     /// <param name="targetRegion">Target region for state replication</param>
     /// <returns>Cultural intelligence preservation status</returns>
-    Task<LankaConnect.Application.Common.Models.CulturalIntelligencePreservationResult> PreserveCulturalIntelligenceStateAsync(
-        LankaConnect.Domain.CulturalIntelligence.CulturalIntelligenceState culturalIntelligenceState,
-        LankaConnect.Domain.Common.Database.CulturalRegion targetRegion);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.CulturalIntelligencePreservationResult> PreserveCulturalIntelligenceStateAsync(
+        LankaConnect.Modules.CulturalIntelligence.Domain.CulturalIntelligenceState culturalIntelligenceState,
+        LankaConnect.BuildingBlocks.Domain.Database.CulturalRegion targetRegion);
 }

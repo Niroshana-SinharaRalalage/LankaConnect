@@ -1,7 +1,7 @@
-using LankaConnect.Application.Badges.DTOs;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Badges;
-using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Domain.Badges;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 namespace LankaConnect.Products.LankaEvents.Application.Badges.Queries.GetEventBadges;

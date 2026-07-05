@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Common.Database;
-using LankaConnect.Application.Common.Models.MultiLanguage;
-using LankaConnect.Application.Common.Models.Performance;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Domain.Database;
+using LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>
@@ -22,7 +22,7 @@ public interface IRevenueOptimizationService
     /// </summary>
     /// <param name="revenueAnalysisRequest">Revenue analysis parameters</param>
     /// <returns>Revenue optimization opportunities with engagement projections</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.LanguageRevenueAnalysisResult> AnalyzeLanguageBasedRevenueOpportunitiesAsync(LankaConnect.Application.Common.Models.MultiLanguage.LanguageRevenueAnalysisRequest revenueAnalysisRequest);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.LanguageRevenueAnalysisResult> AnalyzeLanguageBasedRevenueOpportunitiesAsync(LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.LanguageRevenueAnalysisRequest revenueAnalysisRequest);
 
     /// <summary>
     /// Optimize business directory language matching for improved conversions
@@ -30,7 +30,7 @@ public interface IRevenueOptimizationService
     /// </summary>
     /// <param name="businessMatchingRequest">Business language matching parameters</param>
     /// <returns>Optimized business recommendations with conversion probability</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.BusinessLanguageMatchingResult> OptimizeBusinessDirectoryLanguageMatchingAsync(LankaConnect.Application.Common.Models.MultiLanguage.BusinessLanguageMatchingRequest businessMatchingRequest);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.BusinessLanguageMatchingResult> OptimizeBusinessDirectoryLanguageMatchingAsync(LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.BusinessLanguageMatchingRequest businessMatchingRequest);
 
     /// <summary>
     /// Generate premium content strategies based on language preferences
@@ -39,7 +39,7 @@ public interface IRevenueOptimizationService
     /// <param name="targetLanguages">Languages for premium content development</param>
     /// <param name="contentTypes">Types of premium content for development</param>
     /// <returns>Premium content strategy with revenue projections</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.PremiumContentStrategy> GeneratePremiumLanguageContentStrategyAsync(
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.PremiumContentStrategy> GeneratePremiumLanguageContentStrategyAsync(
         List<SouthAsianLanguage> targetLanguages,
         List<ContentType> contentTypes);
 
@@ -50,7 +50,7 @@ public interface IRevenueOptimizationService
     /// <param name="culturalEvents">Cultural events for monetization analysis</param>
     /// <param name="serviceTypes">Types of language services for revenue generation</param>
     /// <returns>Cultural event monetization strategy with revenue projections</returns>
-    Task<LankaConnect.Application.Common.Models.Performance.CulturalEventMonetizationStrategy> AnalyzeCulturalEventLanguageMonetizationAsync(
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.Performance.CulturalEventMonetizationStrategy> AnalyzeCulturalEventLanguageMonetizationAsync(
         List<PerformanceCulturalEvent> culturalEvents,
-        List<LankaConnect.Domain.Shared.LanguageServiceType> serviceTypes);
+        List<LankaConnect.BuildingBlocks.Domain.Shared.LanguageServiceType> serviceTypes);
 }

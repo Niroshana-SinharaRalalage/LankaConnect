@@ -1,14 +1,14 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using System.Diagnostics;
 using System.Text.Json;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Support;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.Support;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;

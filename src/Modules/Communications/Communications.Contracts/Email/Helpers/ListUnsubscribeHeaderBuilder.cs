@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.Email.Helpers;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 
 /// <summary>
 /// Builds RFC 2369 List-Unsubscribe and RFC 8058 List-Unsubscribe-Post email headers.

@@ -3,10 +3,10 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 
-namespace LankaConnect.Infrastructure.Data.Seeders;
+namespace LankaConnect.SPLIT_PER_ENTITY.Seeders;
 
 /// <summary>
 /// Seeds the Events table with diverse Sri Lankan community events across Ohio metro areas

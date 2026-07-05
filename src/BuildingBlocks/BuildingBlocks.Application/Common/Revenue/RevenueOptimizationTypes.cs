@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Application.Common.Security;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Application.Common.Security;
 namespace LankaConnect.BuildingBlocks.Application.Common.Revenue;
 
 #region Revenue Metrics Configuration

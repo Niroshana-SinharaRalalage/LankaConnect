@@ -5,9 +5,9 @@ using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.SPLIT_PER_ENTITY;
 using LankaConnect.TestUtilities.Builders;
-using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.IntegrationTests.Repositories;
 

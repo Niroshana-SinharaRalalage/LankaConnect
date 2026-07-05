@@ -16,7 +16,7 @@ namespace LankaConnect.Modules.Forms.Infrastructure.Repositories;
 /// Wave 6.5.d (2026-07-03): retired the W4.0b self-saving pattern. AddAsync +
 /// UpdateAsync + DeleteAsync stage on the <see cref="FormsDbContext"/> ChangeTracker;
 /// callers use
-/// <see cref="LankaConnect.Application.Common.Interfaces.IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken)"/>
+/// <see cref="LankaConnect.BuildingBlocks.Application.Common.Interfaces.IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken)"/>
 /// so state changes + outbox rows commit atomically inside a single Postgres transaction.
 /// The F30a class of production data-loss cannot recur through this repository.
 /// </remarks>

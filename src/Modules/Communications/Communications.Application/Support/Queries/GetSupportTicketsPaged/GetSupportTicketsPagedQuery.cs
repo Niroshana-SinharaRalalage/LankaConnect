@@ -1,7 +1,7 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Support.DTOs;
-using LankaConnect.Application.Common.Models; // W4.6.c.3: PagedResultDto extracted here
-using LankaConnect.Domain.Support.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Support.DTOs;
+using LankaConnect.BuildingBlocks.Application.Common.Models; // W4.6.c.3: PagedResultDto extracted here
+using LankaConnect.Modules.Communications.Domain.Support.Enums;
 namespace LankaConnect.Modules.Communications.Application.Support.Queries.GetSupportTicketsPaged;
 
 /// <summary>

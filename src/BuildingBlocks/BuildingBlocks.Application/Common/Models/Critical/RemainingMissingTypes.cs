@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.ValueObjects;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Critical;
 
 /// <summary>
@@ -146,7 +146,7 @@ public class CulturalAuthenticationContext
     public string? ContextNotes { get; set; }
 }
 
-// CulturalEventImportanceMatrix moved to LankaConnect.Application.Common.Models.Performance.CulturalEventImportanceMatrix to resolve CS0104 conflict
+// CulturalEventImportanceMatrix moved to LankaConnect.BuildingBlocks.Application.Common.Models.Performance.CulturalEventImportanceMatrix to resolve CS0104 conflict
 
 /// <summary>
 /// Cultural resource policy for managing cultural resources

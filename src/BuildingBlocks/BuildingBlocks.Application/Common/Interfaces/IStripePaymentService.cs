@@ -1,16 +1,16 @@
-using LankaConnect.Domain.Billing;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared;
+using LankaConnect.Modules.Payments.Domain.Billing;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Shared;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Enterprise;
-using LankaConnect.Domain.Common.Models;
-using LankaConnect.Domain.Common.Monitoring;
-using LankaConnect.Domain.Common.Security;
-using LankaConnect.Domain.Common.Recovery;
-using LankaConnect.Domain.Common.Database;
-using LankaConnect.Domain.Common.Enums;
-using MultiLanguageModels = LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels;
+using LankaConnect.BuildingBlocks.Domain.Models;
+using LankaConnect.BuildingBlocks.Domain.Monitoring;
+using LankaConnect.BuildingBlocks.Domain.Security;
+using LankaConnect.BuildingBlocks.Domain.Recovery;
+using LankaConnect.BuildingBlocks.Domain.Database;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using MultiLanguageModels = LankaConnect.BuildingBlocks.Domain.Database.MultiLanguageRoutingModels;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>

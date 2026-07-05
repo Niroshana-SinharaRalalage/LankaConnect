@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 
 public record RegisterUserResponse(

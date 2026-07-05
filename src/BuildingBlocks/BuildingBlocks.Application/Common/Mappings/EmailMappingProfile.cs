@@ -1,7 +1,7 @@
 using AutoMapper;
-using LankaConnect.Application.Communications.Common;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.Enums;
 namespace LankaConnect.BuildingBlocks.Application.Common.Mappings;
 
 /// <summary>
@@ -65,14 +65,14 @@ public class EmailMappingProfile : Profile
         // via the IIdentityQueries.GetContactInfoAsync projection.
     }
 
-    private static EmailTemplateCategory MapEmailTemplateCategory(LankaConnect.Domain.Communications.Enums.EmailType emailType)
+    private static EmailTemplateCategory MapEmailTemplateCategory(LankaConnect.Modules.Communications.Domain.Enums.EmailType emailType)
     {
         return emailType switch
         {
-            LankaConnect.Domain.Communications.Enums.EmailType.EmailVerification or LankaConnect.Domain.Communications.Enums.EmailType.PasswordReset => EmailTemplateCategory.Authentication,
-            LankaConnect.Domain.Communications.Enums.EmailType.BusinessNotification => EmailTemplateCategory.Business,
-            LankaConnect.Domain.Communications.Enums.EmailType.Marketing or LankaConnect.Domain.Communications.Enums.EmailType.Newsletter => EmailTemplateCategory.Marketing,
-            LankaConnect.Domain.Communications.Enums.EmailType.Welcome => EmailTemplateCategory.Notification,
+            LankaConnect.Modules.Communications.Domain.Enums.EmailType.EmailVerification or LankaConnect.Modules.Communications.Domain.Enums.EmailType.PasswordReset => EmailTemplateCategory.Authentication,
+            LankaConnect.Modules.Communications.Domain.Enums.EmailType.BusinessNotification => EmailTemplateCategory.Business,
+            LankaConnect.Modules.Communications.Domain.Enums.EmailType.Marketing or LankaConnect.Modules.Communications.Domain.Enums.EmailType.Newsletter => EmailTemplateCategory.Marketing,
+            LankaConnect.Modules.Communications.Domain.Enums.EmailType.Welcome => EmailTemplateCategory.Notification,
             _ => EmailTemplateCategory.System
         };
     }

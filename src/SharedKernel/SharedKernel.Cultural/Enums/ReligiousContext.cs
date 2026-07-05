@@ -6,7 +6,7 @@ namespace LankaConnect.SharedKernel.Cultural.Enums;
 /// content selection, and respectful-quiet-period gating across modules.
 /// </summary>
 /// <remarks>
-/// Moved from <c>LankaConnect.Domain.Communications.Enums</c> to
+/// Moved from <c>LankaConnect.Modules.Communications.Domain.Enums</c> to
 /// <c>SharedKernel.Cultural</c> in W2C.3 (2026-06-05) per ADR-008.
 /// </remarks>
 public enum ReligiousContext

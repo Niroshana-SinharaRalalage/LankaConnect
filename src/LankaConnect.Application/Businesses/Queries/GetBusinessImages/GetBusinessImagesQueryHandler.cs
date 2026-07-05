@@ -1,5 +1,5 @@
 using LankaConnect.Domain.Business;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Logging;
 

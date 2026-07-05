@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace LankaConnect.Shared.Email.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
 /// <summary>
 /// Donation Feature: Template-specific typed parameters for donation receipt email.

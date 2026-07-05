@@ -2,11 +2,11 @@ using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService mo
 using System.Diagnostics;
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.EntityFrameworkCore;

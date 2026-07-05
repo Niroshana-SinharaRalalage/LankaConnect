@@ -1,15 +1,15 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Queries.GetEmailStatus;
-using LankaConnect.Application.Communications.Common;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Queries.GetEmailStatus;
+using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Moq;
 using FluentAssertions;
 using Xunit;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Contracts; // W4.7.b
 
 namespace LankaConnect.Application.Tests.Communications.Queries;
@@ -37,7 +37,7 @@ public class GetEmailStatusQueryHandlerTests
         var query = new GetEmailStatusQuery(userId);
         
         var userDto = CreateTestUserDto(userId);
-        var emailMessages = new List<LankaConnect.Domain.Communications.Entities.EmailMessage>
+        var emailMessages = new List<LankaConnect.Modules.Communications.Domain.Entities.EmailMessage>
         {
             CreateTestEmailMessage("test@example.com", "Test Subject 1"),
             CreateTestEmailMessage("test2@example.com", "Test Subject 2")
@@ -175,7 +175,7 @@ public class GetEmailStatusQueryHandlerTests
         // Arrange
         var query = new GetEmailStatusQuery();
         
-        var emailMessages = new List<LankaConnect.Domain.Communications.Entities.EmailMessage>
+        var emailMessages = new List<LankaConnect.Modules.Communications.Domain.Entities.EmailMessage>
         {
             CreateTestEmailMessage("test@example.com", "Test Subject")
         };
@@ -225,20 +225,20 @@ public class GetEmailStatusQueryHandlerTests
             UpdatedAt: null);
     }
 
-    private static LankaConnect.Domain.Communications.Entities.EmailMessage CreateTestEmailMessage(string toEmail, string subject)
+    private static LankaConnect.Modules.Communications.Domain.Entities.EmailMessage CreateTestEmailMessage(string toEmail, string subject)
     {
-        var fromEmail = LankaConnect.Domain.Shared.ValueObjects.Email.Create("system@lankaconnect.com").Value;
+        var fromEmail = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create("system@lankaconnect.com").Value;
         var emailSubject = EmailSubject.Create(subject).Value;
-        var emailMessage = LankaConnect.Domain.Communications.Entities.EmailMessage.Create(
+        var emailMessage = LankaConnect.Modules.Communications.Domain.Entities.EmailMessage.Create(
             fromEmail,
             emailSubject,
             "Test body",
             null,
-            LankaConnect.Domain.Communications.Enums.EmailType.Transactional,
+            LankaConnect.Modules.Communications.Domain.Enums.EmailType.Transactional,
             3).Value;
         
         // Add the recipient
-        var toEmailValue = LankaConnect.Domain.Shared.ValueObjects.Email.Create(toEmail).Value;
+        var toEmailValue = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create(toEmail).Value;
         emailMessage.AddRecipient(toEmailValue);
         
         return emailMessage;

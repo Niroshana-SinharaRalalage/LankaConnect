@@ -1,6 +1,6 @@
 using System.Globalization;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 namespace LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 
 public class Money : ValueObject

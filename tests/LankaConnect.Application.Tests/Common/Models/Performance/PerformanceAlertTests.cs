@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Application.Common.Models.Performance;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
 
 namespace LankaConnect.Application.Tests.Common.Models.Performance;
 

@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Analytics.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Application.Analytics.Common;
 namespace LankaConnect.Products.LankaEvents.Application.Analytics.Queries.GetOrganizerDashboard;
 
 /// <summary>

@@ -1,8 +1,8 @@
 using LankaConnect.Modules.Identity.Contracts;
 using FluentAssertions;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.SendAlbumNotification;
-using LankaConnect.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -89,7 +89,7 @@ public class SendAlbumNotificationCommandHandlerTests
 
         // Force album Id if needed
         if (albumId.HasValue)
-            typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")!.SetValue(album, albumId.Value);
+            typeof(LankaConnect.BuildingBlocks.Domain.LegacyBaseEntity).GetProperty("Id")!.SetValue(album, albumId.Value);
 
         album.Publish();
         return album;
@@ -134,7 +134,7 @@ public class SendAlbumNotificationCommandHandlerTests
     {
         // Create a Draft album (not published)
         var album = PhotoAlbum.Create(EventId, OrganizerId, "Test Event", "Draft Album").Value;
-        typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")!.SetValue(album, AlbumId);
+        typeof(LankaConnect.BuildingBlocks.Domain.LegacyBaseEntity).GetProperty("Id")!.SetValue(album, AlbumId);
 
         _albumRepo
             .Setup(r => r.GetByIdAsync(AlbumId, false, It.IsAny<CancellationToken>()))

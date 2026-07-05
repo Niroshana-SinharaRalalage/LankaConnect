@@ -126,7 +126,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                     b.ToTable("outbox", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Analytics.EventAnalytics", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Analytics.EventAnalytics", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -197,7 +197,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                     b.ToTable("event_analytics", "analytics");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Analytics.EventViewRecord", b =>
+            modelBuilder.Entity("LankaConnect.Products.LankaEvents.Domain.Analytics.EventViewRecord", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -3328,7 +3328,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "Price", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "Price", b1 =>
                         {
                             b1.Property<Guid>("AddOnDefinitionId")
                                 .HasColumnType("uuid");
@@ -3375,7 +3375,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                         .HasForeignKey("RegistrationId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
                         {
                             b1.Property<Guid>("AddOnPurchaseId")
                                 .HasColumnType("uuid");
@@ -3399,7 +3399,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("AddOnPurchaseId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
                         {
                             b1.Property<Guid>("AddOnPurchaseId")
                                 .HasColumnType("uuid");
@@ -3423,7 +3423,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("AddOnPurchaseId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
                         {
                             b1.Property<Guid>("AddOnPurchaseId")
                                 .HasColumnType("uuid");
@@ -3447,7 +3447,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("AddOnPurchaseId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "TotalAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "TotalAmount", b1 =>
                         {
                             b1.Property<Guid>("AddOnPurchaseId")
                                 .HasColumnType("uuid");
@@ -3471,7 +3471,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("AddOnPurchaseId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "UnitPrice", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "UnitPrice", b1 =>
                         {
                             b1.Property<Guid>("AddOnPurchaseId")
                                 .HasColumnType("uuid");
@@ -3516,7 +3516,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "Amount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "Amount", b1 =>
                         {
                             b1.Property<Guid>("CollectionId")
                                 .HasColumnType("uuid");
@@ -3540,7 +3540,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("CollectionId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
                         {
                             b1.Property<Guid>("CollectionId")
                                 .HasColumnType("uuid");
@@ -3564,7 +3564,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("CollectionId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
                         {
                             b1.Property<Guid>("CollectionId")
                                 .HasColumnType("uuid");
@@ -3588,7 +3588,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("CollectionId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
                         {
                             b1.Property<Guid>("CollectionId")
                                 .HasColumnType("uuid");
@@ -3630,7 +3630,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "Amount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "Amount", b1 =>
                         {
                             b1.Property<Guid>("DonationId")
                                 .HasColumnType("uuid");
@@ -3654,7 +3654,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("DonationId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
                         {
                             b1.Property<Guid>("DonationId")
                                 .HasColumnType("uuid");
@@ -3678,7 +3678,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("DonationId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
                         {
                             b1.Property<Guid>("DonationId")
                                 .HasColumnType("uuid");
@@ -3702,7 +3702,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("DonationId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
                         {
                             b1.Property<Guid>("DonationId")
                                 .HasColumnType("uuid");
@@ -3798,7 +3798,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "ApprovedAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "ApprovedAmount", b1 =>
                         {
                             b1.Property<Guid>("RefundRequestLineItemId")
                                 .HasColumnType("uuid");
@@ -3822,7 +3822,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("RefundRequestLineItemId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "RequestedAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "RequestedAmount", b1 =>
                         {
                             b1.Property<Guid>("RefundRequestLineItemId")
                                 .HasColumnType("uuid");
@@ -4121,7 +4121,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                             b1.Navigation("Coordinates");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "TicketPrice", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "TicketPrice", b1 =>
                         {
                             b1.Property<Guid>("EventId")
                                 .HasColumnType("uuid");
@@ -4452,7 +4452,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                             b1.WithOwner()
                                 .HasForeignKey("EventId");
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "GrossAmount", b2 =>
+                            b1.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "GrossAmount", b2 =>
                                 {
                                     b2.Property<Guid>("RevenueBreakdownEventId")
                                         .HasColumnType("uuid");
@@ -4471,7 +4471,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                         .HasForeignKey("RevenueBreakdownEventId");
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "OrganizerPayout", b2 =>
+                            b1.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "OrganizerPayout", b2 =>
                                 {
                                     b2.Property<Guid>("RevenueBreakdownEventId")
                                         .HasColumnType("uuid");
@@ -4490,7 +4490,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                         .HasForeignKey("RevenueBreakdownEventId");
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PlatformCommission", b2 =>
+                            b1.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "PlatformCommission", b2 =>
                                 {
                                     b2.Property<Guid>("RevenueBreakdownEventId")
                                         .HasColumnType("uuid");
@@ -4509,7 +4509,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                         .HasForeignKey("RevenueBreakdownEventId");
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "SalesTaxAmount", b2 =>
+                            b1.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "SalesTaxAmount", b2 =>
                                 {
                                     b2.Property<Guid>("RevenueBreakdownEventId")
                                         .HasColumnType("uuid");
@@ -4528,7 +4528,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                         .HasForeignKey("RevenueBreakdownEventId");
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b2 =>
+                            b1.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b2 =>
                                 {
                                     b2.Property<Guid>("RevenueBreakdownEventId")
                                         .HasColumnType("uuid");
@@ -4547,7 +4547,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                         .HasForeignKey("RevenueBreakdownEventId");
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "TaxableAmount", b2 =>
+                            b1.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "TaxableAmount", b2 =>
                                 {
                                     b2.Property<Guid>("RevenueBreakdownEventId")
                                         .HasColumnType("uuid");
@@ -4666,7 +4666,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                     b2.WithOwner()
                                         .HasForeignKey("TicketPricingEventId");
 
-                                    b2.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PricePerPerson", b3 =>
+                                    b2.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "PricePerPerson", b3 =>
                                         {
                                             b3.Property<Guid>("GroupPricingTierTicketPricingEventId")
                                                 .HasColumnType("uuid");
@@ -4692,7 +4692,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                         .IsRequired();
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "AdultPrice", b2 =>
+                            b1.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "AdultPrice", b2 =>
                                 {
                                     b2.Property<Guid>("TicketPricingEventId")
                                         .HasColumnType("uuid");
@@ -4711,7 +4711,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                         .HasForeignKey("TicketPricingEventId");
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "ChildPrice", b2 =>
+                            b1.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "ChildPrice", b2 =>
                                 {
                                     b2.Property<Guid>("TicketPricingEventId")
                                         .HasColumnType("uuid");
@@ -4882,7 +4882,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("RegistrationId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
@@ -4906,7 +4906,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("RegistrationId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
@@ -4930,7 +4930,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("RegistrationId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "SalesTaxAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "SalesTaxAmount", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
@@ -4954,7 +4954,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("RegistrationId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
@@ -4978,7 +4978,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("RegistrationId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "TotalPrice", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "TotalPrice", b1 =>
                         {
                             b1.Property<Guid>("RegistrationId")
                                 .HasColumnType("uuid");
@@ -5016,7 +5016,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                             b1.WithOwner()
                                 .HasForeignKey("RegistrationId");
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Email", "Email", b2 =>
+                            b1.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email", "Email", b2 =>
                                 {
                                     b2.Property<Guid>("AttendeeInfoRegistrationId")
                                         .HasColumnType("uuid");
@@ -5035,7 +5035,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                         .HasForeignKey("AttendeeInfoRegistrationId");
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.PhoneNumber", "PhoneNumber", b2 =>
+                            b1.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.PhoneNumber", "PhoneNumber", b2 =>
                                 {
                                     b2.Property<Guid>("AttendeeInfoRegistrationId")
                                         .HasColumnType("uuid");
@@ -5168,7 +5168,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "AdditionalAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "AdditionalAmount", b1 =>
                         {
                             b1.Property<Guid>("RegistrationAdditionId")
                                 .HasColumnType("uuid");
@@ -5225,7 +5225,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("RegistrationAdditionId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "NewTotalPrice", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "NewTotalPrice", b1 =>
                         {
                             b1.Property<Guid>("RegistrationAdditionId")
                                 .HasColumnType("uuid");
@@ -5249,7 +5249,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("RegistrationAdditionId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PreviousTotalPrice", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "PreviousTotalPrice", b1 =>
                         {
                             b1.Property<Guid>("RegistrationAdditionId")
                                 .HasColumnType("uuid");
@@ -5298,7 +5298,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "Amount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "Amount", b1 =>
                         {
                             b1.Property<Guid>("RegistrationPaymentId")
                                 .HasColumnType("uuid");
@@ -5344,7 +5344,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                         .HasForeignKey("SponsorshipPackageId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "Amount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "Amount", b1 =>
                         {
                             b1.Property<Guid>("SponsorId")
                                 .HasColumnType("uuid");
@@ -5368,7 +5368,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("SponsorId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
                         {
                             b1.Property<Guid>("SponsorId")
                                 .HasColumnType("uuid");
@@ -5392,7 +5392,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("SponsorId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PackagePriceSnapshot", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "PackagePriceSnapshot", b1 =>
                         {
                             b1.Property<Guid>("SponsorId")
                                 .HasColumnType("uuid");
@@ -5416,7 +5416,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("SponsorId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
                         {
                             b1.Property<Guid>("SponsorId")
                                 .HasColumnType("uuid");
@@ -5440,7 +5440,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                                 .HasForeignKey("SponsorId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
                         {
                             b1.Property<Guid>("SponsorId")
                                 .HasColumnType("uuid");
@@ -5483,7 +5483,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "Price", b1 =>
+                    b.OwnsOne("LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money", "Price", b1 =>
                         {
                             b1.Property<Guid>("SponsorshipPackageId")
                                 .HasColumnType("uuid");

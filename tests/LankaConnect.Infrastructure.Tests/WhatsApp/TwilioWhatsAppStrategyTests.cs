@@ -1,7 +1,7 @@
 using FluentAssertions;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Infrastructure.WhatsApp.Configuration;
-using LankaConnect.Infrastructure.WhatsApp.Services;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.Modules.Communications.Infrastructure.WhatsApp.Configuration;
+using LankaConnect.Modules.Communications.Infrastructure.WhatsApp.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;

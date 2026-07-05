@@ -1,9 +1,9 @@
-using LankaConnect.Application.Communications.BackgroundJobs;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.Modules.Communications.Application.BackgroundJobs;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
@@ -58,7 +58,7 @@ public class WhatsAppBackgroundJobTests
         evt.SetAsFreeEvent();
 
         // Set the Id using reflection (LegacyBaseEntity.Id has protected setter)
-        var prop = typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id");
+        var prop = typeof(LankaConnect.BuildingBlocks.Domain.LegacyBaseEntity).GetProperty("Id");
         prop?.SetValue(evt, eventId);
         return evt;
     }
@@ -69,9 +69,9 @@ public class WhatsAppBackgroundJobTests
         Guid? eventId = null,
         string descriptionValue = "This month in LankaConnect...")
     {
-        var title = LankaConnect.Domain.Communications.ValueObjects.NewsletterTitle
+        var title = LankaConnect.Modules.Communications.Domain.ValueObjects.NewsletterTitle
             .Create(titleValue).Value;
-        var description = LankaConnect.Domain.Communications.ValueObjects.NewsletterDescription
+        var description = LankaConnect.Modules.Communications.Domain.ValueObjects.NewsletterDescription
             .Create(descriptionValue).Value;
 
         var newsletter = Newsletter.Create(
@@ -82,7 +82,7 @@ public class WhatsAppBackgroundJobTests
             eventId: eventId).Value;
 
         // Set the Id using reflection (LegacyBaseEntity.Id has protected setter)
-        typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")?.SetValue(newsletter, newsletterId);
+        typeof(LankaConnect.BuildingBlocks.Domain.LegacyBaseEntity).GetProperty("Id")?.SetValue(newsletter, newsletterId);
         return newsletter;
     }
 
@@ -327,7 +327,7 @@ public class WhatsAppBackgroundJobTests
             Guid.NewGuid(), 100, realLocation,
             LankaConnect.Products.LankaEvents.Domain.Enums.EventCategory.Community).Value;
         realEvent.SetAsFreeEvent();
-        typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")?.SetValue(realEvent, eventId);
+        typeof(LankaConnect.BuildingBlocks.Domain.LegacyBaseEntity).GetProperty("Id")?.SetValue(realEvent, eventId);
 
         _mockEventRepo
             .Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))

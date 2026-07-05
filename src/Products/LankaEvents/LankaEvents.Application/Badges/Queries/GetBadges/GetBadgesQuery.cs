@@ -1,5 +1,5 @@
-using LankaConnect.Application.Badges.DTOs;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 namespace LankaConnect.Products.LankaEvents.Application.Badges.Queries.GetBadges;
 
 /// <summary>

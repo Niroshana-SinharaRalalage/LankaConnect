@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 
-namespace LankaConnect.Application.Common.Models.Security
+namespace LankaConnect.BuildingBlocks.Application.Common.Models.Security
 {
     public class ConsentRequest : LegacyBaseEntity
     {

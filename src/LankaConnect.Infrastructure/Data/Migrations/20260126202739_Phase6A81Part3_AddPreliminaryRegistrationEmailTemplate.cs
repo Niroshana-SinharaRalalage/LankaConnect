@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     public partial class Phase6A81Part3_AddPreliminaryRegistrationEmailTemplate : Migration
@@ -103,19 +103,19 @@ Questions? Contact us at {{SupportEmail}}
 <body>
     <div class=""container"">
         <div class=""header"">
-            <h1>🎟️ Complete Your Registration</h1>
-            <div class=""status"">⏳ Payment Pending</div>
+            <h1>??? Complete Your Registration</h1>
+            <div class=""status"">? Payment Pending</div>
         </div>
         <div class=""content"">
             <p>Hi <strong>{{UserName}}</strong>,</p>
             <p>Thank you for starting your registration for <strong>{{EventTitle}}</strong>!</p>
 
             <div class=""alert-box"">
-                <strong>⚠️ Action Required:</strong> Your registration is almost complete. To confirm your spot, please complete your payment within the next <strong>{{HoursRemaining}} hours</strong>.
+                <strong>?? Action Required:</strong> Your registration is almost complete. To confirm your spot, please complete your payment within the next <strong>{{HoursRemaining}} hours</strong>.
             </div>
 
             <div class=""event-details"">
-                <h3>📅 Event Details</h3>
+                <h3>?? Event Details</h3>
                 <p><strong>Event:</strong> {{EventTitle}}</p>
                 <p><strong>Date:</strong> {{EventStartDate}}</p>
                 <p><strong>Time:</strong> {{EventStartTime}}</p>
@@ -123,19 +123,19 @@ Questions? Contact us at {{SupportEmail}}
             </div>
 
             <div class=""registration-summary"">
-                <h3>✓ Registration Summary</h3>
+                <h3>? Registration Summary</h3>
                 <p><strong>Number of Attendees:</strong> {{AttendeeCount}}</p>
                 <p><strong>Total Amount:</strong> {{Currency}} {{TotalAmount}}</p>
             </div>
 
             <div style=""text-align: center; margin: 30px 0;"">
                 <a href=""{{PaymentLink}}"" class=""cta-button"">
-                    💳 Complete Payment Now
+                    ?? Complete Payment Now
                 </a>
             </div>
 
             <div class=""expiry-notice"">
-                <strong>⏰ Checkout Expires:</strong> {{ExpiresAt}}<br>
+                <strong>? Checkout Expires:</strong> {{ExpiresAt}}<br>
                 <em>If you do not complete payment within 24 hours, your registration will be automatically cancelled and your spot will be released to other attendees.</em>
             </div>
 

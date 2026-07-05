@@ -5,15 +5,15 @@ using Microsoft.Extensions.Options;
 using Xunit;
 using FluentAssertions;
 using Testcontainers.PostgreSql;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Email.Services;
-using LankaConnect.Infrastructure.Data.Repositories;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.ValueObjects;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
+using LankaConnect.SPLIT_PER_ENTITY.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using Serilog;
 using Serilog.Extensions.Logging;
 
@@ -557,5 +557,5 @@ public class TestEmailService : IEmailService
     }
 }
 
-// IEmailTemplateService is already defined in LankaConnect.Application.Common.Interfaces
-// RenderedEmailTemplate is already defined in LankaConnect.Application.Common.Interfaces
+// IEmailTemplateService is already defined in LankaConnect.BuildingBlocks.Application.Common.Interfaces
+// RenderedEmailTemplate is already defined in LankaConnect.BuildingBlocks.Application.Common.Interfaces

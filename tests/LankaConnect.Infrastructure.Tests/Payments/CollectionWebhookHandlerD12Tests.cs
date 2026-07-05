@@ -1,17 +1,17 @@
 using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using FluentAssertions;
 using Xunit;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Domain.Shared.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Infrastructure.Email.Services;
-using LankaConnect.Infrastructure.Payments.Services;
-using LankaConnect.Shared.Email.Contracts;
-using LankaConnect.Shared.Email.Services;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
+using LankaConnect.Modules.Payments.Infrastructure.Services;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

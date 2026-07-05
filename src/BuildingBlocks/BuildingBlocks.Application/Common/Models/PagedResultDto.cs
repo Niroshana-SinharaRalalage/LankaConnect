@@ -2,7 +2,7 @@ namespace LankaConnect.BuildingBlocks.Application.Common.Models;
 
 /// <summary>
 /// Generic paged result DTO. Wave 4.6.c.3 (2026-06-24): extracted from
-/// <c>LankaConnect.Application.Users.DTOs.AdminUserDto.cs</c> so consumers
+/// <c>LankaConnect.Modules.Identity.Application.Users.DTOs.AdminUserDto.cs</c> so consumers
 /// in legacy <c>LankaConnect.Application</c> (UserMappingProfile,
 /// GetSupportTicketsPagedQuery, etc.) can keep referencing it after the
 /// Identity DTOs move to Identity.Application.DTOs. Belongs in Common

@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

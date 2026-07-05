@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Common;
 namespace LankaConnect.Modules.Communications.Application.Queries.GetNewslettersByEvent;
 
 /// <summary>

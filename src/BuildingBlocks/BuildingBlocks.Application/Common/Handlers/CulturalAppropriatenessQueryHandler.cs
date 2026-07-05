@@ -1,8 +1,8 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Common.Queries;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Queries;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.BuildingBlocks.Application.Common.Handlers;
 
 /// <summary>
@@ -192,16 +192,16 @@ public class CulturalAppropriatenessQueryHandler : IQueryHandler<CulturalAppropr
         return analysis;
     }
 
-    private LankaConnect.Application.Common.Queries.AppropriatenessLevel DetermineAppropriatenessLevel(double score)
+    private LankaConnect.BuildingBlocks.Application.Common.Queries.AppropriatenessLevel DetermineAppropriatenessLevel(double score)
     {
         return score switch
         {
-            >= 0.9 => LankaConnect.Application.Common.Queries.AppropriatenessLevel.HighlyAppropriate,
-            >= 0.7 => LankaConnect.Application.Common.Queries.AppropriatenessLevel.Appropriate,
-            >= 0.6 => LankaConnect.Application.Common.Queries.AppropriatenessLevel.MildConcern,
-            >= 0.4 => LankaConnect.Application.Common.Queries.AppropriatenessLevel.ModerateConcern,
-            >= 0.2 => LankaConnect.Application.Common.Queries.AppropriatenessLevel.HighConcern,
-            _ => LankaConnect.Application.Common.Queries.AppropriatenessLevel.Inappropriate
+            >= 0.9 => LankaConnect.BuildingBlocks.Application.Common.Queries.AppropriatenessLevel.HighlyAppropriate,
+            >= 0.7 => LankaConnect.BuildingBlocks.Application.Common.Queries.AppropriatenessLevel.Appropriate,
+            >= 0.6 => LankaConnect.BuildingBlocks.Application.Common.Queries.AppropriatenessLevel.MildConcern,
+            >= 0.4 => LankaConnect.BuildingBlocks.Application.Common.Queries.AppropriatenessLevel.ModerateConcern,
+            >= 0.2 => LankaConnect.BuildingBlocks.Application.Common.Queries.AppropriatenessLevel.HighConcern,
+            _ => LankaConnect.BuildingBlocks.Application.Common.Queries.AppropriatenessLevel.Inappropriate
         };
     }
 

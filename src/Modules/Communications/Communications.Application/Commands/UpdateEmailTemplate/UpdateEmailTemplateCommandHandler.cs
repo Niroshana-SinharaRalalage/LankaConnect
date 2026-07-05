@@ -1,10 +1,10 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Queries.GetEmailTemplateById;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Queries.GetEmailTemplateById;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

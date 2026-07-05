@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Modules.Communications.Domain.Entities;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
 
 /// <summary>
 /// EF Core configuration for EmailGroup entity

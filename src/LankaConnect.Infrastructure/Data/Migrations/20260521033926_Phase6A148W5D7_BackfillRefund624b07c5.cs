@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <summary>
     /// Phase 6A.148.W5.D7: One-off backfill of the operator-observed stuck refund request
@@ -12,7 +12,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     ///
     /// What happened (verified against the Stripe API on 2026-05-20):
     /// During the original approve at 03:35:28 UTC, <c>RefundExecutionService.DispatchAsync</c>
-    /// called Stripe successfully for all 4 lines — Stripe confirms full $234 refunded on
+    /// called Stripe successfully for all 4 lines � Stripe confirms full $234 refunded on
     /// charge <c>ch_3TZ0fsLvfbr023L11evZMfWd</c> (3 refunds) + $150 refunded on charge
     /// <c>ch_3TZ0kaLvfbr023L10rT3xEpE</c> (1 refund). Refund metadata is intact and includes
     /// <c>refund_request_id=624b07c5</c> + the correct <c>refund_type</c> per line.
@@ -24,10 +24,10 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     /// AddOn + 2 Sponsor entities transitioned via webhook (D14 routing works). The
     /// Registration stayed Cancelled with no StripeRefundId. The 4 workflow line items
     /// stayed status=Approved with no stripe_refund_id. <c>ApproveRefundRequestCommandHandler</c>
-    /// swallowed the exception with the (vacuous) "reconciler will retry" comment — but the
+    /// swallowed the exception with the (vacuous) "reconciler will retry" comment � but the
     /// reconciler only scans <c>RegistrationStatus.RefundRequested</c>, not stuck-Approved.
     ///
-    /// This migration mirrors Stripe-side reality into the DB. Pure data-fix — no
+    /// This migration mirrors Stripe-side reality into the DB. Pure data-fix � no
     /// out-of-band Stripe call (money has already moved). Idempotent via guarded WHERE
     /// clauses: re-running on already-reconciled rows is a no-op.
     ///
@@ -141,11 +141,11 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 column: "created_at",
                 value: new DateTime(2026, 5, 21, 3, 39, 22, 947, DateTimeKind.Utc).AddTicks(3296));
 
-            // === W5.D7 Backfill: refund request 624b07c5 → Completed ===
+            // === W5.D7 Backfill: refund request 624b07c5 ? Completed ===
             // Mirrors Stripe-side reality. All UPDATEs are guarded by current-state WHERE
             // clauses so re-running is a no-op.
             migrationBuilder.Sql(@"
--- Line 1 of 4: Ticket $100 → re_3TZ0fsLvfbr023L11vrwuGGu (charge ch_3TZ0fsLvfbr023L11evZMfWd)
+-- Line 1 of 4: Ticket $100 ? re_3TZ0fsLvfbr023L11vrwuGGu (charge ch_3TZ0fsLvfbr023L11evZMfWd)
 UPDATE events.refund_request_line_items
 SET status = 4,
     stripe_refund_id = 're_3TZ0fsLvfbr023L11vrwuGGu',
@@ -155,7 +155,7 @@ SET status = 4,
 WHERE ""Id"" = '68d45a81-6988-443d-a5f8-a2d77b9eaa28'::uuid
   AND status = 1;
 
--- Line 2 of 4: AddOn $14 → re_3TZ0fsLvfbr023L11qndOjfy
+-- Line 2 of 4: AddOn $14 ? re_3TZ0fsLvfbr023L11qndOjfy
 UPDATE events.refund_request_line_items
 SET status = 4,
     stripe_refund_id = 're_3TZ0fsLvfbr023L11qndOjfy',
@@ -165,7 +165,7 @@ SET status = 4,
 WHERE ""Id"" = '23d3380c-8fc8-41f9-b830-3cc690e95a46'::uuid
   AND status = 1;
 
--- Line 3 of 4: Sponsor $150 standalone (own PI) → re_3TZ0kaLvfbr023L103qS9QEo (charge ch_3TZ0kaLvfbr023L10rT3xEpE)
+-- Line 3 of 4: Sponsor $150 standalone (own PI) ? re_3TZ0kaLvfbr023L103qS9QEo (charge ch_3TZ0kaLvfbr023L10rT3xEpE)
 UPDATE events.refund_request_line_items
 SET status = 4,
     stripe_refund_id = 're_3TZ0kaLvfbr023L103qS9QEo',
@@ -175,7 +175,7 @@ SET status = 4,
 WHERE ""Id"" = '3d305342-5b32-4a0b-9cdc-0b97a042f882'::uuid
   AND status = 1;
 
--- Line 4 of 4: Sponsor $120 bundled-at-registration → re_3TZ0fsLvfbr023L11BWCxaO0
+-- Line 4 of 4: Sponsor $120 bundled-at-registration ? re_3TZ0fsLvfbr023L11BWCxaO0
 UPDATE events.refund_request_line_items
 SET status = 4,
     stripe_refund_id = 're_3TZ0fsLvfbr023L11BWCxaO0',
@@ -185,7 +185,7 @@ SET status = 4,
 WHERE ""Id"" = 'efab9e72-f3d9-439a-bdc7-78655e01d92d'::uuid
   AND status = 1;
 
--- Roll up: refund request 624b07c5 → Completed (status=3)
+-- Roll up: refund request 624b07c5 ? Completed (status=3)
 UPDATE events.refund_requests
 SET status = 3,
     completed_at = NOW() AT TIME ZONE 'UTC',
@@ -193,7 +193,7 @@ SET status = 3,
 WHERE ""Id"" = '624b07c5-71b4-4b55-adcd-114a1a195e33'::uuid
   AND status = 1;
 
--- Registration 4d030697 → Refunded. StripeRefundId carries the ticket refund as the
+-- Registration 4d030697 ? Refunded. StripeRefundId carries the ticket refund as the
 -- 'primary' Stripe id (matches today's single-refund-id schema on the registration row).
 -- AddOnRefundAmount captures the $14 add-on refund total. Sponsor entities track their
 -- own refund_at independently.

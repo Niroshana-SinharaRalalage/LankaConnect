@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 /// <summary>

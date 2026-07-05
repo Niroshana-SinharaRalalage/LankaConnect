@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.Domain.Business.ValueObjects;
 

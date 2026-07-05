@@ -1,6 +1,6 @@
 using System.Reflection;
 using FluentAssertions;
-using LankaConnect.Infrastructure.Email.Services;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 using Xunit;
 
 namespace LankaConnect.Infrastructure.Tests.Email.Services;

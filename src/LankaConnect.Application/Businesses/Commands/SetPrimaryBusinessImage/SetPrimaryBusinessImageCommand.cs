@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 
 namespace LankaConnect.Application.Businesses.Commands.SetPrimaryBusinessImage;

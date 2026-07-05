@@ -1,10 +1,10 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using System.Diagnostics;
 using Hangfire;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.BackgroundJobs;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.BackgroundJobs;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Modules.Communications.Application.Commands.SendNewsletter;

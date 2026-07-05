@@ -1,7 +1,7 @@
 using LankaConnect.Modules.Communications.Domain.Entities;
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.SPLIT_PER_ENTITY;
 using LankaConnect.Modules.Forms.Infrastructure.Data;
 using LankaConnect.Modules.Media.Infrastructure.Data;
 using LankaConnect.Modules.Notifications.Infrastructure.Data;
@@ -110,37 +110,37 @@ public sealed class IAuditableIgnoreCoverageTests
         // Wave4.9.2.1 Phase 1.1 (2026-06-08): identity.users
         typeof(LankaConnect.Modules.Identity.Domain.Entities.User),
         // Wave4.9.2.2 Phase 1.2 (2026-06-08): reference_data.state_tax_rates
-        typeof(LankaConnect.Domain.Tax.StateTaxRate),
+        typeof(LankaConnect.Modules.Payments.Domain.Tax.StateTaxRate),
         // Wave4.9.2.3 Phase 1.3 (2026-06-08): badges.badges + badges.event_badges
-        typeof(LankaConnect.Domain.Badges.Badge),
+        typeof(LankaConnect.Products.LankaEvents.Domain.Badges.Badge),
         typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge),
         // Wave4.9.2.4 Phase 1.4 (2026-06-08): business.businesses + services + reviews
         typeof(LankaConnect.Domain.Business.Business),
         typeof(LankaConnect.Domain.Business.Service),
         typeof(LankaConnect.Domain.Business.Review),
         // Wave4.9.2.5 Phase 1.5 (2026-06-09): community.topics + community.replies
-        typeof(LankaConnect.Domain.Community.ForumTopic),
-        typeof(LankaConnect.Domain.Community.Reply),
+        typeof(LankaConnect.Modules.Communications.Domain.Community.ForumTopic),
+        typeof(LankaConnect.Modules.Communications.Domain.Community.Reply),
         // Wave4.9.2.6 Phase 1.6 (2026-06-09): analytics.event_analytics
-        typeof(LankaConnect.Domain.Analytics.EventAnalytics),
+        typeof(LankaConnect.Products.LankaEvents.Domain.Analytics.EventAnalytics),
         // Wave4.9.2.7 Phase 1.7 (2026-06-09): communications email-side subset (8 entities)
-        typeof(LankaConnect.Domain.Communications.Entities.EmailDispatchLog),
-        typeof(LankaConnect.Domain.Communications.Entities.EmailFailureDetail),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailFailureDetail),
         typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailGroup),
-        typeof(LankaConnect.Domain.Communications.Entities.EmailMessage),
-        typeof(LankaConnect.Domain.Communications.Entities.EmailMetricRecord),
-        typeof(LankaConnect.Domain.Communications.Entities.EmailTemplate),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailMessage),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailMetricRecord),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailTemplate),
         typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventNotificationHistory),
-        typeof(LankaConnect.Domain.Communications.Entities.UserEmailPreferences),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.UserEmailPreferences),
         // Wave4.9.2.8 Phase 1.8 (2026-06-09): communications newsletter subset
-        typeof(LankaConnect.Domain.Communications.Entities.Newsletter),
-        typeof(LankaConnect.Domain.Communications.Entities.NewsletterEmailHistory),
-        typeof(LankaConnect.Domain.Communications.Entities.NewsletterSubscriber),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.Newsletter),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.NewsletterEmailHistory),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.NewsletterSubscriber),
         // Wave4.9.2.9 Phase 1.9 (2026-06-09): communications whatsapp subset
-        typeof(LankaConnect.Domain.Communications.Entities.UserWhatsAppPreferences),
-        typeof(LankaConnect.Domain.Communications.Entities.WhatsAppMessageRecord),
-        typeof(LankaConnect.Domain.Communications.Entities.WhatsAppTemplate),
-        typeof(LankaConnect.Domain.Communications.Entities.WhatsAppWebhookEvent),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.UserWhatsAppPreferences),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.WhatsAppMessageRecord),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.WhatsAppTemplate),
+        typeof(LankaConnect.Modules.Communications.Domain.Entities.WhatsAppWebhookEvent),
         // Wave4.9.2.10a Phase 1.10a (2026-06-09): events schema - Event aggregate proper (10 entities)
         typeof(LankaConnect.Products.LankaEvents.Domain.Event),
         typeof(LankaConnect.Products.LankaEvents.Domain.Registration),

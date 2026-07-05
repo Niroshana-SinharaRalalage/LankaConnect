@@ -2,10 +2,10 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using LankaConnect.Application.Analytics.Commands.RecordEventView;
-using LankaConnect.Domain.Analytics;
+using LankaConnect.Products.LankaEvents.Application.Analytics.Commands.RecordEventView;
+using LankaConnect.Products.LankaEvents.Domain.Analytics;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.Application.Tests.Analytics.Commands;
 

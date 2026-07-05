@@ -1,10 +1,10 @@
 using LankaConnect.Application.Businesses.Commands.UpdateBusiness;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Domain.Business;
-using LankaConnect.Domain.Common;
-using LankaConnect.Application.Common.Exceptions;
-using LankaConnect.Domain.Common.Exceptions;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Application.Common.Exceptions;
+using LankaConnect.BuildingBlocks.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Tests.Businesses.Commands;

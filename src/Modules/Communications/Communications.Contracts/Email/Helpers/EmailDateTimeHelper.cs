@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.Email.Helpers;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 
 /// <summary>
 /// Phase 6A.97: Helper for consistent date/time formatting in emails.

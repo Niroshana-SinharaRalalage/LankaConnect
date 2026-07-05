@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using FluentAssertions;
-using LankaConnect.Domain.Common.Database;
+using LankaConnect.BuildingBlocks.Domain.Database;
 using LankaConnect.Infrastructure.Database.LoadBalancing;
 using Microsoft.Extensions.Logging;
 using Moq;

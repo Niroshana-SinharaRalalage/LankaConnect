@@ -15,8 +15,8 @@ using LankaConnect.Products.LankaEvents.Application.Queries.GetEventSponsors;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetPublicEventSponsors;  // Phase 6A.150
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Domain.Shared.Enums;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

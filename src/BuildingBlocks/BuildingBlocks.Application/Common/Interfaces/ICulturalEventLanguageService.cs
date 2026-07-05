@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LankaConnect.Application.Common.Models.MultiLanguage;
-using LankaConnect.Application.Common.Models.Performance;
-using LankaConnect.Domain.Common.Database;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
+using LankaConnect.BuildingBlocks.Domain.Database;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>
@@ -23,7 +23,7 @@ public interface ICulturalEventLanguageService
     /// <param name="userId">User identifier for personalized boost calculation</param>
     /// <param name="eventContext">Cultural event context and intensity</param>
     /// <returns>Event-specific language boost configuration</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.CulturalEventLanguageBoost> CalculateCulturalEventLanguageBoostAsync(Guid userId, CulturalEventContext eventContext);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.CulturalEventLanguageBoost> CalculateCulturalEventLanguageBoostAsync(Guid userId, CulturalEventContext eventContext);
 
     /// <summary>
     /// Handle multiple overlapping cultural events with conflict resolution
@@ -32,7 +32,7 @@ public interface ICulturalEventLanguageService
     /// <param name="userId">User identifier</param>
     /// <param name="overlappingEvents">List of concurrent cultural events</param>
     /// <returns>Conflict resolution strategy with language priorities</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.MultiCulturalEventResolution> ResolveMultiCulturalEventConflictsAsync(Guid userId, List<LankaConnect.Domain.Common.Database.CulturalEvent> overlappingEvents);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.MultiCulturalEventResolution> ResolveMultiCulturalEventConflictsAsync(Guid userId, List<LankaConnect.BuildingBlocks.Domain.Database.CulturalEvent> overlappingEvents);
 
     /// <summary>
     /// Predict language preferences based on upcoming cultural events
@@ -41,7 +41,7 @@ public interface ICulturalEventLanguageService
     /// <param name="userId">User identifier</param>
     /// <param name="predictionPeriod">Timespan for prediction analysis</param>
     /// <returns>Predicted language preferences with event timeline</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.CulturalEventLanguagePrediction> PredictCulturalEventLanguagePreferencesAsync(Guid userId, TimeSpan predictionPeriod);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.CulturalEventLanguagePrediction> PredictCulturalEventLanguagePreferencesAsync(Guid userId, TimeSpan predictionPeriod);
 
     /// <summary>
     /// Optimize language routing during cultural event traffic surges
@@ -50,8 +50,8 @@ public interface ICulturalEventLanguageService
     /// <param name="culturalEvents">Active cultural events affecting routing</param>
     /// <param name="trafficMultipliers">Expected traffic increases per community</param>
     /// <returns>Optimized routing configuration for cultural events</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.CulturalEventRoutingOptimization> OptimizeCulturalEventLanguageRoutingAsync(
-        List<LankaConnect.Domain.Common.Database.CulturalEvent> culturalEvents,
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.CulturalEventRoutingOptimization> OptimizeCulturalEventLanguageRoutingAsync(
+        List<LankaConnect.BuildingBlocks.Domain.Database.CulturalEvent> culturalEvents,
         Dictionary<CommunityType, decimal> trafficMultipliers);
 
     /// <summary>
@@ -60,7 +60,7 @@ public interface ICulturalEventLanguageService
     /// </summary>
     /// <param name="eventAnalysisRequest">Cultural event analysis parameters</param>
     /// <returns>Language analytics specific to cultural events and communities</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.CulturalEventLanguageAnalytics> GenerateCulturalEventLanguageAnalyticsAsync(LankaConnect.Application.Common.Models.MultiLanguage.CulturalEventAnalysisRequest eventAnalysisRequest);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.CulturalEventLanguageAnalytics> GenerateCulturalEventLanguageAnalyticsAsync(LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.CulturalEventAnalysisRequest eventAnalysisRequest);
 
     /// <summary>
     /// Validate cultural event language routing effectiveness
@@ -69,8 +69,8 @@ public interface ICulturalEventLanguageService
     /// <param name="culturalEvent">Cultural event to validate</param>
     /// <param name="validationPeriod">Period for effectiveness analysis</param>
     /// <returns>Validation metrics including performance and cultural accuracy</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.CulturalEventLanguageValidation> ValidateCulturalEventLanguageEffectivenessAsync(
-        LankaConnect.Domain.Common.Database.CulturalEvent culturalEvent,
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.CulturalEventLanguageValidation> ValidateCulturalEventLanguageEffectivenessAsync(
+        LankaConnect.BuildingBlocks.Domain.Database.CulturalEvent culturalEvent,
         TimeSpan validationPeriod);
 
     /// <summary>
@@ -79,7 +79,7 @@ public interface ICulturalEventLanguageService
     /// </summary>
     /// <param name="activeCulturalEvents">Currently active cultural events</param>
     /// <returns>Real-time metrics including latency, accuracy, and cultural appropriateness</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.CulturalEventLanguageMetrics> GetRealTimeCulturalEventMetricsAsync(List<LankaConnect.Domain.Common.Database.CulturalEvent> activeCulturalEvents);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.CulturalEventLanguageMetrics> GetRealTimeCulturalEventMetricsAsync(List<LankaConnect.BuildingBlocks.Domain.Database.CulturalEvent> activeCulturalEvents);
 
     /// <summary>
     /// Pre-warm caches for anticipated cultural event language demands
@@ -88,7 +88,7 @@ public interface ICulturalEventLanguageService
     /// <param name="upcomingEvents">Cultural events requiring cache preparation</param>
     /// <param name="communityDistribution">Expected community engagement patterns</param>
     /// <returns>Cache warming result with readiness status</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.CulturalEventCacheWarmingResult> PreWarmCulturalEventLanguageCachesAsync(
-        List<LankaConnect.Domain.Common.Database.CulturalEvent> upcomingEvents,
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.CulturalEventCacheWarmingResult> PreWarmCulturalEventLanguageCachesAsync(
+        List<LankaConnect.BuildingBlocks.Domain.Database.CulturalEvent> upcomingEvents,
         Dictionary<CommunityType, decimal> communityDistribution);
 }

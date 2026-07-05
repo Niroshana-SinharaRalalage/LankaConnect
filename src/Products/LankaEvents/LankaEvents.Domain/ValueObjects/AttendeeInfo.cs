@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 public class AttendeeInfo : ValueObject

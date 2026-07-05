@@ -5,7 +5,7 @@ using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Business.Enums;
 using System.Text.Json;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
 
 public class ReviewConfiguration : IEntityTypeConfiguration<Review>
 {

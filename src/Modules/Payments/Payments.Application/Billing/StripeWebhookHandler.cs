@@ -1,10 +1,10 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Billing;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Common.Monitoring;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Shared;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Payments.Domain.Billing;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Domain.Monitoring;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using MediatR;
 namespace LankaConnect.Modules.Payments.Application.Billing;
@@ -298,7 +298,7 @@ public class StripeWebhookHandler : IStripeWebhookHandler
             // Track usage internally for analytics
             await _usageTrackingService.TrackUsageAsync(new CulturalAPIUsage(
                 new APIKey(usageData.ApiKey, APIKeyTier.Professional, UserId.Create(usageData.UserId).Value),
-                LankaConnect.Domain.Billing.BillingEndpoint.BuddhistCalendar(usageData.Endpoint),
+                LankaConnect.Modules.Payments.Domain.Billing.BillingEndpoint.BuddhistCalendar(usageData.Endpoint),
                 new UsageCost(usageData.Amount, 1.0m, Currency.USD(), CostBreakdown.Create(usageData.Amount, 1.0m, 0.0m)),
                 new CulturalComplexityScore(50, Array.Empty<ComplexityFactor>()),
                 UsageMetadata.Create(usageData.Id, usageData.ClientId)

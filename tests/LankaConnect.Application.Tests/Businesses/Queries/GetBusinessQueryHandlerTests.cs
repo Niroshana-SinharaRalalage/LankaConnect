@@ -1,7 +1,7 @@
 using AutoMapper;
 using LankaConnect.Application.Businesses.Common;
 using LankaConnect.Application.Businesses.Queries.GetBusiness;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Domain.Business;
 

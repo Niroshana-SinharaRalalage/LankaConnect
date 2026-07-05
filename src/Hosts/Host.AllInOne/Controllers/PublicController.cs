@@ -2,7 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Dashboard.Queries.GetCommunityStats;
+using LankaConnect.Hosts.AllInOne.Dashboard.Queries.GetCommunityStats;
 namespace LankaConnect.Host.AllInOne.Controllers;
 
 /// <summary>

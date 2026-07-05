@@ -1,6 +1,6 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Modules.Communications.Application.Queries.GetUserEmailPreferences;
 
 /// <summary>

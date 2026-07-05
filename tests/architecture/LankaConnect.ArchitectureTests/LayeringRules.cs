@@ -235,8 +235,8 @@ public sealed class LayeringRules
     ///
     /// W5.3d.2 (2026-06-12) — also relaxed `LankaConnect.Shared` because the
     /// 4 FormResponse* EventHandlers moved into this assembly carry
-    /// LankaConnect.Shared.Email.{Contracts,Helpers,Services} and
-    /// LankaConnect.Shared.WhatsApp.Contracts usings — that namespace is the
+    /// LankaConnect.Modules.Communications.Contracts.Email.{Contracts,Helpers,Services} and
+    /// LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts usings — that namespace is the
     /// horizontal/utility email + WhatsApp templating kernel shared across
     /// every module today. Add `"LankaConnect.Shared"` back to the ban list
     /// once BuildingBlocks.Shared (or a Communications.Contracts elevation)
@@ -319,7 +319,7 @@ public sealed class LayeringRules
     {
         // W3.4 transitional (2026-06-03): LankaConnect.Infrastructure is INTENTIONALLY
         // allowed here because the moved NotificationRepository still extends
-        // LankaConnect.Infrastructure.Data.Repositories.Repository<T> and injects
+        // LankaConnect.SPLIT_PER_ENTITY.Repositories.Repository<T> and injects
         // AppDbContext. The legacy LankaConnect.Domain / LankaConnect.Application
         // edges persist from W3.2 / W3.4 (BaseEntity + IRepository<T> elevation pending).
         // Re-tighten this rule once the BuildingBlocks elevation lands.
@@ -443,8 +443,8 @@ public sealed class LayeringRules
     /// Wave 4.6.c.1 (2026-06-24) — additionally relaxed
     /// <c>LankaConnect.Shared</c> because the 5 moved Auth command handlers
     /// (LoginUser / LoginWithEntra / LogoutUser / RefreshToken / RegisterUser)
-    /// import LankaConnect.Shared.Email.Contracts (welcome + verification emails)
-    /// + LankaConnect.Shared.WhatsApp.Contracts (no Shared.Email ref in the 5
+    /// import LankaConnect.Modules.Communications.Contracts.Email.Contracts (welcome + verification emails)
+    /// + LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts (no Shared.Email ref in the 5
     /// today, but the EntraExternalIdService adapter consumed at 4.6.c.5 will
     /// hit Shared). Re-tighten once Shared.Email/WhatsApp elevate to BB.
     /// </summary>
@@ -472,7 +472,7 @@ public sealed class LayeringRules
     /// Wave 4.6.a (2026-06-24) — Identity.Contracts module boundary.
     /// Mirrors Modules_Payments_Contracts + Modules_Communications_Contracts
     /// + Modules_Forms_Contracts. Hosts the moved ICurrentUserService
-    /// (relocated from LankaConnect.Application.Common.Interfaces per
+    /// (relocated from LankaConnect.BuildingBlocks.Application.Common.Interfaces per
     /// architect Risk #2 Option C). Identity.Contracts depends ONLY on
     /// BuildingBlocks.Contracts -- accidental ProjectReference additions
     /// here would couple consumers via implementation detail.
@@ -624,8 +624,8 @@ public sealed class LayeringRules
     /// primitives AND the refund services land in Payments.Application.
     /// Wave 4.4.c.3 (2026-06-23) — additionally relaxed
     /// <c>LankaConnect.Shared</c> because the 17 moved Payment / Refund event
-    /// handlers import LankaConnect.Shared.Email.{Contracts,Helpers,Services}
-    /// + LankaConnect.Shared.WhatsApp.Contracts. Mirrors W5.4.c.1 Shared
+    /// handlers import LankaConnect.Modules.Communications.Contracts.Email.{Contracts,Helpers,Services}
+    /// + LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts. Mirrors W5.4.c.1 Shared
     /// relaxation. Re-tighten once Shared.Email + Shared.WhatsApp Contracts
     /// elevate into BuildingBlocks or a dedicated module.
     /// </summary>
@@ -715,7 +715,7 @@ public sealed class LayeringRules
     /// ICommand / ICommandHandler / ICurrentUserService / IUnitOfWork that
     /// still live there until BuildingBlocks.Application owns those primitives.
     /// W5.4.c.1 also relaxed `LankaConnect.Shared` because the moved handlers
-    /// import LankaConnect.Shared.Email.{Contracts,Helpers,Services} — same
+    /// import LankaConnect.Modules.Communications.Contracts.Email.{Contracts,Helpers,Services} — same
     /// transitional rationale as the Forms 5.3d.2 hotfix.
     /// Re-tighten all three (Domain + Application + Shared) once the matching
     /// W5.4.d.2 / BB elevation passes land.
@@ -742,7 +742,7 @@ public sealed class LayeringRules
 
     /// <summary>
     /// W5.4.d.2 (2026-06-22). Relaxed `LankaConnect.Infrastructure` from the ban
-    /// list. EmailGroupRepository extends LankaConnect.Infrastructure.Data.
+    /// list. EmailGroupRepository extends LankaConnect.SPLIT_PER_ENTITY.
     /// Repositories.Repository&lt;T&gt; base and injects AppDbContext directly during
     /// the transitional window (no separate CommunicationsDbContext in W5.4).
     /// Mirrors the W3.4 Notifications.Infrastructure relaxation. Same with
@@ -1003,7 +1003,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnFormsDomain()
     {
-        var assembly = typeof(LankaConnect.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.IApplicationDbContext).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()
@@ -1035,7 +1035,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnCommunicationsDomain()
     {
-        var assembly = typeof(LankaConnect.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.IApplicationDbContext).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()
@@ -1111,7 +1111,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnPaymentsDomain()
     {
-        var assembly = typeof(LankaConnect.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.IApplicationDbContext).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()
@@ -1180,7 +1180,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnIdentityDomain()
     {
-        var assembly = typeof(LankaConnect.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.IApplicationDbContext).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()

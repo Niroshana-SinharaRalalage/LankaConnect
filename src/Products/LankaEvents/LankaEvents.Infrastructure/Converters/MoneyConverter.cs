@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 using System.Text.Json;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Converters;
 
 /// <summary>
 /// EF Core value converter for nullable <see cref="Money"/> value objects, backed
 /// by a JSON string column. Mirrors the legacy
-/// <c>LankaConnect.Infrastructure.Data.Converters.MoneyConverter</c> — Wave 6.5.e
+/// <c>LankaConnect.SPLIT_PER_ENTITY.Converters.MoneyConverter</c> — Wave 6.5.e
 /// (2026-07-03) relocated the LankaEvents EF configurations into
 /// <c>Products.LankaEvents.Infrastructure</c>; keeping the converter alongside
 /// them avoids re-taking a transitional dependency on the legacy Data namespace

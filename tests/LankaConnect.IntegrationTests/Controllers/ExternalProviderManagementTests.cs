@@ -10,7 +10,7 @@ using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.IntegrationTests.Common;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
-using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.IntegrationTests.Controllers;
 

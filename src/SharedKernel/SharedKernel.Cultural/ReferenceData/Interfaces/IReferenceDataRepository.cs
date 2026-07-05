@@ -1,4 +1,4 @@
-using LankaConnect.Domain.ReferenceData.Entities;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
 namespace LankaConnect.SharedKernel.Cultural.ReferenceData.Interfaces;
 
 /// <summary>

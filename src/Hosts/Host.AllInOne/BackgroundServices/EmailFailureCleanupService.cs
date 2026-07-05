@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Domain.Entities;
 namespace LankaConnect.Host.AllInOne.BackgroundServices;
 
 /// <summary>

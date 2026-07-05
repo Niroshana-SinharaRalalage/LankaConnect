@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
-using LankaConnect.Infrastructure.Email.Services;
-using LankaConnect.Infrastructure.Email.Configuration;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
 using System.Text;
 
 namespace LankaConnect.Infrastructure.Tests.Email.Services;

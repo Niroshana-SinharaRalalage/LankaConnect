@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.SPLIT_PER_ENTITY;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 

@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Community;
-using LankaConnect.Domain.Community.Enums;
+using LankaConnect.Modules.Communications.Domain.Community;
+using LankaConnect.Modules.Communications.Domain.Community.Enums;
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
 
 /// <summary>
 /// Repository implementation for ForumTopic entity

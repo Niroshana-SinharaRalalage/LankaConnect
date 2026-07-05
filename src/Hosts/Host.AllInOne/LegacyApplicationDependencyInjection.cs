@@ -3,15 +3,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MediatR;
 using FluentValidation;
-using LankaConnect.Application.Common.Behaviors;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Common.Options;
+using LankaConnect.BuildingBlocks.Application.Common.Behaviors;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Options;
 // W5.2.d (2026-06-28): Events.Services moved to Products.LankaEvents.Application.Services.
 // The 5 Event-specific service registrations (LayoutAuthorizationService,
 // StructuralEditGuard, SeatAssignmentValidator, LayoutMetrics, SeatHoldMetrics)
 // move from this file to LankaEventsModule.AddLankaEventsModule(). No using directive
 // needed here for those types anymore.
-using LankaConnect.Application.ReferenceData.Services;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Services;
 namespace LankaConnect.Host.AllInOne;
 
 public static class DependencyInjection

@@ -1,7 +1,7 @@
 using LankaConnect.Modules.Communications.Domain.Entities;
 using FluentAssertions;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Domain.Communications;

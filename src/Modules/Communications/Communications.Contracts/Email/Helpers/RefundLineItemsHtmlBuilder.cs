@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Text;
-using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
-namespace LankaConnect.Shared.Email.Helpers;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 
 /// <summary>
 /// Phase 6A.148.D7: Renders the per-line refund table HTML for email bodies.

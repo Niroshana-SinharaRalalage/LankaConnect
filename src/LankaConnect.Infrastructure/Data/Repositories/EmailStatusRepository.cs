@@ -1,11 +1,11 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using System.Diagnostics;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
 
 /// <summary>
 /// Email status repository that delegates to EmailMessageRepository

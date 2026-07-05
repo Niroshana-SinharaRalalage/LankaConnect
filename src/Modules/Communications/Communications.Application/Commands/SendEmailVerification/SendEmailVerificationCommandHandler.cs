@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Contracts;
 using Serilog.Context;
 namespace LankaConnect.Modules.Communications.Application.Commands.SendEmailVerification;

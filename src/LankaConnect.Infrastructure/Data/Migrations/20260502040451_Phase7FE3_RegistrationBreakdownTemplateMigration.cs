@@ -1,10 +1,10 @@
-﻿using System;
-using LankaConnect.Infrastructure.Data.Migrations.Resources;
+using System;
+using LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <summary>
     /// Phase 7F-E.3 (architect-approved 2026-05-01): UPDATE 5 email templates so they
@@ -16,7 +16,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     /// - 4 anchored templates have their inner <c>&lt;!-- attendee-block-7e --&gt;</c>
     ///   block replaced with the new structured token (free-confirmation, cancellation,
     ///   reminder, attendees-added).
-    /// - 1 template (paid-with-ticket) gains a NEW anchor block — fixes the user-
+    /// - 1 template (paid-with-ticket) gains a NEW anchor block � fixes the user-
     ///   reported gap where paid-event emails had no per-tier breakdown at all.
     ///
     /// HTML loaded from embedded resources via <see cref="Phase7FETemplates.LoadHtml"/>
@@ -24,7 +24,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     /// <c>communications.email_template_backups</c> for rollback.
     ///
     /// NB: this auto-generated migration also includes <c>UpdateData</c> calls on
-    /// <c>reference_data.reference_values.created_at</c> — those are EF Core artefact
+    /// <c>reference_data.reference_values.created_at</c> � those are EF Core artefact
     /// noise from drift between snapshots. They're idempotent timestamp shuffles and
     /// cause no functional change.
     /// </summary>
@@ -78,7 +78,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 ");
             }
 
-            // ─── Auto-scaffolded reference_data drift below — preserved as-is ───
+            // --- Auto-scaffolded reference_data drift below � preserved as-is ---
             migrationBuilder.UpdateData(
                 schema: "reference_data",
                 table: "reference_values",
@@ -179,7 +179,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Restore each template's pre-7F-E.3 body from the backup table. Idempotent — if the
+            // Restore each template's pre-7F-E.3 body from the backup table. Idempotent � if the
             // backup row is missing (e.g. it was manually deleted), the UPDATE simply does nothing.
             foreach (var templateName in TemplateNames)
             {

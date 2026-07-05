@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Shared.Email.Contracts;
-using LankaConnect.Shared.Email.Services;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

@@ -1,9 +1,9 @@
-ï»¿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     public partial class AddSeatingDomainExpansion : Migration
@@ -311,7 +311,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 principalColumn: "Id",
                 onDelete: ReferentialAction.Cascade);
 
-            // Slice 2+3A (architect decision #13): enforce XOR at the DB level â€”
+            // Slice 2+3A (architect decision #13): enforce XOR at the DB level —
             // a seat belongs to exactly ONE parent (zone OR table), never both,
             // never neither. Domain factories guard the same invariant; this CHECK
             // is the last line of defence against hand-written SQL / future bugs.
@@ -325,7 +325,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Drop XOR CHECK constraint first â€” it references the zone_id / table_id columns.
+            // Drop XOR CHECK constraint first — it references the zone_id / table_id columns.
             migrationBuilder.Sql("ALTER TABLE events.seats DROP CONSTRAINT IF EXISTS ck_seats_zone_xor_table;");
 
             migrationBuilder.DropForeignKey(

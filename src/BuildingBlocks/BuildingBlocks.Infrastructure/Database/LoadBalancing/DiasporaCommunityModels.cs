@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Application.Common.Models.Business;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Business;
 namespace LankaConnect.BuildingBlocks.Infrastructure.Database.LoadBalancing;
 
 /// <summary>

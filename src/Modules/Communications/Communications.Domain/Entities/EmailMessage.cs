@@ -1,9 +1,9 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Communications.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
-using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using UserEmail = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 public class EmailMessage : LegacyBaseEntity

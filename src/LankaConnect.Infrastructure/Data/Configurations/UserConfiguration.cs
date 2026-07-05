@@ -7,7 +7,7 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Enums;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
 
 public class UserConfiguration : IEntityTypeConfiguration<User>
 {

@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using LankaConnect.Application.Communications.Common;
-using LankaConnect.Application.Communications.Commands.SubscribeToNewsletter;
-using LankaConnect.Application.Communications.Commands.ConfirmNewsletterSubscription;
-using LankaConnect.Application.Communications.Commands.UnsubscribeFromNewsletter;
+using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.Modules.Communications.Application.Commands.SubscribeToNewsletter;
+using LankaConnect.Modules.Communications.Application.Commands.ConfirmNewsletterSubscription;
+using LankaConnect.Modules.Communications.Application.Commands.UnsubscribeFromNewsletter;
 namespace LankaConnect.Modules.Communications.Api.Controllers;
 
 /// <summary>

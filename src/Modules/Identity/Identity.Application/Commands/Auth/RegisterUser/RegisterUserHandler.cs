@@ -2,24 +2,24 @@ using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Commands.SendEmailVerification;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Commands.SendEmailVerification;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 
 public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<RegisterUserResponse>>
 {
     private readonly LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository _userRepository;
     private readonly IPasswordHashingService _passwordHashingService;
-    private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
+    private readonly LankaConnect.BuildingBlocks.Domain.IUnitOfWork _unitOfWork;
     private readonly ILogger<RegisterUserHandler> _logger;
     private readonly IMediator _mediator;
     private readonly IUserWhatsAppPreferencesRepository _whatsAppPreferencesRepository;
@@ -27,7 +27,7 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
     public RegisterUserHandler(
         IUserRepository userRepository,
         IPasswordHashingService passwordHashingService,
-        LankaConnect.Domain.Common.IUnitOfWork unitOfWork,
+        LankaConnect.BuildingBlocks.Domain.IUnitOfWork unitOfWork,
         ILogger<RegisterUserHandler> logger,
         IMediator mediator,
         IUserWhatsAppPreferencesRepository whatsAppPreferencesRepository)
@@ -56,7 +56,7 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
             try
             {
                 // Create email value object
-                var emailResult = LankaConnect.Domain.Shared.ValueObjects.Email.Create(request.Email);
+                var emailResult = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create(request.Email);
                 if (!emailResult.IsSuccess)
                 {
                     stopwatch.Stop();

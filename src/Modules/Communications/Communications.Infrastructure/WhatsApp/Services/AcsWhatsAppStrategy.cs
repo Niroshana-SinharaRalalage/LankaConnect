@@ -1,9 +1,9 @@
 using Azure;
 using Azure.Communication.Messages;
 using Azure.Communication.Messages.Models.Channels;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Infrastructure.WhatsApp.Configuration;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Infrastructure.WhatsApp.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;

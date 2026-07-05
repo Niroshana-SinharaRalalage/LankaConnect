@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Support.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Domain.Support.Enums;
 namespace LankaConnect.Modules.Communications.Application.Support.Commands.UpdateSupportTicketStatus;
 
 /// <summary>

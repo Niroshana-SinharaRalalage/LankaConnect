@@ -83,7 +83,7 @@ public static class LankaEventsModule
         services.AddScoped<ISeatHoldMetrics, SeatHoldMetrics>();
 
         // W5.3.a1 (2026-06-28): first Infrastructure repo relocated to Products.
-        // MetroAreaRepository moved from LankaConnect.Infrastructure.Data.Repositories
+        // MetroAreaRepository moved from LankaConnect.SPLIT_PER_ENTITY.Repositories
         // to Products/LankaEvents.Infrastructure/Repositories. Same AppDbContext, same
         // Repository<T> base, same SQL — only the assembly + DI registration site
         // changed. Proves the cross-module DI pattern for W5.3.a2 (bulk leaves) +
@@ -151,7 +151,7 @@ public static class LankaEventsModule
     /// <c>IIntegrationEventOutbox&lt;LankaEventsDbContext&gt;</c> adapter is
     /// registered by the composition root
     /// (<c>LankaConnect.API.Program.cs</c>) because it depends on the legacy
-    /// <c>LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox&lt;T&gt;</c>
+    /// <c>LankaConnect.BuildingBlocks.Infrastructure.Outbox.IntegrationEventOutbox&lt;T&gt;</c>
     /// concrete — matching the Media + Notifications pattern.
     /// </summary>
     private static void AddLankaEventsDbContext(IServiceCollection services, IConfiguration configuration)

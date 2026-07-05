@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using Hangfire;
-using LankaConnect.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using MediatR;

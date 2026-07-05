@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Badges.Enums;
+using LankaConnect.Products.LankaEvents.Domain.Badges.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
 
 /// <summary>

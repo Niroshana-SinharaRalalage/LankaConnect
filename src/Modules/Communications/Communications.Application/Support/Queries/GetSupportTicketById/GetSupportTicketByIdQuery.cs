@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Support.DTOs;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Support.DTOs;
 namespace LankaConnect.Modules.Communications.Application.Support.Queries.GetSupportTicketById;
 
 /// <summary>

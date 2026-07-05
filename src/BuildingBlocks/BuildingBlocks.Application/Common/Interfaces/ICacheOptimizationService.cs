@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LankaConnect.Application.Common.Models.Performance;
-using LankaConnect.Application.Common.Models.MultiLanguage;
-using LankaConnect.Application.Common.Models;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
+using LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>
@@ -30,8 +30,8 @@ public interface ICacheOptimizationService
     /// <param name="culturalEvents">Upcoming cultural events</param>
     /// <param name="expectedTrafficMultiplier">Traffic increase multiplier (e.g., 5x for Vesak)</param>
     /// <returns>Cache pre-warming strategy and status</returns>
-    Task<LankaConnect.Application.Common.Models.MultiLanguage.CachePreWarmingResult> PreWarmCachesForCulturalEventsAsync(
-        List<LankaConnect.Domain.Common.Database.PerformanceCulturalEvent> culturalEvents,
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage.CachePreWarmingResult> PreWarmCachesForCulturalEventsAsync(
+        List<LankaConnect.BuildingBlocks.Domain.Database.PerformanceCulturalEvent> culturalEvents,
         decimal expectedTrafficMultiplier);
 
     /// <summary>
@@ -41,7 +41,7 @@ public interface ICacheOptimizationService
     /// <param name="affectedUserIds">User IDs affected by profile changes</param>
     /// <param name="cacheInvalidationStrategy">Strategy for cache invalidation</param>
     /// <returns>Cache invalidation and refresh status</returns>
-    Task<LankaConnect.Application.Common.Models.CacheInvalidationResult> RefreshLanguageRoutingCachesAsync(
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.CacheInvalidationResult> RefreshLanguageRoutingCachesAsync(
         List<Guid> affectedUserIds,
-        LankaConnect.Application.Common.Models.CacheInvalidationStrategy cacheInvalidationStrategy);
+        LankaConnect.BuildingBlocks.Application.Common.Models.CacheInvalidationStrategy cacheInvalidationStrategy);
 }

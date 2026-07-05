@@ -1,5 +1,5 @@
 using FluentValidation;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Modules.Communications.Application.Commands.SubscribeToNewsletter;
 
 /// <summary>

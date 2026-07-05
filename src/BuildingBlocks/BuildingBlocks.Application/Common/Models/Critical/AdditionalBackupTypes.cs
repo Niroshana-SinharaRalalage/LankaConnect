@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Critical;
 
 /// <summary>

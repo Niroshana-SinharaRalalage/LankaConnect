@@ -1,11 +1,11 @@
 using FluentAssertions;
 using LankaConnect.Application.Businesses.Commands.AddService;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Exceptions;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
 

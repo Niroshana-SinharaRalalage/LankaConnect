@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.Modules.Communications.Domain.Enums;
 namespace LankaConnect.Modules.Communications.Domain.ValueObjects;
 
 /// <summary>
@@ -162,10 +162,10 @@ public record EnterpriseClientProfile(
 }
 
 // Calendar synchronization supporting types
-// CulturalEventType enum moved to LankaConnect.Domain.Common.Enums
+// CulturalEventType enum moved to LankaConnect.BuildingBlocks.Domain.Enums
 
 // Geographic and engagement context types
-// Note: GeographicRegion enum moved to LankaConnect.Domain.Common.Enums for consolidation
+// Note: GeographicRegion enum moved to LankaConnect.BuildingBlocks.Domain.Enums for consolidation
 // US Metro regions now mapped to the consolidated enum values
 
 public enum AnalyticsTimeframe

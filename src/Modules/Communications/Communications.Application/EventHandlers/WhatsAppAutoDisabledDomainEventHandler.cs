@@ -1,9 +1,9 @@
-using LankaConnect.Application.Common;
-using LankaConnect.Application.Interfaces;
-using LankaConnect.Domain.Communications.DomainEvents;
+using LankaConnect.BuildingBlocks.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
+using LankaConnect.Modules.Communications.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Contracts; // W4.7.b
-using LankaConnect.Shared.Email.Contracts;
-using LankaConnect.Shared.Email.Services;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

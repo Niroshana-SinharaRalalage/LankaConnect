@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Shared.Types;
+using LankaConnect.BuildingBlocks.Domain.Shared.Types;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Backup;
 
 /// <summary>

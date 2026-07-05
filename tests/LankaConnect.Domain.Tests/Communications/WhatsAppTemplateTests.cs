@@ -1,6 +1,6 @@
 using FluentAssertions;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Communications;

@@ -1,4 +1,4 @@
-using LankaConnect.Application.Common.Options;
+using LankaConnect.BuildingBlocks.Application.Common.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 namespace LankaConnect.Host.AllInOne.Controllers;

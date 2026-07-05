@@ -1,4 +1,4 @@
-using LankaConnect.Application.Common.Exceptions;
+using LankaConnect.BuildingBlocks.Application.Common.Exceptions;
 using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetUserById;

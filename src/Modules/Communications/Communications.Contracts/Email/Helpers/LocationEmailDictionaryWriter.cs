@@ -1,6 +1,6 @@
-using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
-namespace LankaConnect.Shared.Email.Helpers;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 
 /// <summary>
 /// Phase 7C.2: Writes the 8 decomposed Phase 7C.2 location keys (plus the legacy

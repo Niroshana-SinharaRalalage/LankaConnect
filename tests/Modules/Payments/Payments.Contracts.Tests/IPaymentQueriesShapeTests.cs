@@ -83,7 +83,7 @@ public sealed class IPaymentQueriesShapeTests
     {
         // Architect ruling (plan §"Contract surface"): Money projects to
         // (decimal Amount + string Currency) instead of carrying
-        // LankaConnect.Domain.Shared.ValueObjects.Money directly - Contracts
+        // LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money directly - Contracts
         // must not pull LankaConnect.Domain.
         var props = typeof(RefundLineItemDto).GetProperties();
 

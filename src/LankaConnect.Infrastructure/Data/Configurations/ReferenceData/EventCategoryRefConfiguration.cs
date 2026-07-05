@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.ReferenceData.Entities;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
 
-namespace LankaConnect.Infrastructure.Data.Configurations.ReferenceData;
+namespace LankaConnect.SPLIT_PER_ENTITY.ReferenceData;
 
 /// <summary>
 /// EF Core configuration for EventCategoryRef entity

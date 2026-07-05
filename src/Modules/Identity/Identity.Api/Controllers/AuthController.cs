@@ -8,16 +8,16 @@ using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.RefreshToken;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.LogoutUser;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
-using LankaConnect.Application.Communications.Commands.SendPasswordReset;
-using LankaConnect.Application.Communications.Commands.ResetPassword;
-using LankaConnect.Application.Communications.Commands.VerifyEmail;
-using LankaConnect.Application.Communications.Commands.SendEmailVerification;
+using LankaConnect.Modules.Communications.Application.Commands.SendPasswordReset;
+using LankaConnect.Modules.Communications.Application.Commands.ResetPassword;
+using LankaConnect.Modules.Communications.Application.Commands.VerifyEmail;
+using LankaConnect.Modules.Communications.Application.Commands.SendEmailVerification;
 using LankaConnect.API.Filters;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Modules.Identity.Api.Controllers;
 
 /// <summary>

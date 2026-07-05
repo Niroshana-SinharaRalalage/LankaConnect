@@ -2,10 +2,10 @@ using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
 namespace LankaConnect.Modules.Communications.Application.WhatsApp.Queries.GetWhatsAppMessageHistory;
 
 /// <summary>

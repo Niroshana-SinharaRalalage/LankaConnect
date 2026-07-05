@@ -1,6 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Host.AllInOne.Controllers;
 

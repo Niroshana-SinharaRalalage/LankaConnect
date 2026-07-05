@@ -2,9 +2,9 @@ using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.Shared.Email.Observability;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Support;
+using LankaConnect.Modules.Communications.Contracts.Email.Observability;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Domain.Support;
 namespace LankaConnect.Modules.Communications.Api.Controllers;
 
 /// <summary>

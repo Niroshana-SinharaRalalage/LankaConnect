@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
 
 namespace LankaConnect.Modules.Identity.Domain.DomainEvents;

@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Database;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Database;
 namespace LankaConnect.BuildingBlocks.Application.Common.Security;
 
 #region ProtectionLevel (6 references - HIGHEST PRIORITY)

@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.BuildingBlocks.Domain.Abstractions;
 
 /// <summary>

@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Modules.Communications.Infrastructure.Email.Services;

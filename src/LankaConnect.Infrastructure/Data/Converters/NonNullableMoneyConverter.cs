@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 using System.Text.Json;
 
-namespace LankaConnect.Infrastructure.Data.Converters;
+namespace LankaConnect.SPLIT_PER_ENTITY.Converters;
 
 /// <summary>
 /// Value converter for non-nullable Money property to JSON string.

@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LankaConnect.Application.Common.Models.Performance;
-using LankaConnect.Application.Common.Models.Database;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Database;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>
@@ -20,7 +20,7 @@ public interface IDatabaseQueryOptimizationService
     /// </summary>
     /// <param name="query">Language routing query with optimization parameters</param>
     /// <returns>Query results with performance metrics</returns>
-    Task<LankaConnect.Application.Common.Models.Database.LanguageRoutingQueryResult> QueryLanguageRoutingDataAsync(LankaConnect.Application.Common.Models.Database.LanguageRoutingQuery query);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.Database.LanguageRoutingQueryResult> QueryLanguageRoutingDataAsync(LankaConnect.BuildingBlocks.Application.Common.Models.Database.LanguageRoutingQuery query);
 
     /// <summary>
     /// Optimize database queries for cultural event traffic patterns
@@ -29,8 +29,8 @@ public interface IDatabaseQueryOptimizationService
     /// <param name="culturalEvents">Upcoming cultural events for optimization</param>
     /// <param name="optimizationPeriod">Time period for optimization preparation</param>
     /// <returns>Database optimization strategy and cache preparation</returns>
-    Task<LankaConnect.Application.Common.Models.Database.DatabaseOptimizationStrategy> OptimizeDatabaseForCulturalEventsAsync(
-        List<LankaConnect.Domain.Common.Database.PerformanceCulturalEvent> culturalEvents,
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.Database.DatabaseOptimizationStrategy> OptimizeDatabaseForCulturalEventsAsync(
+        List<LankaConnect.BuildingBlocks.Domain.Database.PerformanceCulturalEvent> culturalEvents,
         TimeSpan optimizationPeriod);
 
     /// <summary>
@@ -38,5 +38,5 @@ public interface IDatabaseQueryOptimizationService
     /// Tracks partition efficiency, index usage, and cache hit rates
     /// </summary>
     /// <returns>Database performance analysis with optimization recommendations</returns>
-    Task<LankaConnect.Application.Common.Models.Database.DatabasePerformanceAnalysis> AnalyzeDatabasePerformanceAsync();
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.Database.DatabasePerformanceAnalysis> AnalyzeDatabasePerformanceAsync();
 }

@@ -82,7 +82,7 @@ public sealed class LankaEventsDbContextModelParityTests
         using var ctx = CreateContext();
 
         var entityType = ctx.Model.FindEntityType(
-            typeof(LankaConnect.Domain.Badges.Badge));
+            typeof(LankaConnect.Products.LankaEvents.Domain.Badges.Badge));
 
         entityType.Should().BeNull(
             "Badge is a cross-module principal (LankaConnect.Domain.Badges). " +

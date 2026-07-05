@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     public partial class Phase6A53Fix2_AddLogoToEmailVerificationTemplate : Migration
@@ -34,7 +34,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" border=""0"">
                                 <tr>
                                     <td align=""center"" style=""padding: 10px 0 5px 0; font-size: 14px; letter-spacing: 8px; color: rgba(255,255,255,0.25);"">
-                                        ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+                                        ? ? ? ? ? ? ? ? ? ? ?
                                     </td>
                                 </tr>
                                 <tr>
@@ -44,7 +44,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 </tr>
                                 <tr>
                                     <td align=""center"" style=""padding: 5px 0 10px 0; font-size: 14px; letter-spacing: 8px; color: rgba(255,255,255,0.25);"">
-                                        ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+                                        ? ? ? ? ? ? ? ? ? ? ?
                                     </td>
                                 </tr>
                             </table>
@@ -64,7 +64,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" border=""0"" style=""margin: 25px 0;"">
                                 <tr>
                                     <td style=""background: #fff8f5; padding: 20px; border-left: 4px solid #FF6600; border-radius: 0 8px 8px 0;"">
-                                        <p style=""margin: 0 0 10px 0; font-size: 14px; color: #666;""><strong style=""color: #8B1538;"">⏰ This link expires in {{ExpirationHours}} hours</strong></p>
+                                        <p style=""margin: 0 0 10px 0; font-size: 14px; color: #666;""><strong style=""color: #8B1538;"">? This link expires in {{ExpirationHours}} hours</strong></p>
                                         <p style=""margin: 0; font-size: 14px; color: #666;"">For your security, please verify your email soon.</p>
                                     </td>
                                 </tr>
@@ -78,7 +78,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" border=""0"">
                                 <tr>
                                     <td align=""center"" style=""padding: 15px 0 10px 0; font-size: 12px; letter-spacing: 6px; color: rgba(255,255,255,0.2);"">
-                                        ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+                                        ? ? ? ? ? ? ? ? ? ? ?
                                     </td>
                                 </tr>
                                 <tr>

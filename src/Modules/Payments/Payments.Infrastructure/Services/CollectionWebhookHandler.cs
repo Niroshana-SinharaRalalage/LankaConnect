@@ -1,12 +1,12 @@
 using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using LankaConnect.Products.LankaEvents.Application.Services;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Shared.Email.Contracts;
-using LankaConnect.Shared.Email.Services;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

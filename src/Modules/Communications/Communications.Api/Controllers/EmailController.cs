@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.Infrastructure.Email.Interfaces;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Interfaces;
 namespace LankaConnect.Modules.Communications.Api.Controllers;
 
 /// <summary>

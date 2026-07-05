@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
 namespace LankaConnect.Modules.Communications.Domain;
 
 /// <summary>

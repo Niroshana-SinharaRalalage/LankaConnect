@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 

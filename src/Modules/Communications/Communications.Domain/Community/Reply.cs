@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Community.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Community.ValueObjects;
 namespace LankaConnect.Modules.Communications.Domain.Community;
 
 public class Reply : LegacyBaseEntity

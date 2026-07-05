@@ -1,8 +1,8 @@
-ï»¿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     public partial class Phase6A47_Refactor_To_Unified_ReferenceValues : Migration
@@ -280,8 +280,8 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 VALUES
                     (gen_random_uuid(), 'Currency', 'USD', 1, 'US Dollar', 'United States Dollar ($)', 1, true, '{""symbol"": ""$"", ""isoCode"": ""USD""}'::jsonb, NOW(), NOW()),
                     (gen_random_uuid(), 'Currency', 'LKR', 2, 'Sri Lankan Rupee', 'Sri Lankan Rupee (Rs)', 2, true, '{""symbol"": ""Rs"", ""isoCode"": ""LKR""}'::jsonb, NOW(), NOW()),
-                    (gen_random_uuid(), 'Currency', 'GBP', 3, 'British Pound', 'British Pound Sterling (Â£)', 3, true, '{""symbol"": ""Â£"", ""isoCode"": ""GBP""}'::jsonb, NOW(), NOW()),
-                    (gen_random_uuid(), 'Currency', 'EUR', 4, 'Euro', 'Euro (â‚¬)', 4, true, '{""symbol"": ""â‚¬"", ""isoCode"": ""EUR""}'::jsonb, NOW(), NOW()),
+                    (gen_random_uuid(), 'Currency', 'GBP', 3, 'British Pound', 'British Pound Sterling (£)', 3, true, '{""symbol"": ""£"", ""isoCode"": ""GBP""}'::jsonb, NOW(), NOW()),
+                    (gen_random_uuid(), 'Currency', 'EUR', 4, 'Euro', 'Euro (€)', 4, true, '{""symbol"": ""€"", ""isoCode"": ""EUR""}'::jsonb, NOW(), NOW()),
                     (gen_random_uuid(), 'Currency', 'CAD', 5, 'Canadian Dollar', 'Canadian Dollar (C$)', 5, true, '{""symbol"": ""C$"", ""isoCode"": ""CAD""}'::jsonb, NOW(), NOW()),
                     (gen_random_uuid(), 'Currency', 'AUD', 6, 'Australian Dollar', 'Australian Dollar (A$)', 6, true, '{""symbol"": ""A$"", ""isoCode"": ""AUD""}'::jsonb, NOW(), NOW());
 

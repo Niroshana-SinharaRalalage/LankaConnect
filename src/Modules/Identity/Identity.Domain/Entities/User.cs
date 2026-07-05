@@ -1,10 +1,10 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Modules.Identity.Domain.Entities;
 

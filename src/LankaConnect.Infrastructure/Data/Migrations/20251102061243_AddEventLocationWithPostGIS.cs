@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     public partial class AddEventLocationWithPostGIS : Migration
@@ -97,7 +97,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             ");
 
             // Add GIST spatial index for location-based queries (25/50/100 mile radius searches)
-            // This provides 400x performance improvement (2000ms → 5ms)
+            // This provides 400x performance improvement (2000ms ? 5ms)
             migrationBuilder.Sql(@"
                 CREATE INDEX ix_events_location_gist
                 ON events.events

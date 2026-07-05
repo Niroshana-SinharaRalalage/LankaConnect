@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Business.Enums;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Business.ValueObjects;
 

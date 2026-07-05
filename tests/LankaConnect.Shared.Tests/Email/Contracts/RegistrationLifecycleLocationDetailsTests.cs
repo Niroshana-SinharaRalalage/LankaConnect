@@ -1,6 +1,6 @@
 using FluentAssertions;
-using LankaConnect.Shared.Email.Contracts;
-using LankaConnect.Shared.Email.Helpers;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 
 namespace LankaConnect.Shared.Tests.Email.Contracts;
 

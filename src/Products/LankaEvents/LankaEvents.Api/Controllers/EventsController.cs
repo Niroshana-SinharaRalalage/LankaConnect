@@ -47,7 +47,7 @@ using LankaConnect.Products.LankaEvents.Application.Queries.SearchEvents;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetFeaturedEvents;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventNotificationHistory;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventReminderHistory;
-using LankaConnect.Application.Common.Models;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddImageToEvent;
 using LankaConnect.Products.LankaEvents.Application.Commands.DeleteEventImage;
 using LankaConnect.Products.LankaEvents.Application.Commands.ReorderEventImages;
@@ -56,8 +56,8 @@ using LankaConnect.Products.LankaEvents.Application.Commands.ReplaceEventImage;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddVideoToEvent;
 using LankaConnect.Products.LankaEvents.Application.Commands.DeleteEventVideo;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Application.Analytics.Commands.RecordEventView;
-using LankaConnect.Application.Analytics.Commands.RecordEventShare;
+using LankaConnect.Products.LankaEvents.Application.Analytics.Commands.RecordEventView;
+using LankaConnect.Products.LankaEvents.Application.Analytics.Commands.RecordEventShare;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddToWaitingList;
 using LankaConnect.Products.LankaEvents.Application.Commands.RemoveFromWaitingList;
 using LankaConnect.Products.LankaEvents.Application.Commands.PromoteFromWaitingList;
@@ -119,7 +119,7 @@ using LankaConnect.API.Extensions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 namespace LankaConnect.Products.LankaEvents.Api.Controllers;
 
 public class EventsController : BaseController<EventsController>

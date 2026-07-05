@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     public partial class Phase6A53Fix4_ForceUpdateEmailTemplate : Migration
@@ -65,7 +65,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" border=""0"" style=""margin: 25px 0;"">
                                 <tr>
                                     <td style=""background: #fff8f5; padding: 20px; border-left: 4px solid #FF6600; border-radius: 0 8px 8px 0;"">
-                                        <p style=""margin: 0 0 10px 0; font-size: 14px; color: #666;""><strong style=""color: #8B1538;"">⏰ This link expires in {{ExpirationHours}} hours</strong></p>
+                                        <p style=""margin: 0 0 10px 0; font-size: 14px; color: #666;""><strong style=""color: #8B1538;"">? This link expires in {{ExpirationHours}} hours</strong></p>
                                         <p style=""margin: 0; font-size: 14px; color: #666;"">For your security, please verify your email soon.</p>
                                     </td>
                                 </tr>
@@ -101,7 +101,7 @@ If you didn''''t create this account, please ignore this email.
 ---
 LankaConnect
 Sri Lankan Community Hub
-© 2025 LankaConnect. All rights reserved.',
+� 2025 LankaConnect. All rights reserved.',
                     NOW(),
                     NOW(),
                     'Authentication',

@@ -1,6 +1,6 @@
 using LankaConnect.Application.Businesses.Common;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Common.Models;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
 
 namespace LankaConnect.Application.Businesses.Queries.SearchBusinesses;
 

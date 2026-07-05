@@ -5,7 +5,7 @@ namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 /// <summary>
 /// Wave 6.5.a: façade over the module-scoped outbox writer. Handlers enqueue
 /// integration events through this interface so their compile-time surface
-/// depends only on <see cref="LankaConnect.Application.Common.Interfaces"/>,
+/// depends only on <see cref="LankaConnect.BuildingBlocks.Application.Common.Interfaces"/>,
 /// never on <c>BuildingBlocks.Infrastructure.Outbox</c> directly.
 /// </summary>
 /// <typeparam name="TDbContext">The module DbContext whose <c>Outbox</c>

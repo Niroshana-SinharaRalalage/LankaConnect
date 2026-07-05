@@ -1,5 +1,5 @@
 using MediatR;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 public interface IQueryHandler<TQuery, TResponse> : IRequestHandler<TQuery, Result<TResponse>>

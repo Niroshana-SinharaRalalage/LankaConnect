@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using System.ComponentModel.DataAnnotations;
 namespace LankaConnect.BuildingBlocks.Application.Common.Security;
 

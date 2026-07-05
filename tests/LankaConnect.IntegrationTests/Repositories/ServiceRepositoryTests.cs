@@ -3,10 +3,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Shared.Enums;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.SPLIT_PER_ENTITY.Repositories;
 using LankaConnect.IntegrationTests.Common;
 using LankaConnect.TestUtilities.Builders;
 

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using LankaConnect.Domain.Common.Entities;
+using LankaConnect.BuildingBlocks.Domain.Entities;
 namespace LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
 
 /// <summary>

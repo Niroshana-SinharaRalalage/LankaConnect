@@ -17,7 +17,7 @@ using LankaConnect.Modules.Identity.Application.Queries.Users.GetUserById;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetLinkedProviders;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetUserPreferredMetroAreas;
 using LankaConnect.Modules.Identity.Application.Queries.Users.SearchUsers;
-using LankaConnect.Application.MetroAreas.Common;
+using LankaConnect.SharedKernel.Geo.MetroAreas.Common;
 using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using Microsoft.Extensions.Logging;

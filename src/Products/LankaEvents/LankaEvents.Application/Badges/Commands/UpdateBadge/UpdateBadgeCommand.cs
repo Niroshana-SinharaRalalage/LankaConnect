@@ -1,6 +1,6 @@
-using LankaConnect.Application.Badges.DTOs;
-using LankaConnect.Domain.Badges.Enums;
-using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
+using LankaConnect.Products.LankaEvents.Domain.Badges.Enums;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 namespace LankaConnect.Products.LankaEvents.Application.Badges.Commands.UpdateBadge;
 

@@ -1,4 +1,4 @@
-using LankaConnect.Infrastructure.Payments.Entities;
+using LankaConnect.Modules.Payments.Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace LankaConnect.Modules.Payments.Infrastructure.Configurations;

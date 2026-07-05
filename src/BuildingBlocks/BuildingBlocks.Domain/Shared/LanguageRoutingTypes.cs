@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using CulturalContextType = LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels.CulturalContextType;
+using CulturalContextType = LankaConnect.BuildingBlocks.Domain.Database.MultiLanguageRoutingModels.CulturalContextType;
 namespace LankaConnect.BuildingBlocks.Domain.Shared;
 
 /// <summary>

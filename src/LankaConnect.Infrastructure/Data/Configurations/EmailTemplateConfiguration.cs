@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.Enums;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
 
 public class EmailTemplateConfiguration : IEntityTypeConfiguration<EmailTemplate>
 {
@@ -39,7 +39,7 @@ public class EmailTemplateConfiguration : IEntityTypeConfiguration<EmailTemplate
                 subject => subject.Value,
                 // Convert string from database to EmailSubject
                 // Use FromDatabase() to bypass validation during hydration
-                value => LankaConnect.Domain.Communications.ValueObjects.EmailSubject.FromDatabase(value));
+                value => LankaConnect.Modules.Communications.Domain.ValueObjects.EmailSubject.FromDatabase(value));
 
         // Configure template content
         builder.Property(e => e.TextTemplate)
@@ -69,7 +69,7 @@ public class EmailTemplateConfiguration : IEntityTypeConfiguration<EmailTemplate
             .HasColumnName("category")
             .HasConversion(
                 category => category.Value, // Convert to string for database
-                value => LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory.FromDatabase(value)) // Convert from string with fallback
+                value => LankaConnect.Modules.Communications.Domain.ValueObjects.EmailTemplateCategory.FromDatabase(value)) // Convert from string with fallback
             .HasMaxLength(50)
             .IsRequired();
 

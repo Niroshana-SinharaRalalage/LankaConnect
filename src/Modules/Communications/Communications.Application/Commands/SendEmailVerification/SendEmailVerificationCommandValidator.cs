@@ -1,6 +1,6 @@
 using FluentValidation;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Modules.Communications.Application.Commands.SendEmailVerification;
 
 /// <summary>

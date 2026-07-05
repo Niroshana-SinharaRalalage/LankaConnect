@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
 // W5.2.d-hotfix2 (2026-06-28): The W5.1 List<object> retyping of _metroAreaEntities
 // caused InvalidCastException on every newsletter create because EF Core 8's
 // shadow-nav hydrator assigns a List<MetroArea> via reflection and List<T> is

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace LankaConnect.Shared.Email.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.137B2: Template-specific typed parameters for sponsor refund email.

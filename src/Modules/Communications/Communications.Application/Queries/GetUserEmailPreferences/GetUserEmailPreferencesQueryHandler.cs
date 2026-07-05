@@ -2,10 +2,10 @@ using LankaConnect.Modules.Identity.Contracts;
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Common;
-using LankaConnect.Domain.Common;
-using IUserEmailPreferencesRepository = LankaConnect.Application.Common.Interfaces.IUserEmailPreferencesRepository;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.BuildingBlocks.Domain;
+using IUserEmailPreferencesRepository = LankaConnect.BuildingBlocks.Application.Common.Interfaces.IUserEmailPreferencesRepository;
 using Serilog.Context;
 namespace LankaConnect.Modules.Communications.Application.Queries.GetUserEmailPreferences;
 
@@ -130,10 +130,10 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
         }
     }
 
-    private async Task<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> CreateDefaultPreferencesAsync(
+    private async Task<LankaConnect.Modules.Communications.Domain.Entities.UserEmailPreferences> CreateDefaultPreferencesAsync(
         Guid userId, CancellationToken cancellationToken)
     {
-        var createResult = LankaConnect.Domain.Communications.Entities.UserEmailPreferences.Create(userId);
+        var createResult = LankaConnect.Modules.Communications.Domain.Entities.UserEmailPreferences.Create(userId);
         if (!createResult.IsSuccess)
         {
             throw new InvalidOperationException($"Failed to create default preferences: {createResult.Error}");
@@ -168,7 +168,7 @@ public class GetUserEmailPreferencesQueryHandler : IRequestHandler<GetUserEmailP
         return isEmailVerified ? 1 : (emailVerificationTokenExpiresAt.HasValue ? 1 : 0);
     }
 
-    private static List<EmailSubscriptionDto> GetEmailSubscriptions(LankaConnect.Domain.Communications.Entities.UserEmailPreferences preferences)
+    private static List<EmailSubscriptionDto> GetEmailSubscriptions(LankaConnect.Modules.Communications.Domain.Entities.UserEmailPreferences preferences)
     {
         return new List<EmailSubscriptionDto>
         {

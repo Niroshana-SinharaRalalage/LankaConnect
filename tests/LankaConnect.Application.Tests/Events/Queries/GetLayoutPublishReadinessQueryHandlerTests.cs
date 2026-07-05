@@ -1,13 +1,13 @@
 using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetLayoutPublishReadiness;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Domain.Shared.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -150,7 +150,7 @@ public class GetLayoutPublishReadinessQueryHandlerTests
         list.Add(tier);
 
         // Force the Id for cross-aggregate linkage assertions.
-        var idProp = typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")!;
+        var idProp = typeof(LankaConnect.BuildingBlocks.Domain.LegacyBaseEntity).GetProperty("Id")!;
         idProp.SetValue(@event, eventId);
         return @event;
     }

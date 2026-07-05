@@ -1,7 +1,7 @@
 using LankaConnect.Products.LankaEvents.Infrastructure.Data; // W6.5.f.1: LankaEventsDbContext
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Analytics;
+using LankaConnect.Products.LankaEvents.Domain.Analytics;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using System.Diagnostics;
 using Serilog.Context;

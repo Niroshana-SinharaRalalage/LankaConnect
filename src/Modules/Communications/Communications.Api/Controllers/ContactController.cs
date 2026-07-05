@@ -1,6 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.Application.Support.Commands.CreateSupportTicket;
+using LankaConnect.Modules.Communications.Application.Support.Commands.CreateSupportTicket;
 namespace LankaConnect.Modules.Communications.Api.Controllers;
 
 /// <summary>

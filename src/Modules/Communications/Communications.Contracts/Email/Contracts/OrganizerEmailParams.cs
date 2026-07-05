@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.Email.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.87: Base parameter contract for organizer contact information in emails.

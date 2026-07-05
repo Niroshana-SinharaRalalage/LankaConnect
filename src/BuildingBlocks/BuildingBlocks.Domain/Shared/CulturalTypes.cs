@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 namespace LankaConnect.BuildingBlocks.Domain.Shared;
 
 // GenerationalCohort and SacredContentType moved to CulturalPriorityTypes.cs for comprehensive implementation
 
 
-// Note: CulturalContext is defined as CulturalContextType in LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels
+// Note: CulturalContext is defined as CulturalContextType in LankaConnect.BuildingBlocks.Domain.Database.MultiLanguageRoutingModels
 
 /// <summary>
 /// Cultural event enumeration for event-driven language routing

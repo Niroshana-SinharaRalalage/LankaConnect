@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Modules.Communications.Domain.ValueObjects;
 
 public class VerificationToken : ValueObject

@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Communications.ValueObjects;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Modules.Communications.Domain.Services;
 
 /// <summary>

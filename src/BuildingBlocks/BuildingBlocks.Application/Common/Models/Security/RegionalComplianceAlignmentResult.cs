@@ -1,5 +1,5 @@
 using System;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Security;
 
 public class RegionalComplianceAlignmentResult : LegacyBaseEntity

@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Notifications.Application.Commands.MarkAllNotificationsAsRead;
 using LankaConnect.Modules.Notifications.Application.Commands.MarkNotificationAsRead;
 using LankaConnect.Modules.Notifications.Application.DTOs;
@@ -22,7 +22,7 @@ namespace LankaConnect.Modules.Notifications.Api.Controllers;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Why not inherit BaseController</b>: <c>LankaConnect.API.Controllers.BaseController&lt;T&gt;</c>
+/// <b>Why not inherit BaseController</b>: <c>LankaConnect.SPLIT_PER_CONTROLLER.BaseController&lt;T&gt;</c>
 /// lives in the legacy host project. Inheriting it from this module would
 /// require a Notifications.Api → LankaConnect.API edge — that would close a
 /// hard cycle with the existing LankaConnect.API → Notifications.Api edge.

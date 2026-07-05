@@ -1,6 +1,6 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Infrastructure.WhatsApp.Configuration;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Infrastructure.WhatsApp.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 namespace LankaConnect.Modules.Communications.Infrastructure.WhatsApp.Services;

@@ -11,7 +11,7 @@ namespace LankaConnect.SharedKernel.Cultural.Enums;
 ///
 /// Regional variants (SriLankanTamil, IndianTamil, PakistaniUrdu, IndianUrdu,
 /// Arabic, Persian) absorbed in W2C.2 (2026-06-04) from the duplicate enum
-/// previously in <c>LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels</c>.
+/// previously in <c>LankaConnect.BuildingBlocks.Domain.Database.MultiLanguageRoutingModels</c>.
 /// </remarks>
 public enum SouthAsianLanguage
 {

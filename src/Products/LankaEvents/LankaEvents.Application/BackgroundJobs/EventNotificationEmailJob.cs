@@ -1,22 +1,22 @@
 using LankaConnect.Modules.Identity.Contracts;
 using System.Diagnostics;
 using LankaConnect.Modules.Forms.Contracts;
-using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Constants;
-using LankaConnect.Application.Common.Helpers;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Constants;
+using LankaConnect.BuildingBlocks.Application.Common.Helpers;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Repositories;
-using LankaConnect.Application.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Shared.Email.Contracts;
-using LankaConnect.Shared.Email.Services;
-using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Services;
+using OrganizerContactInfo = LankaConnect.Modules.Communications.Contracts.Email.Helpers.OrganizerContactInfo;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
@@ -193,7 +193,7 @@ public class EventNotificationEmailJob
                         correlationId, emailIndex, recipients.Count, email);
 
                     // Phase 6A.83 Part 3: Get personalized UserName for recipient
-                    var emailResult = LankaConnect.Domain.Shared.ValueObjects.Email.Create(email);
+                    var emailResult = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create(email);
                     var user = emailResult.IsSuccess
                         ? await _identityQueries.GetByEmailAsync(emailResult.Value.Value, cancellationToken)
                         : null;

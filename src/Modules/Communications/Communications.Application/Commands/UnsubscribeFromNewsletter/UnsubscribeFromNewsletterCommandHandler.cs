@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using Serilog.Context;
 namespace LankaConnect.Modules.Communications.Application.Commands.UnsubscribeFromNewsletter;
 

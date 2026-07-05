@@ -11,7 +11,7 @@ using LankaConnect.Application.Businesses.Queries.GetBusiness;
 using LankaConnect.Application.Businesses.Queries.GetBusinessServices;
 using LankaConnect.Application.Businesses.Queries.GetBusinessImages;
 using LankaConnect.Application.Businesses.Queries.SearchBusinesses;
-using LankaConnect.Application.Common.Models;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 namespace LankaConnect.Host.AllInOne.Controllers.Legacy;

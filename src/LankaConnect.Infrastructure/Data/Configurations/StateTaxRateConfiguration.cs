@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.Tax;
+using LankaConnect.Modules.Payments.Domain.Tax;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
 
 /// <summary>
 /// Phase 6A.X: EF Core configuration for StateTaxRate entity

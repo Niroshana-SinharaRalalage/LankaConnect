@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace LankaConnect.Infrastructure.Data.Migrations.Resources;
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
 
 /// <summary>
 /// Phase 7C.2 recovery — loads authoritative pre-damage signup/volunteer commitment
@@ -18,7 +18,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations.Resources;
 public static class Phase7C2RecoveryTemplates
 {
     private const string ResourceNamespace =
-        "LankaConnect.Infrastructure.Data.Migrations.Resources.Phase7C2_Recovery";
+        "LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources.Phase7C2_Recovery";
 
     public static string LoadHtml(string templateName)
     {

@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using DomainAccessPatternAnalysis = LankaConnect.Domain.Common.Security.AccessPatternAnalysis;
+using LankaConnect.BuildingBlocks.Domain;
+using DomainAccessPatternAnalysis = LankaConnect.BuildingBlocks.Domain.Security.AccessPatternAnalysis;
 namespace LankaConnect.BuildingBlocks.Application.Common.Security;
 
 /// <summary>

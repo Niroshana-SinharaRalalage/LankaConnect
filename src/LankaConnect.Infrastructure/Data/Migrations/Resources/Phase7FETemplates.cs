@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace LankaConnect.Infrastructure.Data.Migrations.Resources;
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
 
 /// <summary>
 /// Phase 7F-E.3 (architect-approved 2026-05-01): loads the 5 email-template HTML bodies
@@ -24,7 +24,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations.Resources;
 public static class Phase7FETemplates
 {
     private const string ResourceNamespace =
-        "LankaConnect.Infrastructure.Data.Migrations.Resources.Phase7F_E";
+        "LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources.Phase7F_E";
 
     public static string LoadHtml(string templateName)
     {

@@ -136,7 +136,7 @@ public sealed class ProductsLayerRules
     [Trait("Category", "ArchTest")]
     public void Rule3_LankaConnect_Domain_DoesNotReferenceProducts()
     {
-        var legacyDomain = typeof(LankaConnect.Domain.Common.LegacyBaseEntity).Assembly;
+        var legacyDomain = typeof(LankaConnect.BuildingBlocks.Domain.LegacyBaseEntity).Assembly;
 
         var result = Types.InAssembly(legacyDomain)
             .Should()
@@ -199,7 +199,7 @@ public sealed class ProductsLayerRules
     [Trait("Category", "ArchTest")]
     public void Rule5_LankaConnect_Infrastructure_DoesNotReferenceProducts_Application_Or_Api()
     {
-        var legacyInfrastructure = typeof(LankaConnect.Infrastructure.Data.AppDbContext).Assembly;
+        var legacyInfrastructure = typeof(LankaConnect.SPLIT_PER_ENTITY.AppDbContext).Assembly;
 
         var result = Types.InAssembly(legacyInfrastructure)
             .That()
@@ -230,7 +230,7 @@ public sealed class ProductsLayerRules
         var legacyTransitionalNamespaces = new[]
         {
             "LankaConnect.Infrastructure.Data",
-            "LankaConnect.Infrastructure.Data.Repositories"
+            "LankaConnect.SPLIT_PER_ENTITY.Repositories"
         };
 
         var violators = Types.InAssembly(InfrastructureAssembly)
@@ -470,7 +470,7 @@ public sealed class ProductsLayerRules
     /// <summary>
     /// Rule 13 (Wave 6.b) — <c>Products.LankaEvents.Infrastructure</c> types that
     /// are NOT decorated with <see cref="Wave6_5TransitionalExceptionAttribute"/>
-    /// MUST NOT reference <c>LankaConnect.Infrastructure.Data.AppDbContext</c>
+    /// MUST NOT reference <c>LankaConnect.SPLIT_PER_ENTITY.AppDbContext</c>
     /// nor the legacy <c>Repository&lt;T&gt;</c> base class. Both dependencies
     /// exist ONLY under the transitional escape hatch (Rule 12's baseline).
     /// </summary>
@@ -496,8 +496,8 @@ public sealed class ProductsLayerRules
             .And().DoNotHaveName("LankaEventsModule")
             .Should()
             .NotHaveDependencyOnAny(
-                "LankaConnect.Infrastructure.Data.AppDbContext",
-                "LankaConnect.Infrastructure.Data.Repositories.Repository`1")
+                "LankaConnect.SPLIT_PER_ENTITY.AppDbContext",
+                "LankaConnect.SPLIT_PER_ENTITY.Repositories.Repository`1")
             .GetResult();
 
         AssertCompliant(result, "Products.LankaEvents.Infrastructure (non-baseline classes)");

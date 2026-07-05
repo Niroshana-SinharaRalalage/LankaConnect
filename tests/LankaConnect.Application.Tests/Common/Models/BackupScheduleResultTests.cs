@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Application.Common.Models.Backup;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Backup;
 
 namespace LankaConnect.Application.Tests.Common.Models;
 

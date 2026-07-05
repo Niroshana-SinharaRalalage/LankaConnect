@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace LankaConnect.Shared.Email.Helpers;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 
 /// <summary>
 /// Phase 6A.133 Email: Simple DTO for organizer contact information used in email rendering.

@@ -4,18 +4,18 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using MediatR;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Commands.SendEmailVerification;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Commands.SendEmailVerification;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Enums;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
-using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Modules.Identity.Application.Tests.Commands.Auth;
 

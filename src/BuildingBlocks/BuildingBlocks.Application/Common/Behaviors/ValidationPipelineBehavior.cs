@@ -1,6 +1,6 @@
 using MediatR;
 using FluentValidation;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.BuildingBlocks.Application.Common.Behaviors;
 
 public class ValidationPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>

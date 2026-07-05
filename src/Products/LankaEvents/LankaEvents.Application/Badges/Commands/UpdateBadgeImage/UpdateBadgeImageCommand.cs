@@ -1,5 +1,5 @@
-using LankaConnect.Application.Badges.DTOs;
-using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 namespace LankaConnect.Products.LankaEvents.Application.Badges.Commands.UpdateBadgeImage;
 

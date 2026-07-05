@@ -1,15 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Communications.ValueObjects;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Serilog;
 using Serilog.Context;
 using System.Diagnostics;
-using DomainEmailMessage = LankaConnect.Domain.Communications.Entities.EmailMessage;
+using DomainEmailMessage = LankaConnect.Modules.Communications.Domain.Entities.EmailMessage;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
 
 /// <summary>
 /// Repository implementation for EmailMessage entities with specialized email queue operations

@@ -12,7 +12,7 @@ namespace LankaConnect.Products.LankaEvents.Application.Common;
 /// <c>AnonymousRegistrationConfirmedEventHandler</c>, <c>RegistrationCancelledEventHandler</c>,
 /// <c>EventCancelledEventHandler</c>, <c>EventReminderJob</c>, and
 /// <c>AttendeesAddedEventHandler</c> — anywhere the new
-/// <see cref="LankaConnect.Shared.Email.Contracts.EmailTemplateContract.FlexibleRegistration"/>
+/// <see cref="LankaConnect.Modules.Communications.Contracts.Email.Contracts.EmailTemplateContract.FlexibleRegistration"/>
 /// constants need to be populated from a registration.
 ///
 /// Why a single helper: the formatting must be identical across every email surface or the

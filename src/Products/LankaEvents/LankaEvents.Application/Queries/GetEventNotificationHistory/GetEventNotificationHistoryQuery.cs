@@ -1,5 +1,5 @@
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventNotificationHistory;
 

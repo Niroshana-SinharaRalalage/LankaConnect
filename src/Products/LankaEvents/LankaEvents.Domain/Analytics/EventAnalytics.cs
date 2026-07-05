@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Analytics.DomainEvents;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Products.LankaEvents.Domain.Analytics.DomainEvents;
 namespace LankaConnect.Products.LankaEvents.Domain.Analytics;
 
 /// <summary>

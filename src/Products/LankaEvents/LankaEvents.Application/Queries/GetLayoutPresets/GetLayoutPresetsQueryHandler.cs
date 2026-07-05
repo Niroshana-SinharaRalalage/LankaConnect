@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Presets;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetLayoutPresets;

@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.Email.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
 /// <summary>
 /// Phase 7D Fix 4: typed parameters for the "we turned WhatsApp off because you never

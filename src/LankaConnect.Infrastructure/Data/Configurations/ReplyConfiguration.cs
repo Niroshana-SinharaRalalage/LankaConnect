@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.Community;
-using LankaConnect.Domain.Community.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.Community;
+using LankaConnect.Modules.Communications.Domain.Community.ValueObjects;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
 
 public class ReplyConfiguration : IEntityTypeConfiguration<Reply>
 {

@@ -1,19 +1,19 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Modules.Identity.Application.Commands.Users.AdminDowngradeUser;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Domain.Support;
+using LankaConnect.Modules.Communications.Domain.Support;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
-using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Modules.Identity.Application.Tests.Commands.Users;
 

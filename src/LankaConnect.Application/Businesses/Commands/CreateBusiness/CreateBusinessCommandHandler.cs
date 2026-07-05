@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -11,12 +11,12 @@ namespace LankaConnect.Application.Businesses.Commands.CreateBusiness;
 public class CreateBusinessCommandHandler : ICommandHandler<CreateBusinessCommand, Guid>
 {
     private readonly IBusinessRepository _businessRepository;
-    private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
+    private readonly LankaConnect.BuildingBlocks.Domain.IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateBusinessCommandHandler> _logger;
 
     public CreateBusinessCommandHandler(
         IBusinessRepository businessRepository,
-        LankaConnect.Domain.Common.IUnitOfWork unitOfWork,
+        LankaConnect.BuildingBlocks.Domain.IUnitOfWork unitOfWork,
         ILogger<CreateBusinessCommandHandler> logger)
     {
         _businessRepository = businessRepository;

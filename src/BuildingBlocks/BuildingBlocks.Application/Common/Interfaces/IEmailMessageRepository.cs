@@ -1,15 +1,15 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Communications.ValueObjects;
-using DomainEmailMessage = LankaConnect.Domain.Communications.Entities.EmailMessage;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using DomainEmailMessage = LankaConnect.Modules.Communications.Domain.Entities.EmailMessage;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Enterprise;
-using LankaConnect.Domain.Common.Models;
-using LankaConnect.Domain.Common.Monitoring;
-using LankaConnect.Domain.Common.Security;
-using LankaConnect.Domain.Common.Recovery;
-using LankaConnect.Domain.Common.Database;
-using MultiLanguageModels = LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels;
+using LankaConnect.BuildingBlocks.Domain.Models;
+using LankaConnect.BuildingBlocks.Domain.Monitoring;
+using LankaConnect.BuildingBlocks.Domain.Security;
+using LankaConnect.BuildingBlocks.Domain.Recovery;
+using LankaConnect.BuildingBlocks.Domain.Database;
+using MultiLanguageModels = LankaConnect.BuildingBlocks.Domain.Database.MultiLanguageRoutingModels;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>

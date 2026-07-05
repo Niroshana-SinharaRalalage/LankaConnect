@@ -5,10 +5,10 @@ using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.API.Infrastructure;
 using LankaConnect.API.Filters;
 using LankaConnect.Application;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
-using LankaConnect.Application.Badges.BackgroundJobs;
-using LankaConnect.Application.Communications.BackgroundJobs;
+using LankaConnect.Products.LankaEvents.Application.Badges.BackgroundJobs;
+using LankaConnect.Modules.Communications.Application.BackgroundJobs;
 using LankaConnect.BuildingBlocks.Web.Telemetry;
 using LankaConnect.Infrastructure;
 using LankaConnect.Modules.Communications.Api;
@@ -18,7 +18,7 @@ using LankaConnect.Modules.CulturalIntelligence.Api;
 using LankaConnect.Modules.Forms.Api;
 using LankaConnect.Modules.Media.Api;
 using LankaConnect.Modules.Notifications.Api;
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.SPLIT_PER_ENTITY;
 using LankaConnect.API.Extensions;
 using Serilog;
 using Serilog.Events;
@@ -114,8 +114,8 @@ try
     // (LankaConnect.Application facade) to the concrete
     // OutboxIntegrationEventDispatcher<NotificationsDbContext> (BuildingBlocks.Infrastructure).
     builder.Services.AddScoped<
-        LankaConnect.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Modules.Notifications.Infrastructure.Data.NotificationsDbContext>,
-        LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Modules.Notifications.Infrastructure.Data.NotificationsDbContext>>();
+        LankaConnect.BuildingBlocks.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Modules.Notifications.Infrastructure.Data.NotificationsDbContext>,
+        LankaConnect.BuildingBlocks.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Modules.Notifications.Infrastructure.Data.NotificationsDbContext>>();
 
     // W4.2 (2026-06-06) — Media module composition.
     builder.Services.AddMediaModule(builder.Configuration);
@@ -125,8 +125,8 @@ try
     // Composition-root lives here because the adapter references both projects and
     // BuildingBlocks cannot reference LankaConnect upward.
     builder.Services.AddScoped<
-        LankaConnect.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Modules.Media.Infrastructure.Data.MediaDbContext>,
-        LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Modules.Media.Infrastructure.Data.MediaDbContext>>();
+        LankaConnect.BuildingBlocks.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Modules.Media.Infrastructure.Data.MediaDbContext>,
+        LankaConnect.BuildingBlocks.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Modules.Media.Infrastructure.Data.MediaDbContext>>();
 
     // W4.3 (2026-06-06) — Forms module composition. Registers FormsDbContext
     // (cross-schema overrides for events.event_forms / form_questions /
@@ -136,8 +136,8 @@ try
     // (LankaConnect.Application facade) to the concrete
     // OutboxIntegrationEventDispatcher<FormsDbContext> (BuildingBlocks.Infrastructure).
     builder.Services.AddScoped<
-        LankaConnect.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Modules.Forms.Infrastructure.Data.FormsDbContext>,
-        LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Modules.Forms.Infrastructure.Data.FormsDbContext>>();
+        LankaConnect.BuildingBlocks.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Modules.Forms.Infrastructure.Data.FormsDbContext>,
+        LankaConnect.BuildingBlocks.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Modules.Forms.Infrastructure.Data.FormsDbContext>>();
 
     // W5.4.b (2026-06-13) — Communications module composition. Registers the
     // cross-module Contracts surface (IEmailGroupQueries). The underlying
@@ -183,8 +183,8 @@ try
     // OutboxIntegrationEventDispatcher<LankaEventsDbContext> (BuildingBlocks.Infrastructure).
     // Mirrors the Wave 6.5.b (Media) + Wave 6.5.c (Notifications) adapter bindings.
     builder.Services.AddScoped<
-        LankaConnect.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext>,
-        LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext>>();
+        LankaConnect.BuildingBlocks.Application.Common.Interfaces.IIntegrationEventOutbox<LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext>,
+        LankaConnect.BuildingBlocks.Infrastructure.Outbox.IntegrationEventOutbox<LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext>>();
 
     // Add JWT Authentication and Authorization
     builder.Services.AddJwtAuthentication(builder.Configuration);

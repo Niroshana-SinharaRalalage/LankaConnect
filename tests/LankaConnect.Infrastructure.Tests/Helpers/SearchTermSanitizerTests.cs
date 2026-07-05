@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Infrastructure.Helpers;
+using LankaConnect.BuildingBlocks.Infrastructure.Helpers;
 using Xunit;
 
 namespace LankaConnect.Infrastructure.Tests.Helpers;

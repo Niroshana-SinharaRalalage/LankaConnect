@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Common.Monitoring;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Domain.Monitoring;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.DisasterRecovery;
 
 /// <summary>

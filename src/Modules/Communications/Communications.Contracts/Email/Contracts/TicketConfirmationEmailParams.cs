@@ -1,7 +1,7 @@
 using System.Globalization;
-using LankaConnect.Shared.Email.Helpers;
+using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 
-namespace LankaConnect.Shared.Email.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.87 Week 4: Template-specific typed parameters for paid event registration confirmation.

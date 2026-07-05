@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.SPLIT_PER_ENTITY.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Tests.LankaConnect.Domain.Tests.TestHelpers;
 
 namespace LankaConnect.Infrastructure.Tests.Email.Repositories;

@@ -2,10 +2,10 @@ using System.Net.Mail;
 using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using LankaConnect.Infrastructure.Email.Configuration;
-using LankaConnect.Infrastructure.Email.Interfaces;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Infrastructure.Email.Models;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Models;
 namespace LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 
 /// <summary>

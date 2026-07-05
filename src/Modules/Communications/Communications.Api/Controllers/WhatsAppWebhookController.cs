@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Infrastructure.WhatsApp.Services;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Infrastructure.WhatsApp.Services;
 namespace LankaConnect.Modules.Communications.Api.Controllers;
 
 /// <summary>

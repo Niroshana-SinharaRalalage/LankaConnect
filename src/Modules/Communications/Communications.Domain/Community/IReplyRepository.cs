@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Modules.Communications.Domain.Community;
 
 public interface IReplyRepository : IRepository<Reply>

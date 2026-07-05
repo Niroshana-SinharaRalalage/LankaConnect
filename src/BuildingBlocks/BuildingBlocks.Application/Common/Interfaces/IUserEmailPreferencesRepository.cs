@@ -1,8 +1,8 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Common.Monitoring;
-using LankaConnect.Domain.Communications;
-using UserEmailPreferences = LankaConnect.Domain.Communications.Entities.UserEmailPreferences;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Domain.Monitoring;
+using LankaConnect.Modules.Communications.Domain;
+using UserEmailPreferences = LankaConnect.Modules.Communications.Domain.Entities.UserEmailPreferences;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>

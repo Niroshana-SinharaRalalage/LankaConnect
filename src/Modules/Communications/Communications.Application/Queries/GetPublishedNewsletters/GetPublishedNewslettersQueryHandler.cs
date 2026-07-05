@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Common;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.3: IEmailGroupQueries replaces dbContext.Set<EmailGroup>
@@ -124,7 +124,7 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
                         kvp => kvp.Key,
                         kvp => kvp.Value
                             .Where(id => emailGroupLookup.ContainsKey(id))
-                            .Select(id => new LankaConnect.Application.Communications.Common.EmailGroupSummaryDto
+                            .Select(id => new LankaConnect.Modules.Communications.Application.Common.EmailGroupSummaryDto
                             {
                                 Id = emailGroupLookup[id].Id,
                                 Name = emailGroupLookup[id].Name,
@@ -168,7 +168,7 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
                     EmailGroupIds = emailGroupIdsByNewsletter.TryGetValue(newsletter.Id, out var egIds)
                         ? egIds : newsletter.EmailGroupIds,
                     EmailGroups = emailGroupDtosByNewsletter.TryGetValue(newsletter.Id, out var egDtos)
-                        ? egDtos : new List<LankaConnect.Application.Communications.Common.EmailGroupSummaryDto>(),
+                        ? egDtos : new List<LankaConnect.Modules.Communications.Application.Common.EmailGroupSummaryDto>(),
                     MetroAreaIds = metroAreaIdsByNewsletter.TryGetValue(newsletter.Id, out var maIds)
                         ? maIds : newsletter.MetroAreaIds,
                     MetroAreas = metroAreaDtosByNewsletter.TryGetValue(newsletter.Id, out var maDtos)

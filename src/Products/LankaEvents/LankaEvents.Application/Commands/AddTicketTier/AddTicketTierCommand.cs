@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AddTicketTier;
 
 /// <summary>

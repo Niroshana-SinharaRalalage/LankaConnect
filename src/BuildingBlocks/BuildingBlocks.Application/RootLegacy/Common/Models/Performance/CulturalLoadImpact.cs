@@ -1,4 +1,4 @@
-namespace LankaConnect.Application.Common.Models.Performance;
+namespace LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
 
 /// <summary>
 /// Represents the impact of cultural events on system load and performance

@@ -3,12 +3,12 @@ using AutoMapper;
 using FluentAssertions;
 using LankaConnect.Application.Businesses.Common;
 using LankaConnect.Application.Businesses.Queries.SearchBusinesses;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Common.Models;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
 using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.Enums;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using Moq;
 
 namespace LankaConnect.Application.Tests.Businesses.Queries;

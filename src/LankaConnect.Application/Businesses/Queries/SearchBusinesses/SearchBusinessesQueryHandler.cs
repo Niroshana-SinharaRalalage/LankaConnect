@@ -1,10 +1,10 @@
 using AutoMapper;
 using LankaConnect.Application.Businesses.Common;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Common.Models;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
 using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.Specifications;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.Application.Businesses.Queries.SearchBusinesses;
 

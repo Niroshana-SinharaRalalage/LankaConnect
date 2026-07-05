@@ -1,4 +1,4 @@
-using LankaConnect.Infrastructure.Email.Models;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Models;
 namespace LankaConnect.Modules.Communications.Infrastructure.Email.Interfaces;
 
 /// <summary>

@@ -2,9 +2,9 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Analytics.Queries.GetEventAnalytics;
-using LankaConnect.Application.Analytics.Queries.GetOrganizerDashboard;
-using LankaConnect.Application.Analytics.Common;
+using LankaConnect.Products.LankaEvents.Application.Analytics.Queries.GetEventAnalytics;
+using LankaConnect.Products.LankaEvents.Application.Analytics.Queries.GetOrganizerDashboard;
+using LankaConnect.Products.LankaEvents.Application.Analytics.Common;
 using LankaConnect.API.Extensions;
 namespace LankaConnect.Products.LankaEvents.Api.Controllers;
 

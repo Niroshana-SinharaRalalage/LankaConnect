@@ -8,7 +8,7 @@ using System.IO.Compression;
 using System.Text;
 using CsvHelper;
 using CsvHelper.Configuration;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Contracts;
 namespace LankaConnect.Host.AllInOne.Services.Export;

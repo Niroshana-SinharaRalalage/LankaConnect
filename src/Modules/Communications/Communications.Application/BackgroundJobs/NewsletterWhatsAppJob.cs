@@ -1,7 +1,7 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Shared.WhatsApp.Contracts;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Modules.Communications.Application.BackgroundJobs;
 

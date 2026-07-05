@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.DomainEvents;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.DomainEvents;
+using LankaConnect.Modules.Communications.Domain.Enums;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>

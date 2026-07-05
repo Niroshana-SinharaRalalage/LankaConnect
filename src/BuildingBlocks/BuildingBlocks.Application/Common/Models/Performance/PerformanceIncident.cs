@@ -1,6 +1,6 @@
 using System;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Notifications;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Notifications;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
 
 /// <summary>
@@ -21,7 +21,7 @@ public class PerformanceIncident : LegacyBaseEntity
     public Dictionary<string, object> Metrics { get; set; } = new();
 }
 
-// Note: IncidentSeverity enum moved to canonical location: LankaConnect.Domain.Common.Notifications.IncidentSeverity
+// Note: IncidentSeverity enum moved to canonical location: LankaConnect.BuildingBlocks.Domain.Notifications.IncidentSeverity
 // Use Domain enum instead for consistency
 
 public enum IncidentStatus

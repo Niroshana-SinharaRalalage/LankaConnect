@@ -1,4 +1,4 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Contracts.IntegrationEvents;
 using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +8,7 @@ namespace LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 /// Wave 6.5.a: concrete impl of <see cref="IIntegrationEventOutbox{TDbContext}"/>
 /// delegating to the module-scoped <see cref="OutboxIntegrationEventDispatcher{TDbContext}"/>.
 /// Adapter layer keeps handler dependencies pointed at
-/// <see cref="LankaConnect.Application.Common.Interfaces"/> (module-agnostic)
+/// <see cref="LankaConnect.BuildingBlocks.Application.Common.Interfaces"/> (module-agnostic)
 /// while the concrete <see cref="OutboxIntegrationEventDispatcher{TDbContext}"/>
 /// remains a BuildingBlocks-level primitive.
 /// </summary>

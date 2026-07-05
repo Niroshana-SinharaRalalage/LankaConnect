@@ -1,15 +1,15 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 // W3C (2026-06-06): Event migrated from legacy BaseEntity to
 // BB.Domain.Entity<Guid> + IAuditable per ADR-007. Class declaration uses
 // fully-qualified BB types to avoid Result<T> namespace conflict with the
-// legacy LankaConnect.Domain.Common.Result still used by factories.
+// legacy LankaConnect.BuildingBlocks.Domain.Result still used by factories.
 public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnect.BuildingBlocks.Domain.IAuditable
 {
     // IAuditable members — interceptor-populated; treat as read-only from domain code.
@@ -1199,7 +1199,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         IsFreeEvent = true;
 
         // Optional: Set explicit $0 pricing for display/reporting purposes
-        var zeroPrice = Money.Create(0m, LankaConnect.Domain.Shared.Enums.Currency.USD);
+        var zeroPrice = Money.Create(0m, LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD);
         if (zeroPrice.IsSuccess)
         {
             SetTicketPriceInternal(zeroPrice.Value);
@@ -1327,7 +1327,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         // Free event
         if (IsFree())
         {
-            var freePrice = Pricing?.AdultPrice ?? TicketPrice ?? Money.Create(0, LankaConnect.Domain.Shared.Enums.Currency.USD).Value;
+            var freePrice = Pricing?.AdultPrice ?? TicketPrice ?? Money.Create(0, LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD).Value;
             return Result<Money>.Success(freePrice);
         }
 
@@ -2733,7 +2733,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         {
             // Clear pricing — Free events don't carry a non-zero ticket price.
             Pricing = null;
-            var zeroResult = Money.Create(0m, LankaConnect.Domain.Shared.Enums.Currency.USD);
+            var zeroResult = Money.Create(0m, LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD);
             SetTicketPriceInternal(zeroResult.IsSuccess ? zeroResult.Value : null);
         }
 

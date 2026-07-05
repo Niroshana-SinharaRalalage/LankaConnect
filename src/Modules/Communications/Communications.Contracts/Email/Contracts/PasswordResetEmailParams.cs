@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.Email.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.87 Week 5: Template-specific typed parameters for password reset email.

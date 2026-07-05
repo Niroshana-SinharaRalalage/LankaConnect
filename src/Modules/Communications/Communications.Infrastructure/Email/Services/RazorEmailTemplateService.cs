@@ -3,9 +3,9 @@ using System.Text;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Infrastructure.Email.Configuration;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 
 public class RazorEmailTemplateService : IEmailTemplateService

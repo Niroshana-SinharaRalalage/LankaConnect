@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 namespace LankaConnect.Modules.Communications.Domain.ValueObjects;
 
 /// <summary>
@@ -303,7 +303,7 @@ public sealed class GoogleCalendarCulturalEvent : ValueObject
     }
 }
 
-// CulturalEventType enum moved to LankaConnect.Domain.Common.Enums
+// CulturalEventType enum moved to LankaConnect.BuildingBlocks.Domain.Enums
 
 /// <summary>
 /// Cultural significance levels for event prioritization

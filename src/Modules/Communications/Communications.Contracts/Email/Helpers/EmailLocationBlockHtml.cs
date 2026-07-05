@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.Email.Helpers;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 
 /// <summary>
 /// Phase 7C.2b: single canonical source for the Handlebars HTML fragment that

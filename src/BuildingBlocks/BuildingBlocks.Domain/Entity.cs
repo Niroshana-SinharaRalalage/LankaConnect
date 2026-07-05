@@ -1,4 +1,4 @@
-using LankaConnect.Domain.Common.Contracts;
+using LankaConnect.BuildingBlocks.Domain.Contracts;
 namespace LankaConnect.BuildingBlocks.Domain;
 
 /// <summary>

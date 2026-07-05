@@ -1,8 +1,8 @@
 using Azure.Storage.Blobs;
 using FluentAssertions;
-using LankaConnect.Infrastructure.Storage.Configuration;
-using LankaConnect.Infrastructure.Storage.Services;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Modules.Media.Infrastructure.Storage.Configuration;
+using LankaConnect.Modules.Media.Infrastructure.Storage.Services;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -198,7 +198,7 @@ public sealed class AzureBlobImageServiceIntegrationTests : IAsyncLifetime
         var businessId = Guid.NewGuid();
         var imageBytes = CreateValidJpegBytes();
 
-        var uploadTasks = new List<Task<LankaConnect.Domain.Common.Result<LankaConnect.Application.Common.Interfaces.ImageUploadResult>>>();
+        var uploadTasks = new List<Task<LankaConnect.BuildingBlocks.Domain.Result<LankaConnect.BuildingBlocks.Application.Common.Interfaces.ImageUploadResult>>>();
 
         // Create 5 concurrent upload tasks
         for (int i = 0; i < 5; i++)

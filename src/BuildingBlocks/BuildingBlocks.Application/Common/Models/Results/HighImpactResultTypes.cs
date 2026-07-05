@@ -1,9 +1,9 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.ValueObjects;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Communications.ValueObjects;
-using LankaConnect.Application.Common.Models.Configuration;
-using LankaConnect.Application.Common.Models.Security;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Configuration;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Security;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Results;
 
 /// <summary>
@@ -424,7 +424,7 @@ public class PerformanceMetric { }
 public class PerformanceAlert { }
 public class CulturalPerformanceMetric { }
 public class PerformanceTrendAnalysis { }
-// CONSOLIDATED: Use LankaConnect.Domain.Common.ValueObjects.PerformanceThreshold
+// CONSOLIDATED: Use LankaConnect.BuildingBlocks.Domain.ValueObjects.PerformanceThreshold
 public class ResourceUtilization { }
 public class PerformanceOptimizationSuggestion { }
 public class PerformanceBaseline { }

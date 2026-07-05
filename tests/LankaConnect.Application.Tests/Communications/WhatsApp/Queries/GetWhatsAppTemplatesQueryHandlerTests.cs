@@ -1,7 +1,7 @@
-using LankaConnect.Application.Communications.WhatsApp.Queries.GetWhatsAppTemplates;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.Modules.Communications.Application.WhatsApp.Queries.GetWhatsAppTemplates;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Tests.Communications.WhatsApp.Queries;

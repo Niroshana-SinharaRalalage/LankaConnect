@@ -6,7 +6,7 @@ using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Services;
-using LankaConnect.Infrastructure.Helpers;
+using LankaConnect.BuildingBlocks.Infrastructure.Helpers;
 using System.Diagnostics;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;

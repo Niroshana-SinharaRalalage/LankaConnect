@@ -6,7 +6,7 @@ namespace LankaConnect.Products.LankaEvents.Domain.Services;
 /// Why this exists (architect-required, Phase 7E paid-B-mode gate review iteration 1, edit #2):
 /// Frontend code that needs to react to a specific compatibility failure (e.g. show a
 /// "coming soon" panel instead of a fillable form) must not pattern-match on the human
-/// copy embedded in <see cref="LankaConnect.Domain.Common.Result"/> failure messages —
+/// copy embedded in <see cref="LankaConnect.BuildingBlocks.Domain.Result"/> failure messages —
 /// that copy will get reworded over time and silently break the UI gate. Constants here
 /// are the contract.
 /// </summary>

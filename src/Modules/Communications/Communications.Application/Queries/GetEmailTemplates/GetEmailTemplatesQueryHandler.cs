@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using Serilog.Context;
 namespace LankaConnect.Modules.Communications.Application.Queries.GetEmailTemplates;
 
@@ -128,7 +128,7 @@ public class GetEmailTemplatesQueryHandler : IRequestHandler<GetEmailTemplatesQu
         }
     }
 
-    private static EmailTemplateDto MapToDto(LankaConnect.Domain.Communications.Entities.EmailTemplate template)
+    private static EmailTemplateDto MapToDto(LankaConnect.Modules.Communications.Domain.Entities.EmailTemplate template)
     {
         return new EmailTemplateDto
         {
@@ -150,7 +150,7 @@ public class GetEmailTemplatesQueryHandler : IRequestHandler<GetEmailTemplatesQu
     /// <summary>
     /// Maps domain EmailTemplateCategory value object to application DTO enum
     /// </summary>
-    private static EmailTemplateCategory MapToApplicationCategory(LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory domainCategory)
+    private static EmailTemplateCategory MapToApplicationCategory(LankaConnect.Modules.Communications.Domain.ValueObjects.EmailTemplateCategory domainCategory)
     {
         return domainCategory.Value switch
         {

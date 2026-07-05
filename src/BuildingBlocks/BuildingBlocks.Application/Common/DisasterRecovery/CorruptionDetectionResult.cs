@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Application.Common.Models.Critical;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Critical;
 namespace LankaConnect.BuildingBlocks.Application.Common.DisasterRecovery;
 
 /// <summary>

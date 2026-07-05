@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using LankaConnect.Application.Badges.DTOs;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Badges;
-using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Domain.Badges;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

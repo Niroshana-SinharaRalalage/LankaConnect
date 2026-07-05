@@ -6,12 +6,12 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.SPLIT_PER_ENTITY;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.IntegrationTests.Common;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 namespace LankaConnect.IntegrationTests.Controllers;
 

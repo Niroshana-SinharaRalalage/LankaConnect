@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Badges;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Products.LankaEvents.Domain.Badges;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>

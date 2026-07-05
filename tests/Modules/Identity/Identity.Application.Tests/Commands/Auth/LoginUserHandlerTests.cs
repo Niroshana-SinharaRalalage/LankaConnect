@@ -4,15 +4,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Enums;
-using LankaConnect.Domain.Common;
-using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
+using LankaConnect.BuildingBlocks.Domain;
+using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Modules.Identity.Application.Tests.Commands.Auth;
 

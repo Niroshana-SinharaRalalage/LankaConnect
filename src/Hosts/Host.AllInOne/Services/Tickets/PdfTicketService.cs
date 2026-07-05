@@ -1,7 +1,7 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Domain.Common;
-using LankaConnect.Shared.Email.Helpers;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 using Microsoft.Extensions.Logging;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;

@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Business;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
 
 public class ServiceRepository : Repository<Service>, IServiceRepository
 {

@@ -26,8 +26,8 @@ public class GetEmailTemplatesQueryValidator : AbstractValidator<GetEmailTemplat
             .When(x => !string.IsNullOrWhiteSpace(x.SearchTerm));
     }
 
-    private static bool IsValidCategory(LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory? category)
+    private static bool IsValidCategory(LankaConnect.Modules.Communications.Domain.ValueObjects.EmailTemplateCategory? category)
     {
-        return category != null && LankaConnect.Domain.Communications.ValueObjects.EmailTemplateCategory.All.Contains(category);
+        return category != null && LankaConnect.Modules.Communications.Domain.ValueObjects.EmailTemplateCategory.All.Contains(category);
     }
 }

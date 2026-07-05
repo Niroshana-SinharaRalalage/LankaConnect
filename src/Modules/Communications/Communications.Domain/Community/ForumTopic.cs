@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Community.ValueObjects;
-using LankaConnect.Domain.Community.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Community.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.Community.Enums;
 namespace LankaConnect.Modules.Communications.Domain.Community;
 
 public class ForumTopic : LegacyBaseEntity

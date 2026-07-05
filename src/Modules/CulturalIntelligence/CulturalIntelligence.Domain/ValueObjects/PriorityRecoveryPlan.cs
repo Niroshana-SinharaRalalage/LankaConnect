@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Database;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Database;
 namespace LankaConnect.Modules.CulturalIntelligence.Domain.ValueObjects;
 
 public record PriorityRecoveryPlan(

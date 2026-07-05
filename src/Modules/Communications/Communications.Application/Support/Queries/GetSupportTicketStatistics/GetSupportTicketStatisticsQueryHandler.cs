@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Support.DTOs;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Support;
-using LankaConnect.Domain.Support.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Support.DTOs;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Support;
+using LankaConnect.Modules.Communications.Domain.Support.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Modules.Communications.Application.Support.Queries.GetSupportTicketStatistics;

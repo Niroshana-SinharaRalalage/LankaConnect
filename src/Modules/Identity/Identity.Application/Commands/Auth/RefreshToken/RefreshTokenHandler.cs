@@ -2,28 +2,28 @@ using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RefreshToken;
 
 public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<RefreshTokenResponse>>
 {
     private readonly LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository _userRepository;
     private readonly IJwtTokenService _jwtTokenService;
-    private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
+    private readonly LankaConnect.BuildingBlocks.Domain.IUnitOfWork _unitOfWork;
     private readonly ITokenConfiguration _tokenConfiguration;
     private readonly ILogger<RefreshTokenHandler> _logger;
 
     public RefreshTokenHandler(
         IUserRepository userRepository,
         IJwtTokenService jwtTokenService,
-        LankaConnect.Domain.Common.IUnitOfWork unitOfWork,
+        LankaConnect.BuildingBlocks.Domain.IUnitOfWork unitOfWork,
         ITokenConfiguration tokenConfiguration,
         ILogger<RefreshTokenHandler> logger)
     {

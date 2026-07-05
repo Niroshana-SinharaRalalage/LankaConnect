@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.ValueObjects;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Critical;
 
 /// <summary>
@@ -356,7 +356,7 @@ public class PerformanceTrendAnalysis
     public required DateTime AnalysisTimestamp { get; set; }
 }
 
-// CONSOLIDATED: Use LankaConnect.Domain.Common.ValueObjects.PerformanceThreshold
+// CONSOLIDATED: Use LankaConnect.BuildingBlocks.Domain.ValueObjects.PerformanceThreshold
 
 public class ResourceUtilization
 {

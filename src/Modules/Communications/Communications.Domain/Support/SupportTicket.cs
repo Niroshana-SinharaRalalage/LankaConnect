@@ -1,8 +1,8 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Support.DomainEvents;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Support.Enums;
-using LankaConnect.Domain.Support.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Support.DomainEvents;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.Support.Enums;
+using LankaConnect.Modules.Communications.Domain.Support.ValueObjects;
 namespace LankaConnect.Modules.Communications.Domain.Support;
 
 /// <summary>

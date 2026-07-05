@@ -1,8 +1,8 @@
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
 
 /// <summary>
 /// EF Core configuration for the NewsletterMetroAreaLink junction CLR entity.

@@ -3,11 +3,11 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog.Context;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Common.Options;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Options;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
 namespace LankaConnect.Modules.Communications.Application.WhatsApp.Commands.EnableWhatsApp;
 
 /// <summary>

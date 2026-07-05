@@ -1,10 +1,10 @@
-using LankaConnect.Domain.Billing;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Common.Monitoring;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Shared;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Modules.Payments.Domain.Billing;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Domain.Monitoring;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
 using MediatR;
 namespace LankaConnect.Modules.Payments.Application.Billing;
@@ -579,7 +579,7 @@ public class CulturalIntelligenceBillingService : ICulturalIntelligenceBillingSe
         return new UsageCost(baseAmount, totalMultiplier, Currency.USD(), breakdown);
     }
 
-    private decimal GetBaseAmountForEndpoint(LankaConnect.Domain.Billing.BillingEndpoint endpoint)
+    private decimal GetBaseAmountForEndpoint(LankaConnect.Modules.Payments.Domain.Billing.BillingEndpoint endpoint)
     {
         return endpoint.Category switch
         {
@@ -649,16 +649,16 @@ public class CulturalIntelligenceBillingService : ICulturalIntelligenceBillingSe
         return $"{prefix}_{userId.Value:N}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
     }
 
-    private LankaConnect.Domain.Billing.BillingEndpoint ConvertAPIEndpointToCulturalIntelligenceEndpoint(APIEndpoint apiEndpoint)
+    private LankaConnect.Modules.Payments.Domain.Billing.BillingEndpoint ConvertAPIEndpointToCulturalIntelligenceEndpoint(APIEndpoint apiEndpoint)
     {
         return apiEndpoint.Category switch
         {
-            EndpointCategory.BuddhistCalendar => LankaConnect.Domain.Billing.BillingEndpoint.BuddhistCalendar(apiEndpoint.Path),
-            EndpointCategory.HinduCalendar => LankaConnect.Domain.Billing.BillingEndpoint.HinduCalendar(apiEndpoint.Path),
-            EndpointCategory.CulturalAppropriateness => LankaConnect.Domain.Billing.BillingEndpoint.CulturalAppropriateness(apiEndpoint.Path),
-            EndpointCategory.DiasporaAnalytics => LankaConnect.Domain.Billing.BillingEndpoint.DiasporaAnalytics(apiEndpoint.Path),
-            EndpointCategory.MultiLanguage => LankaConnect.Domain.Billing.BillingEndpoint.MultiLanguage(apiEndpoint.Path),
-            _ => LankaConnect.Domain.Billing.BillingEndpoint.BuddhistCalendar(apiEndpoint.Path)
+            EndpointCategory.BuddhistCalendar => LankaConnect.Modules.Payments.Domain.Billing.BillingEndpoint.BuddhistCalendar(apiEndpoint.Path),
+            EndpointCategory.HinduCalendar => LankaConnect.Modules.Payments.Domain.Billing.BillingEndpoint.HinduCalendar(apiEndpoint.Path),
+            EndpointCategory.CulturalAppropriateness => LankaConnect.Modules.Payments.Domain.Billing.BillingEndpoint.CulturalAppropriateness(apiEndpoint.Path),
+            EndpointCategory.DiasporaAnalytics => LankaConnect.Modules.Payments.Domain.Billing.BillingEndpoint.DiasporaAnalytics(apiEndpoint.Path),
+            EndpointCategory.MultiLanguage => LankaConnect.Modules.Payments.Domain.Billing.BillingEndpoint.MultiLanguage(apiEndpoint.Path),
+            _ => LankaConnect.Modules.Payments.Domain.Billing.BillingEndpoint.BuddhistCalendar(apiEndpoint.Path)
         };
     }
 

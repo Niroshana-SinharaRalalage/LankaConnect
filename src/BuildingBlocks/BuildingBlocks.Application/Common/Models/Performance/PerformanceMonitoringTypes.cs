@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Application.Common.DTOs;
-using LankaConnect.Application.Common.Performance;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.DTOs;
+using LankaConnect.BuildingBlocks.Application.Common.Performance;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
 
 /// <summary>
@@ -114,7 +114,7 @@ public class PeakPerformanceAnalysis
 #region Regional Compliance Types
 
 // RegionalComplianceStatus moved to Application/Common/Performance/PerformanceMonitoringResultTypes.cs
-// Use: using LankaConnect.Application.Common.Performance;
+// Use: using LankaConnect.BuildingBlocks.Application.Common.Performance;
 
 public class DataProtectionRegulation
 {

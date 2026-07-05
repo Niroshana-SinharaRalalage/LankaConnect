@@ -1,7 +1,7 @@
-using LankaConnect.Shared.Email.Observability;
+using LankaConnect.Modules.Communications.Contracts.Email.Observability;
 using Microsoft.Extensions.Logging;
 
-namespace LankaConnect.Shared.Email.Extensions;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Extensions;
 
 /// <summary>
 /// Phase 6A.100: Email logging and metrics implementations.

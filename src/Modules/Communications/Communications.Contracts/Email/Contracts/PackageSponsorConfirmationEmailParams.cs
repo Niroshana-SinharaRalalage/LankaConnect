@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace LankaConnect.Shared.Email.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 
 /// <summary>
 /// Phase 6A.157 — typed parameters for the packaged-sponsorship confirmation

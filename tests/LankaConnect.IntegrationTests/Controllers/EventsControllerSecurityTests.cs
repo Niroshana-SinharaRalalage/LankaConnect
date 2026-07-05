@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-using LankaConnect.API.Controllers;
+using LankaConnect.SPLIT_PER_CONTROLLER;
 using LankaConnect.API.Extensions;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddToWaitingList;
 using LankaConnect.Products.LankaEvents.Application.Commands.RemoveFromWaitingList;
@@ -19,9 +19,9 @@ using LankaConnect.Products.LankaEvents.Application.Commands.PromoteFromWaitingL
 using LankaConnect.Products.LankaEvents.Application.Commands.CancelRsvp;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetUserRsvps;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetUpcomingEventsForUser;
-using LankaConnect.Application.Common.Models;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.IntegrationTests.Controllers;
 

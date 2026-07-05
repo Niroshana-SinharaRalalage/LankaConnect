@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.Email.Helpers;
+namespace LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 
 /// <summary>
 /// Phase 7C.2: Email-ready projection of an event's primary + optional secondary location.

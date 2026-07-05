@@ -1,11 +1,11 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using System.Diagnostics;
 using System.Text.Json;
-using LankaConnect.Application.Common.Constants;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Support;
+using LankaConnect.BuildingBlocks.Application.Common.Constants;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Support;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -15,8 +15,8 @@ using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Modules.Notifications.Domain.Enums;
 using LankaConnect.Modules.Notifications.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.Shared.Email.Contracts;
-using LankaConnect.Shared.Email.Services;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.ApproveRoleUpgrade;

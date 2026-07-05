@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Common.ValueObjects;
-using LankaConnect.Domain.Shared;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.BuildingBlocks.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.BuildingBlocks.Domain.Users;
 
 /// <summary>

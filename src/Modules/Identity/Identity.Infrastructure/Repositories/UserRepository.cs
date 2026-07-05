@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.SPLIT_PER_ENTITY.Repositories;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Enums;
-using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
+using UserEmail = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 using System.Diagnostics;
 using Serilog.Context;
 

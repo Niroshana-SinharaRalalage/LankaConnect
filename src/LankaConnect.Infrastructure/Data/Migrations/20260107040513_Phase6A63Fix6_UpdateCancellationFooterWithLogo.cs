@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Data.Migrations
+namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     /// <inheritdoc />
     public partial class Phase6A63Fix6_UpdateCancellationFooterWithLogo : Migration
@@ -35,7 +35,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 <!-- Top decoration -->
                                 <tr>
                                     <td align=""center"" style=""padding: 15px 0 10px 0; font-size: 12px; letter-spacing: 6px; color: rgba(255,255,255,0.2);"">
-                                        ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+                                        ? ? ? ? ? ? ? ? ? ? ?
                                     </td>
                                 </tr>
                                 <!-- Logo -->

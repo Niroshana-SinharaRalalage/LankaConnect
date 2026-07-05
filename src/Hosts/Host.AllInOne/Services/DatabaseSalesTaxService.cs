@@ -1,7 +1,7 @@
-using LankaConnect.Application.Common.Options;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Options;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Services;
-using LankaConnect.Domain.Tax.Repositories;
+using LankaConnect.Modules.Payments.Domain.Tax.Repositories;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Serilog;

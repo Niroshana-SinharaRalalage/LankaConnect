@@ -1,6 +1,6 @@
 using System;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 namespace LankaConnect.BuildingBlocks.Application.Common.Models.Routing;
 
 public class LanguageDetectionResult : LegacyBaseEntity

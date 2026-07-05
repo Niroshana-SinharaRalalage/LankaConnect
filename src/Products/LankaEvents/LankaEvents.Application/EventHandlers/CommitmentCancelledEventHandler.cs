@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;

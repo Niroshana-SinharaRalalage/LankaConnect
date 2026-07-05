@@ -1,4 +1,4 @@
-namespace LankaConnect.Shared.WhatsApp.Contracts;
+namespace LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts;
 
 /// <summary>
 /// Phase 7A: Single source of truth for all WhatsApp template names and parameter keys.

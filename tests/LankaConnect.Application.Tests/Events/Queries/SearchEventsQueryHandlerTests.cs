@@ -2,12 +2,12 @@ using FluentAssertions;
 using Moq;
 using LankaConnect.Products.LankaEvents.Application.Queries.SearchEvents;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Application.Common.Models;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Business.ValueObjects;
 using AutoMapper;
 using Microsoft.Extensions.Logging;
@@ -386,7 +386,7 @@ public class SearchEventsQueryHandlerTests
 
             var title = EventTitle.Create($"Test Event {i}").Value;
             var description = EventDescription.Create($"Description for event {i}").Value;
-            var ticketPrice = i % 2 == 0 ? null : Money.Create(50, LankaConnect.Domain.Shared.Enums.Currency.USD).Value;
+            var ticketPrice = i % 2 == 0 ? null : Money.Create(50, LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD).Value;
 
             var @event = Event.Create(
                 title,

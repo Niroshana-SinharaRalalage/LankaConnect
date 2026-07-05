@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Shared.Email.Observability;
+using LankaConnect.Modules.Communications.Contracts.Email.Observability;
 using Microsoft.Extensions.Logging;
 using Moq;
 

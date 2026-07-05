@@ -1,5 +1,5 @@
 using MediatR;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Enums;
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UnlinkExternalProvider;
 

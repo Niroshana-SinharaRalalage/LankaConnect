@@ -1,14 +1,14 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.7.d.3
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
 using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.Extensions.Logging;
@@ -542,7 +542,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 {
                     var currency = registration.TotalPrice?.Currency
                         ?? @event.Pricing?.Currency
-                        ?? LankaConnect.Domain.Shared.Enums.Currency.USD;
+                        ?? LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD;
 
                     var amountResult = Money.Create(request.CollectionAmount.Value, currency);
                     if (amountResult.IsSuccess)
@@ -607,7 +607,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             {
                 var currency = registration.TotalPrice?.Currency
                     ?? @event.Pricing?.Currency
-                    ?? LankaConnect.Domain.Shared.Enums.Currency.USD;
+                    ?? LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD;
 
                 var amountResult = Money.Create(request.SponsorAmount.Value, currency);
                 if (amountResult.IsSuccess)
@@ -999,7 +999,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
         var currency = registration.TotalPrice?.Currency
             ?? @event.Pricing?.Currency
-            ?? LankaConnect.Domain.Shared.Enums.Currency.USD;
+            ?? LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD;
 
         var amountResult = Money.Create(request.DonationAmount!.Value, currency);
         if (amountResult.IsFailure)

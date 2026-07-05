@@ -1,19 +1,19 @@
 using LankaConnect.Modules.Identity.Contracts;
 using System.Diagnostics;
 using System.Globalization;
-using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Application.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Shared.Email.Contracts;
-using LankaConnect.Shared.Email.Helpers;
-using LankaConnect.Shared.Email.Observability;
-using LankaConnect.Shared.Email.Services;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
+using LankaConnect.Modules.Communications.Contracts.Email.Observability;
+using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ResendTicketEmail;
@@ -344,7 +344,7 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                     eventTitle: @event.Title.Value,
                     // Phase 8YA-2 TODO: skip resend on TBD events; param class should accept DateTime?.
                     eventStartDate: @event.StartDate.GetValueOrDefault(),
-                    eventStartTime: LankaConnect.Shared.Email.Helpers.EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),
+                    eventStartTime: LankaConnect.Modules.Communications.Contracts.Email.Helpers.EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),
                     eventLocation: GetEventLocationString(@event),
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
                     amountPaid: registration.TotalPrice?.Amount ?? 0,

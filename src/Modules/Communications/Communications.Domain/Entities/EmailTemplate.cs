@@ -1,7 +1,7 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Domain.Communications.ValueObjects;
-using LankaConnect.Domain.Communications.Services;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.Services;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 public class EmailTemplate : LegacyBaseEntity

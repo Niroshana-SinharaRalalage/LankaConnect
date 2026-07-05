@@ -8,7 +8,7 @@ namespace LankaConnect.Modules.Media.Domain;
 /// base extension. Each query has explicit named intent.
 /// </summary>
 /// <remarks>
-/// W4.2 (2026-06-06): de-coupled from legacy <c>LankaConnect.Domain.Common.IRepository&lt;T&gt;</c>
+/// W4.2 (2026-06-06): de-coupled from legacy <c>LankaConnect.BuildingBlocks.Domain.IRepository&lt;T&gt;</c>
 /// per architect rule "module domain depends on BB only" — the generic CRUD members
 /// (AddAsync, UpdateAsync, DeleteAsync, GetByIdAsync) are inlined here.
 /// </remarks>

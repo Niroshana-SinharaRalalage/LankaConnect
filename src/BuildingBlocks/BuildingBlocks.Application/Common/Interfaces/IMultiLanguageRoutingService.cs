@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LankaConnect.Application.Common.Models.MultiLanguage;
-using LankaConnect.Application.Common.Models.Routing;
+using LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage;
+using LankaConnect.BuildingBlocks.Application.Common.Models.Routing;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>
@@ -20,7 +20,7 @@ public interface IMultiLanguageRoutingService
     /// </summary>
     /// <param name="routingRequest">Multi-language routing request with preferences</param>
     /// <returns>Optimized routing response with performance metrics</returns>
-    Task<LankaConnect.Application.Common.Models.Routing.MultiLanguageRoutingResponse> ExecuteMultiLanguageRoutingAsync(LankaConnect.Application.Common.Models.Routing.MultiLanguageRoutingRequest routingRequest);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.Routing.MultiLanguageRoutingResponse> ExecuteMultiLanguageRoutingAsync(LankaConnect.BuildingBlocks.Application.Common.Models.Routing.MultiLanguageRoutingRequest routingRequest);
 
     /// <summary>
     /// Optimize routing for high-concurrency scenarios (cultural event traffic spikes)
@@ -28,7 +28,7 @@ public interface IMultiLanguageRoutingService
     /// </summary>
     /// <param name="concurrentRequests">Batch of routing requests for optimization</param>
     /// <returns>Batch routing results with performance optimization</returns>
-    Task<LankaConnect.Application.Common.Models.Routing.BatchMultiLanguageRoutingResponse> ExecuteBatchMultiLanguageRoutingAsync(List<LankaConnect.Application.Common.Models.Routing.MultiLanguageRoutingRequest> concurrentRequests);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.Routing.BatchMultiLanguageRoutingResponse> ExecuteBatchMultiLanguageRoutingAsync(List<LankaConnect.BuildingBlocks.Application.Common.Models.Routing.MultiLanguageRoutingRequest> concurrentRequests);
 
     /// <summary>
     /// Generate intelligent routing fallback strategies for service continuity
@@ -37,7 +37,7 @@ public interface IMultiLanguageRoutingService
     /// <param name="primaryRoutingFailure">Primary routing failure context</param>
     /// <param name="userProfile">User profile for personalized fallback</param>
     /// <returns>Intelligent fallback routing strategy</returns>
-    Task<LankaConnect.Application.Common.Models.Routing.RoutingFallbackStrategy> GenerateIntelligentRoutingFallbackAsync(
-        LankaConnect.Application.Common.Models.Routing.RoutingFailureContext primaryRoutingFailure,
-        LankaConnect.Application.Common.Models.Routing.MultiLanguageUserProfile userProfile);
+    Task<LankaConnect.BuildingBlocks.Application.Common.Models.Routing.RoutingFallbackStrategy> GenerateIntelligentRoutingFallbackAsync(
+        LankaConnect.BuildingBlocks.Application.Common.Models.Routing.RoutingFailureContext primaryRoutingFailure,
+        LankaConnect.BuildingBlocks.Application.Common.Models.Routing.MultiLanguageUserProfile userProfile);
 }

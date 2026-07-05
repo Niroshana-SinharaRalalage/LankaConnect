@@ -1,5 +1,5 @@
-using LankaConnect.Application.ReferenceData.DTOs;
-using LankaConnect.Domain.ReferenceData.Interfaces;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.DTOs;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.SharedKernel.Cultural.ReferenceData.Services;

@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Emails;

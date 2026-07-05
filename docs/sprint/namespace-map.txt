@@ -32,8 +32,8 @@ LankaConnect.Domain.Common.Models => LankaConnect.BuildingBlocks.Domain.Models
 LankaConnect.Domain.Common => LankaConnect.BuildingBlocks.Domain
 LankaConnect.Domain.Shared => LankaConnect.BuildingBlocks.Domain.Shared
 
-# Business → LEGACY-KEEP-ALIVE STUB (Phase B — LankaBusiness not created)
-LankaConnect.Domain.Business => LankaConnect.Legacy.Domain.Business
+# Business STAYS in LankaConnect.Domain during sprint - Day 10 renames whole csproj to .Legacy.
+# No rewrite for Business namespace during Phase 2.
 
 # --- Application → target modules ---
 LankaConnect.Application.Analytics => LankaConnect.Products.LankaEvents.Application.Analytics
@@ -50,7 +50,7 @@ LankaConnect.Application.ReferenceData => LankaConnect.SharedKernel.Cultural.Ref
 LankaConnect.Application.Support => LankaConnect.Modules.Communications.Application.Support
 LankaConnect.Application.Users => LankaConnect.Modules.Identity.Application.Users
 LankaConnect.Application.Dashboard => LankaConnect.Hosts.AllInOne.Dashboard
-LankaConnect.Application.Businesses => LankaConnect.Legacy.Application.Businesses
+# Businesses STAYS in LankaConnect.Application during sprint (paired with Business).
 
 # --- Infrastructure → target modules ---
 LankaConnect.Infrastructure.BackgroundServices => LankaConnect.Hosts.AllInOne.BackgroundServices

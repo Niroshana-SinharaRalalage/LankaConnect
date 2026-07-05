@@ -4,7 +4,7 @@
 ///
 /// Usage Pattern:
 /// using MissingTypes = LankaConnect.Domain.Shared;
-/// using CulturalEnums = LankaConnect.Domain.Common.Enums;
+/// using CulturalEnums = LankaConnect.BuildingBlocks.Domain.Enums;
 ///
 /// Then reference as: MissingTypes.AutoScalingDecision or CulturalEnums.SouthAsianLanguage
 /// </summary>
@@ -13,7 +13,7 @@
 // Note: Many types were moved from Domain.Shared to their proper domain locations
 
 // AutoScalingDecision exists in Database and Performance - prefer Database for general use
-global using AutoScalingDecision = LankaConnect.Domain.Common.Database.AutoScalingDecision;
+global using AutoScalingDecision = LankaConnect.BuildingBlocks.Domain.Database.AutoScalingDecision;
 
 // Note: The following types may not exist yet and need to be created in Domain.Shared:
 // - ResponseAction, PerformanceAlert, CulturalIntelligenceContext, ServiceLevelAgreement
@@ -24,7 +24,7 @@ global using AutoScalingDecision = LankaConnect.Domain.Common.Database.AutoScali
 
 // W2C.6 (2026-06-05): CulturalEventType (40+ value enum) moved to SharedKernel.Cultural
 // per ADR-008. The 350+ unqualified references across 62 files resolve via this alias.
-// Was: LankaConnect.Domain.Common.Enums.CulturalEventType
+// Was: LankaConnect.BuildingBlocks.Domain.Enums.CulturalEventType
 global using CulturalEventType = LankaConnect.SharedKernel.Cultural.CulturalEventType;
 
 // W2C.6 (2026-06-05): ReligiousObservanceLevel extracted from

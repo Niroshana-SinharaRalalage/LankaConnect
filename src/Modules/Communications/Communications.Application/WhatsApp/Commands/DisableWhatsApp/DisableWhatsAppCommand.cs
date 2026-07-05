@@ -2,9 +2,9 @@ using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
 namespace LankaConnect.Modules.Communications.Application.WhatsApp.Commands.DisableWhatsApp;
 
 /// <summary>

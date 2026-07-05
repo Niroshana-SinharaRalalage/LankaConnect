@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.Application.MetroAreas.Common;
-using LankaConnect.Application.MetroAreas.Queries.GetMetroAreas;
+using LankaConnect.SharedKernel.Geo.MetroAreas.Common;
+using LankaConnect.SharedKernel.Geo.MetroAreas.Queries.GetMetroAreas;
 namespace LankaConnect.Host.AllInOne.Controllers;
 
 /// <summary>

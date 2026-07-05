@@ -1,6 +1,5 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
-
 namespace LankaConnect.Products.LankaEvents.Domain.Repositories;
 
 /// <summary>

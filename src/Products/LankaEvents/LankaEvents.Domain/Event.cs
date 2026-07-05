@@ -4,7 +4,6 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Domain.Shared.ValueObjects;
-
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 // W3C (2026-06-06): Event migrated from legacy BaseEntity to

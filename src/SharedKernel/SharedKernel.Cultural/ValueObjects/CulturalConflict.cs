@@ -1,6 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
-
-namespace LankaConnect.SharedKernel.Cultural;
+namespace LankaConnect.SharedKernel.Cultural.ValueObjects;
 
 /// <summary>
 /// Value object representing a cultural scheduling conflict and resolution

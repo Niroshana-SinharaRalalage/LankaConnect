@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using LankaConnect.Domain.Common;
-
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>

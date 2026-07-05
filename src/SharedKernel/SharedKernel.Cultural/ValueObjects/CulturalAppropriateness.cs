@@ -1,6 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
-
-namespace LankaConnect.SharedKernel.Cultural;
+namespace LankaConnect.SharedKernel.Cultural.ValueObjects;
 
 /// <summary>
 /// Cultural Appropriateness scoring value object for Cultural Intelligence Engine

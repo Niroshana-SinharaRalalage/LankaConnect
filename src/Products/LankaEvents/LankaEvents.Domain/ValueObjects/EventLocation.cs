@@ -1,6 +1,5 @@
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
-
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>

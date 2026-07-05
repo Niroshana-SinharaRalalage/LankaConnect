@@ -1,86 +1,138 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 namespace LankaConnect.BuildingBlocks.Domain;
 
 /// <summary>
-/// A non-generic operation outcome — either <see cref="IsSuccess"/> with no value,
-/// or a failure carrying an <see cref="Error"/>. Used for void-returning domain
-/// operations that can fail without producing a value.
+/// TDD GREEN Phase: Enhanced Result Pattern Implementation
+/// Foundation pattern for error handling and validation in LankaConnect platform.
+/// Slice 5 added <see cref="ErrorKind"/> so the API layer can map failure categories
+/// to HTTP status codes without string-sniffing. Legacy Failure(string) defaults to
+/// <see cref="ErrorKind.Validation"/>, preserving behavior for all pre-existing callers.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Construction is via the static factories <see cref="Success"/> / <see cref="Failure(Error)"/>
-/// rather than a public constructor — this enforces the invariant
-/// <c>IsSuccess XOR Error.IsNone</c> and makes intent grep-friendly at call sites.
-/// </para>
-/// </remarks>
 public class Result
 {
-    /// <summary>True when the operation completed successfully.</summary>
-    public bool IsSuccess { get; }
-
-    /// <summary>Convenience inverse of <see cref="IsSuccess"/>.</summary>
+    public bool IsSuccess { get; private set; }
     public bool IsFailure => !IsSuccess;
-
-    /// <summary>Error payload; <see cref="BuildingBlocks.Domain.Error.None"/> on success.</summary>
-    public Error Error { get; }
+    public IEnumerable<string> Errors { get; private set; }
 
     /// <summary>
-    /// Protected so subclasses (e.g. <see cref="Result{T}"/>) can extend without breaking
-    /// the success/failure invariant.
+    /// Classifies the failure so the API layer can map to an HTTP status code.
+    /// Success results always return <see cref="ErrorKind.None"/>.
     /// </summary>
-    protected Result(bool isSuccess, Error error)
+    public ErrorKind ErrorKind { get; private set; }
+
+    /// <summary>
+    /// Gets the first error message, or empty string if no errors exist
+    /// </summary>
+    public string Error => Errors.FirstOrDefault() ?? string.Empty;
+
+    protected Result(bool isSuccess, IEnumerable<string> errors, ErrorKind errorKind = ErrorKind.None)
     {
-        if (isSuccess && !error.IsNone)
-        {
-            throw new InvalidOperationException(
-                "A success result cannot carry a non-none error. Either the caller passed an inconsistent pair, or Error.None was mutated.");
-        }
-
-        if (!isSuccess && error.IsNone)
-        {
-            throw new InvalidOperationException(
-                "A failure result requires a non-none error. Did you mean Result.Failure(someError) instead of Result.Failure(Error.None)?");
-        }
-
         IsSuccess = isSuccess;
-        Error = error;
+        Errors = errors ?? Array.Empty<string>();
+        ErrorKind = errorKind;
     }
 
-    /// <summary>Returns a successful result.</summary>
-    public static Result Success() => new(true, Error.None);
-
-    /// <summary>Returns a failure result carrying the supplied <paramref name="error"/>.</summary>
-    /// <exception cref="InvalidOperationException">If <paramref name="error"/> is <see cref="Error.None"/>.</exception>
-    public static Result Failure(Error error) => new(false, error);
-
-    /// <summary>
-    /// Factory for value-bearing successes. Sugar around <see cref="Result{T}.Success"/>.
-    /// </summary>
-    public static Result<T> Success<T>(T value) => Result<T>.Success(value);
-
-    /// <summary>
-    /// Factory for value-bearing failures. Sugar around <see cref="Result{T}.Failure"/>.
-    /// </summary>
-    public static Result<T> Failure<T>(Error error) => Result<T>.Failure(error);
-
-    /// <summary>
-    /// Combines multiple results: success only if ALL inputs succeed, else returns the first failure.
-    /// Empty input is treated as success.
-    /// </summary>
-    public static Result Combine(params Result[] results)
+    public static Result Success()
     {
-        if (results is null)
-        {
-            return Failure(Error.NullValue);
-        }
+        return new Result(true, Array.Empty<string>(), ErrorKind.None);
+    }
 
-        foreach (var r in results)
-        {
-            if (r.IsFailure)
-            {
-                return r;
-            }
-        }
+    public static Result Failure(string error)
+    {
+        return new Result(false, new[] { error }, ErrorKind.Validation);
+    }
 
-        return Success();
+    public static Result Failure(IEnumerable<string> errors)
+    {
+        return new Result(false, errors, ErrorKind.Validation);
+    }
+
+    public static Result Failure(string error, ErrorKind kind)
+    {
+        return new Result(false, new[] { error }, kind);
+    }
+
+    public static Result Forbidden(string error) => new(false, new[] { error }, ErrorKind.Forbidden);
+    public static Result NotFound(string error) => new(false, new[] { error }, ErrorKind.NotFound);
+    public static Result Conflict(string error) => new(false, new[] { error }, ErrorKind.Conflict);
+    public static Result StructuralEditRejected(string error) => new(false, new[] { error }, ErrorKind.StructuralEditRejected);
+
+    public static implicit operator Result(bool success)
+    {
+        return success ? Success() : Failure("Operation failed");
+    }
+
+    public static implicit operator Result(string error)
+    {
+        return Failure(error);
+    }
+}
+
+public class Result<T> : Result
+{
+    private readonly T? _value;
+
+    public T Value
+    {
+        get
+        {
+            if (!IsSuccess)
+                throw new InvalidOperationException("Cannot access value of a failed result");
+            return _value!;
+        }
+    }
+
+    protected Result(bool isSuccess, IEnumerable<string> errors, T? value = default, ErrorKind errorKind = ErrorKind.None)
+        : base(isSuccess, errors, errorKind)
+    {
+        _value = value;
+    }
+
+    public static Result<T> Success(T value)
+    {
+        return new Result<T>(true, Array.Empty<string>(), value, ErrorKind.None);
+    }
+
+    public static new Result<T> Failure(string error)
+    {
+        return new Result<T>(false, new[] { error }, default, ErrorKind.Validation);
+    }
+
+    public static new Result<T> Failure(IEnumerable<string> errors)
+    {
+        return new Result<T>(false, errors, default, ErrorKind.Validation);
+    }
+
+    public static new Result<T> Failure(string error, ErrorKind kind)
+    {
+        return new Result<T>(false, new[] { error }, default, kind);
+    }
+
+    public static new Result<T> Forbidden(string error) => new(false, new[] { error }, default, ErrorKind.Forbidden);
+    public static new Result<T> NotFound(string error) => new(false, new[] { error }, default, ErrorKind.NotFound);
+    public static new Result<T> Conflict(string error) => new(false, new[] { error }, default, ErrorKind.Conflict);
+    public static new Result<T> StructuralEditRejected(string error) => new(false, new[] { error }, default, ErrorKind.StructuralEditRejected);
+
+    public static implicit operator Result<T>(T value)
+    {
+        return Success(value);
+    }
+
+    /// <summary>
+    /// Transforms the result using provided functions
+    /// </summary>
+    public TResult Match<TResult>(Func<T, TResult> onSuccess, Func<string, TResult> onFailure)
+    {
+        return IsSuccess ? onSuccess(_value!) : onFailure(Error);
+    }
+
+    /// <summary>
+    /// Maps the success value to another type
+    /// </summary>
+    public Result<TResult> Map<TResult>(Func<T, TResult> mapper)
+    {
+        return IsSuccess ? Result<TResult>.Success(mapper(_value!)) : Result<TResult>.Failure(Errors);
     }
 }

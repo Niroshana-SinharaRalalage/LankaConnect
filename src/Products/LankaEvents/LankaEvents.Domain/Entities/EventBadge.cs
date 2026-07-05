@@ -1,6 +1,5 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Badges;
-
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>

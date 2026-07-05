@@ -1,6 +1,5 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 public interface IRegistrationRepository : IRepository<Registration>

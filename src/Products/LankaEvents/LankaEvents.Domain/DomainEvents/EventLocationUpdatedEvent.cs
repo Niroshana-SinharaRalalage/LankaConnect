@@ -1,6 +1,5 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-
 namespace LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 
 /// <summary>

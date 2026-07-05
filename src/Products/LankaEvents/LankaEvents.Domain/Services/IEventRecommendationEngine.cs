@@ -4,7 +4,6 @@ using LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
 // global alias resolves unqualified refs. Explicit alias removed (was duplicate).
 using CommunityCluster = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations.CommunityCluster;
 using CulturalSensitivityLevel = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations.CulturalSensitivityLevel;
-
 namespace LankaConnect.Products.LankaEvents.Domain.Services;
 
 /// <summary>

@@ -1,6 +1,5 @@
 using LankaConnect.Domain.Common;
 using System.Text.RegularExpressions;
-
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>

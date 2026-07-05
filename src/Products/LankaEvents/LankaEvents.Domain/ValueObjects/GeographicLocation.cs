@@ -1,6 +1,5 @@
 using LankaConnect.SharedKernel.Cultural;
 using LankaConnect.Domain.Common.Enums;
-
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 public record GeographicLocation

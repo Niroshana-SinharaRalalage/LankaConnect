@@ -105,19 +105,6 @@ function Get-TargetNamespace {
     #      → namespace LankaConnect.Modules.Communications.Domain.Auth
 
     $fileDir = [System.IO.Path]::GetDirectoryName($FilePath)
-    # Manual relative path (Path.GetRelativePath is not in Windows PowerShell 5.1 / .NET Framework)
-    $normRoot = $TargetRootAbs.TrimEnd('\','/').Replace('/', '\')
-    $normDir  = $fileDir.TrimEnd('\','/').Replace('/', '\')
-    if ($normDir -eq $normRoot) {
-        $rel = ""
-    }
-    elseif ($normDir.StartsWith($normRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
-        $rel = $normDir.Substring($normRoot.Length + 1)
-    }
-    else {
-        throw "File $FilePath is not under TargetRoot $TargetRootAbs"
-    }
-    $rel = $rel.Replace('\', '.').Replace('/', '.')
 
     # Base namespace convention derived from TargetRoot path components:
     #   src\Modules\Communications\Communications.Domain => LankaConnect.Modules.Communications.Domain
@@ -125,16 +112,43 @@ function Get-TargetNamespace {
     #   src\BuildingBlocks\BuildingBlocks.Domain         => LankaConnect.BuildingBlocks.Domain
     #   src\SharedKernel\SharedKernel.Cultural           => LankaConnect.SharedKernel.Cultural
 
-    $tokens = $TargetRootAbs -split '[\\/]'
+    # Walk up from the file's directory until we find a folder containing a .csproj.
+    # That folder is the project root; its name is the project leaf used to derive the namespace.
+    $projRoot = $fileDir
+    while ($projRoot -and -not (Get-ChildItem -LiteralPath $projRoot -Filter '*.csproj' -File -ErrorAction SilentlyContinue)) {
+        $parent = Split-Path -Parent $projRoot
+        if (-not $parent -or $parent -eq $projRoot) { break }
+        $projRoot = $parent
+    }
+    if (-not $projRoot -or -not (Get-ChildItem -LiteralPath $projRoot -Filter '*.csproj' -File -ErrorAction SilentlyContinue)) {
+        throw "Cannot find .csproj upward from $FilePath"
+    }
+    $projRoot = $projRoot.Replace('/', '\')
+
+    $tokens = $projRoot -split '\\'
     $srcIdx = [Array]::IndexOf($tokens, 'src')
     if ($srcIdx -lt 0) {
-        throw "TargetRoot must be inside a 'src' directory. Got: $TargetRootAbs"
+        throw "Project root must be inside a 'src' directory. Got: $projRoot"
     }
 
     # Layer folder = tokens[srcIdx+1] (Modules/Products/BuildingBlocks/SharedKernel/Hosts)
-    # Then project folder = last token
+    # Then project leaf = last folder above the .csproj
     $layer = $tokens[$srcIdx + 1]
-    $projectLeaf = $tokens[-1]  # e.g. "Communications.Domain"
+    $projectLeaf = $tokens[-1]  # e.g. "Communications.Contracts"
+
+    # Re-compute rel path from PROJECT ROOT, not the passed target root
+    $normProj = $projRoot.TrimEnd('\','/').Replace('/', '\')
+    $normDir  = $fileDir.TrimEnd('\','/').Replace('/', '\')
+    if ($normDir -eq $normProj) {
+        $rel = ""
+    }
+    elseif ($normDir.StartsWith($normProj + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        $rel = $normDir.Substring($normProj.Length + 1)
+    }
+    else {
+        throw "File $FilePath is not under project root $normProj"
+    }
+    $rel = $rel.Replace('\', '.').Replace('/', '.')
 
     switch ($layer) {
         'Modules'         { $base = "LankaConnect.Modules.$projectLeaf" }

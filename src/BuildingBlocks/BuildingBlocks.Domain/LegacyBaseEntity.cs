@@ -32,9 +32,9 @@ public abstract class LegacyBaseEntity
     // so for AppDbContext-owned entities the ctor-set CreatedAt below is the
     // operational value; interceptor adoption for AppDbContext is a Wave 6.5
     // outbox-cutover concern.
-    public DateTime CreatedAt { get; set; }
+    public new DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public new DateTime? UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
 
     /// <summary>
@@ -64,5 +64,5 @@ public abstract class LegacyBaseEntity
     /// <c>BaseEntity.GetDomainEvents()</c>. New code reads
     /// <see cref="LankaConnect.BuildingBlocks.Domain.Entity{TId}.DomainEvents"/>.
     /// </summary>
-    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.IDomainEvent> GetDomainEvents() => DomainEvents;
+    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.Contracts.IDomainEvent> GetDomainEvents() => DomainEvents;
 }

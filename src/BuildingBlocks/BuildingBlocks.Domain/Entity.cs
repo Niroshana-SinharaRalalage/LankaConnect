@@ -1,106 +1,70 @@
+using LankaConnect.Domain.Common.Contracts;
 namespace LankaConnect.BuildingBlocks.Domain;
 
 /// <summary>
-/// Generic entity base — entities have a stable identity (<see cref="Id"/>) that
-/// distinguishes them from value objects, and may raise domain events as their
-/// state mutates.
+/// Generic entity base class for domain entities with typed identifiers
 /// </summary>
-/// <typeparam name="TId">
-/// The identifier type. Common choices are <see cref="Guid"/> (for distributed
-/// generation) or strongly-typed ID wrappers; never <see cref="string"/> for
-/// identity (strings are mutable concepts; use typed IDs instead).
-/// </typeparam>
-/// <remarks>
-/// <para>
-/// Equality is identity-based: two entities are equal iff they share the same
-/// concrete type and same <see cref="Id"/>. This differs from
-/// <see cref="ValueObject"/> which uses structural equality.
-/// </para>
-/// <para>
-/// Domain events accumulate on the entity until the persistence boundary
-/// (typically the UnitOfWork in BuildingBlocks.Application W2.4) flushes
-/// them via <see cref="ClearDomainEvents"/> after handlers run.
-/// </para>
-/// </remarks>
-public abstract class Entity<TId> : IEquatable<Entity<TId>>
-    where TId : notnull
+public abstract class Entity<T> : IEquatable<Entity<T>>
+    where T : notnull
 {
+    public required T Id { get; init; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; protected set; }
+
     private readonly List<IDomainEvent> _domainEvents = new();
-
-    /// <summary>The stable identity. Set once at construction and never mutated.</summary>
-    public TId Id { get; protected init; } = default!;
-
-    /// <summary>Domain events raised by this entity since the last flush.</summary>
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
-    /// <summary>
-    /// Required for EF Core proxy-based materialization and serializers; concrete
-    /// entities should provide a public constructor that sets <see cref="Id"/>.
-    /// </summary>
     protected Entity()
     {
+        // For entities with default ID generation - Id must be set by derived class
+        CreatedAt = DateTime.UtcNow;
     }
 
-    /// <summary>Initializes the entity with its identity.</summary>
-    /// <exception cref="ArgumentNullException">If <paramref name="id"/> is null.</exception>
-    protected Entity(TId id)
+    protected Entity(T id)
     {
-        ArgumentNullException.ThrowIfNull(id);
-        Id = id;
+        Id = id ?? throw new ArgumentNullException(nameof(id));
+        CreatedAt = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Records a domain event for downstream dispatch when the unit of work commits.
-    /// </summary>
-    /// <exception cref="ArgumentNullException">If <paramref name="domainEvent"/> is null.</exception>
+    public void MarkAsUpdated()
+    {
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     protected void RaiseDomainEvent(IDomainEvent domainEvent)
     {
-        ArgumentNullException.ThrowIfNull(domainEvent);
         _domainEvents.Add(domainEvent);
     }
 
-    /// <summary>
-    /// Empties the local event buffer — called by the dispatcher after events
-    /// have been published downstream. Tests sometimes call this to reset state
-    /// between scenarios.
-    /// </summary>
-    public void ClearDomainEvents() => _domainEvents.Clear();
-
-    // ---------- Identity equality ----------
-
-    /// <inheritdoc />
-    public bool Equals(Entity<TId>? other)
+    public void ClearDomainEvents()
     {
-        if (other is null)
-        {
-            return false;
-        }
-
-        if (ReferenceEquals(this, other))
-        {
-            return true;
-        }
-
-        // Different concrete types with the same Id are NOT equal — e.g. an
-        // EventId(Guid X) and a UserId(Guid X) must remain distinct.
-        if (GetType() != other.GetType())
-        {
-            return false;
-        }
-
-        return EqualityComparer<TId>.Default.Equals(Id, other.Id);
+        _domainEvents.Clear();
     }
 
-    /// <inheritdoc />
-    public override bool Equals(object? obj) => obj is Entity<TId> e && Equals(e);
+    public override bool Equals(object? obj)
+    {
+        return obj is Entity<T> entity && Equals(entity);
+    }
 
-    /// <inheritdoc />
-    public override int GetHashCode() => HashCode.Combine(GetType(), Id);
+    public bool Equals(Entity<T>? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return EqualityComparer<T>.Default.Equals(Id, other.Id);
+    }
 
-    /// <summary>Identity equality operator.</summary>
-    public static bool operator ==(Entity<TId>? left, Entity<TId>? right) =>
-        left is null ? right is null : left.Equals(right);
+    public override int GetHashCode()
+    {
+        return Id.GetHashCode();
+    }
 
-    /// <summary>Identity inequality operator.</summary>
-    public static bool operator !=(Entity<TId>? left, Entity<TId>? right) => !(left == right);
+    public static bool operator ==(Entity<T>? left, Entity<T>? right)
+    {
+        return EqualityComparer<Entity<T>>.Default.Equals(left, right);
+    }
+
+    public static bool operator !=(Entity<T>? left, Entity<T>? right)
+    {
+        return !(left == right);
+    }
 }

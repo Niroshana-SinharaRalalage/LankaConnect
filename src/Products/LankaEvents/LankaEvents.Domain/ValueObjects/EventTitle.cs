@@ -1,5 +1,4 @@
 using LankaConnect.Domain.Common;
-
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 public class EventTitle : ValueObject

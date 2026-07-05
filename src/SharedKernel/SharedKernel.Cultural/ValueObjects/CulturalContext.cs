@@ -1,6 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
-
-namespace LankaConnect.SharedKernel.Cultural;
+namespace LankaConnect.SharedKernel.Cultural.ValueObjects;
 
 /// <summary>
 /// Cultural context for email optimization including language, religious background, and geographic considerations

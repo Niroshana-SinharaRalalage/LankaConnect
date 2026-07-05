@@ -2,7 +2,6 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
-
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>

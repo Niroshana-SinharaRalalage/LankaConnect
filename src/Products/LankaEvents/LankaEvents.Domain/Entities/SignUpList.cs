@@ -1,7 +1,6 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
-
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>

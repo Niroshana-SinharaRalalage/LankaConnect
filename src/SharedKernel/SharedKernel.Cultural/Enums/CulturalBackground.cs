@@ -1,4 +1,4 @@
-namespace LankaConnect.SharedKernel.Cultural;
+namespace LankaConnect.SharedKernel.Cultural.Enums;
 
 /// <summary>
 /// Cultural and religious backgrounds for Sri Lankan diaspora communities

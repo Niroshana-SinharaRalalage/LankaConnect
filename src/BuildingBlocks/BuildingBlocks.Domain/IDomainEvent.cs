@@ -1,20 +1,19 @@
 namespace LankaConnect.BuildingBlocks.Domain;
 
 /// <summary>
-/// Marker for in-process domain events. Implementations are typically
-/// <c>record</c>s carrying the data downstream handlers need.
+/// Legacy domain event marker. W3B (2026-06-05) bridged to
+/// <see cref="LankaConnect.BuildingBlocks.Domain.IDomainEvent"/> so entities
+/// migrated to <c>BB.Entity&lt;TId&gt;</c> can <c>RaiseDomainEvent(...)</c>
+/// with legacy event records without forcing all events to migrate atomically.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Domain events stay <b>inside</b> the aggregate that raised them and the
-/// handlers in the same module. <b>Cross-module</b> integration is the job of
-/// <c>BuildingBlocks.Contracts.IntegrationEventV1</c> (W2.7), which uses the
-/// outbox + dispatcher pattern. Mixing the two leaks aggregate internals
-/// into other modules and is enforced against by ArchTest.
-/// </para>
+/// Both interfaces declare an identical <c>DateTime OccurredAt { get; }</c>
+/// member, so any legacy event satisfies the BB contract automatically.
+/// This interface is DEPRECATED for new code — declare events directly against
+/// <see cref="LankaConnect.BuildingBlocks.Domain.IDomainEvent"/>. Wave 4
+/// capability extraction migrates remaining legacy events to the BB contract
+/// and deletes this bridge.
 /// </remarks>
-public interface IDomainEvent
+public interface IDomainEvent : LankaConnect.BuildingBlocks.Domain.IDomainEvent
 {
-    /// <summary>UTC timestamp the event was raised.</summary>
-    DateTime OccurredAt { get; }
 }

@@ -1,5 +1,4 @@
 using LankaConnect.Domain.Analytics;
-
 namespace LankaConnect.Products.LankaEvents.Domain.Repositories;
 
 /// <summary>

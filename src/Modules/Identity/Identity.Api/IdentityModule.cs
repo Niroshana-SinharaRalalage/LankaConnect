@@ -7,7 +7,6 @@ using LankaConnect.Modules.Identity.Infrastructure.Security;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
 namespace LankaConnect.Modules.Identity.Api;
 
 /// <summary>

@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 public class SignUpListDto

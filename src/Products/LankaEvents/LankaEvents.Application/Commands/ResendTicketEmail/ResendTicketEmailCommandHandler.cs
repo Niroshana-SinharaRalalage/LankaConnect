@@ -16,7 +16,6 @@ using LankaConnect.Shared.Email.Observability;
 using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ResendTicketEmail;
 
 /// <summary>

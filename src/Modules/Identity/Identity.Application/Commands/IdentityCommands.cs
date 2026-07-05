@@ -9,7 +9,6 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Contracts;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Modules.Identity.Application.Commands;
 
 /// <summary>

@@ -8,7 +8,6 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using DonationConfiguration = LankaConnect.Products.LankaEvents.Domain.ValueObjects.DonationConfiguration;
-
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 public class EventMappingProfile : Profile

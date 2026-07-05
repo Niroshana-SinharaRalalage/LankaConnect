@@ -8,7 +8,6 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.CreateUser;
 
 public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Guid>

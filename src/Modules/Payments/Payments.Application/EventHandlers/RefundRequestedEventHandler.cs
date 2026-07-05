@@ -16,7 +16,6 @@ using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Payments.Application.EventHandlers;
 
 /// <summary>

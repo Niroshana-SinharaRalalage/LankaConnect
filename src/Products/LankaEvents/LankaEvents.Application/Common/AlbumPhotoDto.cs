@@ -3,7 +3,6 @@ using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
-
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 /// <summary>

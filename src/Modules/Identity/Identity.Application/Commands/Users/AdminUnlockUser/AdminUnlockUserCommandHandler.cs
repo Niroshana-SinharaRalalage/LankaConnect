@@ -15,7 +15,6 @@ using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.AdminUnlockUser;
 
 /// <summary>

@@ -11,7 +11,6 @@ using LankaConnect.Modules.Media.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.UpdateAlbumDetails;
 
 /// <summary>

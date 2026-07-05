@@ -8,7 +8,6 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Payments.Application.Services;
 
 /// <summary>

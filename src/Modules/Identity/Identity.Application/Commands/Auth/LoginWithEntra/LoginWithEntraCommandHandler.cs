@@ -11,7 +11,6 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using RefreshTokenVO = LankaConnect.Modules.Identity.Domain.ValueObjects.RefreshToken;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 
 /// <summary>

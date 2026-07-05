@@ -1,0 +1,183 @@
+using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
+using System.Diagnostics;
+using LankaConnect.Application.Badges.DTOs;
+using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Domain.Badges;
+using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using MediatR;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
+namespace LankaConnect.Products.LankaEvents.Application.Badges.Commands.AssignBadgeToEvent;
+
+/// <summary>
+/// Handler for AssignBadgeToEventCommand
+/// Phase 6A.25: Assigns a badge to an event
+/// Phase 6A.28: Added duration-based expiration support
+/// </summary>
+public class AssignBadgeToEventCommandHandler : IRequestHandler<AssignBadgeToEventCommand, Result<EventBadgeDto>>
+{
+    private readonly IEventRepository _eventRepository;
+    private readonly IBadgeRepository _badgeRepository;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<AssignBadgeToEventCommandHandler> _logger;
+
+    public AssignBadgeToEventCommandHandler(
+        IEventRepository eventRepository,
+        IBadgeRepository badgeRepository,
+        ICurrentUserService currentUserService,
+        IUnitOfWork unitOfWork,
+        ILogger<AssignBadgeToEventCommandHandler> logger)
+    {
+        _eventRepository = eventRepository;
+        _badgeRepository = badgeRepository;
+        _currentUserService = currentUserService;
+        _unitOfWork = unitOfWork;
+        _logger = logger;
+    }
+
+    public async Task<Result<EventBadgeDto>> Handle(AssignBadgeToEventCommand request, CancellationToken cancellationToken)
+    {
+        using (LogContext.PushProperty("Operation", "AssignBadgeToEvent"))
+        using (LogContext.PushProperty("EntityType", "EventBadge"))
+        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("BadgeId", request.BadgeId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "AssignBadgeToEvent START: EventId={EventId}, BadgeId={BadgeId}, DurationDays={DurationDays}",
+                request.EventId, request.BadgeId, request.DurationDays);
+
+            try
+            {
+                // Validation
+                if (request.EventId == Guid.Empty)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "AssignBadgeToEvent FAILED: Invalid EventId - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<EventBadgeDto>.Failure("Event ID is required");
+                }
+
+                if (request.BadgeId == Guid.Empty)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "AssignBadgeToEvent FAILED: Invalid BadgeId - EventId={EventId}, BadgeId={BadgeId}, Duration={ElapsedMs}ms",
+                        request.EventId, request.BadgeId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<EventBadgeDto>.Failure("Badge ID is required");
+                }
+
+                // 1. Get event
+                var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+                if (@event == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "AssignBadgeToEvent FAILED: Event not found - EventId={EventId}, BadgeId={BadgeId}, Duration={ElapsedMs}ms",
+                        request.EventId, request.BadgeId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<EventBadgeDto>.Failure($"Event with ID {request.EventId} not found");
+                }
+
+                // 2. Get badge
+                var badge = await _badgeRepository.GetByIdAsync(request.BadgeId, cancellationToken);
+                if (badge == null)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "AssignBadgeToEvent FAILED: Badge not found - EventId={EventId}, BadgeId={BadgeId}, Duration={ElapsedMs}ms",
+                        request.EventId, request.BadgeId, stopwatch.ElapsedMilliseconds);
+
+                    return Result<EventBadgeDto>.Failure($"Badge with ID {request.BadgeId} not found");
+                }
+
+                // 3. Check if badge is active
+                if (!badge.IsActive)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "AssignBadgeToEvent FAILED: Badge inactive - EventId={EventId}, BadgeId={BadgeId}, IsActive={IsActive}, Duration={ElapsedMs}ms",
+                        request.EventId, request.BadgeId, badge.IsActive, stopwatch.ElapsedMilliseconds);
+
+                    return Result<EventBadgeDto>.Failure("Cannot assign an inactive badge to an event");
+                }
+
+                // 4. Determine effective duration (Phase 6A.28)
+                // If DurationDays not specified in request, use badge's DefaultDurationDays
+                int? effectiveDuration = request.DurationDays ?? badge.DefaultDurationDays;
+
+                _logger.LogInformation(
+                    "AssignBadgeToEvent: Assigning badge - EventId={EventId}, BadgeId={BadgeId}, EffectiveDuration={EffectiveDuration}, DefaultDuration={DefaultDuration}",
+                    request.EventId, request.BadgeId, effectiveDuration, badge.DefaultDurationDays);
+
+                // 5. Assign badge to event with duration
+                var assignResult = @event.AssignBadge(
+                    request.BadgeId,
+                    _currentUserService.UserId,
+                    effectiveDuration,
+                    badge.DefaultDurationDays); // Pass max duration for validation
+
+                if (!assignResult.IsSuccess)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "AssignBadgeToEvent FAILED: Assignment failed - EventId={EventId}, BadgeId={BadgeId}, Errors={Errors}, Duration={ElapsedMs}ms",
+                        request.EventId, request.BadgeId, string.Join(", ", assignResult.Errors), stopwatch.ElapsedMilliseconds);
+
+                    return Result<EventBadgeDto>.Failure(assignResult.Errors);
+                }
+
+                // 6. Save changes
+                _eventRepository.Update(@event);
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                // 7. Return DTO with expiration info
+                var eventBadge = assignResult.Value;
+                // Phase 6A.31a: Use ToBadgeDto() extension method which handles obsolete property mapping
+                var dto = new EventBadgeDto
+                {
+                    Id = eventBadge.Id,
+                    EventId = eventBadge.EventId,
+                    BadgeId = eventBadge.BadgeId,
+                    Badge = badge.ToBadgeDto(),
+                    AssignedAt = eventBadge.AssignedAt,
+                    AssignedByUserId = eventBadge.AssignedByUserId,
+                    DurationDays = eventBadge.DurationDays,
+                    ExpiresAt = eventBadge.ExpiresAt,
+                    IsExpired = eventBadge.IsExpired()
+                };
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "AssignBadgeToEvent COMPLETE: EventId={EventId}, BadgeId={BadgeId}, EventBadgeId={EventBadgeId}, DurationDays={DurationDays}, ExpiresAt={ExpiresAt}, Duration={ElapsedMs}ms",
+                    request.EventId, request.BadgeId, dto.Id, dto.DurationDays, dto.ExpiresAt, stopwatch.ElapsedMilliseconds);
+
+                return Result<EventBadgeDto>.Success(dto);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _logger.LogError(ex,
+                    "AssignBadgeToEvent FAILED: Exception occurred - EventId={EventId}, BadgeId={BadgeId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.EventId, request.BadgeId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
+        }
+    }
+}

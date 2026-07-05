@@ -7,7 +7,6 @@ using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGrou
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Services;
 
 /// <summary>

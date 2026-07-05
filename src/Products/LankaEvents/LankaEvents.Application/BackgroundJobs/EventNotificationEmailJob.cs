@@ -19,7 +19,6 @@ using LankaConnect.Shared.Email.Services;
 using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 
 /// <summary>

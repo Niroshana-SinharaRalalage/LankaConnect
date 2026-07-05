@@ -11,7 +11,6 @@ using LankaConnect.Modules.Media.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.PhotoAlbums.GetAlbumPhotos;
 
 /// <summary>

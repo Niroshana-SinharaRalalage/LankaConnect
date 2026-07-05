@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Services;
 
 /// <inheritdoc cref="ISeatHoldMetrics"/>

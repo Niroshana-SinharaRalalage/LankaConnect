@@ -1,5 +1,4 @@
 using System;
-
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 /// <summary>

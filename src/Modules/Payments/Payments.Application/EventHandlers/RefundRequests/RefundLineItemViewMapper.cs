@@ -1,7 +1,6 @@
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Shared.Email.Contracts;
-
 namespace LankaConnect.Modules.Payments.Application.EventHandlers.RefundRequests;
 
 /// <summary>

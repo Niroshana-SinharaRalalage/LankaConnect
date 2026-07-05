@@ -1,5 +1,4 @@
 using LankaConnect.Application.Common.Interfaces;
-
 namespace LankaConnect.Modules.Identity.Application.Queries.Users.GetLinkedProviders;
 
 /// <summary>

@@ -3,7 +3,6 @@ using LankaConnect.Products.LankaEvents.Application.Services; // W4.4.c.4: inter
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Modules.Payments.Application.Services;
 
 /// <inheritdoc cref="IRefundTotalCalculator"/>

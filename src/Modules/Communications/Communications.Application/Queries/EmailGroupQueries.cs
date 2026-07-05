@@ -3,7 +3,6 @@ using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Modules.Communications.Application.Mappings;
 using LankaConnect.Modules.Communications.Contracts;
-
 namespace LankaConnect.Modules.Communications.Application.Queries;
 
 /// <summary>

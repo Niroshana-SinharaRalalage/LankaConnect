@@ -5,7 +5,6 @@ using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.HoldSeats;
 
 public class HoldSeatsCommandHandler : ICommandHandler<HoldSeatsCommand, HoldSeatsResult>

@@ -17,7 +17,6 @@ using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.EventHandlers;
 
 /// <summary>

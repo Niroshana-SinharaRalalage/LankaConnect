@@ -8,7 +8,6 @@ using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateEventLocation;
 
 public class UpdateEventLocationCommandHandler : ICommandHandler<UpdateEventLocationCommand>

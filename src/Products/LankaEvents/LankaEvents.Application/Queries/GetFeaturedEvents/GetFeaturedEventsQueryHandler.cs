@@ -8,7 +8,6 @@ using LankaConnect.Modules.Identity.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetFeaturedEvents;
 
 /// <summary>

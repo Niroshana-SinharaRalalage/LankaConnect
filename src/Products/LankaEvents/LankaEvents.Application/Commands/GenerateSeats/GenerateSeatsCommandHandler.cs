@@ -4,7 +4,6 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.GenerateSeats;
 
 public class GenerateSeatsCommandHandler : ICommandHandler<GenerateSeatsCommand, VenueLayoutDto>

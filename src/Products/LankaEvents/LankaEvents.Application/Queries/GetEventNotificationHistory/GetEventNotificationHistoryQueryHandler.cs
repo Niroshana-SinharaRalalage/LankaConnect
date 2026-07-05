@@ -7,7 +7,6 @@ using LankaConnect.Modules.Identity.Contracts; // W4.7.c
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventNotificationHistory;
 
 /// <summary>

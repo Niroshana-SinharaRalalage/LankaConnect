@@ -2,7 +2,6 @@ using LankaConnect.Application.Communications.Common;
 using LankaConnect.Modules.Communications.Application.Common;
 using LankaConnect.Domain.Common;
 using MediatR;
-
 namespace LankaConnect.Modules.Communications.Application.Commands.UpdateEmailGroup;
 
 /// <summary>

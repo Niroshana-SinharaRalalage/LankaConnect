@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
-
 namespace LankaConnect.Modules.Media.Infrastructure.Data.Configurations;
 
 public class PhotoAlbumConfiguration : IEntityTypeConfiguration<PhotoAlbum>

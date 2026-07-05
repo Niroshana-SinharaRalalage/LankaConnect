@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using Serilog.Context;
 using System.Diagnostics;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>

@@ -2,9 +2,7 @@ using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
-
-namespace LankaConnect.Modules.Media.Infrastructure.Migrations
-{
+namespace LankaConnect.Modules.Media.Infrastructure.Migrations {
     /// <summary>
     /// Phase A W4.2 BASELINE migration for <see cref="LankaConnect.Modules.Media.Infrastructure.Data.MediaDbContext"/>.
     /// </summary>

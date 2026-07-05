@@ -7,7 +7,6 @@ using LankaConnect.Products.LankaEvents.Infrastructure.Common; // W6.5.f.1: Prod
 using LankaConnect.Products.LankaEvents.Infrastructure.Data;   // W6.5.f.1: LankaEventsDbContext
 using System.Diagnostics;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>

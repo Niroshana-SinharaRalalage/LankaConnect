@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using System.Text.Json;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Converters;
 
 /// <summary>

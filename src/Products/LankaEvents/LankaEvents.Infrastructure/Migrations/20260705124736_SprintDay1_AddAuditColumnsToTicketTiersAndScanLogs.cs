@@ -1,9 +1,7 @@
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
-
-namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations
-{
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
     /// <summary>
     /// Sprint Day 1 fix (2026-07-05): add missing IAuditable audit columns
     /// (created_by, updated_by) to ticket_tiers and TicketScanLogs tables.

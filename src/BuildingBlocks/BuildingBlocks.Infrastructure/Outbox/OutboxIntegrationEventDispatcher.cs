@@ -2,7 +2,6 @@ using System.Text.Json;
 using ContractsDispatcher = LankaConnect.BuildingBlocks.Contracts.IntegrationEvents.IIntegrationEventDispatcher;
 using LankaConnect.BuildingBlocks.Contracts.IntegrationEvents;
 using Microsoft.EntityFrameworkCore;
-
 namespace LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 
 /// <summary>

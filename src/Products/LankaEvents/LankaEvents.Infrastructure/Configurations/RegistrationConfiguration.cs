@@ -9,7 +9,6 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 
 public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>

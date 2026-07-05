@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations;
 
 /// <summary>

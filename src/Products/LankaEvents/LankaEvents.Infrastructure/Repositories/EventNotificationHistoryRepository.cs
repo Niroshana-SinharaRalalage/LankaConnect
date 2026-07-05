@@ -5,7 +5,6 @@ using LankaConnect.Products.LankaEvents.Application.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using System.Diagnostics;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>

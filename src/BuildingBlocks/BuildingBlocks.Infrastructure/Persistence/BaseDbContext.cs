@@ -4,7 +4,6 @@ using LankaConnect.BuildingBlocks.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.BuildingBlocks.Infrastructure.Persistence;
 
 /// <summary>

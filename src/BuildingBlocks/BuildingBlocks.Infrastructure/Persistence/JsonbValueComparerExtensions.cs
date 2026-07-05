@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 namespace LankaConnect.BuildingBlocks.Infrastructure.Persistence;
 
 /// <summary>

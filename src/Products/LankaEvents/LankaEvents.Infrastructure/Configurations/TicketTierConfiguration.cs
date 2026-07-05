@@ -102,6 +102,13 @@ public class TicketTierConfiguration : IEntityTypeConfiguration<TicketTier>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): physical CreatedBy/UpdatedBy.
+        // Sprint Day 1 hotfix (2026-07-04): TicketTier was missed in the original sweep,
+        // causing 42703 "column t.CreatedBy does not exist" on any Event query that
+        // .Include(e => e.TicketTiers). Root cause of ~31 Events smoke failures.
+        builder.Property(t => t.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(t => t.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(t => t.EventId)
             .HasDatabaseName("ix_ticket_tiers_event_id");

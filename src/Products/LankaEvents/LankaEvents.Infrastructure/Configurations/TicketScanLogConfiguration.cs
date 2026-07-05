@@ -80,6 +80,12 @@ public class TicketScanLogConfiguration : IEntityTypeConfiguration<TicketScanLog
         builder.Property(l => l.UpdatedAt)
             .HasColumnName("updated_at");
 
+        // Sprint Day 1 hotfix (2026-07-04): IAuditable CreatedBy/UpdatedBy mapping
+        // was missing; same class as TicketTier bug. Add explicit HasColumnName so
+        // any query joining TicketScanLog doesn't emit t.CreatedBy (PascalCase).
+        builder.Property(l => l.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(l => l.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indices per the architect plan
         builder.HasIndex(l => l.TicketId)
             .HasDatabaseName("IX_TicketScanLogs_TicketId");

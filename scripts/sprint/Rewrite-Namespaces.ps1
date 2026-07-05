@@ -171,6 +171,7 @@ function Update-FileNamespace {
     )
 
     $content = Get-Content -Raw -LiteralPath $FilePath
+    if ($null -eq $content) { return $false }  # skip empty files -- nothing to rewrite
     $original = $content
 
     # File-scoped namespace: `namespace X.Y.Z;`

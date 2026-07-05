@@ -171,7 +171,9 @@ public static class LankaEventsModule
         // Same construction as LankaConnect.Infrastructure.DependencyInjection.
         var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
         dataSourceBuilder.EnableDynamicJson();
-        dataSourceBuilder.UseNetTopologySuite();
+        // NOTE: NetTopologySuite is configured on npgsqlOptions inside UseNpgsql
+        // (line ~185), not here on the data source builder — the extension method
+        // does not exist on NpgsqlDataSourceBuilder in Npgsql 8.
         var dataSource = dataSourceBuilder.Build();
 
         services.AddDbContext<LankaEventsDbContext>(options =>

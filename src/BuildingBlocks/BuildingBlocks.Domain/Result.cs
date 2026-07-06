@@ -44,6 +44,17 @@ public class Result
         return new Result(false, new[] { error }, ErrorKind.Validation);
     }
 
+    /// <summary>
+    /// Failure from an <see cref="Error"/> record. Sprint Consult #10 Q4(b):
+    /// BusinessRule unifies on Error type instead of string. Preserves the
+    /// Error.ToString() format "[Code] Message" in the errors collection.
+    /// </summary>
+    public static Result Failure(Error error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+        return new Result(false, new[] { error.ToString() }, ErrorKind.Validation);
+    }
+
     public static Result Failure(IEnumerable<string> errors)
     {
         return new Result(false, errors, ErrorKind.Validation);

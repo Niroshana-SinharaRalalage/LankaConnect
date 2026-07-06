@@ -26,10 +26,9 @@ public abstract class Entity<T> : IEquatable<Entity<T>>
         CreatedAt = DateTime.UtcNow;
     }
 
-    public void MarkAsUpdated()
-    {
-        UpdatedAt = DateTime.UtcNow;
-    }
+    // Sprint Consult #10 Q4(b): MarkAsUpdated removed from Entity per DDD-correct
+    // ownership (AggregateRoot bumps Version; UpdatedAt is interceptor-populated
+    // via IAuditable). Prior AggregateRoot.MarkAsUpdated was hiding this member.
 
     protected void RaiseDomainEvent(IDomainEvent domainEvent)
     {

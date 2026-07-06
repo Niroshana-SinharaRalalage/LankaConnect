@@ -1,7 +1,6 @@
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain;
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
@@ -33,10 +32,9 @@ public interface IApplicationDbContext
     DbSet<RegistrationModeConversion> RegistrationModeConversions { get; }
     DbSet<RegistrationModeConversionRow> RegistrationModeConversionRows { get; }
 
-    // Communications Domain
-    DbSet<EmailMessage> EmailMessages { get; }
-    DbSet<EmailTemplate> EmailTemplates { get; }
-    DbSet<UserEmailPreferences> UserEmailPreferences { get; }
+    // Communications Domain — DELETED per 4C.c (2026-07-06). EmailMessage /
+    // EmailTemplate / UserEmailPreferences moved to CommunicationsDbContext.
+    // Callers rewrite in 4C.f.
 
     // W4.3 (2026-06-06): Form/FormQuestion/FormResponse/FormAnswer DbSets moved
     // to FormsDbContext (Modules.Forms.Infrastructure). Callers that need direct

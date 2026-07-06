@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Modules.Communications.Domain.Entities;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Modules.Communications.Infrastructure.Configurations;
 
 public class UserEmailPreferencesConfiguration : IEntityTypeConfiguration<UserEmailPreferences>
 {

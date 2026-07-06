@@ -4,7 +4,7 @@ using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using System.Text.Json;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Modules.Communications.Infrastructure.Configurations;
 
 public class EmailMessageConfiguration : IEntityTypeConfiguration<EmailMessage>
 {

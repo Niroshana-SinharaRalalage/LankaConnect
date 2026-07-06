@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Domain.Enums;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Modules.Communications.Infrastructure.Configurations;
 
 public class EmailTemplateConfiguration : IEntityTypeConfiguration<EmailTemplate>
 {

@@ -69,12 +69,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Tables retained in schema; LankaBusiness product will re-map in Phase B.
 
     // Communications Entity Sets
-    public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailMessage> EmailMessages => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailMessage>();
-    public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailTemplate> EmailTemplates => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailTemplate>();
-    // Phase 6A.148.W5.6.B.OBS1 — durable email dispatch audit log (operator post-mortem
-    // capability without screenshots; queryable by refund_request_id / recipient / template).
+    // Day 4 slot C sub-slice 4C.c (2026-07-06): EmailMessage, EmailTemplate,
+    // UserEmailPreferences DbSets relocated to CommunicationsDbContext.
+    // EmailDispatchLog stays here until a dedicated relocation pass.
     public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog> EmailDispatchLogs => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog>();
-    public DbSet<LankaConnect.Modules.Communications.Domain.Entities.UserEmailPreferences> UserEmailPreferences => Set<LankaConnect.Modules.Communications.Domain.Entities.UserEmailPreferences>();
     public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
     public DbSet<Newsletter> Newsletters => Set<Newsletter>(); // Phase 6A.74: Newsletter/News Alert Feature
     public DbSet<NewsletterEmailHistory> NewsletterEmailHistories => Set<NewsletterEmailHistory>(); // Phase 6A.74 Part 13 Issue #1: Newsletter email send history
@@ -221,10 +219,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Business entity configurations removed Day 5 per Consult #12 (Phase B territory).
 
         // Communications entity configurations
-        modelBuilder.ApplyConfiguration(new EmailMessageConfiguration());
-        modelBuilder.ApplyConfiguration(new EmailTemplateConfiguration());
+        // Day 4 slot C sub-slice 4C.c (2026-07-06): EmailMessage/EmailTemplate/
+        // UserEmailPreferences configurations relocated to CommunicationsDbContext.
+        // AppDbContext no longer applies these; physical schema unchanged (communications.*).
         modelBuilder.ApplyConfiguration(new EmailDispatchLogConfiguration());
-        modelBuilder.ApplyConfiguration(new UserEmailPreferencesConfiguration());
         modelBuilder.ApplyConfiguration(new NewsletterSubscriberConfiguration());
         modelBuilder.ApplyConfiguration(new NewsletterConfiguration()); // Phase 6A.74: Newsletter/News Alert Feature
         modelBuilder.ApplyConfiguration(new NewsletterEmailHistoryConfiguration()); // Phase 6A.74 Part 13 Issue #1: Newsletter email history

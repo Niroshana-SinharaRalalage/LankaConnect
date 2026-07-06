@@ -1,4 +1,3 @@
-using LankaConnect.Domain.Business;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
@@ -7,24 +6,15 @@ using LankaConnect.Products.LankaEvents.Domain;
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.Domain.Enterprise;
-using LankaConnect.BuildingBlocks.Domain.Models;
-using LankaConnect.BuildingBlocks.Domain.Monitoring;
 using LankaConnect.BuildingBlocks.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Security;
-using LankaConnect.BuildingBlocks.Domain.Recovery;
-using LankaConnect.BuildingBlocks.Domain.Database;
 using LankaConnect.BuildingBlocks.Domain.Enums;
 using LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
-using MultiLanguageModels = LankaConnect.BuildingBlocks.Domain.Database.MultiLanguageRoutingModels;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
-    // Business Domain
-    DbSet<Business> Businesses { get; }
-    DbSet<Service> Services { get; }
-    DbSet<Review> Reviews { get; }
+    // Business Domain — DELETED per Consult #12 Option D + Consult #14 sub-slice 4C.b.
+    // Aggregate + Configurations + Repository removed; caller cleanup follows.
 
     // User Domain
     DbSet<User> Users { get; }
@@ -57,3 +47,4 @@ public interface IApplicationDbContext
 
     Task<int> CommitAsync(CancellationToken cancellationToken = default);
 }
+

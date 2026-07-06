@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using LankaConnect.BuildingBlocks.Application.Common.Models.MultiLanguage;
 using LankaConnect.BuildingBlocks.Application.Common.Models.Performance;
-using LankaConnect.BuildingBlocks.Domain.Database;
 using LankaConnect.BuildingBlocks.Domain.Enums;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 

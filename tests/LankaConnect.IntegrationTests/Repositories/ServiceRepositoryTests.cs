@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.Enums;
 using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.BuildingBlocks.Domain.Shared.Enums;

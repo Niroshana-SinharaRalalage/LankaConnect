@@ -10,7 +10,6 @@ using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Domain.Business;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Communications.Domain.Community;
 using LankaConnect.Modules.Communications.Domain;

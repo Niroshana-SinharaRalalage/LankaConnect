@@ -14,7 +14,6 @@ using LankaConnect.BuildingBlocks.Domain.Notifications;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Communications.Domain.Community;
-using LankaConnect.BuildingBlocks.Domain.Database;
 using LankaConnect.Infrastructure.Database;
 using LankaConnect.Infrastructure.Security;
 using LankaConnect.Infrastructure.Monitoring;
@@ -1238,3 +1237,4 @@ namespace LankaConnect.Infrastructure.Tests.Database
 
     #endregion
 }
+

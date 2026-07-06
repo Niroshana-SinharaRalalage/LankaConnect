@@ -6,7 +6,6 @@ using LankaConnect.Application.Businesses.Queries.SearchBusinesses;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Application.Common.Models;
 using LankaConnect.Application.Tests.TestHelpers;
-using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.Enums;
 using LankaConnect.BuildingBlocks.Domain;
 using Moq;

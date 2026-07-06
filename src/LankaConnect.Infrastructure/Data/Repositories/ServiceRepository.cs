@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Business;
 using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using System.Diagnostics;

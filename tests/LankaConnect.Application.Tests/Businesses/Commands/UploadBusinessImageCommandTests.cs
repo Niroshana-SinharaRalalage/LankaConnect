@@ -1,7 +1,6 @@
 using FluentAssertions;
 using LankaConnect.Application.Businesses.Commands.UploadBusinessImage;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Business.Enums;
 using LankaConnect.BuildingBlocks.Domain;

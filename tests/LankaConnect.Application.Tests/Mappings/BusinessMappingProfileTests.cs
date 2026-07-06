@@ -2,7 +2,6 @@ using AutoMapper;
 using LankaConnect.Application.Businesses.Common;
 using LankaConnect.BuildingBlocks.Application.Common.Mappings;
 using LankaConnect.Application.Tests.TestHelpers;
-using LankaConnect.Domain.Business;
 
 namespace LankaConnect.Application.Tests.Mappings;
 

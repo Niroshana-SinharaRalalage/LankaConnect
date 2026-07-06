@@ -1,7 +1,6 @@
 using LankaConnect.Application.Businesses.Commands.UpdateBusiness;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Application.Tests.TestHelpers;
-using LankaConnect.Domain.Business;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.BuildingBlocks.Application.Common.Exceptions;
 using LankaConnect.BuildingBlocks.Domain.Exceptions;

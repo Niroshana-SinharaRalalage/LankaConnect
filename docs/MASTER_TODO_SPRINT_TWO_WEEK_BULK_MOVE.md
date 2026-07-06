@@ -133,33 +133,48 @@ Same 6 agents on same worktrees. Fix namespace + `using` errors in bounded set.
 
 **Gate:** Still on `bulk-move/integration`. develop merge is Day 6.
 
-### Day 5 EOD checkpoint — Wave 6.5.f cutover status (2026-07-06)
+### 2026-07-06 alignment note — DO NOT INVENT NEW WAVE LABELS
 
-**Wave 6.5.f Modules-Domain cutover COMPLETE at HEAD** (per Consult #13.5.2 PASS B).
+**Wave label lexicon per this plan (BINDING, don't renumber):**
 
-| Layer | State |
-|---|---|
-| `BuildingBlocks.Domain` | ✅ compile-green (LegacyBaseEntity + non-generic AggregateRoot annotated `[SetsRequiredMembers]` per Consult #13 amendment) |
-| `Products/LankaEvents/LankaEvents.Domain` | ✅ compile-green |
-| All 7 `Modules/*.Domain` (Communications/Payments/Identity/Forms/CulturalIntelligence/Notifications/Media) | ✅ compile-green |
-| `LankaConnect.Application` + 4 downstream (2 App + 2 Tests) | ❌ 149 residual errors — **carried into Wave 6.5.g** |
+- **Wave 6.5.f** = Day 5 slot B → **LankaEvents handler migration to `IMultiContextUnitOfWork`** (~120 handlers).
+- **Wave 6.5.g** = Day 5 slot C → **Payments un-skip** (11 handlers → integration events).
+- **Wave 6.5.h** = Day 5 slot D → **Rule 5 un-skip** (14 services + 7 webhook handlers).
 
-**Consult chain executed today**: #12 Option D → #13 Q3+Q4+Q2+Q1 (Option B Path 1) → #13.3 PASS A (7 Modules cascade) → #13.5 PASS C (Path C attempt) → #13.5.1 PASS 1 (`EnableDefaultCompileItems=false`) → **#13.5.2 PASS B (revert Path C, checkpoint honestly)**.
+**Correction (2026-07-06):** An earlier version of this doc labeled the today's Modules-Domain compile-cleanup as "Wave 6.5.f cutover" and the follow-on `IApplicationDbContext` teardown as "Wave 6.5.g". **Both labels were incorrect renumberings that collided with the sprint bible above.**
 
-**See** `docs/architecture/decisions/ADR-6.5.f-sln-exclusions.md` for full ruling context + exit criteria.
+**Correct mapping**:
 
-**Wave 6.5.g — Application-layer compile debt cleanup (NEW, added 2026-07-06)**
+| Today's actual work | Correct plan slot | Notes |
+|---|---|---|
+| Namespace rewrites + Business delete + `[SetsRequiredMembers]` bridge → 9 Domain projects compile-green | Day 3 (Compile Reconciliation) + Day 4 (Big Merge) tail | Compile-green gate for 9/? projects; not full gate |
+| `IApplicationDbContext` seam teardown (44 consumers → module DbContexts per Consult #14) | **Day 4 slot C — DbContext consolidation** (73 App-legacy handlers fan into 3 sub-agents by family: Communications-40, Businesses-10, Analytics/Badges/Support/MetroAreas-23) | Day 4 gate = `bulk-move/integration` compiles — NOT met yet (134 errors). |
+| ash-sweep of dead BB.Domain sub-namespaces (Monitoring/Security/Recovery/Database + 12 ash types) | Absorbed into Day 4 tail-fix work | Cheap, unblocks reading code during Day 4/5 handler rewrites |
 
-Blocking Consult #14 on `IApplicationDbContext` seam disposition. Exit criteria:
+### Day 4/5 boundary status @ 2026-07-06 18:00 UTC
 
-- [ ] Consult #14 rules on `IApplicationDbContext`: delete / relocate to module contexts / retain as legacy seam.
-- [ ] Orphan `DbSet<Business>` + related methods deleted/relocated per Consult #12 Option D.
-- [ ] Dead-namespace usings audited across `LankaConnect.Application`: `BB.Domain.Monitoring/Security/Recovery/Database/Enterprise/ValueObjects` — deleted or rewritten to SharedKernel.
-- [ ] `LankaConnect.Domain.Tests` + `Notifications.Domain.Tests` updated to current BB.Domain contract shape.
-- [ ] `Media.Application` (14) + `CulturalIntelligence.Application` (2) resolved via same seam decision.
-- [ ] `dotnet build LankaConnect.sln` → 0 errors.
+- Commit `26a67b98` on `bulk-move/integration` (pushed): 9 Domain projects compile-green. 134 residual errors in `LankaConnect.Application` (160) + `LankaConnect.Domain.Tests` (90) + `Notifications.Domain.Tests` (10) + `BB.Application` (8, dead-usings post-ash-sweep) — **Day 4 gate not yet met**.
+- **Consult chain executed today**: #12 Option D → #13 Q3+Q4+Q2+Q1 (Option B Path 1) → #13.3 PASS A (7 Modules cascade) → #13.5 PASS C → #13.5.1 PASS 1 → #13.5.2 PASS B (checkpoint red honestly) → #14 PASS B (`IApplicationDbContext` teardown = Day 4 slot C fan-out).
+- **See** `docs/architecture/decisions/ADR-6.5.f-sln-exclusions.md` for the compile-red checkpoint context (the "ADR-6.5.f" filename retained to preserve commit link; do not rename).
 
-**Wave 6.5.g scope also brings back** the sprint's other pending items (originally Day 5 slots B/C/D above): LankaEvents handler migration, Payments un-skip, Rule 5 un-skip. Sequencing to be decided after Consult #14.
+### Day 4 slot C — remaining execution (per Consult #14 PASS B)
+
+**These are Day 4 slot C sub-slices, NOT new waves.** Sub-slice numbering used internally for tracking; each is a Day 4 slot C sub-agent's beat.
+
+- [ ] **4C.a — Preamble ash-sweep** (STARTED 2026-07-06): delete 13 ash types (7 VOs + 5 Enums + `EngineResults.cs`) + sweep dead usings for BB.Domain.Monitoring/Security/Recovery/Database + LankaConnect.Domain.Enterprise + LankaConnect.Domain.Business. Zero-risk cleanup. **DONE mid-session; uncommitted.**
+- [ ] **4C.b — Businesses orphan cleanup** (Consult #14 sub-slice 6.5.g.1): delete `Businesses`/`Services`/`Reviews` DbSets from `IApplicationDbContext` + AppDbContext configs + `IReviewRepository`/`IServiceRepository` + orphan handler references. Rule 5j audit.
+- [ ] **4C.c — Create `CommunicationsDbContext`** (Consult #14 sub-slice 6.5.g.2, MUST precede 4C.f): scaffold context, move 3 Email configs from AppDbContext, empty-Up() migration, parity test. Rule 5j + Rule 5c staging pre-merge MANDATORY.
+- [ ] **4C.d — LankaEvents 10 DbSets → `LankaEventsDbContext`** (Consult #14 sub-slices 6.5.g.3.a/b/c): 3 sub-sub-slices — Metro+Templates (22 sites), SignUp cluster (40 sites), Registration cluster (110 sites). Rule 5j.4 per commit + Rule 5c staging pre-merge each.
+- [ ] **4C.e — `User` → `IdentityDbContext`** (Consult #14 sub-slice 6.5.g.4): ~50 real caller sites. Rule 5j.4 + Rule 5c.
+- [ ] **4C.f — Communications 3 DbSets → `CommunicationsDbContext`** (Consult #14 sub-slice 6.5.g.5): 4 caller rewrites + trigger real email smoke per `[[feedback-email-smoke]]`.
+- [ ] **4C.g — `ReferenceValue` callers → `AppDbContext` direct** (Consult #14 sub-slice 6.5.g.6): 5 sites.
+- [ ] **4C.h — Delete `IApplicationDbContext` + ArchTest forbidden-type rule** (Consult #14 sub-slice 6.5.g.7): final delete + full `Run-Wave9` smoke. Rule 5c MANDATORY.
+
+**Day 4 gate re-met when**: `dotnet build LankaConnect.sln` → 0 errors. Then **immediately** proceed to Day 5.
+
+### Discipline: Consult #14 sub-slice labels
+
+Where Consult #14 says "Wave 6.5.g.X", the correct plan reference is "Day 4 slot C sub-slice 4C.Y". If a future consult references Consult #14's numbering (6.5.g.1..7), translate back to 4C.a..h before writing to docs or commits. **NO NEW WAVE LABELS from here; sprint bible §Scope Ratified is the only source of Wave-6.5.f/g/h meaning.**
 
 ### Day 6 — Sat 2026-07-11 (Force Merge to develop + First Baseline)
 

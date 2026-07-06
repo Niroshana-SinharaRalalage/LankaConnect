@@ -2,7 +2,6 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.BuildingBlocks.Domain.Shared;
 using LankaConnect.BuildingBlocks.Application.Common.Models;
 using LankaConnect.Modules.CulturalIntelligence.Domain;
-using LankaConnect.BuildingBlocks.Domain.Database;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>

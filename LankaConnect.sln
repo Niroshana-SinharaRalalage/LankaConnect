@@ -23,8 +23,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LankaConnect.Domain.Tests",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LankaConnect.Infrastructure.Tests", "tests\LankaConnect.Infrastructure.Tests\LankaConnect.Infrastructure.Tests.csproj", "{1550CAC8-3A1B-4A7A-99E0-DAA4C304AF4B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LankaConnect.Shared.Tests", "tests\LankaConnect.Shared.Tests\LankaConnect.Shared.Tests.csproj", "{5763179B-310E-4750-91AC-002EAB942D78}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LankaConnect.TestUtilities", "tests\LankaConnect.TestUtilities\LankaConnect.TestUtilities.csproj", "{AB38B3A6-9E9C-4D65-A9DD-9DA06C5FBCA3}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildingBlocks", "BuildingBlocks", "{BED8A517-57F7-4639-9408-BB5B05FF046D}"
@@ -258,9 +256,6 @@ Global
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
-	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{88DC2F5A-D5CB-4AA0-91BA-01E70C0822B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{88DC2F5A-D5CB-4AA0-91BA-01E70C0822B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
@@ -294,10 +289,6 @@ Global
 		{1550CAC8-3A1B-4A7A-99E0-DAA4C304AF4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1550CAC8-3A1B-4A7A-99E0-DAA4C304AF4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1550CAC8-3A1B-4A7A-99E0-DAA4C304AF4B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5763179B-310E-4750-91AC-002EAB942D78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5763179B-310E-4750-91AC-002EAB942D78}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5763179B-310E-4750-91AC-002EAB942D78}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5763179B-310E-4750-91AC-002EAB942D78}.Release|Any CPU.Build.0 = Release|Any CPU
 		{AB38B3A6-9E9C-4D65-A9DD-9DA06C5FBCA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{AB38B3A6-9E9C-4D65-A9DD-9DA06C5FBCA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AB38B3A6-9E9C-4D65-A9DD-9DA06C5FBCA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -655,6 +646,9 @@ Global
 		{50B7B011-F458-4554-9AB6-E9A186BBCE8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{50B7B011-F458-4554-9AB6-E9A186BBCE8C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{88DC2F5A-D5CB-4AA0-91BA-01E70C0822B0} = {1C682E29-A286-437F-BFB1-70E7B2D5C95D}
 		{7C548244-BF84-4A12-844D-4AB0E40658D9} = {1C682E29-A286-437F-BFB1-70E7B2D5C95D}
@@ -664,7 +658,6 @@ Global
 		{1C9FC640-B18B-49CB-B26B-0670877E6790} = {5B4DD37B-8BB1-49F8-B305-92F5DE52B238}
 		{7C1839B3-0FBB-4A61-A7D6-399523DCA671} = {5B4DD37B-8BB1-49F8-B305-92F5DE52B238}
 		{1550CAC8-3A1B-4A7A-99E0-DAA4C304AF4B} = {5B4DD37B-8BB1-49F8-B305-92F5DE52B238}
-		{5763179B-310E-4750-91AC-002EAB942D78} = {5B4DD37B-8BB1-49F8-B305-92F5DE52B238}
 		{AB38B3A6-9E9C-4D65-A9DD-9DA06C5FBCA3} = {5B4DD37B-8BB1-49F8-B305-92F5DE52B238}
 		{BED8A517-57F7-4639-9408-BB5B05FF046D} = {1C682E29-A286-437F-BFB1-70E7B2D5C95D}
 		{CF859F14-E5EA-4E8F-AA79-48655BA1403E} = {BED8A517-57F7-4639-9408-BB5B05FF046D}

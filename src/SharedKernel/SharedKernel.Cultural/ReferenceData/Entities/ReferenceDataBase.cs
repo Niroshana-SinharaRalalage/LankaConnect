@@ -1,11 +1,10 @@
-using LankaConnect.BuildingBlocks.Domain.Entities;
 namespace LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
 
 /// <summary>
 /// Base class for all reference data entities
 /// Phase 6A.47: Centralized reference data management
 /// </summary>
-public abstract class ReferenceDataBase : EntityBase
+public abstract class ReferenceDataBase : LankaConnect.BuildingBlocks.Domain.Entity<Guid>
 {
     /// <summary>
     /// Unique code for the reference data item (used for lookups and migrations)

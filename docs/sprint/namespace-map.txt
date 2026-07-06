@@ -80,3 +80,8 @@ LankaConnect.Shared.WhatsApp => LankaConnect.Modules.Communications.Contracts.Wh
 # LankaConnect.SPLIT_PER_ENTITY = handled by Agent D per-file with manual review
 # LankaConnect.SPLIT_PER_REPO   = handled by Agent D per-file with manual review
 # LankaConnect.SPLIT_PER_CONTROLLER = handled by Agent E per-controller with manifest table
+
+# Sprint Day 4 (Consult #10 Step 3): LankaConnect.Shared.Tests -> Communications.Contracts.Tests
+LankaConnect.Shared.Email => LankaConnect.Modules.Communications.Contracts.Email
+LankaConnect.Shared.WhatsApp => LankaConnect.Modules.Communications.Contracts.WhatsApp
+LankaConnect.Shared.Tests.Email => LankaConnect.Modules.Communications.Contracts.Tests.Email

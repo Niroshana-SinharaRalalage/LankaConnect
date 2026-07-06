@@ -1,7 +1,4 @@
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.BuildingBlocks.Domain.Models;
 using LankaConnect.BuildingBlocks.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Domain.Enums;

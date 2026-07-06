@@ -55,7 +55,7 @@ public sealed class RecurrenceRule : ValueObject
 
     public bool IsRecurring => Frequency != RecurrenceFrequency.None;
 
-    protected override IEnumerable<object?> GetEqualityComponents()
+    public override IEnumerable<object> GetEqualityComponents()
     {
         yield return Frequency;
         yield return Interval;

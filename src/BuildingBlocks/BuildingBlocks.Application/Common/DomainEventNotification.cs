@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Domain.Contracts;
 using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 namespace LankaConnect.BuildingBlocks.Application.Common;

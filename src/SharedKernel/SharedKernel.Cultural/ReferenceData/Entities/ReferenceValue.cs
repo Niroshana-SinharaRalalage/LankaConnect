@@ -6,7 +6,7 @@ namespace LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
 /// Stores enum values with flexible JSONB metadata for type-specific properties
 /// Phase 6A.47: Unified Reference Data Architecture
 /// </summary>
-public class ReferenceValue : EntityBase
+public class ReferenceValue : LankaConnect.BuildingBlocks.Domain.Entity<Guid>
 {
     /// <summary>
     /// Type of enum (e.g., 'EventCategory', 'EventStatus', 'UserRole')

@@ -111,6 +111,18 @@ public class Result<T> : Result
         return new Result<T>(false, new[] { error }, default, ErrorKind.Validation);
     }
 
+    /// <summary>
+    /// Failure from an <see cref="Error"/> record. Sprint Consult #10 Q4(b):
+    /// mirror the Result base overload for Error type on the generic Result&lt;T&gt;.
+    /// 'new' keyword follows the pattern of sibling Result&lt;T&gt;.Failure overloads
+    /// (line 109-126) which all hide inherited Result members.
+    /// </summary>
+    public static new Result<T> Failure(Error error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+        return new Result<T>(false, new[] { error.ToString() }, default, ErrorKind.Validation);
+    }
+
     public static new Result<T> Failure(IEnumerable<string> errors)
     {
         return new Result<T>(false, errors, default, ErrorKind.Validation);

@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Domain.Contracts;
 using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.BuildingBlocks.Domain.Tests;

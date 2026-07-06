@@ -119,7 +119,7 @@ public sealed class Currency : ValueObject
     }
 
     /// <inheritdoc />
-    protected override IEnumerable<object?> GetEqualityComponents()
+    public override IEnumerable<object> GetEqualityComponents()
     {
         yield return Code;
     }

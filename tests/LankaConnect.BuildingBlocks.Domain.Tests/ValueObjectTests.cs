@@ -9,7 +9,7 @@ public sealed class ValueObjectTests
         public int X { get; }
         public int Y { get; }
         public Point(int x, int y) { X = x; Y = y; }
-        protected override IEnumerable<object?> GetEqualityComponents()
+        public override IEnumerable<object> GetEqualityComponents()
         {
             yield return X;
             yield return Y;
@@ -20,7 +20,7 @@ public sealed class ValueObjectTests
     {
         public string Name { get; }
         public Color(string name) { Name = name; }
-        protected override IEnumerable<object?> GetEqualityComponents()
+        public override IEnumerable<object> GetEqualityComponents()
         {
             yield return Name;
         }

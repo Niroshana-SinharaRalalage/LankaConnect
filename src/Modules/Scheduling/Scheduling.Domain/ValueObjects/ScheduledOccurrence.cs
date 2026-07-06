@@ -67,7 +67,7 @@ public sealed class ScheduledOccurrence : ValueObject
 
     public bool HasCommittedSchedule => StartDate.HasValue && EndDate.HasValue;
 
-    protected override IEnumerable<object?> GetEqualityComponents()
+    public override IEnumerable<object> GetEqualityComponents()
     {
         yield return StartDate;
         yield return EndDate;

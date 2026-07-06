@@ -1,8 +1,4 @@
 namespace LankaConnect.BuildingBlocks.Application.Common.Constants;
-using LankaConnect.Modules.Media.Domain;
-using LankaConnect.Modules.Media.Domain.Entities;
-using LankaConnect.Modules.Media.Domain.Enums;
-using LankaConnect.Modules.Media.Domain.DomainEvents;
 
 /// <summary>
 /// Type-safe constants for email template names.

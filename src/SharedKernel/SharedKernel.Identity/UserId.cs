@@ -48,7 +48,7 @@ public sealed class UserId : ValueObject
     public static UserId NewId() => new(Guid.NewGuid());
 
     /// <inheritdoc />
-    protected override IEnumerable<object?> GetEqualityComponents()
+    public override IEnumerable<object> GetEqualityComponents()
     {
         yield return Value;
     }

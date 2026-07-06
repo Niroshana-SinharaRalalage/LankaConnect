@@ -1,6 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.BuildingBlocks.Domain.Shared;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Payments.Domain.Billing;
 
 /// <summary>
@@ -223,6 +222,7 @@ public class EnterpriseClient : LegacyBaseEntity
     public DateTime ContractStartDate { get; private set; }
     public DateTime ContractEndDate { get; private set; }
 
+    [SetsRequiredMembers]
     public EnterpriseClient(
         CompanyName companyName,
         ContactInfo contactInfo,

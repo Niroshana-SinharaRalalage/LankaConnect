@@ -133,6 +133,34 @@ Same 6 agents on same worktrees. Fix namespace + `using` errors in bounded set.
 
 **Gate:** Still on `bulk-move/integration`. develop merge is Day 6.
 
+### Day 5 EOD checkpoint — Wave 6.5.f cutover status (2026-07-06)
+
+**Wave 6.5.f Modules-Domain cutover COMPLETE at HEAD** (per Consult #13.5.2 PASS B).
+
+| Layer | State |
+|---|---|
+| `BuildingBlocks.Domain` | ✅ compile-green (LegacyBaseEntity + non-generic AggregateRoot annotated `[SetsRequiredMembers]` per Consult #13 amendment) |
+| `Products/LankaEvents/LankaEvents.Domain` | ✅ compile-green |
+| All 7 `Modules/*.Domain` (Communications/Payments/Identity/Forms/CulturalIntelligence/Notifications/Media) | ✅ compile-green |
+| `LankaConnect.Application` + 4 downstream (2 App + 2 Tests) | ❌ 149 residual errors — **carried into Wave 6.5.g** |
+
+**Consult chain executed today**: #12 Option D → #13 Q3+Q4+Q2+Q1 (Option B Path 1) → #13.3 PASS A (7 Modules cascade) → #13.5 PASS C (Path C attempt) → #13.5.1 PASS 1 (`EnableDefaultCompileItems=false`) → **#13.5.2 PASS B (revert Path C, checkpoint honestly)**.
+
+**See** `docs/architecture/decisions/ADR-6.5.f-sln-exclusions.md` for full ruling context + exit criteria.
+
+**Wave 6.5.g — Application-layer compile debt cleanup (NEW, added 2026-07-06)**
+
+Blocking Consult #14 on `IApplicationDbContext` seam disposition. Exit criteria:
+
+- [ ] Consult #14 rules on `IApplicationDbContext`: delete / relocate to module contexts / retain as legacy seam.
+- [ ] Orphan `DbSet<Business>` + related methods deleted/relocated per Consult #12 Option D.
+- [ ] Dead-namespace usings audited across `LankaConnect.Application`: `BB.Domain.Monitoring/Security/Recovery/Database/Enterprise/ValueObjects` — deleted or rewritten to SharedKernel.
+- [ ] `LankaConnect.Domain.Tests` + `Notifications.Domain.Tests` updated to current BB.Domain contract shape.
+- [ ] `Media.Application` (14) + `CulturalIntelligence.Application` (2) resolved via same seam decision.
+- [ ] `dotnet build LankaConnect.sln` → 0 errors.
+
+**Wave 6.5.g scope also brings back** the sprint's other pending items (originally Day 5 slots B/C/D above): LankaEvents handler migration, Payments un-skip, Rule 5 un-skip. Sequencing to be decided after Consult #14.
+
 ### Day 6 — Sat 2026-07-11 (Force Merge to develop + First Baseline)
 
 **2 agents.**

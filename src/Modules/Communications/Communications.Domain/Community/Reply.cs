@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Community.ValueObjects;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Community;
 
 public class Reply : LegacyBaseEntity
@@ -12,11 +13,13 @@ public class Reply : LegacyBaseEntity
     public bool IsMarkedAsSolution { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private Reply() 
     {
         Content = null!;
     }
 
+    [SetsRequiredMembers]
     private Reply(Guid topicId, PostContent content, Guid authorId, Guid? parentReplyId = null)
     {
         TopicId = topicId;

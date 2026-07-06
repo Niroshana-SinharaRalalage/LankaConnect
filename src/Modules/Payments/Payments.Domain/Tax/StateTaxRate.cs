@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Payments.Domain.Tax;
 
 /// <summary>
@@ -39,12 +40,14 @@ public class StateTaxRate : LegacyBaseEntity
     public string? DataSource { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private StateTaxRate()
     {
         StateCode = null!;
         StateName = null!;
     }
 
+    [SetsRequiredMembers]
     private StateTaxRate(
         string stateCode,
         string stateName,

@@ -1,7 +1,18 @@
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.BuildingBlocks.Domain.Shared;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Cultural.Enums;
+using LankaConnect.SharedKernel.Identity;
 namespace LankaConnect.Modules.Payments.Domain.Billing;
+
+// Sprint Day 5 (Consult #13.3): local minimal stub — CulturalContext previously
+// lived in the wiped BB.Domain.Shared.ValueObjects. Post-sprint (Consult #13
+// backlog), promote to SharedKernel.ContactInfo or reference Communications.Domain.
+public sealed class CulturalContext
+{
+    public string? CulturalBackground { get; init; }
+    public string? PrimaryLanguage { get; init; }
+    public string? ReligiousContext { get; init; }
+}
+
 
 /// <summary>
 /// Core billing service for Cultural Intelligence API monetization
@@ -218,3 +229,4 @@ public enum AnalyticsType
     CulturalTrendPrediction,
     CustomMarketResearch
 }
+

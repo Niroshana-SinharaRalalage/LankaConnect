@@ -1,10 +1,9 @@
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -760,8 +759,7 @@ public partial class Event
         // Free → zero. Currency is informational on a $0 registration.
         if (IsFree())
         {
-            var zero = Money.Create(0m, Currency.USD);
-            return zero.IsSuccess ? Result<Money>.Success(zero.Value) : Result<Money>.Failure(zero.Errors);
+            return Result<Money>.Success(new Money(0m, Currency.USD));
         }
 
         // Pricing-Guard Fix 2026-05-04: a paid event is well-formed when ANY of three
@@ -840,18 +838,9 @@ public partial class Event
             var childMoney = Pricing.CalculateForCategory(Enums.AgeCategory.Child);
 
             // Build the total: adults × adultPrice + children × childPrice.
-            var adultsTotalResult = adultMoney.Multiply(adults);
-            if (adultsTotalResult.IsFailure)
-                return Result<Money>.Failure(adultsTotalResult.Errors);
-
-            var childrenTotalResult = childMoney.Multiply(children);
-            if (childrenTotalResult.IsFailure)
-                return Result<Money>.Failure(childrenTotalResult.Errors);
-
-            var sumResult = adultsTotalResult.Value.Add(childrenTotalResult.Value);
-            return sumResult.IsSuccess
-                ? Result<Money>.Success(sumResult.Value)
-                : Result<Money>.Failure(sumResult.Errors);
+            var adultsTotal = adultMoney * adults;
+            var childrenTotal = childMoney * children;
+            return Result<Money>.Success(adultsTotal + childrenTotal);
         }
 
         // Standard / single price (Pricing.Type == Standard OR legacy TicketPrice fallback).
@@ -859,10 +848,7 @@ public partial class Event
         if (unitPrice == null)
             return Result<Money>.Failure("Event pricing is not configured");
 
-        var multiplyResult = unitPrice.Multiply(headCount.Total);
-        return multiplyResult.IsSuccess
-            ? Result<Money>.Success(multiplyResult.Value)
-            : Result<Money>.Failure(multiplyResult.Errors);
+        return Result<Money>.Success(unitPrice * headCount.Total);
     }
 
     /// <summary>
@@ -909,30 +895,12 @@ public partial class Event
             var adultCount = tc.AdultCount ?? tc.Count; // legacy null-axis falls back to all-adults pricing
             var childCount = tc.ChildCount ?? 0;
 
-            var adultLineResult = tier.AdultPrice.Multiply(adultCount);
-            if (adultLineResult.IsFailure)
-                return Result<Money>.Failure(adultLineResult.Errors);
-
+            var adultLine = tier.AdultPrice * adultCount;
             var childUnitPrice = tier.CalculatePriceForAttendee(Enums.AgeCategory.Child);
-            var childLineResult = childUnitPrice.Multiply(childCount);
-            if (childLineResult.IsFailure)
-                return Result<Money>.Failure(childLineResult.Errors);
+            var childLine = childUnitPrice * childCount;
+            var lineTotal = adultLine + childLine;
 
-            var lineTotalResult = adultLineResult.Value.Add(childLineResult.Value);
-            if (lineTotalResult.IsFailure)
-                return Result<Money>.Failure(lineTotalResult.Errors);
-
-            if (total == null)
-            {
-                total = lineTotalResult.Value;
-            }
-            else
-            {
-                var addResult = total.Add(lineTotalResult.Value);
-                if (addResult.IsFailure)
-                    return Result<Money>.Failure(addResult.Errors);
-                total = addResult.Value;
-            }
+            total = total == null ? lineTotal : total + lineTotal;
         }
 
         return Result<Money>.Success(total!);

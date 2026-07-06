@@ -2,6 +2,8 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using LankaConnect.SharedKernel.Cultural;
+using LankaConnect.SharedKernel.Cultural.Enums;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -57,8 +59,10 @@ public class WhatsAppMessage : LegacyBaseEntity
     public bool CanRetry => RetryCount < MaxRetries && IsFailed;
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private WhatsAppMessage() { }
 
+    [SetsRequiredMembers]
     private WhatsAppMessage(
         string fromPhoneNumber,
         IEnumerable<string> toPhoneNumbers,
@@ -314,30 +318,30 @@ public class WhatsAppCulturalContext : ValueObject
     /// <summary>
     /// Converts WhatsAppCulturalContext to CulturalContext for cultural calendar services
     /// </summary>
-    public LankaConnect.SharedKernel.Cultural.CulturalContext ToCulturalContext()
+    public CulturalContext ToCulturalContext()
     {
         var culturalBackground = PrimaryReligion switch
         {
-            "Buddhism" => LankaConnect.SharedKernel.Cultural.CulturalBackground.SinhalaBuddhist,
-            "Hinduism" => LankaConnect.SharedKernel.Cultural.CulturalBackground.TamilHindu,
-            "Islam" => LankaConnect.SharedKernel.Cultural.CulturalBackground.SriLankanMuslim,
-            "Christianity" => LankaConnect.SharedKernel.Cultural.CulturalBackground.SriLankanChristian,
-            _ => LankaConnect.SharedKernel.Cultural.CulturalBackground.Other
+            "Buddhism" => LankaConnect.SharedKernel.Cultural.Enums.CulturalBackground.SinhalaBuddhist,
+            "Hinduism" => LankaConnect.SharedKernel.Cultural.Enums.CulturalBackground.TamilHindu,
+            "Islam" => LankaConnect.SharedKernel.Cultural.Enums.CulturalBackground.SriLankanMuslim,
+            "Christianity" => LankaConnect.SharedKernel.Cultural.Enums.CulturalBackground.SriLankanChristian,
+            _ => LankaConnect.SharedKernel.Cultural.Enums.CulturalBackground.Other
         };
 
         var religiousContext = PrimaryReligion switch
         {
-            "Buddhism" => LankaConnect.SharedKernel.Cultural.ReligiousContext.BuddhistPoyaday,
-            "Hinduism" => LankaConnect.SharedKernel.Cultural.ReligiousContext.HinduFestival,
-            "Islam" => LankaConnect.SharedKernel.Cultural.ReligiousContext.Ramadan,
-            "Christianity" => LankaConnect.SharedKernel.Cultural.ReligiousContext.ChristianSabbath,
-            _ => LankaConnect.SharedKernel.Cultural.ReligiousContext.None
+            "Buddhism" => LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext.BuddhistPoyaday,
+            "Hinduism" => LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext.HinduFestival,
+            "Islam" => LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext.Ramadan,
+            "Christianity" => LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext.ChristianSabbath,
+            _ => LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext.None
         };
 
-        return LankaConnect.SharedKernel.Cultural.CulturalContext.Create(
-            LankaConnect.SharedKernel.Cultural.SriLankanLanguage.English,
+        return CulturalContext.Create(
+            LankaConnect.SharedKernel.Cultural.Enums.SriLankanLanguage.English,
             culturalBackground,
-            LankaConnect.SharedKernel.Cultural.GeographicRegion.SriLanka,
+            LankaConnect.SharedKernel.Cultural.Enums.GeographicRegion.SriLanka,
             religiousContext,
             HasReligiousContent,
             HasReligiousContent).Value;
@@ -354,3 +358,5 @@ public class WhatsAppCulturalContext : ValueObject
         yield return RequiresHinduCalendarAwareness;
     }
 }
+
+

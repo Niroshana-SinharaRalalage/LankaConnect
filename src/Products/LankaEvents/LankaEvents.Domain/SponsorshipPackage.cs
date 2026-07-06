@@ -1,5 +1,6 @@
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -110,6 +111,7 @@ public class SponsorshipPackage : LegacyBaseEntity
     public int IncludedTicketCount { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private SponsorshipPackage()
     {
     }
@@ -139,6 +141,7 @@ public class SponsorshipPackage : LegacyBaseEntity
 
         var pkg = new SponsorshipPackage
         {
+            Id = Guid.NewGuid(),
             EventId = eventId,
             Name = name.Trim(),
             Description = description?.Trim(),

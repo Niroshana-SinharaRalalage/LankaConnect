@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -54,8 +55,10 @@ public class EmailFailureDetail : LegacyBaseEntity
     public DateTime ExpiresAt { get; private set; }
 
     // For EF Core
+    [SetsRequiredMembers]
     private EmailFailureDetail() { }
 
+    [SetsRequiredMembers]
     private EmailFailureDetail(
         string correlationId,
         string templateName,

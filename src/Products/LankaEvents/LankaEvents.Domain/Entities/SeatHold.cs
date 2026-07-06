@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -23,8 +24,10 @@ public class SeatHold : LegacyBaseEntity
     public bool IsExpired => DateTime.UtcNow > ExpiresAt;
 
     // EF Core parameterless constructor
+    [SetsRequiredMembers]
     private SeatHold() { }
 
+    [SetsRequiredMembers]
     private SeatHold(
         Guid seatId,
         Guid userId,

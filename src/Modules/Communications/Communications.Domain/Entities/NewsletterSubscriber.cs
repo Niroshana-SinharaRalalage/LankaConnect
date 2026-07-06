@@ -1,6 +1,7 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.DomainEvents;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -32,6 +33,7 @@ public class NewsletterSubscriber : LegacyBaseEntity, IAggregateRoot
     public DateTime? UnsubscribedAt { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private NewsletterSubscriber() { }
 
     /// <summary>
@@ -200,3 +202,4 @@ public class NewsletterSubscriber : LegacyBaseEntity, IAggregateRoot
         return Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
     }
 }
+

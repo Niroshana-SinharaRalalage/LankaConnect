@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -62,8 +63,10 @@ public class EmailMetricRecord : LegacyBaseEntity
     public int TemplateNotFoundCount { get; private set; }
 
     // For EF Core
+    [SetsRequiredMembers]
     private EmailMetricRecord() { }
 
+    [SetsRequiredMembers]
     private EmailMetricRecord(DateOnly metricDate, string? templateName)
     {
         MetricDate = metricDate;

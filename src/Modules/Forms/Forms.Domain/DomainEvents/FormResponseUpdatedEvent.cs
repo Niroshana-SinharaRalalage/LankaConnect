@@ -1,6 +1,7 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.BuildingBlocks.Domain.Contracts;
 
 namespace LankaConnect.Modules.Forms.Domain.DomainEvents;
 
@@ -15,3 +16,4 @@ public record FormResponseUpdatedEvent(
     DateTime OccurredAt,
     Form Form,
     Event Event) : IDomainEvent;
+

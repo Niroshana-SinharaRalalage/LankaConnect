@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Contracts;
 
 namespace LankaConnect.Modules.Forms.Domain.DomainEvents;
 
@@ -9,3 +10,4 @@ public record FormClosedEvent(
     Guid EventId,
     Guid FormId,
     DateTime OccurredAt) : IDomainEvent;
+

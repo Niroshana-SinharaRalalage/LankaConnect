@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Media.Domain.Enums;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LankaConnect.Modules.Media.Domain.Entities;
 
@@ -37,6 +38,7 @@ public class AlbumPhoto : LegacyBaseEntity
     public bool IsVideo => MediaType == AlbumMediaType.Video;
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private AlbumPhoto()
     {
         UploaderName = null!;
@@ -46,6 +48,7 @@ public class AlbumPhoto : LegacyBaseEntity
         ThumbnailBlobName = null!;
     }
 
+    [SetsRequiredMembers]
     private AlbumPhoto(
         Guid albumId,
         Guid uploaderId,

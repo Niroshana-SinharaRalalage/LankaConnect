@@ -2,6 +2,7 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using LankaConnect.Modules.Communications.Domain.Services;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 public class EmailTemplate : LegacyBaseEntity
@@ -17,8 +18,10 @@ public class EmailTemplate : LegacyBaseEntity
     public string? Tags { get; private set; }
 
     // For EF Core
+    [SetsRequiredMembers]
     private EmailTemplate() { }
 
+    [SetsRequiredMembers]
     private EmailTemplate(
         string name,
         string description,

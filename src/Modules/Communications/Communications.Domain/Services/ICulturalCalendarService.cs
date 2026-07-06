@@ -1,5 +1,5 @@
 using LankaConnect.Modules.Communications.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.SharedKernel.Cultural.Enums;
 using LankaConnect.Modules.Communications.Domain.Enums;
 namespace LankaConnect.Modules.Communications.Domain.Services;
 

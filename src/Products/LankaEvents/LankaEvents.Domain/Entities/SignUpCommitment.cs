@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -36,6 +37,7 @@ public class SignUpCommitment : LegacyBaseEntity
     public string? ContactPhone { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private SignUpCommitment()
     {
         ItemDescription = null!;
@@ -44,6 +46,7 @@ public class SignUpCommitment : LegacyBaseEntity
     /// <summary>
     /// Phase 6A.121: Private constructor for quantity-based commitments
     /// </summary>
+    [SetsRequiredMembers]
     private SignUpCommitment(
         Guid? signUpItemId,
         Guid userId,
@@ -69,6 +72,7 @@ public class SignUpCommitment : LegacyBaseEntity
     /// <summary>
     /// Phase 6A.121: Private constructor for slot-based commitments
     /// </summary>
+    [SetsRequiredMembers]
     private SignUpCommitment(
         Guid signUpItemId,
         Guid userId,

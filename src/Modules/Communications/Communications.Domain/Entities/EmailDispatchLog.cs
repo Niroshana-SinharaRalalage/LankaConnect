@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -40,6 +41,7 @@ public class EmailDispatchLog : LegacyBaseEntity
     public string? ProviderStatus { get; private set; }
 
     /// <summary>EF Core constructor.</summary>
+    [SetsRequiredMembers]
     private EmailDispatchLog() { }
 
     /// <summary>

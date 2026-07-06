@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -68,6 +69,7 @@ public class NewsletterEmailHistory : LegacyBaseEntity
     public Newsletter Newsletter { get; private set; } = null!;
 
     // Private constructor for EF Core
+    [SetsRequiredMembers]
     private NewsletterEmailHistory() { }
 
     /// <summary>

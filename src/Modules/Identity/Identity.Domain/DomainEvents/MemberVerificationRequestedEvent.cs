@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Contracts;
 
 namespace LankaConnect.Modules.Identity.Domain.DomainEvents;
 
@@ -35,3 +36,4 @@ public sealed class MemberVerificationRequestedEvent : IDomainEvent
         LastName = lastName;
     }
 }
+

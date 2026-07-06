@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Support;
 
 /// <summary>
@@ -48,6 +49,7 @@ public class AdminAuditLog : LegacyBaseEntity
     public string? UserAgent { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private AdminAuditLog()
     {
         Action = string.Empty;

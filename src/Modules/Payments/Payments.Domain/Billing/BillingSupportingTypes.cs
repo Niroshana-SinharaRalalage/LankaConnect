@@ -1,6 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.BuildingBlocks.Domain.Shared;
 using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.SharedKernel.Cultural.Enums;
 namespace LankaConnect.Modules.Payments.Domain.Billing;
 
 /// <summary>

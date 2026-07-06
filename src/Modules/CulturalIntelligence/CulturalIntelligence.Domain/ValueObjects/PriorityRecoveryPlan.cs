@@ -1,5 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.BuildingBlocks.Domain.Database;
+using LankaConnect.Modules.CulturalIntelligence.Domain.Enums;
 namespace LankaConnect.Modules.CulturalIntelligence.Domain.ValueObjects;
 
 public record PriorityRecoveryPlan(

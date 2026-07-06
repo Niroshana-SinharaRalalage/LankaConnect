@@ -1,6 +1,7 @@
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.BuildingBlocks.Domain;
 using static LankaConnect.Modules.Communications.Domain.Services.EmailCulturalOptimizer;
+using LankaConnect.SharedKernel.Cultural.Enums;
 namespace LankaConnect.Modules.Communications.Domain.Services;
 
 /// <summary>
@@ -134,7 +135,7 @@ public class CulturalWhatsAppService : ICulturalWhatsAppService
             }
 
             // Community events target all major diaspora hubs
-            if (message.MessageType == Communications.Enums.WhatsAppMessageType.CommunityAnnouncement)
+            if (message.MessageType == LankaConnect.Modules.Communications.Domain.Enums.WhatsAppMessageType.CommunityAnnouncement)
             {
                 regions.AddRange(new[] { "Bay Area", "Toronto", "London", "Sydney", "New York", "Los Angeles", "Melbourne", "Vancouver" });
             }
@@ -240,7 +241,7 @@ public class CulturalWhatsAppService : ICulturalWhatsAppService
             // Check Buddhist observance restrictions
             if (culturalContext.RequiresBuddhistCalendarAwareness)
             {
-                var buddhistRestriction = await _observanceService.CheckBuddhistObservanceRestrictionsAsync(messageTime, LankaConnect.SharedKernel.Cultural.GeographicRegion.SriLanka);
+                var buddhistRestriction = await _observanceService.CheckBuddhistObservanceRestrictionsAsync(messageTime, LankaConnect.SharedKernel.Cultural.Enums.GeographicRegion.SriLanka);
                 if (buddhistRestriction)
                     return Result<bool>.Success(false);
             }
@@ -248,7 +249,7 @@ public class CulturalWhatsAppService : ICulturalWhatsAppService
             // Check Hindu observance restrictions
             if (culturalContext.RequiresHinduCalendarAwareness)
             {
-                var hinduRestriction = await _observanceService.CheckHinduObservanceRestrictionsAsync(messageTime, LankaConnect.SharedKernel.Cultural.GeographicRegion.SriLanka);
+                var hinduRestriction = await _observanceService.CheckHinduObservanceRestrictionsAsync(messageTime, LankaConnect.SharedKernel.Cultural.Enums.GeographicRegion.SriLanka);
                 if (hinduRestriction)
                     return Result<bool>.Success(false);
             }
@@ -584,3 +585,4 @@ internal class GeographicAnalysis
     public bool HasSignificantTamilPopulation { get; set; }
     public string PrimaryRegion { get; set; } = "Unknown";
 }
+

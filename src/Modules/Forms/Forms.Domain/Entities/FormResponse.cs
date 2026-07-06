@@ -1,6 +1,7 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LankaConnect.Modules.Forms.Domain.Entities;
 
@@ -66,10 +67,12 @@ public class FormResponse : LegacyBaseEntity
     public IReadOnlyList<FormAnswer> Answers => _answers.AsReadOnly();
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private FormResponse()
     {
     }
 
+    [SetsRequiredMembers]
     private FormResponse(
         Guid eventFormId,
         Guid eventId,

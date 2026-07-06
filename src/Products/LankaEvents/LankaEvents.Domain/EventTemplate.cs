@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -45,6 +46,7 @@ public class EventTemplate : LegacyBaseEntity
     public int DisplayOrder { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private EventTemplate()
     {
         Name = null!;
@@ -53,6 +55,7 @@ public class EventTemplate : LegacyBaseEntity
         TemplateDataJson = null!;
     }
 
+    [SetsRequiredMembers]
     private EventTemplate(
         string name,
         string description,

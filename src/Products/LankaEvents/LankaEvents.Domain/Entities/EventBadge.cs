@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Badges;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -49,10 +50,12 @@ public class EventBadge : LegacyBaseEntity
     public Badge? Badge { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private EventBadge()
     {
     }
 
+    [SetsRequiredMembers]
     private EventBadge(Guid eventId, Guid badgeId, Guid assignedByUserId, int? durationDays)
     {
         EventId = eventId;

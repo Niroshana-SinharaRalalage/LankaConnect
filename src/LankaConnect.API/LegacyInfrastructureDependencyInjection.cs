@@ -166,7 +166,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Add Repositories
-        services.AddScoped<IBusinessRepository, BusinessRepository>();
+        // Business repository removed Day 5 per Consult #12 (Phase B territory).
         // W5.3.c2 (2026-06-28): EventRepository + RegistrationRepository registrations
         // moved to Products/LankaEvents.Api/LankaEventsModule.AddLankaEventsModule().
         // These are the final + largest Event-family repositories (1,560 LOC combined).

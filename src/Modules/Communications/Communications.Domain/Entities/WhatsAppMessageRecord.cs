@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Enums;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -55,6 +56,7 @@ public class WhatsAppMessageRecord : LegacyBaseEntity
     public bool CanRetry => Status == WhatsAppMessageStatus.Failed && RetryCount < MaxRetries;
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private WhatsAppMessageRecord() { }
 
     /// <summary>

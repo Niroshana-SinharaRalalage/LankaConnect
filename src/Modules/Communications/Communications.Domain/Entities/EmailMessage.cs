@@ -1,9 +1,8 @@
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.SharedKernel.Cultural.Enums;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Modules.Communications.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using UserEmail = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 public class EmailMessage : LegacyBaseEntity
@@ -51,7 +50,7 @@ public class EmailMessage : LegacyBaseEntity
     public string? MessageId { get; private set; }
     
     // Cultural Intelligence Properties
-    public LankaConnect.SharedKernel.Cultural.CulturalContext? CulturalContext { get; private set; }
+    public CulturalContext? CulturalContext { get; private set; }
     public bool CulturalTimingOptimized { get; private set; }
     public GeographicRegion? GeographicRegion { get; private set; }
     public DateTime? OptimalSendTime { get; private set; }
@@ -78,6 +77,7 @@ public class EmailMessage : LegacyBaseEntity
     public DateTime? LocalizedSendTime { get; private set; }
 
     // For EF Core
+    [SetsRequiredMembers]
     private EmailMessage() { }
 
     // Cultural Intelligence Factory Method
@@ -86,7 +86,7 @@ public class EmailMessage : LegacyBaseEntity
         UserEmail toEmail,
         string subject,
         string body,
-        LankaConnect.SharedKernel.Cultural.CulturalContext? culturalContext = null,
+        CulturalContext? culturalContext = null,
         string? htmlBody = null,
         EmailType type = EmailType.Transactional)
     {
@@ -111,6 +111,7 @@ public class EmailMessage : LegacyBaseEntity
     }
     
     // Simplified constructor for integration tests - email-based approach
+    [SetsRequiredMembers]
     public EmailMessage(
         UserEmail toEmail,
         string subject,
@@ -176,6 +177,7 @@ public class EmailMessage : LegacyBaseEntity
         return Result<EmailMessage>.Success(message);
     }
 
+    [SetsRequiredMembers]
     private EmailMessage(
         UserEmail fromEmail,
         EmailSubject subject,
@@ -663,3 +665,4 @@ public record StateTransition(EmailStatus Status, DateTime Timestamp, string Des
 /// Retry attempt record
 /// </summary>
 public record RetryAttempt(DateTime Timestamp, string ErrorMessage, int AttemptNumber);
+

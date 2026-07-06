@@ -1,6 +1,7 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using System.Diagnostics.CodeAnalysis;
 // W5.2.d-hotfix2 (2026-06-28): The W5.1 List<object> retyping of _metroAreaEntities
 // caused InvalidCastException on every newsletter create because EF Core 8's
 // shadow-nav hydrator assigns a List<MetroArea> via reflection and List<T> is
@@ -56,12 +57,14 @@ public class Newsletter : LegacyBaseEntity
     public IReadOnlyList<NewsletterMetroAreaLink> MetroAreaLinks => _metroAreaLinks.AsReadOnly();
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private Newsletter()
     {
         Title = null!;
         Description = null!;
     }
 
+    [SetsRequiredMembers]
     private Newsletter(
         NewsletterTitle title,
         NewsletterDescription description,

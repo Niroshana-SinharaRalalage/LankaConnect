@@ -1,6 +1,7 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Community.ValueObjects;
 using LankaConnect.Modules.Communications.Domain.Community.Enums;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Community;
 
 public class ForumTopic : LegacyBaseEntity
@@ -21,12 +22,14 @@ public class ForumTopic : LegacyBaseEntity
     public int ReplyCount => _replies.Count;
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private ForumTopic() 
     {
         Title = null!;
         Content = null!;
     }
 
+    [SetsRequiredMembers]
     private ForumTopic(ForumTitle title, PostContent content, Guid authorId, Guid forumId, ForumCategory category)
     {
         Title = title;

@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Badges.Enums;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Badges;
 
 /// <summary>
@@ -79,6 +80,7 @@ public class Badge : LegacyBaseEntity
     public int? DefaultDurationDays { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private Badge()
     {
         Name = null!;
@@ -89,6 +91,7 @@ public class Badge : LegacyBaseEntity
         DetailConfig = BadgeLocationConfig.DefaultDetail;
     }
 
+    [SetsRequiredMembers]
     private Badge(
         string name,
         string imageUrl,

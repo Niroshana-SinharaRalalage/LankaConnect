@@ -1,7 +1,6 @@
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
@@ -56,6 +55,7 @@ public class TicketPricing : ValueObject
     {
         // Required for EF Core
         AdultPrice = null!;
+        Currency = null!;
     }
 
     private TicketPricing(
@@ -117,7 +117,7 @@ public class TicketPricing : ValueObject
             return Result<TicketPricing>.Failure("Adult and child prices must use the same currency");
 
         // Validation: Child price cannot be greater than adult price
-        if (childPrice.IsGreaterThan(adultPrice))
+        if (childPrice > adultPrice)
             return Result<TicketPricing>.Failure("Child price cannot be greater than adult price");
 
         return Result<TicketPricing>.Success(new TicketPricing(
@@ -171,7 +171,7 @@ public class TicketPricing : ValueObject
         }
 
         // Create a dummy Money object for the AdultPrice (required by constructor, but not used for GroupTiered)
-        var dummyPrice = Money.Create(0, currency).Value;
+        var dummyPrice = new Money(0m, currency);
 
         return Result<TicketPricing>.Success(new TicketPricing(
             PricingType.GroupTiered,
@@ -323,12 +323,7 @@ public class TicketPricing : ValueObject
             return Result<Money>.Failure(tierResult.Error);
 
         var tier = tierResult.Value;
-        var totalPriceResult = tier.PricePerPerson.Multiply(attendeeCount);
-
-        if (totalPriceResult.IsFailure)
-            return Result<Money>.Failure(totalPriceResult.Error);
-
-        return Result<Money>.Success(totalPriceResult.Value);
+        return Result<Money>.Success(tier.PricePerPerson * attendeeCount);
     }
 
     #endregion

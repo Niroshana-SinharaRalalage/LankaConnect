@@ -1,8 +1,8 @@
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -200,11 +200,7 @@ public partial class Event
             }
             else
             {
-                var addResult = totalPrice.Add(attendeePrice);
-                if (addResult.IsFailure)
-                    return Result<Money>.Failure(addResult.Errors);
-
-                totalPrice = addResult.Value;
+                totalPrice = totalPrice + attendeePrice;
             }
         }
 

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace LankaConnect.BuildingBlocks.Domain;
 
 /// <summary>
@@ -47,6 +49,16 @@ public abstract class LegacyBaseEntity
     /// SaveChanges; for AppDbContext (which does not run the interceptor),
     /// the ctor value below is what persists.
     /// </summary>
+    /// <remarks>
+    /// Transitional: LegacyBaseEntity ctor assigns Id = Guid.NewGuid() in body;
+    /// this attribute annotates that truth for the C# 11 required-members analyzer
+    /// (Entity&lt;T&gt;.Id is `required`). Consult #13 amendment 2026-07-06 authorised
+    /// this ONE exception to Consult #12's "no [SetsRequiredMembers] anywhere" ban:
+    /// scope-limited to LegacyBaseEntity, does not extend to Entity&lt;T&gt; or
+    /// AggregateRoot&lt;T&gt;. Remove when LegacyBaseEntity is deleted post-Wave-6.5.
+    /// See ADR-006 addendum.
+    /// </remarks>
+    [SetsRequiredMembers]
     protected LegacyBaseEntity()
     {
         Id = System.Guid.NewGuid();
@@ -54,6 +66,10 @@ public abstract class LegacyBaseEntity
     }
 
     /// <summary>Explicit-id ctor for callers that pre-generate Ids.</summary>
+    /// <remarks>
+    /// See default ctor for [SetsRequiredMembers] rationale (Consult #13 amendment).
+    /// </remarks>
+    [SetsRequiredMembers]
     protected LegacyBaseEntity(System.Guid id) : base(id)
     {
         CreatedAt = DateTime.UtcNow;

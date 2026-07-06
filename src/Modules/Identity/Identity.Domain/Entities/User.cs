@@ -1,10 +1,10 @@
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Contracts;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Modules.Identity.Domain.Entities;
 
@@ -17,18 +17,14 @@ namespace LankaConnect.Modules.Identity.Domain.Entities;
 // more `MarkAsUpdated()` calls; the change tracker reports modifications.
 public class User : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnect.BuildingBlocks.Domain.IAuditable
 {
-    // IAuditable members — interceptor-populated; treat as read-only from domain code.
-    public DateTime CreatedAt { get; set; }
+    // IAuditable members — interceptor-populated; 'new' hides Entity<Guid>.CreatedAt/UpdatedAt.
+    public new DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public new DateTime? UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
 
-    /// <summary>
-    /// Backward-compat method preserved for callers that used legacy
-    /// <c>BaseEntity.GetDomainEvents()</c>. New code reads <see cref="LankaConnect.BuildingBlocks.Domain.Entity{TId}.DomainEvents"/>
-    /// property directly.
-    /// </summary>
-    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.IDomainEvent> GetDomainEvents() => DomainEvents;
+    /// <summary>Backward-compat method for legacy BaseEntity.GetDomainEvents() callers.</summary>
+    public IReadOnlyList<IDomainEvent> GetDomainEvents() => DomainEvents;
 
     public Email Email { get; private set; }
     public string FirstName { get; private set; }
@@ -127,7 +123,7 @@ public class User : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnec
         if (string.IsNullOrWhiteSpace(lastName))
             return Result<User>.Failure("Last name is required");
 
-        var user = new User(email, firstName.Trim(), lastName.Trim(), role);
+        var user = new User(email, firstName.Trim(), lastName.Trim(), role) { Id = Guid.NewGuid() };
 
         // Raise domain event
         user.RaiseDomainEvent(new UserCreatedEvent(user.Id, email.Value, user.FullName));
@@ -178,6 +174,7 @@ public class User : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnec
 
         var user = new User(email, firstName.Trim(), lastName.Trim(), role)
         {
+            Id = Guid.NewGuid(),
             IdentityProvider = identityProvider,
             ExternalProviderId = externalProviderId.Trim(),
             IsEmailVerified = true, // External providers pre-verify emails

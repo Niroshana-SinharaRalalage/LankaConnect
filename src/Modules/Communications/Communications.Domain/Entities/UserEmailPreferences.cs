@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 public class UserEmailPreferences : LegacyBaseEntity
@@ -12,8 +13,10 @@ public class UserEmailPreferences : LegacyBaseEntity
     public TimeZoneInfo? TimeZone { get; private set; }
 
     // For EF Core
+    [SetsRequiredMembers]
     private UserEmailPreferences() { }
 
+    [SetsRequiredMembers]
     private UserEmailPreferences(Guid userId)
     {
         UserId = userId;

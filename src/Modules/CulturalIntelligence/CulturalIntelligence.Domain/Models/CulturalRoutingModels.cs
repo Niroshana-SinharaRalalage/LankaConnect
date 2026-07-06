@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.SharedKernel.Cultural.Enums;
 namespace LankaConnect.Modules.CulturalIntelligence.Domain.Models;
 
 /// <summary>
@@ -203,3 +204,4 @@ public enum ParticipationType
     Volunteer,
     Sponsor
 }
+

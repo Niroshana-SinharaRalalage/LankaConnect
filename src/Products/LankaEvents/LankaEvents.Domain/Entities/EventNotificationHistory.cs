@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -40,10 +41,12 @@ public class EventNotificationHistory : LegacyBaseEntity
     public int FailedSends { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private EventNotificationHistory()
     {
     }
 
+    [SetsRequiredMembers]
     private EventNotificationHistory(Guid eventId, Guid sentByUserId, int recipientCount)
     {
         EventId = eventId;

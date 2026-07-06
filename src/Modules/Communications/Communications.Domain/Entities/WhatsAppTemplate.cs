@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Enums;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -48,6 +49,7 @@ public class WhatsAppTemplate : LegacyBaseEntity
         && (!string.IsNullOrEmpty(MetaTemplateId) || !string.IsNullOrEmpty(TwilioContentSid));
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private WhatsAppTemplate() { }
 
     /// <summary>

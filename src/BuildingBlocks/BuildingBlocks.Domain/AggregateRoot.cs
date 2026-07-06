@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+
 namespace LankaConnect.BuildingBlocks.Domain;
 
 /// <summary>
@@ -16,11 +18,20 @@ public abstract class AggregateRoot : LegacyBaseEntity
     /// </summary>
     public long Version { get; protected set; }
 
+    // Consult #13 amendment 2026-07-06: [SetsRequiredMembers] chained through from
+    // LegacyBaseEntity (mandatory C# 11 spec — CS9039 requires derived ctors of a
+    // [SetsRequiredMembers] base to also declare the attribute). Non-generic
+    // AggregateRoot IS part of the LegacyBaseEntity transitional bridge lineage
+    // (W3E rebase per file header); the exception scope is bridge + immediate
+    // legacy descendants. Does NOT extend to Entity<T> or any generic
+    // AggregateRoot<T>. Remove with LegacyBaseEntity post-Wave-6.5.
+    [SetsRequiredMembers]
     protected AggregateRoot() : base()
     {
         Version = 0;
     }
 
+    [SetsRequiredMembers]
     protected AggregateRoot(Guid id) : base(id)
     {
         Version = 0;

@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -45,8 +46,10 @@ public class VenueDecoration : LegacyBaseEntity
     public int SortOrder { get; private set; }
 
     // EF Core parameterless constructor
+    [SetsRequiredMembers]
     private VenueDecoration() { }
 
+    [SetsRequiredMembers]
     private VenueDecoration(
         Guid venueLayoutId,
         DecorationKind kind,

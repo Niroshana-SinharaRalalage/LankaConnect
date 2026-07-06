@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -37,8 +38,10 @@ public class RegistrationModeConversionRow : LankaConnect.BuildingBlocks.Domain.
 
     public DateTime ConvertedAt { get; private set; }
 
+    [SetsRequiredMembers]
     private RegistrationModeConversionRow() { /* EF Core */ }
 
+    [SetsRequiredMembers]
     private RegistrationModeConversionRow(
         Guid aggregateConversionId, Guid registrationId,
         ConversionOutcome outcome, string? outcomeReason,

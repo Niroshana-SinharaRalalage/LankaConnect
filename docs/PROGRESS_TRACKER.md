@@ -6569,3 +6569,28 @@ Closes the 7F-E.6 → 6.A → 6.B bug-find loop. Operator browser-tested 7F-E.6 
 **Process**: memory `feedback_operator_uat_gate.md` saved. Render-surface slices need explicit operator browser smoke before Status flips to Shipped — the 7F-E.6 → 6.A → 6.B chain cost three architect round-trips that this gate prevents.
 
 **Operator UAT pending**: visit https://lankaconnect-ui-staging.../events/87607c7a-9767-4208-8be3-dd0642016d79 to confirm per-tier rows show captured 4-leaf (VIP: 2/2 + 2/2 ; Standard: 4/0 + 4/0), NOT N/A. Legacy event `616e59f3-...` must keep N/A + Totals row (back-compat regression guard).
+
+## Wave 6.5.f — Modules-Domain cutover checkpoint (2026-07-06, Sprint Day 5)
+
+**Branch:** `bulk-move/integration` (not yet merged to develop)  **Status:** 🚧 COMPILE-RED CHECKPOINT (Consult-sanctioned per ADR-6.5.f-sln-exclusions)
+
+Wave 6.5.f Modules-Domain cutover reached its atomic boundary. All 9 Domain projects (BuildingBlocks.Domain + LankaEvents.Domain + 7 Modules/*.Domain) compile clean; 149 residual errors in `LankaConnect.Application` (182) + 4 downstream projects carry into Wave 6.5.g under pending Consult #14.
+
+**What landed** (from Sprint Day 4 baseline of 1363 errors):
+
+1. **Consult #12 Option D** — `LankaConnect.Domain.Business` aggregate + `LankaConnect.Application/Businesses/` + `BusinessesController` + config + repos + `SendBusinessNotification` handlers deleted per bulk-move-manifest lines 39/66/129/164/171.
+2. **Consult #13 Q3** — `LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency` refs → `LankaConnect.SharedKernel.Money.Currency` (6 sites, LankaEvents.Domain).
+3. **Consult #13 Q4** — `TicketPricing` EF-ctor `Currency = null!` (CS8618).
+4. **Consult #13 Q2** — Money callers rewritten from `.Create()/.Add()/.Multiply()/.IsGreaterThan()` to `new Money(...)/+/*/>` operator form across ~26 sites (LankaEvents.Domain). SharedKernel.Money API surface preserved clean per architect ruling.
+5. **Consult #13 Q1 Option B Path 1** — `[SetsRequiredMembers]` on `LegacyBaseEntity` (2 ctors) + non-generic `AggregateRoot` (2 ctors) as the transitional-bridge scope. Chain propagation to ~65 derived ctors in LankaEvents.Domain via `add-srm-attr.ps1`. `Entity<T>` untouched (Consult #12 stands). 3 direct-`Entity<Guid>` factories (Event.cs × 2, TicketTier.cs × 1) use call-site `{ Id = Guid.NewGuid() }` object initializer append.
+6. **Consult #13 restore** — `IDomainEvent` default interface members (Id/OccurredOn defaults). `DomainEvent` base record restored from git 80a8d8ef.
+7. **Consult #13 stubs** — `ContactInfoPrimitives.cs` in LankaEvents.Domain (Email/PhoneNumber/Address/GeoCoordinate/CulturalAppropriateness). `CommunicationsPrimitives.cs` in Communications.Domain (Email/UserEmail/CulturalContext/CulturalConflict). Local `CulturalContext` in Payments.Domain. `CulturalDataPriority` enum in CulturalIntelligence.Domain/Enums. All flagged for post-sprint promotion to a proper `SharedKernel.ContactInfo` project (Consult #13 backlog item).
+8. **Consult #13.3 PASS A** — Same mechanical Q3/Q4/Q2 patterns extended to all 7 `Modules/*.Domain` projects: namespace rewrites (`BB.Domain.Enums` → `SharedKernel.Cultural.Enums`), `.Shared[.ValueObjects]` dead-namespace strip, SRM propagation, direct-`Entity<Guid>` `Id = Guid.NewGuid()` call-site appends, VO stub restoration.
+
+**Path C exclusion (rejected)**: Consult #13.5 initially ruled Path C (sln exclusion + `EnableDefaultCompileItems=false`); Consult #13.5.1 confirmed mechanism as PASS 1. But cascade extended into 5 downstream consumers of `IApplicationDbContext` (`Communications.Application` +198 CS0246 alone) because the seam is a contract, not a leaf. Consult #13.5.2 reverted to PASS B: **honest red-build checkpoint**, sanctioned by Consult #13 cascade + this session's ADR.
+
+**Commit trail** (single Wave 6.5.f cutover commit at HEAD): includes BuildingBlocks + Products + 7 Modules Domain changes + ADR-6.5.f + this PROGRESS_TRACKER entry + sprint bible Wave 6.5.g row.
+
+**Wave 6.5.g scope (added to sprint bible)**: `IApplicationDbContext` disposition (Consult #14 pending), orphan `DbSet<Business>` cleanup, dead-namespace audit in Application layer, test-project catch-up. Blocks sprint Day 5 slots B (LankaEvents handler migration to `IMultiContextUnitOfWork`), C (Payments un-skip), D (Rule 5 un-skip) — sequencing after Consult #14.
+
+**Sprint bible violation acknowledgment**: compile-green invariant is broken at this commit. ADR-6.5.f-sln-exclusions.md is the explicit sanction. Bisecting agents should skip the range `bulk-move/integration :: this-commit → Wave-6.5.g-close-out` — it will resolve red across that entire span.

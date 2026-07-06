@@ -1,6 +1,7 @@
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -53,11 +54,13 @@ public class RegistrationPayment : LegacyBaseEntity
     public Guid? RegistrationAdditionId { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private RegistrationPayment()
     {
         // Required for EF Core
     }
 
+    [SetsRequiredMembers]
     private RegistrationPayment(
         Guid registrationId,
         string stripePaymentIntentId,

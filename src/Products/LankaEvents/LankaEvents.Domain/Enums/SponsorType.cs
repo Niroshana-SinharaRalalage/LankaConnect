@@ -1,3 +1,4 @@
+using LankaConnect.SharedKernel.Money;
 namespace LankaConnect.Products.LankaEvents.Domain.Enums;
 
 /// <summary>

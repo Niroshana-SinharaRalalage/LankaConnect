@@ -1,6 +1,7 @@
 using LankaConnect.BuildingBlocks.Domain.Enums;
 using System;
 using System.Collections.Generic;
+using LankaConnect.SharedKernel.Cultural.Enums;
 namespace LankaConnect.Modules.CulturalIntelligence.Domain;
 
 /// <summary>

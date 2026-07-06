@@ -1,8 +1,9 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Support.DomainEvents;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Communications.Domain.Support.Enums;
 using LankaConnect.Modules.Communications.Domain.Support.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Support;
 
 /// <summary>
@@ -59,6 +60,7 @@ public class SupportTicket : LegacyBaseEntity
     public IReadOnlyCollection<SupportTicketNote> Notes => _notes.AsReadOnly();
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private SupportTicket()
     {
         ReferenceId = string.Empty;
@@ -277,3 +279,4 @@ public class SupportTicket : LegacyBaseEntity
         return $"CONTACT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpperInvariant()}";
     }
 }
+

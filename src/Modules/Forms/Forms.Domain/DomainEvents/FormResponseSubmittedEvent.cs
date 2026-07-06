@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Contracts;
 
 namespace LankaConnect.Modules.Forms.Domain.DomainEvents;
 
@@ -13,3 +14,4 @@ public record FormResponseSubmittedEvent(
     string? RespondentEmail,
     string? AccessToken,  // Plaintext token (in-memory only, never persisted)
     DateTime OccurredAt) : IDomainEvent;
+

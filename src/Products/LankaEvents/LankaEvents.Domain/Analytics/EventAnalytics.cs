@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Analytics.DomainEvents;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Analytics;
 
 /// <summary>
@@ -24,6 +25,7 @@ public class EventAnalytics : LegacyBaseEntity
         : 0;
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private EventAnalytics() { }
 
     /// <summary>

@@ -1,6 +1,6 @@
 using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Identity;
 namespace LankaConnect.Modules.Communications.Domain.Services;
 
 /// <summary>
@@ -33,7 +33,7 @@ public interface IGoogleCalendarCulturalService
     /// <param name="proposedTime">Proposed meeting or event time</param>
     /// <param name="context">User's cultural context and preferences</param>
     /// <returns>Cultural conflict analysis with resolution suggestions</returns>
-    Task<Result<CulturalConflict>> ValidateSchedulingConflict(DateTime proposedTime, LankaConnect.SharedKernel.Cultural.CulturalContext context);
+    Task<Result<CulturalConflict>> ValidateSchedulingConflict(DateTime proposedTime, CulturalContext context);
 
     /// <summary>
     /// Retrieves personalized cultural events based on user's cultural profile
@@ -61,3 +61,4 @@ public interface IGoogleCalendarCulturalService
     /// <returns>Result indicating family calendar coordination success</returns>
     Task<Result> CreateFamilyculturalCalendar(FamilyId familyId, IEnumerable<CulturalProfile> memberProfiles);
 }
+

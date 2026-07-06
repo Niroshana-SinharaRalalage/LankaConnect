@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -40,8 +41,10 @@ public class EventSlugAlias : LegacyBaseEntity
     public DateTime RetiredAt { get; private set; }
 
     // EF Core ctor.
+    [SetsRequiredMembers]
     private EventSlugAlias() { }
 
+    [SetsRequiredMembers]
     private EventSlugAlias(Guid eventId, string alias, DateTime activatedAt, DateTime retiredAt)
     {
         EventId = eventId;

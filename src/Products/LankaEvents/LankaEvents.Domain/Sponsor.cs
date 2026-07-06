@@ -1,7 +1,8 @@
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -190,6 +191,7 @@ public class Sponsor : LegacyBaseEntity
     public int? IncludedTicketCountSnapshot { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private Sponsor()
     {
     }
@@ -219,6 +221,7 @@ public class Sponsor : LegacyBaseEntity
 
         var sponsor = new Sponsor
         {
+            Id = Guid.NewGuid(),
             EventId = eventId,
             Type = SponsorType.Money,
             SponsorUserId = sponsorUserId,
@@ -292,12 +295,11 @@ public class Sponsor : LegacyBaseEntity
 
         // EF Core owned-type rule — the same Money instance cannot be shared
         // across two properties. Materialize a second copy for the snapshot.
-        var snapshotPriceResult = Money.Create(packagePrice.Amount, packagePrice.Currency);
-        if (snapshotPriceResult.IsFailure)
-            return Result<Sponsor>.Failure(snapshotPriceResult.Error);
+        var snapshotPriceResult = Result<Money>.Success(new Money(packagePrice.Amount, packagePrice.Currency));
 
         var sponsor = new Sponsor
         {
+            Id = Guid.NewGuid(),
             EventId = eventId,
             Type = SponsorType.Money,
             SponsorUserId = sponsorUserId,
@@ -349,6 +351,7 @@ public class Sponsor : LegacyBaseEntity
         var now = DateTime.UtcNow;
         var sponsor = new Sponsor
         {
+            Id = Guid.NewGuid(),
             EventId = eventId,
             Type = SponsorType.Item,
             SponsorUserId = sponsorUserId,

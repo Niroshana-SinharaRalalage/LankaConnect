@@ -349,19 +349,19 @@ public class DiasporaNotificationService : IDiasporaNotificationService
         var messageType = message.MessageType;
 
         // Broadcast messages go to all relevant clusters
-        if (messageType == Communications.Enums.WhatsAppMessageType.Broadcast)
+        if (messageType == LankaConnect.Modules.Communications.Domain.Enums.WhatsAppMessageType.Broadcast)
         {
             return clusters;
         }
 
         // Event notifications prioritize high-engagement clusters
-        if (messageType == Communications.Enums.WhatsAppMessageType.EventNotification)
+        if (messageType == LankaConnect.Modules.Communications.Domain.Enums.WhatsAppMessageType.EventNotification)
         {
             return clusters.Where(c => c.EngagementScore > 0.7).Take(4);
         }
 
         // Festival greetings go to culturally relevant clusters
-        if (messageType == Communications.Enums.WhatsAppMessageType.FestivalGreeting)
+        if (messageType == LankaConnect.Modules.Communications.Domain.Enums.WhatsAppMessageType.FestivalGreeting)
         {
             return clusters.Take(6); // Top 6 most relevant
         }
@@ -463,9 +463,9 @@ public class DiasporaNotificationService : IDiasporaNotificationService
         // Apply message type multipliers
         var messageTypeMultiplier = message.MessageType switch
         {
-            Communications.Enums.WhatsAppMessageType.FestivalGreeting => 1.2,
-            Communications.Enums.WhatsAppMessageType.EventNotification => 1.1,
-            Communications.Enums.WhatsAppMessageType.CommunityAnnouncement => 0.9,
+            LankaConnect.Modules.Communications.Domain.Enums.WhatsAppMessageType.FestivalGreeting => 1.2,
+            LankaConnect.Modules.Communications.Domain.Enums.WhatsAppMessageType.EventNotification => 1.1,
+            LankaConnect.Modules.Communications.Domain.Enums.WhatsAppMessageType.CommunityAnnouncement => 0.9,
             _ => 1.0
         };
 

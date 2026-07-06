@@ -11,7 +11,7 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Modules.Communications.Domain.Community;
-using LankaConnect.Domain.Business;
+// Business/Review/Service tables retained in schema; entity mapping removed Day 5, LankaBusiness product will re-map in Phase B (Consult #12).
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Analytics;
@@ -65,11 +65,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow> RegistrationModeConversionRows
         => Set<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow>();
 
-    // Business Entity Sets
-    public DbSet<Business> Businesses => Set<Business>();
-    public DbSet<Service> Services => Set<Service>();
-    public DbSet<Review> Reviews => Set<Review>();
-    
+    // Business/Review/Service DbSets removed Day 5 per Consult #12.
+    // Tables retained in schema; LankaBusiness product will re-map in Phase B.
+
     // Communications Entity Sets
     public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailMessage> EmailMessages => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailMessage>();
     public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailTemplate> EmailTemplates => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailTemplate>();
@@ -220,10 +218,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new ForumTopicConfiguration());
         modelBuilder.ApplyConfiguration(new ReplyConfiguration());
 
-        // Business entity configurations
-        modelBuilder.ApplyConfiguration(new BusinessConfiguration());
-        modelBuilder.ApplyConfiguration(new ServiceConfiguration());
-        modelBuilder.ApplyConfiguration(new ReviewConfiguration());
+        // Business entity configurations removed Day 5 per Consult #12 (Phase B territory).
 
         // Communications entity configurations
         modelBuilder.ApplyConfiguration(new EmailMessageConfiguration());
@@ -369,9 +364,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Modules.Payments.Domain.Tax.StateTaxRate),                    // Phase 1.2 (Wave4.9.2.2, 2026-06-08): reference_data.state_tax_rates
             typeof(LankaConnect.Products.LankaEvents.Domain.Badges.Badge),                        // Phase 1.3 (Wave4.9.2.3, 2026-06-08): badges.badges
             typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge),          // Phase 1.3 (Wave4.9.2.3, 2026-06-08): badges.event_badges
-            typeof(LankaConnect.Domain.Business.Business),                   // Phase 1.4 (Wave4.9.2.4, 2026-06-08): business.businesses
-            typeof(LankaConnect.Domain.Business.Service),                    // Phase 1.4 (Wave4.9.2.4, 2026-06-08): business.services
-            typeof(LankaConnect.Domain.Business.Review),                     // Phase 1.4 (Wave4.9.2.4, 2026-06-08): business.reviews
+            // Business/Service/Review typeof entries removed Day 5 per Consult #12.
             typeof(LankaConnect.Modules.Communications.Domain.Community.ForumTopic),                // Phase 1.5 (Wave4.9.2.5, 2026-06-09): community.topics
             typeof(LankaConnect.Modules.Communications.Domain.Community.Reply),                     // Phase 1.5 (Wave4.9.2.5, 2026-06-09): community.replies
             typeof(LankaConnect.Products.LankaEvents.Domain.Analytics.EventAnalytics),            // Phase 1.6 (Wave4.9.2.6, 2026-06-09): analytics.event_analytics
@@ -476,10 +469,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<ForumTopic>().ToTable("topics", "community");
         modelBuilder.Entity<Reply>().ToTable("replies", "community");
 
-        // Business schema
-        modelBuilder.Entity<Business>().ToTable("businesses", "business");
-        modelBuilder.Entity<Service>().ToTable("services", "business");
-        modelBuilder.Entity<Review>().ToTable("reviews", "business");
+        // Business schema removed Day 5 per Consult #12 (Phase B territory).
 
         // Communications schema
         modelBuilder.Entity<EmailMessage>().ToTable("email_messages", "communications");
@@ -527,9 +517,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EventTemplate), // Phase 6A.8
             typeof(ForumTopic),
             typeof(Reply),
-            typeof(Business),
-            typeof(Service),
-            typeof(Review),
+            // Business/Service/Review removed Day 5 per Consult #12.
             typeof(EmailMessage),
             typeof(EmailTemplate),
             typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog), // Phase 6A.148.W5.6.B.OBS1: durable email dispatch audit log

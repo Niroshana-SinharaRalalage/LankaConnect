@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -16,6 +17,7 @@ public class WhatsAppWebhookEvent : LegacyBaseEntity
     public string? ErrorMessage { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private WhatsAppWebhookEvent() { }
 
     /// <summary>

@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.DomainEvents;
 using LankaConnect.Modules.Communications.Domain.Enums;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -56,6 +57,7 @@ public class UserWhatsAppPreferences : LegacyBaseEntity
     public bool IsLocked => VerificationLockedUntil.HasValue && DateTime.UtcNow < VerificationLockedUntil;
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private UserWhatsAppPreferences() { }
 
     /// <summary>

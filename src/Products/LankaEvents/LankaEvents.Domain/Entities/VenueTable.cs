@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -52,8 +53,10 @@ public class VenueTable : LegacyBaseEntity
     public int EnabledSeatCount => _seats.Count(s => s.IsEnabled);
 
     // EF Core parameterless constructor
+    [SetsRequiredMembers]
     private VenueTable() { }
 
+    [SetsRequiredMembers]
     private VenueTable(
         Guid venueLayoutId,
         Guid? venueZoneId,

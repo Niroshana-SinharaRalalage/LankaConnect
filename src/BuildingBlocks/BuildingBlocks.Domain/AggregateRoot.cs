@@ -36,7 +36,7 @@ public abstract class AggregateRoot : LegacyBaseEntity
     /// no longer need to set timestamps; they still call this method when they
     /// want optimistic-concurrency to detect their state change.
     /// </summary>
-    protected void MarkAsUpdated()
+    protected new void MarkAsUpdated()
     {
         Version++;
     }

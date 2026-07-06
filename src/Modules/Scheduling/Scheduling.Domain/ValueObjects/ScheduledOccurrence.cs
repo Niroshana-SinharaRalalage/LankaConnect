@@ -69,8 +69,8 @@ public sealed class ScheduledOccurrence : ValueObject
 
     public override IEnumerable<object> GetEqualityComponents()
     {
-        yield return StartDate;
-        yield return EndDate;
-        yield return TimeZoneId;
+        yield return StartDate!;
+        yield return EndDate!;
+        yield return TimeZoneId!;
     }
 }

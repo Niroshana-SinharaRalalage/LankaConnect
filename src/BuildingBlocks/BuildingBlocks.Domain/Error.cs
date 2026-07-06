@@ -10,6 +10,9 @@ public record Error(string Code, string Message)
     public static Error NullValue => new("Error.NullValue", "Null value was provided");
     public static Error NotFound => new("Error.NotFound", "Resource not found");
     public static Error ValidationFailure => new("Error.ValidationFailure", "Validation failed");
+    public static Error Validation => new("Error.Validation", "Validation failed");
+    public static Error Conflict => new("Error.Conflict", "Conflict detected");
+    public static Error Forbidden => new("Error.Forbidden", "Access forbidden");
     public static Error UnsupportedOperation => new("Error.UnsupportedOperation", "Operation not supported");
     public static Error CulturalConflict => new("Error.CulturalConflict", "Cultural conflict detected");
     public static Error CalendarError => new("Error.CalendarError", "Calendar operation failed");

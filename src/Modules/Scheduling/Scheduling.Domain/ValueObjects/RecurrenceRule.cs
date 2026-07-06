@@ -59,7 +59,7 @@ public sealed class RecurrenceRule : ValueObject
     {
         yield return Frequency;
         yield return Interval;
-        yield return UntilDate;
+        yield return UntilDate!;
     }
 }
 

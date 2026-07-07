@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -254,7 +255,7 @@ public class CalculateAdditionPriceQueryHandler
 
     private (decimal TotalPrice, List<AttendeePrice> Breakdown) CalculateNewTotalPrice(
         LankaConnect.Products.LankaEvents.Domain.ValueObjects.TicketPricing? pricing,
-        LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money? ticketPrice,
+        LankaConnect.SharedKernel.Money.Money? ticketPrice,
         List<LankaConnect.Products.LankaEvents.Domain.ValueObjects.AttendeeDetails> existingAttendees,
         List<NewAttendeeDto> newAttendees,
         int totalAttendeeCount)

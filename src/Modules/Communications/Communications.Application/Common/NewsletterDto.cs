@@ -106,15 +106,9 @@ public record NewsletterDto
     public IReadOnlyList<MetroAreaSummaryDto> MetroAreas { get; init; } = Array.Empty<MetroAreaSummaryDto>();
 }
 
-/// <summary>
-/// Summary DTO for email groups (lightweight)
-/// </summary>
-public record EmailGroupSummaryDto
-{
-    public Guid Id { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public bool IsActive { get; init; }
-}
+// Day 4 slot C sub-slice 4C.d.iii (2026-07-06, Consult #15 PASS C):
+// duplicate EmailGroupSummaryDto removed here; canonical version lives in
+// Communications.Contracts/EmailGroupSummaryDto.cs.
 
 /// <summary>
 /// Summary DTO for metro areas (lightweight)

@@ -10,6 +10,19 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d.ii (2026-07-06, Consult #15 PASS C):
+         INewsletterSubscriberRepository relocated here from Communications.
+         Application. Interface returns Communications.Domain.Entities.
+         NewsletterSubscriber; Communications.Contracts therefore needs those
+         PRs. Namespace preserved. -->
+    <ProjectReference Include="..\Communications.Domain\Communications.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d.iii (2026-07-06, Consult #15 PASS C):
+         IWhatsAppService + IRegistrationEmailService relocated from
+         Communications.Application. IRegistrationEmailService signatures
+         reference LankaEvents.Domain entities + Identity.Contracts. -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
+    <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

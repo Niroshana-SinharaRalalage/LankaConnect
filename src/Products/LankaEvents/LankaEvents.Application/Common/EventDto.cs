@@ -1,6 +1,6 @@
 using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
 using LankaConnect.SharedKernel.Money;
-using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.Modules.Communications.Contracts;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 

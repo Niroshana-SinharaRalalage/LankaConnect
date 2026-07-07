@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateEvent;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateEventOrganizerContact;

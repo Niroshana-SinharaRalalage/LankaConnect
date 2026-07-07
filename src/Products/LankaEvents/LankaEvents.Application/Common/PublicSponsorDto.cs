@@ -1,4 +1,5 @@
 namespace LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
 
 /// <summary>
 /// Phase 6A.150 — sanitized, PII-FREE projection of a sponsor for the public event

@@ -1,9 +1,9 @@
 using LankaConnect.Modules.Identity.Contracts;
+using EmailDateTimeHelper = LankaConnect.Modules.Communications.Contracts.Email.Helpers.EmailDateTimeHelper;
 using System.Diagnostics;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.BuildingBlocks.Application.Common.Constants;
-using LankaConnect.BuildingBlocks.Application.Common.Helpers;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Repositories;
 using LankaConnect.BuildingBlocks.Application.Interfaces;

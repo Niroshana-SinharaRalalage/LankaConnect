@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -500,7 +501,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 {
                     var currency = registration.TotalPrice?.Currency
                         ?? @event.Pricing?.Currency
-                        ?? LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD;
+                        ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
                     var amountResult = Money.Create(request.CollectionAmount.Value, currency);
                     if (amountResult.IsSuccess)
@@ -565,7 +566,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             {
                 var currency = registration.TotalPrice?.Currency
                     ?? @event.Pricing?.Currency
-                    ?? LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD;
+                    ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
                 var amountResult = Money.Create(request.SponsorAmount.Value, currency);
                 if (amountResult.IsSuccess)
@@ -993,7 +994,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         // Determine currency from registration's pricing or event
         var currency = registration.TotalPrice?.Currency
             ?? @event.Pricing?.Currency
-            ?? LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD;
+            ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
         var amountResult = Money.Create(donationAmount, currency);
         if (amountResult.IsFailure)

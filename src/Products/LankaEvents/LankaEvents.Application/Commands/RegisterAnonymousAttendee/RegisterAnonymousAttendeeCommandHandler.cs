@@ -1,4 +1,5 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.7.d.3
+using LankaConnect.SharedKernel.Money;
 using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
@@ -541,7 +542,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 {
                     var currency = registration.TotalPrice?.Currency
                         ?? @event.Pricing?.Currency
-                        ?? LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD;
+                        ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
                     var amountResult = Money.Create(request.CollectionAmount.Value, currency);
                     if (amountResult.IsSuccess)
@@ -606,7 +607,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             {
                 var currency = registration.TotalPrice?.Currency
                     ?? @event.Pricing?.Currency
-                    ?? LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD;
+                    ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
                 var amountResult = Money.Create(request.SponsorAmount.Value, currency);
                 if (amountResult.IsSuccess)
@@ -998,7 +999,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
         var currency = registration.TotalPrice?.Currency
             ?? @event.Pricing?.Currency
-            ?? LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD;
+            ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
         var amountResult = Money.Create(request.DonationAmount!.Value, currency);
         if (amountResult.IsFailure)

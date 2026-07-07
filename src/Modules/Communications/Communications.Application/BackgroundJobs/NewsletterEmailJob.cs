@@ -342,7 +342,7 @@ public class NewsletterEmailJob
                 if (dbContext != null)
                 {
                     var emailMessageEntries = dbContext.ChangeTracker.Entries()
-                        .Where(e => e.Entity is Domain.Communications.Entities.EmailMessage)
+                        .Where(e => e.Entity is LankaConnect.Modules.Communications.Domain.Entities.EmailMessage)
                         .ToList();
 
                     _logger.LogInformation("[Phase 6A.74 Part 13 Issue #1/#2 RCA] Found {Count} EmailMessage entities to detach",

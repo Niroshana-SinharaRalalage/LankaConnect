@@ -31,11 +31,11 @@ public interface IEmailStatusRepository
     /// <summary>
     /// Gets email statuses with filtering and pagination
     /// </summary>
-    Task<List<Domain.Communications.Entities.EmailMessage>> GetEmailStatusAsync(
+    Task<List<LankaConnect.Modules.Communications.Domain.Entities.EmailMessage>> GetEmailStatusAsync(
         Guid? userId,
         string? emailAddress,
-        Domain.Communications.Enums.EmailType? emailType,
-        Domain.Communications.Enums.EmailStatus? status,
+        LankaConnect.Modules.Communications.Domain.Enums.EmailType? emailType,
+        LankaConnect.Modules.Communications.Domain.Enums.EmailStatus? status,
         DateTime? fromDate,
         DateTime? toDate,
         int pageNumber,
@@ -48,8 +48,8 @@ public interface IEmailStatusRepository
     Task<int> GetEmailStatusCountAsync(
         Guid? userId,
         string? emailAddress,
-        Domain.Communications.Enums.EmailType? emailType,
-        Domain.Communications.Enums.EmailStatus? status,
+        LankaConnect.Modules.Communications.Domain.Enums.EmailType? emailType,
+        LankaConnect.Modules.Communications.Domain.Enums.EmailStatus? status,
         DateTime? fromDate,
         DateTime? toDate,
         CancellationToken cancellationToken = default);

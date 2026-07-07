@@ -1,9 +1,8 @@
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
-using CulturalAppropriateness = LankaConnect.SharedKernel.Cultural.CulturalAppropriateness;
-using AppropriatenessLevel = LankaConnect.SharedKernel.Cultural.AppropriatenessLevel;
 
 namespace LankaConnect.Modules.CulturalIntelligence.Infrastructure;
 
@@ -16,7 +15,7 @@ public class StubCulturalCalendar : ICulturalCalendar
     public bool IsPoyaday(DateTime date) => false; // Stub: Return false for MVP
 
     public CulturalAppropriateness GetEventAppropriateness(Event @event, DateTime date)
-        => new CulturalAppropriateness(0.7, AppropriatenessLevel.Appropriate, "Stub implementation"); // Stub: Default 70% appropriateness
+        => new CulturalAppropriateness(0.7); // Stub: Default 70% appropriateness
 
     public string ClassifyEventType(Event @event) => "General"; // Stub: Default classification
 
@@ -24,7 +23,7 @@ public class StubCulturalCalendar : ICulturalCalendar
         => DiasporaFriendliness.Moderate; // Stub: Return enum value (Moderate diaspora-friendliness)
 
     public CulturalAppropriateness CalculateAppropriateness(Event @event, string culturalBackground)
-        => new CulturalAppropriateness(0.7, AppropriatenessLevel.Appropriate, "Stub implementation"); // Stub: Default 70% appropriateness
+        => new CulturalAppropriateness(0.7); // Stub: Default 70% appropriateness
 
     public FestivalPeriod GetFestivalPeriod(string festivalName, int year)
         => new FestivalPeriod(DateTime.UtcNow, DateTime.UtcNow.AddDays(7), festivalName); // Stub: 7-day period

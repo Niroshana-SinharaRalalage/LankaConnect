@@ -5,7 +5,6 @@ using LankaConnect.Modules.Communications.Application.Common;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

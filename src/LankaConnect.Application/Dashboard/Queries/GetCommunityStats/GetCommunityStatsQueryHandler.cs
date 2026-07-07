@@ -40,10 +40,10 @@ public class GetCommunityStatsQueryHandler : IRequestHandler<GetCommunityStatsQu
         var activeEvents = await _eventRepository.GetEventsByStatusAsync(EventStatus.Active, cancellationToken);
         var eventCount = publishedEvents.Count + activeEvents.Count;
 
-        // Count active businesses only (exclude inactive, suspended, pending approval)
-        // Business entity uses BusinessStatus enum (Active = 1)
-        var businessCount = await _context.Businesses
-            .CountAsync(b => b.Status == Domain.Business.Enums.BusinessStatus.Active, cancellationToken);
+        // Day 4 slot C sub-slice 4C.b (2026-07-06): Business aggregate deleted
+        // per Consult #12 Option D. Business count returns 0 until LankaBusiness
+        // product surface lands in Phase B.
+        var businessCount = 0;
 
         var stats = new CommunityStatsDto
         {

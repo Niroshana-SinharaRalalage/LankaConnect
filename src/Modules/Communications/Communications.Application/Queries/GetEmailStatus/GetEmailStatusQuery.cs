@@ -1,7 +1,6 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Application.Common;
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 namespace LankaConnect.Modules.Communications.Application.Queries.GetEmailStatus;
 
 /// <summary>

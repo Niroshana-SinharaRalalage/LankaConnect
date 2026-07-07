@@ -1,6 +1,5 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Application.Common;
-using LankaConnect.Modules.Communications.Application.Common;
 namespace LankaConnect.Modules.Communications.Application.Queries.GetEmailGroups;
 
 /// <summary>

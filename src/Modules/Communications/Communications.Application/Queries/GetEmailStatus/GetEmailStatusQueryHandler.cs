@@ -5,7 +5,6 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Application.Common;
 using LankaConnect.BuildingBlocks.Domain;
 using DomainEmailMessage = LankaConnect.Modules.Communications.Domain.Entities.EmailMessage;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Contracts; // W4.7.b
 using Serilog.Context;
 namespace LankaConnect.Modules.Communications.Application.Queries.GetEmailStatus;

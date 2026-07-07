@@ -1,8 +1,6 @@
 using LankaConnect.Modules.Payments.Domain.Billing;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.BuildingBlocks.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
 using MediatR;

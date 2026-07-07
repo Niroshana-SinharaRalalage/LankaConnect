@@ -36,6 +36,11 @@
     <ProjectReference Include="..\Modules\Communications\Communications.Contracts\Communications.Contracts.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Contracts\Identity.Contracts.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d (2026-07-06): MetroArea DTO lives in SharedKernel.Geo. -->
+    <ProjectReference Include="..\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d (2026-07-06): IQuery/IQueryHandler live in
+         BB.Application.Common.Interfaces. -->
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

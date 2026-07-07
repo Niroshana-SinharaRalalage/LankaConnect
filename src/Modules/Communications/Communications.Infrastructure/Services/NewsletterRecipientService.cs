@@ -4,7 +4,6 @@ using LankaConnect.Modules.Communications.Application.Common;
 using LankaConnect.Modules.Communications.Application.Services;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Domain;
-using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;

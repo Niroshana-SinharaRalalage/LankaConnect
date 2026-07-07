@@ -8,7 +8,6 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Microsoft.EntityFrameworkCore;

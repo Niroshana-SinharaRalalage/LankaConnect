@@ -1,6 +1,7 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.BuildingBlocks.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Domain.Enums;
+using LankaConnect.Modules.Identity.Domain.Entities;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 public interface IJwtTokenService

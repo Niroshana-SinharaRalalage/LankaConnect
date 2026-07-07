@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Services;

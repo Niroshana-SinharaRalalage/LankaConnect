@@ -1,5 +1,4 @@
 using FluentValidation;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Enums;
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 

@@ -1,4 +1,5 @@
 namespace LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
 
 /// <summary>
 /// DTO representing a ticket tier for multi-tier events.

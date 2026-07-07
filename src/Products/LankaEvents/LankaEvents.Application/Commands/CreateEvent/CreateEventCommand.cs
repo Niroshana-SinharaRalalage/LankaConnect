@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreateEvent;

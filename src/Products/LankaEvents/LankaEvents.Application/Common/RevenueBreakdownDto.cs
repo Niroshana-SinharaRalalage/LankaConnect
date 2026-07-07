@@ -1,4 +1,5 @@
 namespace LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
 
 /// <summary>
 /// Phase 6A.X: DTO for revenue breakdown showing detailed fee structure

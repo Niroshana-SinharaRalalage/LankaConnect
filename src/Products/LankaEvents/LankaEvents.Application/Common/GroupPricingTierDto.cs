@@ -1,4 +1,5 @@
 namespace LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
 
 /// <summary>
 /// Phase 6D: DTO for group pricing tier in tiered group pricing

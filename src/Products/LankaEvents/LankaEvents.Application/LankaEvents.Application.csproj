@@ -32,6 +32,16 @@
          also need access to ICommand / ICommandHandler / IUnitOfWork etc. that live in
          the legacy LankaConnect.Application namespace. Mirror Identity 4.6.d.1 pattern. -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d (2026-07-06): mechanical unblock adds.
+         Currency in SharedKernel.Money; NewsletterSubscriber in Communications.Domain;
+         INewsletterSubscriberRepository + IWhatsAppService in Communications.Application;
+         IStripePaymentService in Payments.Application. Transitional edges pending
+         Contracts elevation. -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
+    <!-- IStripePaymentService now lives in Payments.Contracts per Consult #15 PASS C
+         (moved 2026-07-06); no longer need Payments.Application PR from LankaEvents. -->
+
   </ItemGroup>
 
   <ItemGroup>

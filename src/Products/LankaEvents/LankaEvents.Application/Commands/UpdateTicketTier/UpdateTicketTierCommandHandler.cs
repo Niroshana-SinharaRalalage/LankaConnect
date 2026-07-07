@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
@@ -47,15 +48,15 @@ public class UpdateTicketTierCommandHandler : ICommandHandler<UpdateTicketTierCo
                 }
 
                 // Create adult price
-                var adultPriceResult = Money.Create(request.AdultPriceAmount, request.AdultPriceCurrency);
+                var adultPriceResult = MoneyBuilder.Create(request.AdultPriceAmount, request.AdultPriceCurrency);
                 if (adultPriceResult.IsFailure)
                     return Result.Failure(adultPriceResult.Error);
 
                 // Create child price if provided
                 Money? childPrice = null;
-                if (request.ChildPriceAmount.HasValue && request.ChildPriceCurrency.HasValue)
+                if (request.ChildPriceAmount.HasValue && request.ChildPriceCurrency != null)
                 {
-                    var childPriceResult = Money.Create(request.ChildPriceAmount.Value, request.ChildPriceCurrency.Value);
+                    var childPriceResult = MoneyBuilder.Create(request.ChildPriceAmount.Value, request.ChildPriceCurrency);
                     if (childPriceResult.IsFailure)
                         return Result.Failure(childPriceResult.Error);
                     childPrice = childPriceResult.Value;

@@ -69,6 +69,9 @@ public sealed class Address : ValueObject
         Country = country ?? string.Empty;
     }
 
+    public static Result<Address> Create(string street, string city, string state, string zipCode, string country)
+        => Result<Address>.Success(new Address(street, city, state, zipCode, country));
+
     public override IEnumerable<object> GetEqualityComponents()
     {
         yield return Street;
@@ -93,6 +96,12 @@ public sealed class GeoCoordinate : ValueObject
         Latitude = latitude;
         Longitude = longitude;
     }
+
+    public static Result<GeoCoordinate> Create(double latitude, double longitude)
+        => Result<GeoCoordinate>.Success(new GeoCoordinate(latitude, longitude));
+
+    public static Result<GeoCoordinate> Create(decimal latitude, decimal longitude)
+        => Result<GeoCoordinate>.Success(new GeoCoordinate((double)latitude, (double)longitude));
 
     public override IEnumerable<object> GetEqualityComponents()
     {

@@ -255,7 +255,7 @@ public class EventCancellationEmailJob
                     var singleEmailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
                     // Get user info if available (for personalization)
-                    var emailResult = Email.Create(email);
+                    var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(email);
                     var user = emailResult.IsSuccess
                         ? await _identityQueries.GetByEmailAsync(emailResult.Value.Value, CancellationToken.None)
                         : null;

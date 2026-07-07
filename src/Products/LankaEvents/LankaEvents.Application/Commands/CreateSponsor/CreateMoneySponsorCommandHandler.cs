@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
@@ -79,11 +80,11 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
                     return Result<CreateMoneySponsorResult>.Failure(validateAmountResult.Error);
 
                 // 5. Parse currency
-                if (!Enum.TryParse<Currency>(request.Currency, true, out var currency))
+                if (!MoneyBuilder.TryParseCurrency(request.Currency, out var currency))
                     return Result<CreateMoneySponsorResult>.Failure($"Invalid currency: {request.Currency}");
 
                 // 6. Create Money and Sponsor entity
-                var amountResult = Money.Create(request.Amount, currency);
+                var amountResult = MoneyBuilder.Create(request.Amount, currency);
                 if (amountResult.IsFailure)
                     return Result<CreateMoneySponsorResult>.Failure(amountResult.Error);
 

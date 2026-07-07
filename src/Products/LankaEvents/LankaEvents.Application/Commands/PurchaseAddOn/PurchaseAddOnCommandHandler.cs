@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
@@ -227,7 +228,7 @@ public class PurchaseAddOnCommandHandler : ICommandHandler<PurchaseAddOnCommand,
                 // 10. Calculate and store revenue breakdown
                 try
                 {
-                    var totalMoney = Money.Create(totalAmount, unitPrice.Currency);
+                    var totalMoney = MoneyBuilder.Create(totalAmount, unitPrice.Currency);
                     if (totalMoney.IsSuccess)
                     {
                         var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Queries.CalculateAdditionPrice;
@@ -162,10 +163,10 @@ public class InitiateAddAttendeesCommandHandler
                 }
 
                 // Step 4: Create Money value objects
-                var currency = Enum.Parse<LankaConnect.SharedKernel.Money.Currency>(pricing.Currency, true);
-                var previousTotalPriceResult = Money.Create(pricing.CurrentTotalPaid, currency);
-                var newTotalPriceResult = Money.Create(pricing.NewTotalPrice, currency);
-                var additionalAmountResult = Money.Create(pricing.AdditionalAmount, currency);
+                var currency = LankaConnect.SharedKernel.Money.Currency.FromCode(pricing.Currency);
+                var previousTotalPriceResult = MoneyBuilder.Create(pricing.CurrentTotalPaid, currency);
+                var newTotalPriceResult = MoneyBuilder.Create(pricing.NewTotalPrice, currency);
+                var additionalAmountResult = MoneyBuilder.Create(pricing.AdditionalAmount, currency);
 
                 if (previousTotalPriceResult.IsFailure || newTotalPriceResult.IsFailure || additionalAmountResult.IsFailure)
                 {

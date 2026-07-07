@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
@@ -57,10 +58,10 @@ public class UpdateAddOnDefinitionCommandHandler : ICommandHandler<UpdateAddOnDe
                     return Result.Failure("Add-on definition does not belong to this event");
 
                 // 3. Parse currency and create Money for price
-                if (!Enum.TryParse<Currency>(request.Currency, true, out var currency))
+                if (!MoneyBuilder.TryParseCurrency(request.Currency, out var currency))
                     return Result.Failure($"Invalid currency: {request.Currency}");
 
-                var priceResult = Money.Create(request.Price, currency);
+                var priceResult = MoneyBuilder.Create(request.Price, currency);
                 if (priceResult.IsFailure)
                     return Result.Failure(priceResult.Error);
 

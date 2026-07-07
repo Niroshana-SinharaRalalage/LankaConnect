@@ -111,12 +111,15 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
 
                         if (group != null)
                         {
-                            emailGroupSummaries.Add(new LankaConnect.Modules.Communications.Contracts.EmailGroupSummaryDto
-                            {
-                                Id = group.Id,
-                                Name = group.Name,
-                                IsActive = group.IsActive
-                            });
+                            emailGroupSummaries.Add(new LankaConnect.Modules.Communications.Contracts.EmailGroupSummaryDto(
+                                Id: group.Id,
+                                Name: group.Name,
+                                Description: null,
+                                OwnerId: Guid.Empty,
+                                EmailCount: 0,
+                                IsActive: group.IsActive,
+                                CreatedAt: DateTime.UtcNow,
+                                UpdatedAt: null));
                         }
                         else
                         {

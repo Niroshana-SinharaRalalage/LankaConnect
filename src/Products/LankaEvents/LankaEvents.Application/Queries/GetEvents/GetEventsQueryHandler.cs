@@ -578,8 +578,8 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                         var distance = CalculateDistance(
                             metroData.Value.Latitude,
                             metroData.Value.Longitude,
-                            e.Location!.Coordinates!.Latitude,
-                            e.Location.Coordinates.Longitude);
+                            (decimal)e.Location!.Coordinates!.Latitude,
+                            (decimal)e.Location.Coordinates.Longitude);
                         // Convert radius from miles to kilometers (1 mile = 1.60934 km)
                         var radiusKm = metroData.Value.RadiusMiles * 1.60934;
                         return distance <= radiusKm;
@@ -635,8 +635,8 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                 var distance = CalculateDistance(
                     latitude,
                     longitude,
-                    e.Location.Coordinates.Latitude,
-                    e.Location.Coordinates.Longitude);
+                    (decimal)e.Location.Coordinates.Latitude,
+                    (decimal)e.Location.Coordinates.Longitude);
                 eventsWithCoords.Add((e, distance));
             }
             else

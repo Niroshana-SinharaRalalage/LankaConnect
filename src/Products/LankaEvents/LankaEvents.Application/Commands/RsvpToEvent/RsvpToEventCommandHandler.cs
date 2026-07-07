@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
@@ -503,7 +504,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                         ?? @event.Pricing?.Currency
                         ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-                    var amountResult = Money.Create(request.CollectionAmount.Value, currency);
+                    var amountResult = MoneyBuilder.Create(request.CollectionAmount.Value, currency);
                     if (amountResult.IsSuccess)
                     {
                         var collectionResult = Collection.Create(
@@ -568,7 +569,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                     ?? @event.Pricing?.Currency
                     ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-                var amountResult = Money.Create(request.SponsorAmount.Value, currency);
+                var amountResult = MoneyBuilder.Create(request.SponsorAmount.Value, currency);
                 if (amountResult.IsSuccess)
                 {
                     // W5.D10.c — prefer caller-supplied sponsor contact fields when provided
@@ -996,7 +997,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             ?? @event.Pricing?.Currency
             ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-        var amountResult = Money.Create(donationAmount, currency);
+        var amountResult = MoneyBuilder.Create(donationAmount, currency);
         if (amountResult.IsFailure)
         {
             _logger.LogWarning("Failed to create donation Money - Error={Error}", amountResult.Error);

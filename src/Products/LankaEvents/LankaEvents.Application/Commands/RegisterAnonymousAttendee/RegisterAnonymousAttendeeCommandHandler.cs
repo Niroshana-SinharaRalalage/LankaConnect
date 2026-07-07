@@ -1,4 +1,5 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.7.d.3
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
@@ -544,7 +545,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                         ?? @event.Pricing?.Currency
                         ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-                    var amountResult = Money.Create(request.CollectionAmount.Value, currency);
+                    var amountResult = MoneyBuilder.Create(request.CollectionAmount.Value, currency);
                     if (amountResult.IsSuccess)
                     {
                         // Anonymous users don't have a UserId — use Guid.Empty
@@ -609,7 +610,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                     ?? @event.Pricing?.Currency
                     ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-                var amountResult = Money.Create(request.SponsorAmount.Value, currency);
+                var amountResult = MoneyBuilder.Create(request.SponsorAmount.Value, currency);
                 if (amountResult.IsSuccess)
                 {
                     // Anonymous users don't have a UserId — use Guid.Empty
@@ -1001,7 +1002,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             ?? @event.Pricing?.Currency
             ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-        var amountResult = Money.Create(request.DonationAmount!.Value, currency);
+        var amountResult = MoneyBuilder.Create(request.DonationAmount!.Value, currency);
         if (amountResult.IsFailure)
         {
             _logger.LogWarning("Failed to create donation Money - Error={Error}", amountResult.Error);

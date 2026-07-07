@@ -151,7 +151,7 @@ public class UpdateSponsorCommandHandler : ICommandHandler<UpdateSponsorCommand,
                     if (request.Amount.HasValue)
                     {
                         var currency = ParseCurrency(request.Currency) ?? sponsor.Amount?.Currency ?? Currency.USD;
-                        var moneyResult = Money.Create(request.Amount.Value, currency);
+                        var moneyResult = MoneyBuilder.Create(request.Amount.Value, currency);
                         if (moneyResult.IsFailure)
                             return Reject(moneyResult.Error, nameof(request.Amount));
 
@@ -213,7 +213,7 @@ public class UpdateSponsorCommandHandler : ICommandHandler<UpdateSponsorCommand,
     private static Currency? ParseCurrency(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return null;
-        return Enum.TryParse<Currency>(raw, ignoreCase: true, out var c) ? c : null;
+        return MoneyBuilder.TryParseCurrency(raw, out var c) ? c : null;
     }
 
     private static SponsorDto MapToDto(Sponsor s) => new()

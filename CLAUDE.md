@@ -28,6 +28,47 @@ If documents conflict: STOP, request architect review. Do not pick a side.
 
 ---
 
+# 🛑 SECTION 0.5: WAVE LABEL LEXICON (BINDING — DO NOT RENUMBER)
+
+**Added 2026-07-06 after a session invented "Wave 6.5.g Application-layer compile debt cleanup" that collided with the sprint bible's Wave 6.5.g meaning. Wave labels below are BINDING; if a consult ruling reuses one for a new concept, translate back to a plan-conformant sub-slice label BEFORE writing to docs or commit messages.**
+
+**Two-week bulk-move sprint labels** (`docs/MASTER_TODO_SPRINT_TWO_WEEK_BULK_MOVE.md`):
+
+- **Wave 6.5.f** = Day 5 slot B → **LankaEvents handler migration to `IMultiContextUnitOfWork`** (~120 handlers)
+- **Wave 6.5.g** = Day 5 slot C → **Payments un-skip** (11 handlers → integration events)
+- **Wave 6.5.h** = Day 5 slot D → **Rule 5 un-skip** (14 services + 7 webhook handlers)
+
+**Day 4 slot C sub-slice labels** (Consult #14 PASS B `IApplicationDbContext` teardown; architect called these "6.5.g.0..7" — translate to plan-conformant labels below):
+
+- **4C.a** — preamble ash-sweep (delete dead types + dead-using sweep)
+- **4C.b** — Business/Service/Review orphan cleanup (Consult #12 Option D follow-through)
+- **4C.c** — create `CommunicationsDbContext` + relocate 3 email configs (BLOCKS 4C.f)
+- **4C.d** — LankaEvents 10 DbSets → `LankaEventsDbContext` (Metro+Templates, SignUp, Registration sub-sub-slices)
+- **4C.e** — `User` → `IdentityDbContext` (~50 sites)
+- **4C.f** — Communications 3 DbSets → `CommunicationsDbContext` callers (4 sites, depends on 4C.c)
+- **4C.g** — `ReferenceValue` → `AppDbContext` direct (5 sites)
+- **4C.h** — delete `IApplicationDbContext` + ArchTest forbidden-type rule + full `Run-Wave9` smoke
+
+**Hard rule**: NO new wave labels without ADR + architect approval. If a consult reuses a label for a new concept, translate to the plan-conformant sub-slice label above.
+
+---
+
+# 🛑 SECTION 0.6: RECENT ARCHITECT RULINGS (2026-07-06)
+
+Rulings materially change behavior — refresh these at every session start.
+
+**Consult #12 Option D** — `LankaConnect.Domain.Business` aggregate + all consumers deleted. LankaBusiness product will re-surface in Phase B. Any `Business`/`Service`/`Review` reference in new code is a bug.
+
+**Consult #13 Q1 amendment (`[SetsRequiredMembers]` scope)** — `[SetsRequiredMembers]` is permitted on `LegacyBaseEntity` (2 ctors) + non-generic `AggregateRoot` (2 ctors) ONLY. Rationale: those are transitional-bridge ctors whose bodies already assign `Id = Guid.NewGuid()`; the attribute annotates existing truth for the C# 11 required-members analyzer. **Explicitly forbidden elsewhere** — do not add to `Entity<T>`, generic `AggregateRoot<T>`, or any application-layer type. Remove with `LegacyBaseEntity` post-Wave-6.5.
+
+**Consult #13 Q2 Money-API operator form** — SharedKernel.Money exposes `+`/`*`/`-`/`>`/`<=` operators + `new Money(decimal, Currency)` constructor. Do NOT add legacy method aliases (`Money.Create`, `.Add`, `.Multiply`, `.IsGreaterThan`) to `SharedKernel.Money`. Rewrite callers to operator form. Same applies going forward.
+
+**Consult #14 PASS B (`IApplicationDbContext` teardown)** — 44 consumers of `IApplicationDbContext` migrate to their respective module DbContexts per Consult #7 Delta multi-DbContext plan. Sequenced as 4C.a..h (see Section 0.5). New code MUST NOT inject `IApplicationDbContext` — inject the correct module DbContext (`LankaEventsDbContext`, `IdentityDbContext`, `CommunicationsDbContext`, `AppDbContext` for cross-cutting `ReferenceValue`).
+
+**Consult #15 PASS C — Interface + DTO placement rule (permanent)** — **Interfaces + their DTO signatures live in `Module.Contracts`, never in `Module.Application`.** Any new interface introducing DTO records goes in Contracts. Existing violations (interface + DTOs in `.Application/Contracts/`) get relocated on any touch. This is the third instance of the same shape biting the project ([[feedback-roslyn-analyzer-recurrence-trigger]]); ArchTest rule follows post-sprint. Rule 5j config-relocation audit MANDATORY in commit message for any such move.
+
+---
+
 # PART A: LANKACONNECT PROJECT RULES (MANDATORY)
 
 ## 🚨 SECTION 1: SENIOR ENGINEER MINDSET (ALWAYS ACTIVE)
@@ -703,4 +744,6 @@ Every behavior-touching wave gets `docs/MASTER_TODO_WAVE_<N>.md` with 4 mandator
 
 **Remember: This file is LAW. Follow it without exception. If something is unclear, ASK the user.**
 
-**Last Updated**: 2026-06-08 (Section 13 added per founder mandate)
+**Last Updated**: 2026-07-06 — Added SECTION 0.5 (Wave label lexicon — binding, prevents label collisions after "Wave 6.5.g" was accidentally reused mid-session) + SECTION 0.6 (Recent architect rulings: Consult #12 Option D Business delete, Consult #13 Q1 `[SetsRequiredMembers]` transitional-bridge scope + Q2 Money-operator form, Consult #14 PASS B `IApplicationDbContext` teardown 4C.a..h, Consult #15 PASS C interface + DTO in `.Contracts` permanent rule).
+
+**Previous update**: 2026-06-08 (Section 13 added per founder mandate)

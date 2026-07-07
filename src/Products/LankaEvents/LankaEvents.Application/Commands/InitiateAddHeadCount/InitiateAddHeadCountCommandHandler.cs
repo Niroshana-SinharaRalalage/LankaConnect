@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddAttendees;
@@ -119,13 +120,13 @@ public class InitiateAddHeadCountCommandHandler
                     return Ok(InitiateAddAttendeesResult.Failed(newPriceResult.Error));
                 var newTotal = newPriceResult.Value;
 
-                var previousTotal = registration.TotalPrice ?? Money.Create(0m, newTotal.Currency).Value;
+                var previousTotal = registration.TotalPrice ?? MoneyBuilder.Create(0m, newTotal.Currency).Value;
                 var deltaAmount = newTotal.Amount - previousTotal.Amount;
                 if (deltaAmount < 0)
                     return Ok(InitiateAddAttendeesResult.Failed(
                         "Computed delta amount is negative — refund-on-shrink is out of scope (Phase 7F-D §5)."));
 
-                var deltaMoneyResult = Money.Create(deltaAmount, newTotal.Currency);
+                var deltaMoneyResult = MoneyBuilder.Create(deltaAmount, newTotal.Currency);
                 if (deltaMoneyResult.IsFailure)
                     return Ok(InitiateAddAttendeesResult.Failed(deltaMoneyResult.Error));
 

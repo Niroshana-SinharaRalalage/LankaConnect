@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -99,11 +100,11 @@ public class CreateOffPlatformSponsorCommandHandler
                 Sponsor sponsor;
                 if (request.Type == SponsorType.Money)
                 {
-                    if (!request.Amount.HasValue || !request.Currency.HasValue)
+                    if (!request.Amount.HasValue || request.Currency is null)
                         return Result<CreateOffPlatformSponsorResult>.Failure(
                             "Money sponsors require amount and currency.");
 
-                    var moneyResult = Money.Create(request.Amount.Value, request.Currency.Value);
+                    var moneyResult = MoneyBuilder.Create(request.Amount.Value, request.Currency);
                     if (!moneyResult.IsSuccess)
                         return Result<CreateOffPlatformSponsorResult>.Failure(moneyResult.Errors);
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
@@ -59,10 +60,10 @@ public class CreateSponsorshipPackageCommandHandler : ICommandHandler<CreateSpon
                     return Result<Guid>.Failure("Sponsorship packages can only be created for published events");
 
                 // 2. Parse currency and build Money
-                if (!Enum.TryParse<Currency>(request.Currency, true, out var currency))
+                if (!MoneyBuilder.TryParseCurrency(request.Currency, out var currency))
                     return Result<Guid>.Failure($"Invalid currency: {request.Currency}");
 
-                var priceResult = Money.Create(request.Price, currency);
+                var priceResult = MoneyBuilder.Create(request.Price, currency);
                 if (priceResult.IsFailure)
                     return Result<Guid>.Failure(priceResult.Error);
 

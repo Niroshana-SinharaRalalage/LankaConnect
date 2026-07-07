@@ -193,7 +193,7 @@ public class EventNotificationEmailJob
                         correlationId, emailIndex, recipients.Count, email);
 
                     // Phase 6A.83 Part 3: Get personalized UserName for recipient
-                    var emailResult = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create(email);
+                    var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(email);
                     var user = emailResult.IsSuccess
                         ? await _identityQueries.GetByEmailAsync(emailResult.Value.Value, cancellationToken)
                         : null;

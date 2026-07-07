@@ -286,7 +286,7 @@ public class GetEventAttendeesQueryHandler
                 try
                 {
                     // Create Money object from TotalAmount
-                    var totalPriceMoney = Money.Create(attendeeDto.TotalAmount.Value, Currency.USD);
+                    var totalPriceMoney = MoneyBuilder.Create(attendeeDto.TotalAmount.Value, Currency.USD);
                     if (totalPriceMoney.IsFailure)
                     {
                         _logger.LogWarning(

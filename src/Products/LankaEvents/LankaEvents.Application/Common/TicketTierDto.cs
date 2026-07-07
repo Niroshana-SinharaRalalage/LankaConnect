@@ -11,7 +11,7 @@ public record TicketTierDto
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
     public decimal AdultPriceAmount { get; init; }
-    public Currency AdultPriceCurrency { get; init; }
+    public Currency AdultPriceCurrency { get; init; } = null!;
     public decimal? ChildPriceAmount { get; init; }
     public Currency? ChildPriceCurrency { get; init; }
     public int? ChildAgeLimit { get; init; }

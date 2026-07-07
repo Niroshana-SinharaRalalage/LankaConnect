@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateEvent;
@@ -221,7 +222,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
 
             foreach (var tierRequest in request.GroupPricingTiers)
             {
-                var priceResult = Money.Create(tierRequest.PricePerPerson, tierRequest.Currency);
+                var priceResult = MoneyBuilder.Create(tierRequest.PricePerPerson, tierRequest.Currency);
                 if (priceResult.IsFailure)
                     return Result.Failure(priceResult.Error);
 
@@ -253,17 +254,17 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             isGroupPricing = true;
         }
         // Session 21: Check if dual pricing fields are provided
-        else if (request.AdultPriceAmount.HasValue && request.AdultPriceCurrency.HasValue)
+        else if (request.AdultPriceAmount.HasValue && request.AdultPriceCurrency != null)
         {
             // Build dual pricing using TicketPricing value object
-            var adultPriceResult = Money.Create(request.AdultPriceAmount.Value, request.AdultPriceCurrency.Value);
+            var adultPriceResult = MoneyBuilder.Create(request.AdultPriceAmount.Value, request.AdultPriceCurrency);
             if (adultPriceResult.IsFailure)
                 return Result.Failure(adultPriceResult.Error);
 
             Money? childPrice = null;
-            if (request.ChildPriceAmount.HasValue && request.ChildPriceCurrency.HasValue)
+            if (request.ChildPriceAmount.HasValue && request.ChildPriceCurrency != null)
             {
-                var childPriceResult = Money.Create(request.ChildPriceAmount.Value, request.ChildPriceCurrency.Value);
+                var childPriceResult = MoneyBuilder.Create(request.ChildPriceAmount.Value, request.ChildPriceCurrency);
                 if (childPriceResult.IsFailure)
                     return Result.Failure(childPriceResult.Error);
 
@@ -277,9 +278,9 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             pricing = pricingResult.Value;
         }
         // Fallback to legacy single pricing format if dual pricing not provided
-        else if (request.TicketPriceAmount.HasValue && request.TicketPriceCurrency.HasValue)
+        else if (request.TicketPriceAmount.HasValue && request.TicketPriceCurrency != null)
         {
-            var moneyResult = Money.Create(request.TicketPriceAmount.Value, request.TicketPriceCurrency.Value);
+            var moneyResult = MoneyBuilder.Create(request.TicketPriceAmount.Value, request.TicketPriceCurrency);
             if (moneyResult.IsFailure)
                 return Result.Failure(moneyResult.Error);
 

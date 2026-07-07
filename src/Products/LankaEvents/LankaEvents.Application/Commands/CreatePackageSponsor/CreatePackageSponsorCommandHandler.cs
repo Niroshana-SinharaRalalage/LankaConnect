@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
@@ -233,7 +234,7 @@ public class CreatePackageSponsorCommandHandler : ICommandHandler<CreatePackageS
                 // 9. Calculate + store revenue breakdown
                 try
                 {
-                    var totalMoney = Money.Create(package.Price.Amount, package.Price.Currency);
+                    var totalMoney = MoneyBuilder.Create(package.Price.Amount, package.Price.Currency);
                     if (totalMoney.IsSuccess)
                     {
                         var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(

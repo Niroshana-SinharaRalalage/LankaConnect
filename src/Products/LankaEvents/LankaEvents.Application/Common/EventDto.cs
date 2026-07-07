@@ -1,7 +1,6 @@
 using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
 using LankaConnect.Modules.Communications.Application.Common;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 public record EventDto

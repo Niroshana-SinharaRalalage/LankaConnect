@@ -81,7 +81,7 @@ public class GetWhatsAppMessageHistoryQueryHandler : IRequestHandler<GetWhatsApp
                         "At least one filter (UserId or EventId) is required.");
                 }
 
-                IReadOnlyList<Domain.Communications.Entities.WhatsAppMessageRecord> messages;
+                IReadOnlyList<LankaConnect.Modules.Communications.Domain.Entities.WhatsAppMessageRecord> messages;
 
                 if (request.UserId.HasValue)
                 {

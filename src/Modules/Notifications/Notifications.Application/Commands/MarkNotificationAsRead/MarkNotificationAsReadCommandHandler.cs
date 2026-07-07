@@ -109,7 +109,7 @@ public class MarkNotificationAsReadCommandHandler : ICommandHandler<MarkNotifica
                         // BuildingBlocks.Domain.Result. Handler contract returns legacy
                         // LankaConnect.BuildingBlocks.Domain.Result. Cut conversion when handler
                         // migrates to BB.Domain abstractions (Wave 4 capability extraction).
-                        return Result.Failure(markAsReadResult.Error.Message);
+                        return Result.Failure(markAsReadResult.Error);
                     }
 
                     _notificationRepository.Update(notification);

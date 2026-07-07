@@ -16,8 +16,8 @@ public class EmailMappingProfile : Profile
             .ForMember(dest => dest.EmailId, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.ToEmail, opt => opt.MapFrom(src => src.ToEmails.FirstOrDefault() ?? string.Empty))
             .ForMember(dest => dest.Subject, opt => opt.MapFrom(src => src.Subject.Value))
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => (Communications.Common.EmailStatus)src.Status))
-            .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (Communications.Common.EmailType)src.Type))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => (LankaConnect.Modules.Communications.Domain.Enums.EmailStatus)src.Status))
+            .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (LankaConnect.Modules.Communications.Domain.Enums.EmailType)src.Type))
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt))
             .ForMember(dest => dest.SentAt, opt => opt.MapFrom(src => src.SentAt))
             .ForMember(dest => dest.DeliveredAt, opt => opt.MapFrom(src => src.DeliveredAt))
@@ -46,7 +46,7 @@ public class EmailMappingProfile : Profile
             .ForMember(dest => dest.ReceiveMarketingEmails, opt => opt.MapFrom(src => src.AllowMarketing))
             .ForMember(dest => dest.ReceiveSystemAlerts, opt => opt.MapFrom(src => src.AllowTransactional))
             .ForMember(dest => dest.ReceivePasswordAlerts, opt => opt.MapFrom(src => src.AllowTransactional))
-            .ForMember(dest => dest.NotificationFrequency, opt => opt.MapFrom(src => Communications.Common.EmailFrequency.Immediate))
+            .ForMember(dest => dest.NotificationFrequency, opt => opt.MapFrom(src => LankaConnect.Modules.Communications.Application.Common.EmailFrequency.Immediate))
             .ForMember(dest => dest.LastUpdated, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow));
 
         CreateMap<UserEmailPreferencesDto, UserEmailPreferences>()

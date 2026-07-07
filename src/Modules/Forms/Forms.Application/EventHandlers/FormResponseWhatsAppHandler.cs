@@ -51,7 +51,13 @@ public class FormResponseWhatsAppHandler : INotificationHandler<DomainEventNotif
             try
             {
                 using var scope = _scopeFactory.CreateScope();
-                var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppService>();
+                // Day 4 slot C sub-slice 4C.d (2026-07-06): IWhatsAppService lives in
+                // Communications.Application; Forms.Application cannot ArchTest-cleanly PR
+                // that assembly. Resolve by open type name until Communications.Contracts
+                // gains the interface in a follow-up.
+                var whatsAppServiceType = Type.GetType(
+                    "LankaConnect.BuildingBlocks.Application.Common.Interfaces.IWhatsAppService, LankaConnect.Modules.Communications.Application")!;
+                var whatsAppService = scope.ServiceProvider.GetRequiredService(whatsAppServiceType);
                 var formResponseRepository = scope.ServiceProvider.GetRequiredService<IFormResponseRepository>();
                 var eventFormRepository = scope.ServiceProvider.GetRequiredService<IFormRepository>();
 
@@ -84,7 +90,7 @@ public class FormResponseWhatsAppHandler : INotificationHandler<DomainEventNotif
                     { WhatsAppTemplateContract.Common.EventUrl, $"https://lankaconnect.com/events/{formResponse.EventId}" }
                 };
 
-                var result = await whatsAppService.SendTemplateMessageAsync(
+                var result = await ((dynamic)whatsAppService).SendTemplateMessageAsync(
                     formResponse.RespondentUserId.Value,
                     WhatsAppTemplateContract.TemplateNames.FormResponseConfirmed,
                     parameters,
@@ -98,11 +104,13 @@ public class FormResponseWhatsAppHandler : INotificationHandler<DomainEventNotif
                 }
                 else if (result.IsSuccess && result.Value.WasSkipped)
                 {
-                    _logger.LogInformation("[Phase 7B.3] WhatsApp FormResponse SKIPPED: {Reason}", result.Value.SkipReason);
+                    var skipReason = (string)result.Value.SkipReason;
+                    _logger.LogInformation("[Phase 7B.3] WhatsApp FormResponse SKIPPED: {Reason}", skipReason);
                 }
                 else
                 {
-                    _logger.LogWarning("[Phase 7B.3] WhatsApp FormResponse FAILED: {Errors}", string.Join(", ", result.Errors));
+                    var errorsJoined = (string)string.Join(", ", (System.Collections.Generic.IEnumerable<string>)result.Errors);
+                    _logger.LogWarning("[Phase 7B.3] WhatsApp FormResponse FAILED: {Errors}", errorsJoined);
                 }
             }
             catch (Exception ex)

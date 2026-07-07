@@ -73,7 +73,7 @@ public class GetSupportTicketsPagedQueryHandler : IQueryHandler<GetSupportTicket
                     Id = t.Id,
                     ReferenceId = t.ReferenceId,
                     Name = t.Name,
-                    Email = t.Email,
+                    Email = t.Email.Value,
                     Subject = t.Subject,
                     Status = t.Status.ToString(),
                     Priority = t.Priority.ToString(),

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;

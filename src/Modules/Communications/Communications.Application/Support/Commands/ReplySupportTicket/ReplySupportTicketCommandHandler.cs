@@ -161,7 +161,7 @@ public class ReplySupportTicketCommandHandler : ICommandHandler<ReplySupportTick
         {
             // Phase 6A.100: Create typed email parameters
             var emailParams = SupportTicketReplyEmailParams.Create(
-                recipientEmail: ticket.Email,
+                recipientEmail: ticket.Email.Value,
                 recipientName: ticket.Name,
                 referenceId: ticket.ReferenceId,
                 subject: ticket.Subject,

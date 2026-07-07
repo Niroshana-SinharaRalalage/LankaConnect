@@ -2,7 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces; // IAlbumImageService
+using LankaConnect.Modules.Media.Infrastructure.Data;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Media.Domain;
@@ -107,7 +108,9 @@ public class AlbumPhotoCleanupService : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 var photoAlbumRepository = scope.ServiceProvider.GetRequiredService<IPhotoAlbumRepository>();
                 var albumImageService = scope.ServiceProvider.GetRequiredService<IAlbumImageService>();
-                var dbContext = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+                // Day 4 slot C sub-slice 4C.d (2026-07-06): use MediaDbContext directly
+                // instead of IApplicationDbContext (transitional seam being deleted in 4C.h).
+                var dbContext = scope.ServiceProvider.GetRequiredService<MediaDbContext>();
 
                 var expiredPhotos = await photoAlbumRepository.GetExpiredPhotosAsync(BatchSize, cancellationToken);
 
@@ -191,7 +194,7 @@ public class AlbumPhotoCleanupService : BackgroundService
                 }
 
                 // Persist all removals and album updates for this batch
-                await dbContext.CommitAsync(cancellationToken);
+                await dbContext.SaveChangesAsync(cancellationToken);
 
                 totalDeletedCount += expiredPhotos.Count;
                 totalBlobSuccessCount += batchBlobSuccessCount;

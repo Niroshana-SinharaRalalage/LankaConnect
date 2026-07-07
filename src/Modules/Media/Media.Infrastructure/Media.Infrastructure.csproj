@@ -19,6 +19,16 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Serilog" />
+    <!-- Day 4 slot C sub-slice 4C.d (2026-07-06): baseline package refs added
+         (present in legacy Infrastructure csproj but never copied when Media
+         Infrastructure was carved out on Day 2). -->
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="SixLabors.ImageSharp" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Identity\Identity.Domain\Identity.Domain.csproj" />
   </ItemGroup>
 
 </Project>

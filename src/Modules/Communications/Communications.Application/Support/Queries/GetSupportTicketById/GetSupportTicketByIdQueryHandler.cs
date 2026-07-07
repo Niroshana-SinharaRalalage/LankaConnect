@@ -73,7 +73,7 @@ public class GetSupportTicketByIdQueryHandler : IQueryHandler<GetSupportTicketBy
                     Id = ticket.Id,
                     ReferenceId = ticket.ReferenceId,
                     Name = ticket.Name,
-                    Email = ticket.Email,
+                    Email = ticket.Email.Value,
                     Subject = ticket.Subject,
                     Message = ticket.Message,
                     Status = ticket.Status.ToString(),

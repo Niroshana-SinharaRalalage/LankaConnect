@@ -1,5 +1,5 @@
 using FluentValidation;
-using LankaConnect.Modules.Identity.Domain.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
 namespace LankaConnect.Modules.Communications.Application.Commands.ResetPassword;
 
 /// <summary>

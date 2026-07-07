@@ -2,7 +2,6 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateEvent;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateEvent;
 
 public record UpdateEventCommand(

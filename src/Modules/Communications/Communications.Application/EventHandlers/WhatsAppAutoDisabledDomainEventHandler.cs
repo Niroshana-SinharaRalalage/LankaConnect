@@ -75,7 +75,7 @@ public class WhatsAppAutoDisabledDomainEventHandler
                 UserName = user.FirstName,
                 UserEmail = user.Email,
                 MaskedPhone = MaskPhone(domainEvent.PhoneNumber),
-                EnabledAt = domainEvent.OccurredAt.ToString("MMMM d, yyyy"),
+                EnabledAt = domainEvent.OccurredOn.ToString("MMMM d, yyyy"),
                 GracePeriodDays = gracePeriodDays,
                 ReEnableUrl = $"{_emailUrlHelper.GetFrontendBaseUrl()}/profile/whatsapp"
             };

@@ -1,5 +1,4 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateTicketTier;
 
 public record UpdateTicketTierCommand(

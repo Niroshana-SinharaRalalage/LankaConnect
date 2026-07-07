@@ -10,7 +10,6 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Services;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using OrganizerContactInfo = LankaConnect.Modules.Communications.Contracts.Email.Helpers.OrganizerContactInfo;

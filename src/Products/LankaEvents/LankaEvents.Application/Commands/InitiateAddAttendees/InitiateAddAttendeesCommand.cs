@@ -1,6 +1,5 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Queries.CalculateAdditionPrice;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddAttendees;
 
 /// <summary>

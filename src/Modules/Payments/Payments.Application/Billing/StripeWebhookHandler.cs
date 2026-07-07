@@ -1,5 +1,8 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.SharedKernel.Identity;
 using LankaConnect.Modules.Payments.Domain.Billing;
+// Payments.Domain.Billing.Currency preferred; SharedKernel.Money resolved
+// via full qualification when needed.
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.BuildingBlocks.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -294,7 +297,7 @@ public class StripeWebhookHandler : IStripeWebhookHandler
             
             // Track usage internally for analytics
             await _usageTrackingService.TrackUsageAsync(new CulturalAPIUsage(
-                new APIKey(usageData.ApiKey, APIKeyTier.Professional, UserId.Create(usageData.UserId).Value),
+                new APIKey(usageData.ApiKey, APIKeyTier.Professional, UserId.From(usageData.UserId)),
                 LankaConnect.Modules.Payments.Domain.Billing.BillingEndpoint.BuddhistCalendar(usageData.Endpoint),
                 new UsageCost(usageData.Amount, 1.0m, Currency.USD(), CostBreakdown.Create(usageData.Amount, 1.0m, 0.0m)),
                 new CulturalComplexityScore(50, Array.Empty<ComplexityFactor>()),
@@ -448,8 +451,7 @@ public class StripeWebhookHandler : IStripeWebhookHandler
 
         if (Guid.TryParse(userIdString, out var userIdGuid))
         {
-            var userIdResult = UserId.Create(userIdGuid);
-            return userIdResult.IsSuccess ? userIdResult.Value : null;
+            return UserId.From(userIdGuid);
         }
 
         return null;

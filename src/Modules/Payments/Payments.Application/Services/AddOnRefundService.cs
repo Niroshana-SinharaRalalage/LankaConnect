@@ -1,4 +1,5 @@
 using LankaConnect.Products.LankaEvents.Application.Services; // W4.4.c.4: interfaces stay in legacy (4 cross-module consumers; circular ref otherwise)
+using LankaConnect.SharedKernel.Identity;
 using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;

@@ -19,7 +19,7 @@ namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
     ///
     /// REGEXP_REPLACE is used (not REPLACE) wherever context-anchoring is needed to avoid false positives.
     /// </summary>
-    public partial class Phase7C_ReбрандAllTemplates : Migration
+    public partial class Phase7C_RebrandAllTemplates : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -384,7 +384,7 @@ WHERE name NOT IN (
             // Rebranding changes are not automatically reversible.
             // Restore html_template / text_template from a DB snapshot or backup if rollback is needed.
             migrationBuilder.Sql(
-                @"SELECT 1; -- Phase7C_ReбрандAllTemplates Down(): restore from DB snapshot if needed.");
+                @"SELECT 1; -- Phase7C_RebrandAllTemplates Down(): restore from DB snapshot if needed.");
         }
     }
 }

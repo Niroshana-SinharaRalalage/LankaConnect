@@ -1,7 +1,8 @@
 using System.Diagnostics;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.BuildingBlocks.Application.Common.Constants;
-using LankaConnect.BuildingBlocks.Application.Common.Helpers;
+using EmailDateTimeHelper = LankaConnect.Modules.Communications.Contracts.Email.Helpers.EmailDateTimeHelper;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.BuildingBlocks.Domain;

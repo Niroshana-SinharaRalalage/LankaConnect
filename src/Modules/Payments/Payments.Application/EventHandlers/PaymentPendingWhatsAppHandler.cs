@@ -1,4 +1,6 @@
 using LankaConnect.BuildingBlocks.Application.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.SharedKernel.Identity;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain;

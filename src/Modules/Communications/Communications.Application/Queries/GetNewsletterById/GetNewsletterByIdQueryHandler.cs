@@ -1,4 +1,5 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
+using LankaConnect.Modules.Communications.Contracts;
 using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Application.Common;
@@ -110,12 +111,8 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
                     emailGroupDtos = await dbContext.Set<EmailGroup>()
                         .AsNoTracking()
                         .Where(eg => newsletter.EmailGroupIds.Contains(eg.Id))
-                        .Select(eg => new EmailGroupSummaryDto
-                        {
-                            Id = eg.Id,
-                            Name = eg.Name,
-                            IsActive = eg.IsActive
-                        })
+                        .Select(eg => new EmailGroupSummaryDto(
+                            eg.Id, eg.Name, null, Guid.Empty, 0, eg.IsActive, DateTime.UtcNow, null))
                         .ToListAsync(cancellationToken);
                 }
 

@@ -1,4 +1,5 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
+using LankaConnect.Modules.Communications.Contracts;
 using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Application.Common;
@@ -117,12 +118,10 @@ public class GetNewslettersByCreatorQueryHandler : IQueryHandler<GetNewslettersB
                         kvp => kvp.Key,
                         kvp => kvp.Value
                             .Where(id => emailGroupLookup.ContainsKey(id))
-                            .Select(id => new EmailGroupSummaryDto
-                            {
-                                Id = emailGroupLookup[id].Id,
-                                Name = emailGroupLookup[id].Name,
-                                IsActive = emailGroupLookup[id].IsActive
-                            }).ToList());
+                            .Select(id => new EmailGroupSummaryDto(
+                                emailGroupLookup[id].Id, emailGroupLookup[id].Name, null,
+                                Guid.Empty, 0, emailGroupLookup[id].IsActive, DateTime.UtcNow, null))
+                            .ToList());
 
                 var metroAreaIdsByNewsletter = metroAreaJunction
                     .GroupBy(j => j.NewsletterId)

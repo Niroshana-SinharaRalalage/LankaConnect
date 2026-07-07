@@ -1,4 +1,5 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
+using LankaConnect.SharedKernel.Identity;
 using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Domain.Enums;

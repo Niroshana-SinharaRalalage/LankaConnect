@@ -49,6 +49,10 @@
     <ProjectReference Include="..\..\..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
     <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d.iv (2026-07-06): PaymentCompletedEventHandler +
+         RegistrationPendingPaymentEventHandler consume EmailDateTimeHelper from
+         Communications.Contracts.Email.Helpers. -->
+    <ProjectReference Include="..\..\Communications\Communications.Contracts\Communications.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

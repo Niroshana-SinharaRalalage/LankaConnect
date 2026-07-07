@@ -124,12 +124,10 @@ public class GetNewslettersByEventQueryHandler : IQueryHandler<GetNewslettersByE
                         kvp => kvp.Key,
                         kvp => kvp.Value
                             .Where(id => emailGroupLookup.ContainsKey(id))
-                            .Select(id => new LankaConnect.Modules.Communications.Application.Common.EmailGroupSummaryDto
-                            {
-                                Id = emailGroupLookup[id].Id,
-                                Name = emailGroupLookup[id].Name,
-                                IsActive = emailGroupLookup[id].IsActive
-                            }).ToList());
+                            .Select(id => new LankaConnect.Modules.Communications.Contracts.EmailGroupSummaryDto(
+                                emailGroupLookup[id].Id, emailGroupLookup[id].Name, null,
+                                Guid.Empty, 0, emailGroupLookup[id].IsActive, DateTime.UtcNow, null))
+                            .ToList());
 
                 var metroAreaIdsByNewsletter = metroAreaJunction
                     .GroupBy(j => j.NewsletterId)
@@ -173,7 +171,7 @@ public class GetNewslettersByEventQueryHandler : IQueryHandler<GetNewslettersByE
                         EmailGroupIds = emailGroupIdsByNewsletter.TryGetValue(newsletter.Id, out var egIds)
                             ? egIds : newsletter.EmailGroupIds,
                         EmailGroups = emailGroupDtosByNewsletter.TryGetValue(newsletter.Id, out var egDtos)
-                            ? egDtos : new List<LankaConnect.Modules.Communications.Application.Common.EmailGroupSummaryDto>(),
+                            ? egDtos : new List<LankaConnect.Modules.Communications.Contracts.EmailGroupSummaryDto>(),
                         MetroAreaIds = metroAreaIdsByNewsletter.TryGetValue(newsletter.Id, out var maIds)
                             ? maIds : newsletter.MetroAreaIds,
                         MetroAreas = metroAreaDtosByNewsletter.TryGetValue(newsletter.Id, out var maDtos)

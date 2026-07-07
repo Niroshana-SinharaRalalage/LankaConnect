@@ -1,4 +1,8 @@
 using LankaConnect.Modules.Payments.Domain.Billing;
+using LankaConnect.SharedKernel.Identity;
+// Payments.Domain.Billing has its own Currency class-with-methods
+// (Currency.USD()); SharedKernel.Money.Currency is only used if needed
+// via full qualification.
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.BuildingBlocks.Domain.Enums;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;

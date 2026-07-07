@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Communications.Contracts;
 using LankaConnect.Modules.Communications.Domain.Enums;
 namespace LankaConnect.Modules.Communications.Application.Common;
 

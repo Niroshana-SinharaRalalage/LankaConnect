@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.SharedKernel.Identity;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.BuildingBlocks.Domain;

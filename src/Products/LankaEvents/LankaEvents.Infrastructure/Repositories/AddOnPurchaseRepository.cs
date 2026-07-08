@@ -1,6 +1,6 @@
 using LankaConnect.BuildingBlocks.Abstractions;
-using LankaConnect.SPLIT_PER_ENTITY;
-using LankaConnect.SPLIT_PER_ENTITY.Repositories;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;

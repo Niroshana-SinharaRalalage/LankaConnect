@@ -10,7 +10,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 /// configuration on Event. Same physical table, columns, composite PK,
 /// indexes — EF-snapshot-only rebaseline.
 /// Wave 6.5.f.5-hotfix (2026-07-04): physically relocated from
-/// <c>LankaConnect.SPLIT_PER_ENTITY.Configurations</c> to Products/LankaEvents
+/// <c>LankaConnect.Infrastructure.Data.Configurations</c> to Products/LankaEvents
 /// per architect ruling §2.1 — junction entity is Products-owned, its config
 /// belongs with it. Enables un-Ignore in LankaEventsDbContext.OnModelCreating.
 /// </summary>

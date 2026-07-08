@@ -1,13 +1,12 @@
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Money;
 using System.Text.Json;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Converters;
 
 /// <summary>
 /// EF Core value converter for non-nullable <see cref="Money"/> value objects
 /// (e.g. <c>TicketTier.AdultPrice</c>). Mirrors the legacy
-/// <c>LankaConnect.SPLIT_PER_ENTITY.Converters.NonNullableMoneyConverter</c>
+/// <c>LankaConnect.Infrastructure.Data.Converters.NonNullableMoneyConverter</c>
 /// under this product's own namespace so the moved EF configurations do not
 /// have to take a transitional dependency on the legacy Data namespace. See
 /// the <see cref="MoneyConverter"/> XML doc for the Wave 6.5.e rationale.
@@ -47,9 +46,13 @@ public class NonNullableMoneyConverter : ValueConverter<Money, string>
         try
         {
             var data = JsonSerializer.Deserialize<MoneyData>(json);
-            if (data != null && Enum.TryParse<Currency>(data.Currency, out var currency))
+            if (data != null)
             {
-                return Money.Create(data.Amount, currency).Value;
+                var currencyMaybe = Currency.TryFromCode(data.Currency);
+                if (currencyMaybe.HasValue)
+                {
+                    return new Money(data.Amount, currencyMaybe.Value);
+                }
             }
         }
         catch (System.Exception ex)
@@ -62,7 +65,7 @@ public class NonNullableMoneyConverter : ValueConverter<Money, string>
         }
         // Fallback - shouldn't happen for required columns. Renders as $0 USD
         // on the dashboard so the operator notices.
-        return Money.Create(0, Currency.USD).Value;
+        return new Money(0, Currency.USD);
     }
 
     private static string Sanitize(string? json)

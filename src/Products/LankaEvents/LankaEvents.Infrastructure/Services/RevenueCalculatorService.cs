@@ -1,8 +1,8 @@
 using LankaConnect.BuildingBlocks.Application.Common.Options;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Options;
 using Serilog;
 namespace LankaConnect.Host.AllInOne.Services;

@@ -1,4 +1,5 @@
 using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;

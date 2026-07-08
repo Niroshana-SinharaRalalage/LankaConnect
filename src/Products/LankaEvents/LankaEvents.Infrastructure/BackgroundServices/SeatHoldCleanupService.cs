@@ -61,7 +61,7 @@ public class SeatHoldCleanupService : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var seatHoldRepository = scope.ServiceProvider.GetRequiredService<ISeatHoldRepository>();
-        var unitOfWork = scope.ServiceProvider.GetRequiredService<Domain.Common.IUnitOfWork>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<LankaConnect.BuildingBlocks.Domain.IUnitOfWork>();
         var metrics = scope.ServiceProvider.GetRequiredService<ISeatHoldMetrics>();
 
         try

@@ -559,8 +559,8 @@ public class EventRepository : ProductRepositoryBase<Event>, IEventRepository
                 Distance = _geoLocationService.CalculateDistanceKm(
                     latitude,
                     longitude,
-                    e.Location!.Coordinates!.Latitude,
-                    e.Location.Coordinates.Longitude
+                    (decimal)e.Location!.Coordinates!.Latitude,
+                    (decimal)e.Location.Coordinates.Longitude
                 )
             })
             .OrderBy(x => x.Distance)

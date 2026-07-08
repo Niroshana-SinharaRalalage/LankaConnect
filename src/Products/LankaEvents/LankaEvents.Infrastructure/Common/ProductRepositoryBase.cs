@@ -7,7 +7,7 @@ using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Common;
 
 // Wave 6.5.f.0 (2026-07-03): Products-owned repository base for the LankaEvents
-// bounded context. Structural twin of LankaConnect.SPLIT_PER_ENTITY.Repositories.Repository<T>,
+// bounded context. Structural twin of LankaConnect.Infrastructure.Data.Repositories.Repository<T>,
 // re-parented from AppDbContext to LankaEventsDbContext. Introduced as the shared
 // foundation for the Wave 6.5.f.1-5 20-repo cutover — each cluster PR flips its
 // repositories from Repository<T>(AppDbContext) to ProductRepositoryBase<T>(LankaEventsDbContext)

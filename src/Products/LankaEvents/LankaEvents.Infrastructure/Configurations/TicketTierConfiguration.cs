@@ -1,7 +1,7 @@
 using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Products.LankaEvents.Infrastructure.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -13,7 +13,7 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 /// </summary>
 /// <remarks>
 /// Wave 6.5.e (2026-07-03): the <c>Money</c>-VO ValueConverter references were
-/// re-pointed from <c>LankaConnect.SPLIT_PER_ENTITY.Converters</c> to the
+/// re-pointed from <c>LankaConnect.Infrastructure.Data.Converters</c> to the
 /// LankaEvents-local <c>Products.LankaEvents.Infrastructure.Converters</c>
 /// twin. The converter code is byte-identical; the local copy avoids taking a
 /// transitional dependency on the legacy <c>LankaConnect.Infrastructure.Data</c>

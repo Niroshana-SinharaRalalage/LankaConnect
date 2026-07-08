@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

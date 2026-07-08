@@ -1,4 +1,5 @@
 using LankaConnect.Modules.Identity.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;

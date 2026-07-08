@@ -1,4 +1,5 @@
 using MediatR;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdateUserEmail;
 

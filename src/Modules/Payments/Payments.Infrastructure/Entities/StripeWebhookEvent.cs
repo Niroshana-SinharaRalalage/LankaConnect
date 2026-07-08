@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Payments.Infrastructure.Entities;
 
 /// <summary>
@@ -37,10 +38,12 @@ public class StripeWebhookEvent : LegacyBaseEntity
     public int AttemptCount { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private StripeWebhookEvent()
     {
     }
 
+    [SetsRequiredMembers]
     private StripeWebhookEvent(string eventId, string eventType)
     {
         EventId = eventId;

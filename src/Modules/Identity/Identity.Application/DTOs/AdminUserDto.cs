@@ -1,4 +1,5 @@
 namespace LankaConnect.Modules.Identity.Application.DTOs;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Phase 6A.90: DTO for admin user management list view

@@ -265,9 +265,9 @@ public class SponsorWebhookHandler : ISponsorWebhookHandler
                 {
                     using var auditScope = _scopeFactory.CreateScope();
                     var auditService = auditScope.ServiceProvider
-                        .GetRequiredService<Email.Services.IRefundDispatchAuditService>();
+                        .GetRequiredService<LankaConnect.Modules.Communications.Contracts.Email.Services.IRefundDispatchAuditService>();
                     await auditService.WriteSuppressionAsync(
-                        templateName: Shared.Email.Contracts.EmailTemplateContract.TemplateNames.SponsorRefund,
+                        templateName: EmailTemplateContract.TemplateNames.SponsorRefund,
                         recipientEmail: sponsor.SponsorEmail,
                         recipientName: sponsor.SponsorName,
                         suppressionReason: "D9: workflow-owned refund — covered by consolidated decision email",

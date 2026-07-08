@@ -182,7 +182,8 @@ public class AdditionWebhookHandler : IAdditionWebhookHandler
         // Calculate new total price (previous total + additional amount)
         var previousTotal = registration.TotalPrice?.Amount ?? 0m;
         var newTotalAmount = previousTotal + addition.AdditionalAmount.Amount;
-        var newTotalPriceResult = Domain.Shared.ValueObjects.Money.Create(newTotalAmount, addition.AdditionalAmount.Currency);
+        var newTotalPrice = new LankaConnect.SharedKernel.Money.Money(newTotalAmount, addition.AdditionalAmount.Currency);
+        var newTotalPriceResult = LankaConnect.BuildingBlocks.Domain.Result<LankaConnect.SharedKernel.Money.Money>.Success(newTotalPrice);
 
         if (newTotalPriceResult.IsFailure)
         {

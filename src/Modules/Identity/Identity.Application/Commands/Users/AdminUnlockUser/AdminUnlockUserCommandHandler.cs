@@ -1,4 +1,5 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using System.Diagnostics;
 using System.Text.Json;
 using LankaConnect.BuildingBlocks.Application.Common.Constants;

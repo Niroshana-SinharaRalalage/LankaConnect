@@ -1,4 +1,5 @@
 using FluentValidation;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Enums;
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 
@@ -63,7 +64,7 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
 
     private static bool BeValidEmail(string email)
     {
-        var emailResult = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create(email);
+        var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(email);
         return emailResult.IsSuccess;
     }
 }

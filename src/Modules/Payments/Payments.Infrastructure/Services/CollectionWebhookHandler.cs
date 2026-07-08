@@ -235,9 +235,9 @@ public class CollectionWebhookHandler : ICollectionWebhookHandler
                 {
                     using var auditScope = _scopeFactory.CreateScope();
                     var auditService = auditScope.ServiceProvider
-                        .GetRequiredService<Email.Services.IRefundDispatchAuditService>();
+                        .GetRequiredService<LankaConnect.Modules.Communications.Contracts.Email.Services.IRefundDispatchAuditService>();
                     await auditService.WriteSuppressionAsync(
-                        templateName: Shared.Email.Contracts.EmailTemplateContract.TemplateNames.CollectionRefund,
+                        templateName: EmailTemplateContract.TemplateNames.CollectionRefund,
                         recipientEmail: collection.ContributorEmail,
                         recipientName: collection.ContributorName,
                         suppressionReason: "D12: workflow-owned refund — covered by consolidated decision email",

@@ -34,6 +34,10 @@
          (Identity publishes RoleUpgradeApproved event; Notifications subscribes)
          is a follow-up beyond Wave 6.5. -->
     <ProjectReference Include="..\..\Notifications\Notifications.Infrastructure\Notifications.Infrastructure.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d.xii (2026-07-08): Email + PhoneNumber VO
+         stubs live in LankaEvents.Domain.ValueObjects/ContactInfoPrimitives.cs
+         (transitional; post-sprint promote to SharedKernel.ContactInfo). -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

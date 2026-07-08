@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Application.Common.Models; // W4.6.c.3: PagedResultDto relocated here
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Identity.Application.DTOs;

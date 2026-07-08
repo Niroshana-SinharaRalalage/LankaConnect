@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Payments.Infrastructure.Entities;
 
 /// <summary>
@@ -33,10 +34,12 @@ public class StripeCustomer : LegacyBaseEntity
     public DateTime StripeCreatedAt { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private StripeCustomer()
     {
     }
 
+    [SetsRequiredMembers]
     private StripeCustomer(
         Guid userId,
         string stripeCustomerId,

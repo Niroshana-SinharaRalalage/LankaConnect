@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -55,7 +56,7 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
             try
             {
                 // Create email value object
-                var emailResult = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create(request.Email);
+                var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(request.Email);
                 if (!emailResult.IsSuccess)
                 {
                     stopwatch.Stop();

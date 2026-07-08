@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.BuildingBlocks.Domain;

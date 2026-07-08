@@ -1,4 +1,5 @@
 using MediatR;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Enums;
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;

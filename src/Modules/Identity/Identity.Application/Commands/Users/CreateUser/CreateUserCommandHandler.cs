@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Entities;
@@ -42,7 +43,7 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Guid>
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Create Email value object
-                var emailResult = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create(request.Email);
+                var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(request.Email);
                 if (emailResult.IsFailure)
                 {
                     stopwatch.Stop();
@@ -76,10 +77,10 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Guid>
                     emailResult.Value.Value);
 
                 // Create PhoneNumber value object if provided
-                LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.PhoneNumber? phoneNumber = null;
+                LankaConnect.Products.LankaEvents.Domain.ValueObjects.PhoneNumber? phoneNumber = null;
                 if (!string.IsNullOrEmpty(request.PhoneNumber))
                 {
-                    var phoneResult = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.PhoneNumber.Create(request.PhoneNumber);
+                    var phoneResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.PhoneNumber.Create(request.PhoneNumber);
                     if (phoneResult.IsFailure)
                     {
                         stopwatch.Stop();

@@ -1,4 +1,4 @@
-using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

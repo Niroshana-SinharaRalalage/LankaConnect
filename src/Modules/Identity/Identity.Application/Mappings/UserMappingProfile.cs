@@ -1,4 +1,5 @@
 using AutoMapper;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Application.Common.Models; // W4.6.c.3: PagedResultDto extracted here
 using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Modules.Identity.Domain.Entities;

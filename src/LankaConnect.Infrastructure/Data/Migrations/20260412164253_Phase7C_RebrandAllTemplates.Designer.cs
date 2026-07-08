@@ -14,8 +14,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260412164253_Phase7C_Re?????AllTemplates")]
-    partial class Phase7C_Re?????AllTemplates
+    [Migration("20260412164253_Phase7C_RebrandAllTemplates")]
+    partial class Phase7C_RebrandAllTemplates
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

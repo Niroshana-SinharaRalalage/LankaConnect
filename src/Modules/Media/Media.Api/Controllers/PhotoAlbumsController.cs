@@ -26,7 +26,7 @@ namespace LankaConnect.Modules.Media.Api.Controllers;
 /// (upload, delete, set cover).
 /// </summary>
 [Route("api/events/{eventId:guid}/albums")]
-public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
+public class PhotoAlbumsController : LankaConnect.Host.AllInOne.Controllers.BaseController<PhotoAlbumsController>
 {
     public PhotoAlbumsController(IMediator mediator, ILogger<PhotoAlbumsController> logger)
         : base(mediator, logger)

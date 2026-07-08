@@ -4,7 +4,7 @@ using LankaConnect.Modules.Communications.Domain.Community;
 using LankaConnect.Modules.Communications.Domain.Community.ValueObjects;
 using LankaConnect.Modules.Communications.Domain.Community.Enums;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Infrastructure.Data.Configurations;
 
 public class ForumTopicConfiguration : IEntityTypeConfiguration<ForumTopic>
 {

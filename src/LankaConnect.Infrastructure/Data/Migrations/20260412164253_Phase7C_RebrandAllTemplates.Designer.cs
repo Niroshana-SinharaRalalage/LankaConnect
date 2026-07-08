@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20260412164253_Phase7C_RebrandAllTemplates")]

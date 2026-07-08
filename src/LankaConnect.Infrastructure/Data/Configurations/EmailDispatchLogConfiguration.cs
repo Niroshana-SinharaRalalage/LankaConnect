@@ -2,7 +2,7 @@ using LankaConnect.Modules.Communications.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Infrastructure.Data.Configurations;
 
 /// <summary>
 /// Phase 6A.148.W5.6.B.OBS1 — EF config for the durable email dispatch audit log.

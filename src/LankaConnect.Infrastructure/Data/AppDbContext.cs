@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.Infrastructure.Data.Configurations;
 // Wave 4.9.5 (2026-06-10): Modules.Forms.Domain.* + Modules.Media.Domain.* usings
 // removed -- those types are owned by Forms/MediaDbContext after the W4.3 + W4.2
 // extractions and the Wave 4.9.3/4.9.4 schema renames. AppDbContext does not
@@ -19,11 +21,11 @@ using LankaConnect.Products.LankaEvents.Domain.Badges;
 using LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
 using LankaConnect.Modules.Communications.Domain.Support;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.SPLIT_PER_ENTITY;
-using LankaConnect.SPLIT_PER_ENTITY.ReferenceData;
-using LankaConnect.Modules.Payments.Infrastructure.Entities;
-using LankaConnect.Modules.Payments.Infrastructure.Configurations;
-using LankaConnect.SPLIT_PER_ENTITY.Seeders;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.ReferenceData;
+// Payments.Infrastructure PR would cycle; StripeCustomer + StripeWebhookEvent
+// DbSets removed 4C.d.vii (2026-07-06) — see comment near line 141.
+using LankaConnect.Infrastructure.Data.Seeders;
 using MediatR;
 using LankaConnect.BuildingBlocks.Application.Common;
 
@@ -137,11 +139,13 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // transitional window (W5.4 doesn't carve out CommunicationsDbContext yet).
     public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup> EmailGroups => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup>(); // Phase 6A.25: Email Groups Management
 
-    // Stripe Customer Entity Set (Phase 6A.4)
-    public DbSet<StripeCustomer> StripeCustomers => Set<StripeCustomer>(); // Phase 6A.4: Stripe Payment Integration
-
-    // Stripe Webhook Event Entity Set (Phase 6A.24)
-    public DbSet<LankaConnect.Modules.Payments.Infrastructure.Entities.StripeWebhookEvent> StripeWebhookEvents => Set<LankaConnect.Modules.Payments.Infrastructure.Entities.StripeWebhookEvent>(); // Phase 6A.24: Webhook idempotency tracking
+    // Stripe Customer + Webhook Event DbSets removed Day 4 slot C sub-slice
+    // 4C.d.vii (2026-07-06). Types live in Payments.Infrastructure.Entities;
+    // LankaConnect.Infrastructure cannot PR Payments.Infrastructure (cycle —
+    // Payments.Infrastructure references LankaConnect.Infrastructure per
+    // W4.4.d.2 permanent edge). Physical tables (payments.stripe_customers +
+    // payments.stripe_webhook_events) unchanged; ownership moves to
+    // PaymentsDbContext in a follow-up wave.
 
     // Reference Data Entity Sets - Phase 6A.47
     public DbSet<EventCategoryRef> EventCategories => Set<EventCategoryRef>();
@@ -282,11 +286,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Email Group entity configuration (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new EmailGroupConfiguration());
 
-        // Stripe Customer configuration (Phase 6A.4)
-        modelBuilder.ApplyConfiguration(new StripeCustomerConfiguration());
-
-        // Stripe Webhook Event configuration (Phase 6A.24)
-        modelBuilder.ApplyConfiguration(new StripeWebhookEventConfiguration());
+        // Stripe Customer + Webhook Event configurations removed 4C.d.vii
+        // (2026-07-06) — Payments.Infrastructure PR cycle. Types will re-map
+        // via PaymentsDbContext in follow-up wave.
 
         // Reference Data entity configurations (Phase 6A.47)
         modelBuilder.ApplyConfiguration(new EventCategoryRefConfiguration());
@@ -536,8 +538,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(Badge), // Phase 6A.25
             typeof(EventBadge), // Phase 6A.25
             typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailGroup), // Phase 6A.25: Email Groups Management (Wave 5.4.d.2: moved to Communications.Domain)
-            typeof(StripeCustomer), // Phase 6A.4: Stripe Payment Integration
-            typeof(LankaConnect.Modules.Payments.Infrastructure.Entities.StripeWebhookEvent), // Phase 6A.24: Webhook idempotency tracking
+            // StripeCustomer + StripeWebhookEvent typeof-refs removed 4C.d.vii; cycle avoidance.
             typeof(ReferenceValue), // Phase 6A.47: Unified Reference Data
             typeof(LankaConnect.Modules.Payments.Domain.Tax.StateTaxRate), // Phase 6A.X: US State Sales Tax Rates
             typeof(SupportTicket), // Phase 6A.89: Support/Feedback System

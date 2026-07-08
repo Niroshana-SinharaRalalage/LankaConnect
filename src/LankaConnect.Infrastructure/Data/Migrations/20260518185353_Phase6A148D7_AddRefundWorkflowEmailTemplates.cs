@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <summary>
     /// Phase 6A.148.D7: Adds three dedicated refund-lifecycle email templates so attendees

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
@@ -7,7 +8,7 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Enums;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Infrastructure.Data.Configurations;
 
 public class UserConfiguration : IEntityTypeConfiguration<User>
 {

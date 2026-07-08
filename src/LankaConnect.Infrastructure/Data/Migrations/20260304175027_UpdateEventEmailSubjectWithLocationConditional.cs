@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <summary>
     /// Updates the event email subject template to conditionally include location.

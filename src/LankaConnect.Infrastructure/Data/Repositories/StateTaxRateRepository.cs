@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.Modules.Payments.Domain.Tax;
 using LankaConnect.Modules.Payments.Domain.Tax.Repositories;
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
+namespace LankaConnect.Infrastructure.Data.Repositories;
 
 /// <summary>
 /// Phase 6A.X: Repository implementation for StateTaxRate entity with comprehensive logging

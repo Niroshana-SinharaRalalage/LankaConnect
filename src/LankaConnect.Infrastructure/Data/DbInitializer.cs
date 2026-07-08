@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.SPLIT_PER_ENTITY.Seeders;
+using LankaConnect.Infrastructure.Data.Seeders;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 namespace LankaConnect.Infrastructure.Data;

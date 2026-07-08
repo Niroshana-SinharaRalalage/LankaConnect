@@ -1,12 +1,13 @@
 using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+// LankaConnect.Domain.Business.ValueObjects removed 4C.d.vii (Business aggregate
+// deleted per Consult #12 Option D). Any Address VO ref falls back to
+// LankaEvents.Domain.ValueObjects.Address (already imported above).
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Seeders;
+namespace LankaConnect.Infrastructure.Data.Seeders;
 
 /// <summary>
 /// Seeds the Events table with diverse Sri Lankan community events across Ohio metro areas
@@ -606,7 +607,6 @@ public static class EventSeeder
 
     private static Money? CreateMoney(decimal amount, Currency currency)
     {
-        var moneyResult = Money.Create(amount, currency);
-        return moneyResult.IsSuccess ? moneyResult.Value : null;
+        return new Money(amount, currency);
     }
 }

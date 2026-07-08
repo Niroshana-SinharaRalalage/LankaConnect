@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <summary>
     /// Wave 5.1.a-α.2 (2026-06-27) — pure model-snapshot rebaseline.

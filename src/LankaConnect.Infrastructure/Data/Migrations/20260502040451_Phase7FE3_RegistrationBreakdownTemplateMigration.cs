@@ -1,10 +1,10 @@
 using System;
-using LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
+using LankaConnect.Infrastructure.Data.Migrations.Resources;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <summary>
     /// Phase 7F-E.3 (architect-approved 2026-05-01): UPDATE 5 email templates so they

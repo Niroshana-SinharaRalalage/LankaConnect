@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Modules.Communications.Domain.Community;
 using LankaConnect.Modules.Communications.Domain.Community.ValueObjects;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Infrastructure.Data.Configurations;
 
 public class ReplyConfiguration : IEntityTypeConfiguration<Reply>
 {

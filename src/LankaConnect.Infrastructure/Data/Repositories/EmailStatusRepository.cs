@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using System.Diagnostics;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
+namespace LankaConnect.Infrastructure.Data.Repositories;
 
 /// <summary>
 /// Email status repository that delegates to EmailMessageRepository
@@ -153,11 +153,11 @@ public class EmailStatusRepository : IEmailStatusRepository
         }
     }
 
-    public async Task<List<Domain.Communications.Entities.EmailMessage>> GetEmailStatusAsync(
+    public async Task<List<LankaConnect.Modules.Communications.Domain.Entities.EmailMessage>> GetEmailStatusAsync(
         Guid? userId,
         string? emailAddress,
-        Domain.Communications.Enums.EmailType? emailType,
-        Domain.Communications.Enums.EmailStatus? status,
+        LankaConnect.Modules.Communications.Domain.Enums.EmailType? emailType,
+        LankaConnect.Modules.Communications.Domain.Enums.EmailStatus? status,
         DateTime? fromDate,
         DateTime? toDate,
         int pageNumber,
@@ -218,8 +218,8 @@ public class EmailStatusRepository : IEmailStatusRepository
     public async Task<int> GetEmailStatusCountAsync(
         Guid? userId,
         string? emailAddress,
-        Domain.Communications.Enums.EmailType? emailType,
-        Domain.Communications.Enums.EmailStatus? status,
+        LankaConnect.Modules.Communications.Domain.Enums.EmailType? emailType,
+        LankaConnect.Modules.Communications.Domain.Enums.EmailStatus? status,
         DateTime? fromDate,
         DateTime? toDate,
         CancellationToken cancellationToken = default)

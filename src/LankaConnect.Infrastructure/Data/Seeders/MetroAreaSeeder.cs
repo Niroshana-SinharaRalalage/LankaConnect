@@ -1,8 +1,9 @@
 using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.EntityFrameworkCore;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Seeders;
+namespace LankaConnect.Infrastructure.Data.Seeders;
 
 /// <summary>
 /// Seeds comprehensive metro area data for the LankaConnect platform

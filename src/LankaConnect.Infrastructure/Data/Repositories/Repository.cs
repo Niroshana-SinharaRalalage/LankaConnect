@@ -1,10 +1,11 @@
 using System.Linq.Expressions;
+using LankaConnect.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.BuildingBlocks.Domain;
 using Serilog;
 using Serilog.Context;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
+namespace LankaConnect.Infrastructure.Data.Repositories;
 
 // W3B (2026-06-05): generic constraint relaxed from `T : BaseEntity` to
 // `T : class` so entities migrated to BB.Domain.Entity<Guid> (which does NOT

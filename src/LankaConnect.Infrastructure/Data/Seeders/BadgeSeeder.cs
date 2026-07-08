@@ -1,8 +1,9 @@
 using LankaConnect.Products.LankaEvents.Domain.Badges;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.Products.LankaEvents.Domain.Badges.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Seeders;
+namespace LankaConnect.Infrastructure.Data.Seeders;
 
 /// <summary>
 /// Seeds predefined system badges for the Badge Management System

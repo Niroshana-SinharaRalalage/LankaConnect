@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Modules.Communications.Domain.Support;
 using LankaConnect.Modules.Communications.Domain.Support.Enums;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Infrastructure.Data.Configurations;
 
 /// <summary>
 /// EF Core configuration for SupportTicket entity

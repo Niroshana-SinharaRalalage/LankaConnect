@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Modules.Communications.Domain.Entities;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Infrastructure.Data.Configurations;
 
 /// <summary>
 /// Phase 6A.89: EF Core configuration for EmailMetricRecord entity.

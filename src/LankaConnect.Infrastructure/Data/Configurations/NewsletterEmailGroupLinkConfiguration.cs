@@ -2,7 +2,7 @@ using LankaConnect.Modules.Communications.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Infrastructure.Data.Configurations;
 
 /// <summary>
 /// EF Core configuration for the NewsletterEmailGroupLink junction CLR entity.

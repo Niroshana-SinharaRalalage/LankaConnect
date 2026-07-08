@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
+namespace LankaConnect.Infrastructure.Data.Migrations.Resources;
 
 /// <summary>
 /// Phase 7F-A: Loads v2 email-template HTML for the 3 lifecycle templates that need the
@@ -18,7 +18,7 @@ namespace LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
 public static class Phase7FATemplates
 {
     private const string ResourceNamespace =
-        "LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources.Phase7F_A";
+        "LankaConnect.Infrastructure.Data.Migrations.Resources.Phase7F_A";
 
     public static string LoadHtml(string templateName)
     {

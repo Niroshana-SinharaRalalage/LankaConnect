@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.ReferenceData;
+namespace LankaConnect.Infrastructure.Data.ReferenceData;
 
 /// <summary>
 /// EF Core configuration for unified ReferenceValue entity

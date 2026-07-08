@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.ReferenceData;
+namespace LankaConnect.Infrastructure.Data.ReferenceData;
 
 /// <summary>
 /// EF Core configuration for EventStatusRef entity

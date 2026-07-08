@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Infrastructure.Data;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Modules.Communications.Domain.Support;
 using LankaConnect.Modules.Communications.Domain.Support.Enums;
 using Serilog.Context;
 using System.Diagnostics;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
+namespace LankaConnect.Infrastructure.Data.Repositories;
 
 /// <summary>
 /// Phase 6A.89: Repository implementation for SupportTicket aggregate.

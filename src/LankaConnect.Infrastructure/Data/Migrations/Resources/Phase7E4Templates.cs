@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
+namespace LankaConnect.Infrastructure.Data.Migrations.Resources;
 
 /// <summary>
 /// Phase 7E.4: Loads v2 email-template HTML for the flexible registration modes feature
@@ -22,7 +22,7 @@ namespace LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
 public static class Phase7E4Templates
 {
     private const string ResourceNamespace =
-        "LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources.Phase7E4";
+        "LankaConnect.Infrastructure.Data.Migrations.Resources.Phase7E4";
 
     public static string LoadHtml(string templateName)
     {

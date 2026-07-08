@@ -1,9 +1,10 @@
 using LankaConnect.Products.LankaEvents.Domain.Badges;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.Products.LankaEvents.Domain.Badges.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Infrastructure.Data.Configurations;
 
 /// <summary>
 /// EF Core configuration for Badge entity

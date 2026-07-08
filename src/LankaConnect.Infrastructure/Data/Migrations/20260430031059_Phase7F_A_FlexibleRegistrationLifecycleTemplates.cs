@@ -1,10 +1,10 @@
 using System;
-using LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
+using LankaConnect.Infrastructure.Data.Migrations.Resources;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <summary>
     /// Phase 7F-A: UPDATE 3 lifecycle email templates with the Mode-B head-count card

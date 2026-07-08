@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using System.Diagnostics;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Repositories.ReferenceData;
+namespace LankaConnect.Infrastructure.Data.Repositories.ReferenceData;
 
 /// <summary>
 /// Repository implementation for unified reference data

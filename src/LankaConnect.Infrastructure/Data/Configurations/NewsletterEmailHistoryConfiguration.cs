@@ -2,7 +2,7 @@ using LankaConnect.Modules.Communications.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Configurations;
+namespace LankaConnect.Infrastructure.Data.Configurations;
 
 /// <summary>
 /// Phase 6A.74 Part 13+: EF Core configuration for NewsletterEmailHistory entity

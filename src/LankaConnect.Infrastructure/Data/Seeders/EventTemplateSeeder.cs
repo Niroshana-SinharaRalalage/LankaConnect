@@ -1,10 +1,11 @@
 using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
-namespace LankaConnect.SPLIT_PER_ENTITY.Seeders;
+namespace LankaConnect.Infrastructure.Data.Seeders;
 
 /// <summary>
 /// Phase 6A.8: Event Template System

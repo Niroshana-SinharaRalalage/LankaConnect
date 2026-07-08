@@ -1,10 +1,13 @@
 using FluentValidation;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using LankaConnect.Modules.Identity.Application.Commands;
 using LankaConnect.Modules.Identity.Application.Queries;
 using LankaConnect.Modules.Identity.Contracts;
+using LankaConnect.Modules.Identity.Infrastructure.Data;
 using LankaConnect.Modules.Identity.Infrastructure.Security;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 namespace LankaConnect.Modules.Identity.Api;
@@ -26,12 +29,40 @@ namespace LankaConnect.Modules.Identity.Api;
 /// </remarks>
 public static class IdentityModule
 {
+    /// <summary>Per-context migrations history table name (EF convention).</summary>
+    public const string MigrationsHistoryTable = "__EFMigrationsHistory";
+
     public static IServiceCollection AddIdentityModule(
         this IServiceCollection services,
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        // 4C.e (2026-07-08): IdentityDbContext registration per Consult #14 PASS B.
+        // Dormant until 4C.e.2 caller cutover — dual-mapped with AppDbContext until
+        // the ~18 direct-Users callers switch DI targets. Mirrors the Media/Forms/
+        // LankaEvents module pattern.
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException(
+                "ConnectionStrings:DefaultConnection is required to register IdentityDbContext.");
+
+        services.AddDbContext<IdentityDbContext>(options =>
+        {
+            options.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                npgsqlOptions.MigrationsAssembly(typeof(IdentityDbContext).Assembly.GetName().Name);
+                npgsqlOptions.MigrationsHistoryTable(MigrationsHistoryTable, IdentityDbContext.SchemaName);
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(5),
+                    errorCodesToAdd: null);
+                npgsqlOptions.CommandTimeout(30);
+            });
+        }, ServiceLifetime.Scoped);
+
+        // 4C.e: per-module outbox wire-up (mirrors MediaModule 6.5.b canary).
+        services.AddModuleOutbox<IdentityDbContext>();
 
         // Wave 4.6.b cross-module Contracts surface.
         services.AddScoped<IIdentityQueries, IdentityQueries>();

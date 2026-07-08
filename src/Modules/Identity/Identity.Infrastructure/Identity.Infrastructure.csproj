@@ -28,6 +28,16 @@
     <!-- 4C.d.xiv (2026-07-08): UserRepository consumes Email VO stub that
          lives in LankaEvents.Domain.ValueObjects (transitional per 4C.a). -->
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
+    <!-- 4C.e (2026-07-08): IdentityDbContext + operational tables (outbox,
+         idempotency, dead-letter) consume BuildingBlocks.Infrastructure. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 4C.e (2026-07-08): EF Core packages needed for IdentityDbContext. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
   <ItemGroup>

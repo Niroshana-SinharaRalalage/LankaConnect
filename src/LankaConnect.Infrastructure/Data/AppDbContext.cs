@@ -202,8 +202,18 @@ public class AppDbContext : DbContext, IApplicationDbContext
             new System.Reflection.AssemblyName("LankaConnect.Products.LankaEvents.Infrastructure"));
         modelBuilder.ApplyConfigurationsFromAssembly(lankaEventsInfrastructureAssembly);
 
-        // Apply entity configurations
-        modelBuilder.ApplyConfiguration(new UserConfiguration());
+        // 4C.e (2026-07-08): UserConfiguration relocated to
+        // LankaConnect.Modules.Identity.Infrastructure.Data.Configurations per Consult
+        // #14 PASS B. Same Assembly.Load pattern as LankaEvents above — the module
+        // Infrastructure assembly is in the load closure because LankaConnect.API →
+        // Identity.Api → Identity.Infrastructure. Dual mapping is intentional and
+        // temporary; the ~18 callers touching AppDbContext.Users cut over site-by-site
+        // in sub-slice 4C.e.2, at which point the explicit ApplyConfiguration line for
+        // UserConfiguration can be dropped from this context.
+        var identityInfrastructureAssembly = System.Reflection.Assembly.Load(
+            new System.Reflection.AssemblyName("LankaConnect.Modules.Identity.Infrastructure"));
+        modelBuilder.ApplyConfigurationsFromAssembly(identityInfrastructureAssembly);
+
         // Wave 6.5.f.5-hotfix (2026-07-04): EventEmailGroupLinkConfiguration relocated
         // to Products.LankaEvents.Infrastructure.Configurations; the ApplyConfigurationsFromAssembly
         // sweep at line 203 picks it up. The class type still needs to be in the

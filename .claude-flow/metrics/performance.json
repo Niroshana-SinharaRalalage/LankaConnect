@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-07-08T05:09:08.289Z",
+  "timestamp": "2026-07-08T19:30:02.308Z",
   "mode": "local",
   "memoryUsage": {
-    "rss": 19226624,
-    "heapTotal": 31866880,
-    "heapUsed": 27459912,
+    "rss": 16814080,
+    "heapTotal": 24002560,
+    "heapUsed": 21588632,
     "external": 3819303,
     "arrayBuffers": 67902
   },
-  "uptime": 42706.1902762,
+  "uptime": 2045.5412369,
   "optimizations": {
     "cacheHitRate": 0.78,
     "avgResponseTime": 45

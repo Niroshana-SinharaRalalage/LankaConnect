@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
@@ -8,7 +7,11 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Enums;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+// 4C.e (2026-07-08): relocated from LankaConnect.Infrastructure.Data.Configurations
+// to Identity.Infrastructure.Data.Configurations per Consult #14 PASS B. Dual-mapped
+// by AppDbContext (via explicit ApplyConfiguration line) + IdentityDbContext (via
+// ApplyConfigurationsFromAssembly) until 4C.h caller cutover completes.
+namespace LankaConnect.Modules.Identity.Infrastructure.Data.Configurations;
 
 public class UserConfiguration : IEntityTypeConfiguration<User>
 {

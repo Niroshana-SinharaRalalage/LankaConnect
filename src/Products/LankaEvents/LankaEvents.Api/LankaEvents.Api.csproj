@@ -5,6 +5,13 @@
     <RootNamespace>LankaConnect.Products.LankaEvents.Api</RootNamespace>
     <AssemblyName>LankaConnect.Products.LankaEvents.Api</AssemblyName>
     <Description>LankaEvents product — Api layer. Controllers + composition-root DI extension (LankaEventsModule.AddLankaEventsModule). Wave 5.0 skeleton (2026-06-26); controllers move from LankaConnect.API/Controllers/Events*Controller.cs in W5.9.</Description>
+    <!-- Day 4 slot C sub-slice 4C.d.ix (2026-07-08): TargetFramework + ImplicitUsings
+         + Nullable enable so Microsoft.AspNetCore.Http (StatusCodes/IFormFile) +
+         Extensions.Logging (ILogger) resolve without per-file using directives
+         (matches Media.Api pattern from 4C.d.vi). -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,10 +19,25 @@
     <ProjectReference Include="..\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />
     <ProjectReference Include="..\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d.ix (2026-07-08): controllers reference
+         Identity/Forms/Payments Application types. Same transitional-edge
+         pattern used by Media.Api 4C.d.vi. -->
+    <ProjectReference Include="..\..\..\Modules\Identity\Identity.Application\Identity.Application.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Forms\Forms.Application\Forms.Application.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Payments\Payments.Application\Payments.Application.csproj" />
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Day 4 slot C sub-slice 4C.d.ix (2026-07-08): global usings for the
+         AspNetCore framework namespaces used across every controller. -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Mvc" />
+    <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
 </Project>

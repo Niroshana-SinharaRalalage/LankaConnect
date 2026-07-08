@@ -15,7 +15,7 @@ using LankaConnect.Products.LankaEvents.Application.Queries.GetEventSponsors;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetPublicEventSponsors;  // Phase 6A.150
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Money; // 4C.d.xiii: Currency VO
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

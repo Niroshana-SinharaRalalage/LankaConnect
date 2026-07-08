@@ -119,7 +119,7 @@ using LankaConnect.API.Extensions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Money; // 4C.d.xiii: Currency VO
 namespace LankaConnect.Products.LankaEvents.Api.Controllers;
 
 public class EventsController : BaseController<EventsController>

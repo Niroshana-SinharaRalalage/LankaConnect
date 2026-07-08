@@ -199,7 +199,7 @@ public sealed class ProductsLayerRules
     [Trait("Category", "ArchTest")]
     public void Rule5_LankaConnect_Infrastructure_DoesNotReferenceProducts_Application_Or_Api()
     {
-        var legacyInfrastructure = typeof(LankaConnect.SPLIT_PER_ENTITY.AppDbContext).Assembly;
+        var legacyInfrastructure = typeof(LankaConnect.Infrastructure.Data.AppDbContext).Assembly;
 
         var result = Types.InAssembly(legacyInfrastructure)
             .That()

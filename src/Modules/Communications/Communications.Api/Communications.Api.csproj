@@ -34,6 +34,8 @@
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Mvc" />
     <Using Include="Microsoft.AspNetCore.Hosting" />
+    <!-- 4C.d.xiii: IWebHostEnvironment.IsDevelopment/IsStaging extensions -->
+    <Using Include="Microsoft.Extensions.Hosting" />
     <Using Include="Microsoft.Extensions.Logging" />
     <Using Include="LankaConnect.Host.AllInOne.Controllers" />
   </ItemGroup>

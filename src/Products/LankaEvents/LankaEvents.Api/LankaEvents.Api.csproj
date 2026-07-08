@@ -38,6 +38,12 @@
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Mvc" />
     <Using Include="Microsoft.Extensions.Logging" />
+    <!-- Day 4 slot C sub-slice 4C.d.xiii (2026-07-08): local BaseController<T>
+         namespace so controllers see it without per-file using; DI + Config
+         extensions for GetRequiredService / IConfiguration.GetValue. -->
+    <Using Include="LankaConnect.Host.AllInOne.Controllers" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Microsoft.Extensions.Configuration" />
   </ItemGroup>
 
 </Project>

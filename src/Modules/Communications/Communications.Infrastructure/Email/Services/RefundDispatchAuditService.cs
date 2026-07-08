@@ -1,3 +1,4 @@
+using LankaConnect.Modules.Communications.Contracts.Email.Services; // 4C.d.xiv: interface moved to Contracts
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Infrastructure.Data;
 using Microsoft.Extensions.Logging;

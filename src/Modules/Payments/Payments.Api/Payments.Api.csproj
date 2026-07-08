@@ -4,6 +4,11 @@
     <RootNamespace>LankaConnect.Modules.Payments.Api</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Payments.Api</AssemblyName>
     <Description>Payments module - Api layer. PaymentsModule DI extension; controllers move at 4.4.d.2. Wave 4.4.b (2026-06-23).</Description>
+    <!-- Day 4 slot C sub-slice 4C.d.xiii (2026-07-08): TargetFramework + ImplicitUsings
+         + Nullable enable (matches Media/LankaEvents/Communications/Identity .Api pattern). -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +23,16 @@
          DI registrations relocated from LankaConnect.Infrastructure. -->
     <ProjectReference Include="..\Payments.Infrastructure\Payments.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Day 4 slot C sub-slice 4C.d.xiii: global usings mirror pattern from
+         Media/LankaEvents/Communications/Identity .Api projects. -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Mvc" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
 </Project>

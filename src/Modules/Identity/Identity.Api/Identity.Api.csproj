@@ -4,6 +4,11 @@
     <RootNamespace>LankaConnect.Modules.Identity.Api</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Identity.Api</AssemblyName>
     <Description>Identity module - Api layer. IdentityModule DI extension; controllers move at 4.6.d.2. Wave 4.6.b (2026-06-24).</Description>
+    <!-- Day 4 slot C sub-slice 4C.d.xiii (2026-07-08): TargetFramework + ImplicitUsings
+         + Nullable enable (matches Media.Api / LankaEvents.Api / Communications.Api pattern). -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +20,18 @@
     <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
     <ProjectReference Include="..\Identity.Infrastructure\Identity.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Day 4 slot C sub-slice 4C.d.xiii (2026-07-08): global usings mirror
+         the pattern from Media/LankaEvents/Communications .Api projects. -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Mvc" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+    <Using Include="LankaConnect.Host.AllInOne.Controllers" />
+    <Using Include="LankaConnect.API.Extensions" />
   </ItemGroup>
 
 </Project>

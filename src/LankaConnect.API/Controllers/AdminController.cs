@@ -3,8 +3,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.SPLIT_PER_ENTITY;
-using LankaConnect.SPLIT_PER_ENTITY.Seeders;
+using LankaConnect.Infrastructure.Data;                     // 4C.d.xiii: AppDbContext
+using LankaConnect.Infrastructure.Data.Seeders;             // 4C.d.xiii: seeders
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 namespace LankaConnect.Host.AllInOne.Controllers;

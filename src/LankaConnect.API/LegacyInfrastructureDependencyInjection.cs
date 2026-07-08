@@ -34,21 +34,22 @@ using LankaConnect.Modules.Communications.Domain;
 using LankaConnect.SharedKernel.Cultural.ReferenceData.Interfaces;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
-using LankaConnect.SPLIT_PER_ENTITY;
-using LankaConnect.SPLIT_PER_ENTITY.Repositories;
+using LankaConnect.Infrastructure.Data;                     // 4C.d.xiii: AppDbContext
+using LankaConnect.Infrastructure.Data.Repositories;        // 4C.d.xiii: Repository<T> base + concrete repos
 using LankaConnect.Modules.Media.Infrastructure.Storage.Configuration;
 using LankaConnect.Modules.Media.Infrastructure.Storage.Services;
 using LankaConnect.Infrastructure.Security;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Interfaces;
-using LankaConnect.Infrastructure.Services;
+// 4C.d.xiii: `LankaConnect.Infrastructure.Services` has no direct .cs; all consumers use FQ.
 using LankaConnect.Modules.Communications.Application.BackgroundJobs;
 using LankaConnect.BuildingBlocks.Application.Common.Options;
 using LankaConnect.Modules.Communications.Contracts.Email.Extensions;
 using LankaConnect.Modules.Payments.Infrastructure.Configuration;
 using LankaConnect.Modules.Payments.Infrastructure.Services;
-using LankaConnect.Infrastructure.Services.Tickets;
+using LankaConnect.Host.AllInOne.Services.Tickets;         // 4C.d.xiii: Tickets moved to LankaEvents.Infrastructure (namespace unchanged)
+using LankaConnect.Host.AllInOne.Services;                 // 4C.d.xiii: DatabaseSalesTaxService/RevenueCalculatorService/EmailUrlHelper/EmailEncryptionService in module Infrastructures
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Modules.Payments.Domain.Tax.Repositories;
@@ -61,7 +62,9 @@ using Stripe;
 using Serilog;
 namespace LankaConnect.Host.AllInOne;
 
-public static class DependencyInjection
+// 4C.d.xiii: renamed from DependencyInjection to avoid CS0101 collision with
+// LegacyApplicationDependencyInjection.cs' `DependencyInjection` in the same namespace.
+public static class InfrastructureDependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
@@ -256,7 +259,7 @@ public static class DependencyInjection
         // Completes the Event-family Repository carve-out begun in Wave 5.3.
 
         // Add Reference Data Repository (Phase 6A.47)
-        services.AddScoped<IReferenceDataRepository, LankaConnect.SPLIT_PER_ENTITY.Repositories.ReferenceData.ReferenceDataRepository>();
+        services.AddScoped<IReferenceDataRepository, LankaConnect.Infrastructure.Data.Repositories.ReferenceData.ReferenceDataRepository>();
 
         // Phase 6A.89: Add Support/Feedback Repositories
         services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
@@ -332,9 +335,9 @@ public static class DependencyInjection
         });
 
         // Phase 6A.9: Azure Blob Storage and Image Service
-        services.AddScoped<IAzureBlobStorageService, LankaConnect.Infrastructure.Services.AzureBlobStorageService>();
-        services.AddScoped<IImageService, LankaConnect.Infrastructure.Services.ImageService>();
-        services.AddScoped<IAlbumImageService, LankaConnect.Infrastructure.Services.AlbumImageService>();
+        services.AddScoped<IAzureBlobStorageService, LankaConnect.Host.AllInOne.Services.AzureBlobStorageService>();
+        services.AddScoped<IImageService, LankaConnect.Host.AllInOne.Services.ImageService>();
+        services.AddScoped<IAlbumImageService, LankaConnect.Host.AllInOne.Services.AlbumImageService>();
 
         // Wave 4.6.c.5 (2026-06-24): 4 security adapter DI registrations
         // (IJwtTokenService, IPasswordHashingService, ICurrentUserService,
@@ -351,8 +354,8 @@ public static class DependencyInjection
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
 
         // Phase 6A.82: Register Email Notification Settings
-        services.Configure<Application.Common.Configuration.EmailNotificationSettings>(
-            configuration.GetSection(Application.Common.Configuration.EmailNotificationSettings.SectionName));
+        services.Configure<LankaConnect.BuildingBlocks.Application.Common.Configuration.EmailNotificationSettings>(
+            configuration.GetSection(LankaConnect.BuildingBlocks.Application.Common.Configuration.EmailNotificationSettings.SectionName));
 
         services.AddScoped<ISimpleEmailService, SimpleEmailService>();
 
@@ -378,7 +381,7 @@ public static class DependencyInjection
             LankaConnect.Modules.Communications.Infrastructure.Email.Services.InfrastructureTypedEmailService>();
 
         // Phase 6A.148.W5.6.B.OBS3 — durable suppression-row writer for D9/D12 webhook paths.
-        services.AddScoped<LankaConnect.Modules.Communications.Infrastructure.Email.Services.IRefundDispatchAuditService,
+        services.AddScoped<LankaConnect.Modules.Communications.Contracts.Email.Services.IRefundDispatchAuditService,
             LankaConnect.Modules.Communications.Infrastructure.Email.Services.RefundDispatchAuditService>();
 
         // Phase 6A.89: Override IEmailMetrics with DatabaseEmailMetrics for persistence
@@ -429,16 +432,16 @@ public static class DependencyInjection
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IGeoLocationService, LankaConnect.Products.LankaEvents.Domain.Services.GeoLocationService>();
 
         // Phase 6A.97: Timezone Lookup Service for consistent event date/time display
-        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.ITimeZoneLookupService, LankaConnect.Infrastructure.Services.TimeZoneLookupService>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.ITimeZoneLookupService, LankaConnect.Host.AllInOne.Services.TimeZoneLookupService>();
 
         // Add Event Notification Recipient Service (Phase 6A Event Notifications)
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IEventNotificationRecipientService, LankaConnect.Products.LankaEvents.Application.Services.EventNotificationRecipientService>();
 
         // Phase 6A.74: Newsletter Recipient Service
-        services.AddScoped<LankaConnect.Modules.Communications.Application.Services.INewsletterRecipientService, LankaConnect.Infrastructure.Services.NewsletterRecipientService>();
+        services.AddScoped<LankaConnect.Modules.Communications.Application.Services.INewsletterRecipientService, LankaConnect.Host.AllInOne.Services.NewsletterRecipientService>();
 
         // Phase 6A.74 Part 13: Event-to-Metro Area Matcher for Newsletter Recipient Bucketing
-        services.AddScoped<LankaConnect.Infrastructure.Services.EventMetroAreaMatcher>();
+        services.AddScoped<LankaConnect.Host.AllInOne.Services.EventMetroAreaMatcher>();
 
         // Phase 6A.74: Newsletter Background Jobs
         services.AddTransient<NewsletterEmailJob>();
@@ -543,8 +546,8 @@ public static class DependencyInjection
         // + impl (Payments.Infrastructure).
 
         // Phase 6A.45: Export services for attendee management
-        services.AddScoped<IExcelExportService, LankaConnect.Infrastructure.Services.Export.ExcelExportService>();
-        services.AddScoped<ICsvExportService, LankaConnect.Infrastructure.Services.Export.CsvExportService>();
+        services.AddScoped<IExcelExportService, LankaConnect.Host.AllInOne.Services.Export.ExcelExportService>();
+        services.AddScoped<ICsvExportService, LankaConnect.Host.AllInOne.Services.Export.CsvExportService>();
         // W5.3.c1 (2026-06-28): TicketRepository registration moved to LankaEventsModule.
 
         // Phase 2: Venue Seating repositories
@@ -559,12 +562,12 @@ public static class DependencyInjection
         // DI registration site shifted to the Products composition root.
 
         // Phase 6A.109: Add EnumSyncValidator to detect enum/database drift at startup (Issue #78)
-        services.AddHostedService<LankaConnect.Infrastructure.Services.Validation.EnumSyncValidator>();
+        services.AddHostedService<LankaConnect.Host.AllInOne.Services.Validation.EnumSyncValidator>();
 
         // Phase 8 (post-prod-perf-RCA hygiene): warn at boot if the Npgsql client-side
         // MaxPoolSize × deployed replicas could exceed Postgres max_connections × 0.8.
         // Observability only; never blocks startup.
-        services.AddHostedService<LankaConnect.Infrastructure.Services.Validation.ConnectionPoolValidator>();
+        services.AddHostedService<LankaConnect.Host.AllInOne.Services.Validation.ConnectionPoolValidator>();
 
         return services;
     }

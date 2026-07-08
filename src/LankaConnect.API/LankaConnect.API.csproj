@@ -6,7 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-    <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- 4C.d.xiii: CS0436 tolerated for the sprint window because the local
+         Host BaseController<T> is duplicated in Media/LankaEvents/Communications/
+         Identity/Payments .Api projects to bypass the host→module cycle. All copies
+         collapse to BuildingBlocks.Web post-sprint (Wave 6.5.f). -->
+    <NoWarn>$(NoWarn);1591;CS0436</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

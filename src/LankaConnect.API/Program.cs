@@ -18,7 +18,8 @@ using LankaConnect.Modules.CulturalIntelligence.Api;
 using LankaConnect.Modules.Forms.Api;
 using LankaConnect.Modules.Media.Api;
 using LankaConnect.Modules.Notifications.Api;
-using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.Infrastructure.Data;                     // 4C.d.xiii: AppDbContext
+using LankaConnect.Host.AllInOne;                           // 4C.d.xiii: AddApplication/AddInfrastructure extension methods
 using LankaConnect.API.Extensions;
 using Serilog;
 using Serilog.Events;

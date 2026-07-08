@@ -25,6 +25,9 @@
     <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\..\..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
     <ProjectReference Include="..\Identity.Domain\Identity.Domain.csproj" />
+    <!-- 4C.d.xiv (2026-07-08): UserRepository consumes Email VO stub that
+         lives in LankaEvents.Domain.ValueObjects (transitional per 4C.a). -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,6 +4,11 @@
     <RootNamespace>LankaConnect.Modules.Communications.Api</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Communications.Api</AssemblyName>
     <Description>Communications module — Api layer. ASP.NET Core controllers + CommunicationsModule DI extension. Composes Domain/Application/Infrastructure + BuildingBlocks.Web cross-cutting concerns.</Description>
+    <!-- Day 4 slot C sub-slice 4C.d.xi (2026-07-08): TargetFramework +
+         ImplicitUsings + Nullable enable per Media.Api / LankaEvents.Api pattern. -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <!-- W4 SKELETON (2026-06-04). Empty shell — controllers move in W4.1.6 / module DI in W4.1.4 (pulled forward per W3.9 playbook §Step 4). -->
@@ -18,6 +23,19 @@
     <ProjectReference Include="..\Communications.Contracts\Communications.Contracts.csproj" />
     <ProjectReference Include="..\Communications.Infrastructure\Communications.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d.xi: controllers reference Identity.Application
+         DTOs + LankaConnect.API.Extensions.ClaimsPrincipalExtensions (latter is
+         satisfied by a local copy in Extensions/; the former needs the PR). -->
+    <ProjectReference Include="..\..\Identity\Identity.Application\Identity.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Global usings for framework namespaces + local BaseController<T> -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Mvc" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+    <Using Include="LankaConnect.Host.AllInOne.Controllers" />
   </ItemGroup>
 
 </Project>

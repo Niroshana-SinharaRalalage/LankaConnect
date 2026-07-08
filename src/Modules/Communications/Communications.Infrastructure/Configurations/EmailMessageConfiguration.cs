@@ -144,7 +144,7 @@ public class EmailMessageConfiguration : IEntityTypeConfiguration<EmailMessage>
             .HasColumnType("jsonb")
             .HasConversion(
                 v => v != null ? JsonSerializer.Serialize(v, (JsonSerializerOptions?)null) : null,
-                v => v != null ? JsonSerializer.Deserialize<LankaConnect.SharedKernel.Cultural.CulturalContext>(v, (JsonSerializerOptions?)null) : null)
+                v => v != null ? JsonSerializer.Deserialize<LankaConnect.Modules.Communications.Domain.ValueObjects.CulturalContext>(v, (JsonSerializerOptions?)null) : null)
             .IsRequired(false);
 
         // Wave4.9.2.7 Phase 1.7 (2026-06-09): physical CreatedBy/UpdatedBy.

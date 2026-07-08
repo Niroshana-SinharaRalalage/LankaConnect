@@ -1,8 +1,8 @@
 using System.Diagnostics;
+using LankaConnect.Infrastructure.Data;
 using System.Text.Json;
 using LankaConnect.BuildingBlocks.Application.Common.DTOs;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.SPLIT_PER_ENTITY;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Helpers;

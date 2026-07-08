@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Infrastructure.Idempotency;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Infrastructure.Configurations;

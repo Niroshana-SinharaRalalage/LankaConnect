@@ -9,7 +9,7 @@ using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using EmailValueObject = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
+// Day 4 slot C sub-slice 4C.d.x: dead BB.Domain.Shared alias removed; Email stub now lives at LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email + LankaConnect.Modules.Communications.Domain.ValueObjects.Email (per-module local copies).
 using DomainEmailMessage = LankaConnect.Modules.Communications.Domain.Entities.EmailMessage;
 using AzureEmailMessage = Azure.Communication.Email.EmailMessage;
 using AzureEmailAttachment = Azure.Communication.Email.EmailAttachment;
@@ -705,14 +705,14 @@ public class AzureEmailService : IEmailTemplateService
             _logger.LogInformation("[DIAG-EMAIL-1] Creating domain email - From: {From}, To: {To}, Subject length: {SubjectLen}",
                 _emailSettings.FromEmail, dto.ToEmail, dto.Subject?.Length ?? 0);
 
-            var fromEmailResult = EmailValueObject.Create(_emailSettings.FromEmail);
+            var fromEmailResult = LankaConnect.Modules.Communications.Domain.ValueObjects.UserEmail.Create(_emailSettings.FromEmail);
             if (fromEmailResult.IsFailure)
             {
                 _logger.LogError("[DIAG-EMAIL-2] FromEmail validation failed: {Error}", fromEmailResult.Error);
                 return Result<DomainEmailMessage>.Failure(fromEmailResult.Error);
             }
 
-            var toEmailResult = EmailValueObject.Create(dto.ToEmail);
+            var toEmailResult = LankaConnect.Modules.Communications.Domain.ValueObjects.UserEmail.Create(dto.ToEmail);
             if (toEmailResult.IsFailure)
             {
                 _logger.LogError("[DIAG-EMAIL-3] ToEmail validation failed for {Email}: {Error}", dto.ToEmail, toEmailResult.Error);

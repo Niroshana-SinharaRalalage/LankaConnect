@@ -5,6 +5,7 @@ using LankaConnect.Modules.Communications.Application.Services;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Host.AllInOne.Services; // EventMetroAreaMatcher (LankaEvents.Infrastructure/Services)
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Host.AllInOne.Services;

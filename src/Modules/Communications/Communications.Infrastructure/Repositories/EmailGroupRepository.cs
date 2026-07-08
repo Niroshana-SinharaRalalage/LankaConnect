@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Infrastructure.Data; // Wave 5.4.d.2 transitional: AppDbContext
 using Microsoft.Extensions.Logging;
-using LankaConnect.SPLIT_PER_ENTITY; // Wave 5.4.d.2 transitional: AppDbContext
-using LankaConnect.SPLIT_PER_ENTITY.Repositories; // Wave 5.4.d.2 transitional: Repository<T> base
+using LankaConnect.Infrastructure.Data.Repositories; // Wave 5.4.d.2 transitional: Repository<T> base
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using System.Diagnostics;

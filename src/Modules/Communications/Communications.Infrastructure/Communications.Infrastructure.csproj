@@ -21,6 +21,11 @@
       AppDbContext to CommunicationsDbContext migration in a future wave.
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d.x (2026-07-08): NewsletterRecipientService
+         injects EventMetroAreaMatcher (LankaEvents.Infrastructure/Services).
+         Transitional edge; post-sprint move EventMetroAreaMatcher to a shared
+         MetroArea capability or BuildingBlocks. -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

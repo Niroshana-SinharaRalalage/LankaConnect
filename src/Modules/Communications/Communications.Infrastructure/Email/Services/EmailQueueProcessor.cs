@@ -95,7 +95,7 @@ public class EmailQueueProcessor : BackgroundService
     }
 
     private async Task ProcessSingleEmailAsync(
-        Domain.Communications.Entities.EmailMessage emailMessage,
+        LankaConnect.Modules.Communications.Domain.Entities.EmailMessage emailMessage,
         AzureEmailService emailService,
         IEmailMessageRepository repository,
         IUnitOfWork unitOfWork,
@@ -163,7 +163,7 @@ public class EmailQueueProcessor : BackgroundService
         }
     }
 
-    private bool ShouldRetryEmail(Domain.Communications.Entities.EmailMessage emailMessage)
+    private bool ShouldRetryEmail(LankaConnect.Modules.Communications.Domain.Entities.EmailMessage emailMessage)
     {
         // Check if max retry attempts reached
         if (emailMessage.RetryCount >= _emailSettings.MaxRetryAttempts)
@@ -195,7 +195,7 @@ public class EmailQueueProcessor : BackgroundService
         return false;
     }
 
-    private void ScheduleRetry(Domain.Communications.Entities.EmailMessage emailMessage)
+    private void ScheduleRetry(LankaConnect.Modules.Communications.Domain.Entities.EmailMessage emailMessage)
     {
         var retryDelay = CalculateRetryDelay(emailMessage.RetryCount);
         var nextRetryTime = DateTime.UtcNow.AddMinutes(retryDelay);

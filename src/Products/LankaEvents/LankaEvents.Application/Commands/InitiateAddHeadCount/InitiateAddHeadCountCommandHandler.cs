@@ -13,6 +13,7 @@ using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddHeadCount;
 
 /// <summary>
@@ -30,7 +31,7 @@ namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddHead
 public class InitiateAddHeadCountCommandHandler
     : ICommandHandler<InitiateAddHeadCountCommand, InitiateAddAttendeesResult>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationAdditionRepository _additionRepository;
     private readonly IStripePaymentService _stripePaymentService;
@@ -38,7 +39,7 @@ public class InitiateAddHeadCountCommandHandler
     private readonly ILogger<InitiateAddHeadCountCommandHandler> _logger;
 
     public InitiateAddHeadCountCommandHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IEventRepository eventRepository,
         IRegistrationAdditionRepository additionRepository,
         IStripePaymentService stripePaymentService,

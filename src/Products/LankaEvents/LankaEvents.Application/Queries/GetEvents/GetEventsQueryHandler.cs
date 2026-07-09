@@ -12,6 +12,7 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEvents;
 
 /// <summary>
@@ -24,7 +25,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     private readonly IEventRepository _eventRepository;
     private readonly IIdentityQueries _identityQueries;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly LankaEventsDbContext _dbContext;
     private readonly ICurrentUserService _currentUserService; // Phase 6A.133: Multi-organizer
     private readonly IMapper _mapper;
     private readonly ILogger<GetEventsQueryHandler> _logger;
@@ -33,7 +34,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         IEventRepository eventRepository,
         IIdentityQueries identityQueries,
         IRegistrationRepository registrationRepository,
-        IApplicationDbContext dbContext,
+        LankaEventsDbContext dbContext,
         ICurrentUserService currentUserService, // Phase 6A.133: Multi-organizer
         IMapper mapper,
         ILogger<GetEventsQueryHandler> logger)

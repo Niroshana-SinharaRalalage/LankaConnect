@@ -12,6 +12,7 @@ using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreateEvent;
 
 public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Guid>
@@ -20,7 +21,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
     private readonly IIdentityQueries _identityQueries;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.1
-    private readonly IApplicationDbContext _dbContext; // legacy injection (unused after W5.4.d.1 but kept for DI compatibility until W5.4.d.3 cleanup)
+    private readonly LankaEventsDbContext _dbContext; // Wave 6.5.f (2026-07-09 Day 4): module DbContext for multi-context commit path
     private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
     private readonly ITimeZoneLookupService _timeZoneLookupService; // Issue #55: Timezone lookup
     private readonly ILogger<CreateEventCommandHandler> _logger;
@@ -30,7 +31,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         IIdentityQueries identityQueries,
         IUnitOfWork unitOfWork,
         IEmailGroupQueries emailGroupQueries, // Wave 5.4.d.1
-        IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
+        LankaEventsDbContext dbContext, // Phase 6A.32: ChangeTracker API — Wave 6.5.f (2026-07-09) LankaEventsDbContext
         IRevenueCalculatorService revenueCalculatorService, // Phase 6A.X: Revenue breakdown
         ITimeZoneLookupService timeZoneLookupService, // Issue #55: Timezone lookup
         ILogger<CreateEventCommandHandler> logger)
@@ -39,7 +40,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         _identityQueries = identityQueries;
         _unitOfWork = unitOfWork;
         _emailGroupQueries = emailGroupQueries;
-        _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
+        _dbContext = dbContext; // Phase 6A.32: ChangeTracker API — Wave 6.5.f (2026-07-09) LankaEventsDbContext
         _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
         _timeZoneLookupService = timeZoneLookupService; // Issue #55: Timezone lookup
         _logger = logger;

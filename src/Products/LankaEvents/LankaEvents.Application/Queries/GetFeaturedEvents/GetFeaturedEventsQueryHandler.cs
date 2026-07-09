@@ -8,6 +8,7 @@ using LankaConnect.Modules.Identity.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetFeaturedEvents;
 
 /// <summary>
@@ -19,7 +20,7 @@ public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuer
 {
     private readonly IEventRepository _eventRepository;
     private readonly IIdentityQueries _identityQueries;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly LankaEventsDbContext _dbContext;
     private readonly IMapper _mapper;
     private readonly ILogger<GetFeaturedEventsQueryHandler> _logger;
 
@@ -31,7 +32,7 @@ public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuer
     public GetFeaturedEventsQueryHandler(
         IEventRepository eventRepository,
         IIdentityQueries identityQueries,
-        IApplicationDbContext dbContext,
+        LankaEventsDbContext dbContext,
         IMapper mapper,
         ILogger<GetFeaturedEventsQueryHandler> logger)
     {

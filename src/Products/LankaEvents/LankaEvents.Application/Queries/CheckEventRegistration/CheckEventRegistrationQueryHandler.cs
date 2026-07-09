@@ -6,6 +6,7 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.CheckEventRegistration;
 
 /// <summary>
@@ -20,12 +21,12 @@ namespace LankaConnect.Products.LankaEvents.Application.Queries.CheckEventRegist
 public class CheckEventRegistrationQueryHandler
     : IQueryHandler<CheckEventRegistrationQuery, EventRegistrationCheckResult>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IIdentityQueries _identityQueries;
     private readonly ILogger<CheckEventRegistrationQueryHandler> _logger;
 
     public CheckEventRegistrationQueryHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IIdentityQueries identityQueries,
         ILogger<CheckEventRegistrationQueryHandler> logger)
     {

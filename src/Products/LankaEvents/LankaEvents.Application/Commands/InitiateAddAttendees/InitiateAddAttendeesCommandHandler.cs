@@ -13,6 +13,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddAttendees;
 
 /// <summary>
@@ -23,7 +24,7 @@ namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddAtte
 public class InitiateAddAttendeesCommandHandler
     : ICommandHandler<InitiateAddAttendeesCommand, InitiateAddAttendeesResult>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IRegistrationAdditionRepository _additionRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IStripePaymentService _stripePaymentService;
@@ -31,7 +32,7 @@ public class InitiateAddAttendeesCommandHandler
     private readonly ILogger<InitiateAddAttendeesCommandHandler> _logger;
 
     public InitiateAddAttendeesCommandHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IRegistrationAdditionRepository additionRepository,
         IEventRepository eventRepository,
         IStripePaymentService stripePaymentService,

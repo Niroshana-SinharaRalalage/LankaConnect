@@ -8,6 +8,7 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CommitToSignUpItemAnonymous;
 
 /// <summary>
@@ -22,7 +23,7 @@ namespace LankaConnect.Products.LankaEvents.Application.Commands.CommitToSignUpI
 public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitToSignUpItemAnonymousCommand, Guid>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     // 4C.e.3 (2026-07-08): CheckEventRegistrationQueryHandler now takes IIdentityQueries.
     private readonly LankaConnect.Modules.Identity.Contracts.IIdentityQueries _identityQueries;
     private readonly IUnitOfWork _unitOfWork;
@@ -31,7 +32,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
 
     public CommitToSignUpItemAnonymousCommandHandler(
         IEventRepository eventRepository,
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         LankaConnect.Modules.Identity.Contracts.IIdentityQueries identityQueries,
         IUnitOfWork unitOfWork,
         ILogger<CommitToSignUpItemAnonymousCommandHandler> logger,

@@ -7,6 +7,7 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetTicket;
 
 /// <summary>
@@ -20,7 +21,7 @@ public record GetTicketQuery(Guid EventId, Guid RegistrationId, Guid UserId) : I
 /// </summary>
 public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<TicketDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly ITicketRepository _ticketRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventRepository _eventRepository;
@@ -29,7 +30,7 @@ public class GetTicketQueryHandler : IRequestHandler<GetTicketQuery, Result<Tick
     private readonly ILogger<GetTicketQueryHandler> _logger;
 
     public GetTicketQueryHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         ITicketRepository ticketRepository,
         IRegistrationRepository registrationRepository,
         IEventRepository eventRepository,

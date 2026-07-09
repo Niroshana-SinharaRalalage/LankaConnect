@@ -9,6 +9,7 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.CalculateAdditionPrice;
 
 /// <summary>
@@ -19,13 +20,13 @@ namespace LankaConnect.Products.LankaEvents.Application.Queries.CalculateAdditio
 public class CalculateAdditionPriceQueryHandler
     : IQueryHandler<CalculateAdditionPriceQuery, AdditionPriceResultDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationAdditionRepository _additionRepository;
     private readonly ILogger<CalculateAdditionPriceQueryHandler> _logger;
 
     public CalculateAdditionPriceQueryHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IEventRepository eventRepository,
         IRegistrationAdditionRepository additionRepository,
         ILogger<CalculateAdditionPriceQueryHandler> logger)

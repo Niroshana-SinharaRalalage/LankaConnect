@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using System.Text.Json;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ConvertRegistrationMode;
 
 /// <summary>
@@ -30,7 +31,7 @@ public class ConvertRegistrationModeCommandHandler
     : ICommandHandler<ConvertRegistrationModeCommand, ConvertRegistrationModeResult>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IApplicationDbContext _db;
+    private readonly LankaEventsDbContext _db;
     private readonly IRegistrationAdditionRepository _additionRepository;
     private readonly ICurrentUserService _currentUser;
     private readonly IUnitOfWork _unitOfWork;
@@ -38,7 +39,7 @@ public class ConvertRegistrationModeCommandHandler
 
     public ConvertRegistrationModeCommandHandler(
         IEventRepository eventRepository,
-        IApplicationDbContext db,
+        LankaEventsDbContext db,
         IRegistrationAdditionRepository additionRepository,
         ICurrentUserService currentUser,
         IUnitOfWork unitOfWork,

@@ -4,6 +4,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Host.AllInOne.Services;
 
 /// <summary>
@@ -15,12 +16,12 @@ namespace LankaConnect.Host.AllInOne.Services;
 /// </summary>
 public class EventMetroAreaMatcher
 {
-    private readonly IApplicationDbContext _dbContext;
+    private readonly LankaEventsDbContext _dbContext;
     private readonly IGeoLocationService _geoLocationService;
     private readonly ILogger<EventMetroAreaMatcher> _logger;
 
     public EventMetroAreaMatcher(
-        IApplicationDbContext dbContext,
+        LankaEventsDbContext dbContext,
         IGeoLocationService geoLocationService,
         ILogger<EventMetroAreaMatcher> logger)
     {

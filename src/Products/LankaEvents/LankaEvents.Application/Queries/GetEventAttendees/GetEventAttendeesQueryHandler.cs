@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventAttendees;
 
 /// <summary>
@@ -21,14 +22,14 @@ namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventAttendee
 public class GetEventAttendeesQueryHandler
     : IQueryHandler<GetEventAttendeesQuery, EventAttendeesResponse>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IEventRepository _eventRepository;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly CommissionSettings _commissionSettings;
     private readonly ILogger<GetEventAttendeesQueryHandler> _logger;
 
     public GetEventAttendeesQueryHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IEventRepository eventRepository,
         IRevenueCalculatorService revenueCalculatorService,
         IOptions<CommissionSettings> commissionSettings,

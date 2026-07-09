@@ -1,10 +1,8 @@
-using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Identity.Contracts;                   // 4C.e.3: IIdentityQueries
 using LankaConnect.Products.LankaEvents.Domain;
-using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 namespace LankaConnect.Host.AllInOne.Dashboard.Queries.GetCommunityStats;
 
 /// <summary>
@@ -15,14 +13,14 @@ namespace LankaConnect.Host.AllInOne.Dashboard.Queries.GetCommunityStats;
 /// </summary>
 public class GetCommunityStatsQueryHandler : IRequestHandler<GetCommunityStatsQuery, Result<CommunityStatsDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IIdentityQueries _identityQueries;
     private readonly IEventRepository _eventRepository;
 
     public GetCommunityStatsQueryHandler(
-        IApplicationDbContext context,
+        IIdentityQueries identityQueries,
         IEventRepository eventRepository)
     {
-        _context = context;
+        _identityQueries = identityQueries;
         _eventRepository = eventRepository;
     }
 
@@ -30,9 +28,10 @@ public class GetCommunityStatsQueryHandler : IRequestHandler<GetCommunityStatsQu
         GetCommunityStatsQuery request,
         CancellationToken cancellationToken)
     {
-        // Count active users only (exclude inactive accounts)
-        var userCount = await _context.Users
-            .CountAsync(u => u.IsActive, cancellationToken);
+        // 4C.e.3 (2026-07-08): route active-user count through the Identity
+        // Contracts surface instead of IApplicationDbContext.Users. Per Consult
+        // #14 PASS B — LC.Application must not touch Identity DbSets directly.
+        var userCount = await _identityQueries.CountActiveUsersAsync(cancellationToken);
 
         // Count published and active events only (exclude drafts, cancelled, completed)
         // Use repository to get published events

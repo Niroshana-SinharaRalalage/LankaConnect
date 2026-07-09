@@ -357,16 +357,20 @@ try
             try
             {
                 var context = services.GetRequiredService<AppDbContext>();
+                // 4C.e.3 (2026-07-08): IdentityDbContext for Users seeding path.
+                var identityContext = services.GetRequiredService<LankaConnect.Modules.Identity.Infrastructure.Data.IdentityDbContext>();
                 var logger = services.GetRequiredService<ILogger<Program>>();
 
                 logger.LogInformation("Applying database migrations...");
                 await context.Database.MigrateAsync();
+                await identityContext.Database.MigrateAsync();
                 logger.LogInformation("Database migrations applied successfully");
 
                 // Seed initial data (Development only)
-                var dbInitializer = new DbInitializer(
+                var dbInitializer = new LankaConnect.Host.AllInOne.Data.DbInitializer(
                     context,
-                    services.GetRequiredService<ILogger<DbInitializer>>(),
+                    identityContext,
+                    services.GetRequiredService<ILogger<LankaConnect.Host.AllInOne.Data.DbInitializer>>(),
                     services.GetRequiredService<IPasswordHashingService>());
                 await dbInitializer.SeedAsync();
             }
@@ -742,6 +746,8 @@ static async Task ValidateEfCoreConfigurationsAsync(IServiceProvider services)
 {
     using var scope = services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    // 4C.e.3 (2026-07-08): probe the new IdentityDbContext.Users mapping too.
+    var identityContext = scope.ServiceProvider.GetRequiredService<LankaConnect.Modules.Identity.Infrastructure.Data.IdentityDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
     logger.LogInformation("Phase 6A.X: Validating EF Core configurations at startup");
@@ -778,7 +784,8 @@ static async Task ValidateEfCoreConfigurationsAsync(IServiceProvider services)
         {
             ("StateTaxRates", async () => await context.StateTaxRates.AsNoTracking().FirstOrDefaultAsync()),
             ("Events", async () => await context.Events.AsNoTracking().FirstOrDefaultAsync()),
-            ("Users", async () => await context.Users.AsNoTracking().FirstOrDefaultAsync()),
+            // 4C.e.3 (2026-07-08): probe via IdentityDbContext (new home per Consult #14 PASS B).
+            ("Users", async () => await identityContext.Users.AsNoTracking().FirstOrDefaultAsync()),
             ("Registrations", async () => await context.Registrations.AsNoTracking().FirstOrDefaultAsync())
         };
 

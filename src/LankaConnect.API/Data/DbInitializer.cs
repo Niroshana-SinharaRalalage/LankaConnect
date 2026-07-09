@@ -1,26 +1,38 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Infrastructure.Data.Seeders;
+using LankaConnect.Infrastructure.Data;                                          // 4C.e.3: AppDbContext
+using LankaConnect.Infrastructure.Data.Seeders;                                  // MetroAreaSeeder, BadgeSeeder, EventSeeder (still legacy)
+using LankaConnect.Modules.Identity.Infrastructure.Data;                         // 4C.e.3: IdentityDbContext
+using LankaConnect.Modules.Identity.Infrastructure.Data.Seeders;                 // 4C.e.3: UserSeeder (moved)
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
-namespace LankaConnect.Infrastructure.Data;
+// 4C.e.3 (2026-07-08): relocated from LankaConnect.Infrastructure to the
+// LankaConnect.API host so it can PR Identity.Infrastructure without a cycle
+// (Identity.Infrastructure -> LankaConnect.Infrastructure already exists).
+// Only callers were the host (Program.cs + AdminController) so no cross-module
+// leak.
+namespace LankaConnect.Host.AllInOne.Data;
 
 /// <summary>
-/// Database initializer for seeding initial data
-/// Call this from Program.cs or API startup to populate the database
+/// Database initializer for seeding initial data.
+/// Call this from Program.cs or API startup to populate the database.
 /// </summary>
 public class DbInitializer
 {
     private readonly AppDbContext _context;
+    // 4C.e.3: separate injection for Users seeding path (module DbContext).
+    private readonly IdentityDbContext _identityContext;
     private readonly ILogger<DbInitializer> _logger;
     private readonly IPasswordHashingService _passwordHashingService;
 
     public DbInitializer(
         AppDbContext context,
+        IdentityDbContext identityContext,
         ILogger<DbInitializer> logger,
         IPasswordHashingService passwordHashingService)
     {
         _context = context;
+        _identityContext = identityContext;
         _logger = logger;
         _passwordHashingService = passwordHashingService;
     }
@@ -61,7 +73,8 @@ public class DbInitializer
     /// </summary>
     private async Task SeedUsersAsync()
     {
-        var existingUsersCount = await _context.Users.CountAsync();
+        // 4C.e.3 (2026-07-08): route Users read + seed through IdentityDbContext.
+        var existingUsersCount = await _identityContext.Users.CountAsync();
         if (existingUsersCount > 0)
         {
             _logger.LogInformation("Database already contains {Count} users. Skipping seed.", existingUsersCount);
@@ -69,7 +82,7 @@ public class DbInitializer
         }
 
         _logger.LogInformation("Seeding admin users...");
-        await UserSeeder.SeedAsync(_context, _passwordHashingService);
+        await UserSeeder.SeedAsync(_identityContext, _passwordHashingService);
         _logger.LogInformation("Successfully seeded admin users to the database.");
     }
 

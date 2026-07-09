@@ -23,6 +23,8 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
 {
     private readonly IEventRepository _eventRepository;
     private readonly IApplicationDbContext _context;
+    // 4C.e.3 (2026-07-08): CheckEventRegistrationQueryHandler now takes IIdentityQueries.
+    private readonly LankaConnect.Modules.Identity.Contracts.IIdentityQueries _identityQueries;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CommitToSignUpItemAnonymousCommandHandler> _logger;
     private readonly ILogger<CheckEventRegistrationQueryHandler> _checkEventRegistrationLogger;
@@ -30,12 +32,14 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
     public CommitToSignUpItemAnonymousCommandHandler(
         IEventRepository eventRepository,
         IApplicationDbContext context,
+        LankaConnect.Modules.Identity.Contracts.IIdentityQueries identityQueries,
         IUnitOfWork unitOfWork,
         ILogger<CommitToSignUpItemAnonymousCommandHandler> logger,
         ILogger<CheckEventRegistrationQueryHandler> checkEventRegistrationLogger)
     {
         _eventRepository = eventRepository;
         _context = context;
+        _identityQueries = identityQueries;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _checkEventRegistrationLogger = checkEventRegistrationLogger;
@@ -85,7 +89,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                 // is reused so we keep observability (member-status + registration-status are
                 // still logged) without forking the lookup logic.
                 var checkQuery = new CheckEventRegistrationQuery(request.EventId, emailToCheck);
-                var checkHandler = new CheckEventRegistrationQueryHandler(_context, _checkEventRegistrationLogger);
+                var checkHandler = new CheckEventRegistrationQueryHandler(_context, _identityQueries, _checkEventRegistrationLogger);
                 var registrationResult = await checkHandler.Handle(checkQuery, cancellationToken);
 
                 if (registrationResult.IsFailure)

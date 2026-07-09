@@ -1,5 +1,4 @@
 using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Infrastructure.Data;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
@@ -8,7 +7,11 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Email = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email;
 
-namespace LankaConnect.Infrastructure.Data.Seeders;
+// 4C.e.3 (2026-07-08): relocated from LankaConnect.Infrastructure.Data.Seeders
+// to Identity.Infrastructure.Data.Seeders per Consult #14 PASS B + architect
+// ruling Q1 Option C. Now injects IdentityDbContext (module DbContext) instead
+// of AppDbContext.
+namespace LankaConnect.Modules.Identity.Infrastructure.Data.Seeders;
 
 /// <summary>
 /// Seeds admin users for the LankaConnect platform
@@ -20,7 +23,7 @@ public static class UserSeeder
     /// Seed admin users into the database
     /// Passwords are hashed using the provided password hashing service
     /// </summary>
-    public static async Task SeedAsync(AppDbContext context, IPasswordHashingService passwordHashingService)
+    public static async Task SeedAsync(IdentityDbContext context, IPasswordHashingService passwordHashingService)
     {
         System.Console.WriteLine("[UserSeeder] SeedAsync started");
         try

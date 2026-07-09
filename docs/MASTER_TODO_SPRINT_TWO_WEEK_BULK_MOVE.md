@@ -157,6 +157,60 @@ Same 6 agents on same worktrees. Fix namespace + `using` errors in bounded set.
 - **Consult chain executed today**: #12 Option D → #13 Q3+Q4+Q2+Q1 (Option B Path 1) → #13.3 PASS A (7 Modules cascade) → #13.5 PASS C → #13.5.1 PASS 1 → #13.5.2 PASS B (checkpoint red honestly) → #14 PASS B (`IApplicationDbContext` teardown = Day 4 slot C fan-out).
 - **See** `docs/architecture/decisions/ADR-6.5.f-sln-exclusions.md` for the compile-red checkpoint context (the "ADR-6.5.f" filename retained to preserve commit link; do not rename).
 
+### Day 4/5 boundary status @ 2026-07-09 EOD (session handover — WAVE 6.5.f DONE, 4C.h BLOCKED)
+
+**Head commit on `bulk-move/integration`**: `5500a82c` (pushed).
+
+**Sprint gates achieved by EOD Day 4**:
+- ✅ All 4C.a-g CLOSED (Day 4 slot C sub-slices `.a` through `.g` shipped).
+- ✅ Wave 6.5.f LankaEvents cycle-break landed (commit `8c912ca1`) — 11 files promoted to `LankaEvents.Contracts/LegacyPromotions/`.
+- ✅ Wave 6.5.f LankaEvents handler migration landed (commit `24b06dc8`) — 21 handlers now inject `LankaEventsDbContext` directly.
+- ✅ Wave 6.5.f Communications mirror landed (commit `f8ce2ee4`) — 2 files promoted + 8 Newsletter handlers migrated to `CommunicationsDbContext`.
+- ✅ Residual injector sweep landed (commit `c6f2826b`) — Identity cycle-break (reverse edge was phantom), Comm.Infra background services, GetMetroAreas physical relocation from LC.Application → LankaEvents.Application, EnumSyncValidator direct-AppDbContext.
+- ✅ `dotnet build LankaConnect.sln` incremental = 0 errors. Test-project errors at sprint-tolerance baseline (Domain.Tests 90 + Payments.App.Tests 18 + TestUtilities 14 + Notifications.Domain.Tests 10 + Communications.App.Tests 2).
+
+**IApplicationDbContext live-injector count**: 84 → 3 (interface + AppDbContext impl marker + DI seam only). Delete gated on Day 5 slot A cycle-break below.
+
+### 🛑 Day 5 slot A URGENT — NUGET-RESTORE CYCLE BLOCKS 4C.h + DAY 6 DEVELOP MERGE
+
+**Discovered 2026-07-09 during 4C.h attempt (commit `5500a82c` — ATTEMPT REVERTED)**:
+
+`dotnet build` incremental succeeds, but `dotnet restore` cold-run FAILS with MSB4006 "circular dependency in the target dependency graph". Root cause: the Wave 6.5.f cycle-break commits added `<Module>.Application → <Module>.Infrastructure` reverse-direction PRs, but the legacy `LankaConnect.Infrastructure` still holds PRs to `Communications.Application` + `LankaEvents.Application`, forming two 3-node cycles:
+
+```
+LC.Infrastructure → LankaEvents.Application → LankaEvents.Infrastructure
+  → LC.Infrastructure (transitional AppDbContext + Repository<T> dep)
+
+LC.Infrastructure → Communications.Application → Communications.Infrastructure
+  → LC.Infrastructure (same transitional dep)
+```
+
+**Day 6 develop-merge will trigger a cold restore in CI and hit this blocker.** Must resolve before Day 6 EOD or sprint fails.
+
+**Fix path (proper Clean-Architecture relocations)**:
+1. Move 4 Email repo IMPLS from `LC.Infrastructure/Data/Repositories/` → `Communications.Infrastructure/Data/Repositories/`:
+   - `EmailMessageRepository.cs`
+   - `EmailStatusRepository.cs`
+   - `EmailTemplateRepository.cs`
+   - `UserEmailPreferencesRepository.cs`
+2. Move 2 Export services from `LC.Infrastructure/Services/Export/` → `LankaEvents.Infrastructure/Services/Export/`:
+   - `CsvExportService.cs`
+   - `ExcelExportService.cs`
+3. Drop `LC.Infrastructure → Communications.Application` PR.
+4. Drop `LC.Infrastructure → LankaEvents.Application` PR.
+5. Cascade fix any downstream signature-type dependencies (~5-15 DTOs may need Contracts.LegacyPromotions promotion per Consult #15 PASS C).
+6. Re-attempt 4C.h delete `IApplicationDbContext` + Rule 14 ArchTest.
+7. `dotnet restore` cold-run must PASS with zero cycles before commit.
+
+**Architect consult REQUIRED** before executing — the DTO cascade for Export services (SignUpListDto, EventAttendeesResponse, ~15 more in Application.Common) needs Consult #15 PASS C treatment (interfaces + DTO signatures → Contracts).
+
+**After 4C.h closes**, resume Day 5 slots B/C/D per original plan:
+- Slot B: Wave 6.5.f LankaEvents handler migration — ✅ ALREADY DONE (commit `24b06dc8`); slot LIBERATED for cycle-break work.
+- Slot C: Wave 6.5.g Payments un-skip (11 handlers → integration events).
+- Slot D: Wave 6.5.h Rule 5 un-skip (14 services + 7 webhook handlers).
+
+**Day 5 EOD gate**: `dotnet restore` cold-run PASSES + 4C.h closed + Wave 6.5.g/h shipped. Day 6 develop-merge unblocked.
+
 ### Day 4 slot C — remaining execution (per Consult #14 PASS B)
 
 **These are Day 4 slot C sub-slices, NOT new waves.** Sub-slice numbering used internally for tracking; each is a Day 4 slot C sub-agent's beat.

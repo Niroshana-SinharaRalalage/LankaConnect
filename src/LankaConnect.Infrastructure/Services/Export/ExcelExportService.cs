@@ -6,10 +6,11 @@ using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Contracts;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h (2026-07-09 Day 4): ICsvExportService/IExcelExportService promoted
+using LankaConnect.Products.LankaEvents.Application.Common;
 namespace LankaConnect.Host.AllInOne.Services.Export;
 
 /// <summary>

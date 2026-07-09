@@ -5,6 +5,22 @@
 
 ---
 
+# 🎯 SECTION -1: PLATFORM VISION ANCHOR (30-SECOND ORIENTATION)
+
+**Every agent reads this before touching any code, sprint task, or plan document. If you can't state this back in your own words, STOP and read `docs/PLATFORM_MASTER_PLAN.md §1 Vision` + `docs/AGENT_START_HERE.md "The 60-second mental model"` before continuing.**
+
+**LankaConnect is a multi-product platform for the global Sri Lankan diaspora.** LankaEvents is live in production today; six more products land on the same foundation over the next 12-18 months (LankaTemples, LankaBusiness, LankaHomes, LankaMart, LankaSeyla, LankaNivasa). The technical mission is a **single modular monolith foundation** structured as a 5-layer architecture (BuildingBlocks → SharedKernel → Capabilities → Products → Hosts) so the marginal cost of launching the next product approaches zero re-architecture — and so products can be extracted into microservices when scale demands, without a rewrite. "Monolith-first, extract-when-needed" as an architectural reality, not a slogan.
+
+**Phase A (now, in-progress)** is that refactor — moving code out of a legacy `LankaConnect.{Domain,Application,Infrastructure,API}` layout into the target 5-layer topology while LankaEvents stays live. The current 2-week bulk-move sprint (2026-07-06 → 2026-07-19) is the compressed execution path for Phase A completion.
+
+**Every commit in this sprint serves that vision.** Wave 6.5.f cycle-break isn't "fix a nuget error" — it's making module boundaries genuinely independent so LankaEvents and Communications can eventually stand alone as extractable products. Every `IApplicationDbContext` injector removed and every `LC.Infrastructure → Module.Application` edge dropped moves the codebase from "monolith wearing module costumes" toward "products that could stand alone."
+
+**Anti-pattern to reject with prejudice**: "just make it compile." A shortcut here (e.g. dumping DTOs somewhere expedient, promoting types into `LegacyPromotions/` without architect sign-off, letting a cycle stand because incremental builds pass) re-tangles exactly the boundaries the whole platform vision depends on being clean. **The architect gate is not bureaucracy; it is the load-bearing wall of Phase B viability.**
+
+If a proposed action doesn't clearly serve the vision — including the sub-task you were just handed — pause and re-read `docs/PLATFORM_MASTER_PLAN.md §1` before proceeding.
+
+---
+
 # 🛑 SECTION 0: MANDATORY READ ORDER (BEFORE ANY TASK)
 
 **Founder-mandated 2026-06-29. Non-negotiable. Skipping = work happens against stale context.**
@@ -791,7 +807,7 @@ Every behavior-touching wave gets `docs/MASTER_TODO_WAVE_<N>.md` with 4 mandator
 
 **Remember: This file is LAW. Follow it without exception. If something is unclear, ASK the user.**
 
-**Last Updated**: 2026-07-09 EOD Sprint Day 4 — SESSION HANDOVER. Added handover snapshot (head commit `5500a82c`; 4C.h ATTEMPTED-REVERTED nuget cycle blocker) to SECTION 0.6. Day 5 slot A URGENT cycle-break plan documented in sprint bible (`docs/MASTER_TODO_SPRINT_TWO_WEEK_BULK_MOVE.md` §"Day 5 slot A URGENT"). Wave 6.5.f LankaEvents + Communications cycle-break + handler migration all landed today; IApplicationDbContext live-injector count 84 → 3. Next session MUST read Day 5 slot A URGENT before touching 4C.h — architect consult REQUIRED for the Email repo + Export service relocations (fix moves 4 Email repos LC.Infra→Comm.Infra, 2 Export services LC.Infra→LE.Infra, drops 2 LC.Infrastructure → Application PRs, cascade-fixes ~15 DTOs).
+**Last Updated**: 2026-07-09 EOD Sprint Day 4 — SESSION HANDOVER + PLATFORM VISION ANCHOR. Added **NEW SECTION -1 (PLATFORM VISION ANCHOR)** at the very top of the file — a 30-second orientation to LankaConnect as a 7-product platform for the Sri Lankan diaspora, Phase A modular-monolith refactor as prep for Phase B product-extractability, "just make it compile" as an explicit anti-pattern. This closes the gap where a fresh session urgently pointed at Day 5 slot A URGENT could skim past the vision docs and dive into plumbing. SECTION 0.6 gained handover snapshot (head commit `5500a82c`; 4C.h ATTEMPTED-REVERTED nuget cycle blocker). Day 5 slot A URGENT cycle-break plan documented in sprint bible (`docs/MASTER_TODO_SPRINT_TWO_WEEK_BULK_MOVE.md`). Wave 6.5.f LankaEvents + Communications cycle-break + handler migration all landed today; IApplicationDbContext live-injector count 84 → 3. Next session MUST read Day 5 slot A URGENT before touching 4C.h — architect consult REQUIRED for the Email repo + Export service relocations.
 
 **Previous 2026-07-09 update (earlier same day)**: SECTION 0.5 refreshed with 4C.a-g CLOSED status + 4C.h blocker note + sub-slice granularity guardrail. SECTION 0.6 gained Consult #16 (4C.e User caller Option C mixed pattern) + Consult #17 (Wave 6.5.f cycle-break via LegacyPromotions bucket). NEW SECTION 0.7 codifies Days 2-6 discipline bypass window.
 

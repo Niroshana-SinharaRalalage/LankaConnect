@@ -1,4 +1,4 @@
-namespace LankaConnect.Modules.Communications.Application.Common;
+namespace LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // Wave 6.5.f mirror (2026-07-09 Day 4): promoted from Communications.Application per Consult #15 PASS C.
 
 /// <summary>
 /// DTO for previewing newsletter recipients before sending

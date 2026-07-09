@@ -13,6 +13,7 @@ using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Modules.Communications.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): CommunicationsDbContext
 namespace LankaConnect.Modules.Communications.Application.BackgroundJobs;
 
 /// <summary>
@@ -35,7 +36,7 @@ public class NewsletterEmailJob
     private readonly INewsletterRecipientService _recipientService;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationUrlsService _urlsService;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly CommunicationsDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<NewsletterEmailJob> _logger;
 
@@ -45,7 +46,7 @@ public class NewsletterEmailJob
         INewsletterRecipientService recipientService,
         ITypedEmailService typedEmailService,
         IApplicationUrlsService urlsService,
-        IApplicationDbContext dbContext,
+        CommunicationsDbContext dbContext,
         IUnitOfWork unitOfWork,
         ILogger<NewsletterEmailJob> logger)
     {

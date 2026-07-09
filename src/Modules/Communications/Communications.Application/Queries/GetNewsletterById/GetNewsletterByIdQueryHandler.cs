@@ -10,6 +10,7 @@ using LankaConnect.Modules.Communications.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Modules.Communications.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): CommunicationsDbContext
 namespace LankaConnect.Modules.Communications.Application.Queries.GetNewsletterById;
 
 /// <summary>
@@ -20,13 +21,13 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
 {
     private readonly INewsletterRepository _newsletterRepository;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly CommunicationsDbContext _dbContext;
     private readonly ILogger<GetNewsletterByIdQueryHandler> _logger;
 
     public GetNewsletterByIdQueryHandler(
         INewsletterRepository newsletterRepository,
         ICurrentUserService currentUserService,
-        IApplicationDbContext dbContext,
+        CommunicationsDbContext dbContext,
         ILogger<GetNewsletterByIdQueryHandler> logger)
     {
         _newsletterRepository = newsletterRepository;

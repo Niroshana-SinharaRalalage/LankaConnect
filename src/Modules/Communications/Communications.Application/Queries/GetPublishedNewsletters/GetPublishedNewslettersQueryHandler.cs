@@ -11,6 +11,7 @@ using ContractsEmailGroupSummaryDto = LankaConnect.Modules.Communications.Contra
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Serilog.Context;
+using LankaConnect.Modules.Communications.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): CommunicationsDbContext
 namespace LankaConnect.Modules.Communications.Application.Queries.GetPublishedNewsletters;
 
 /// <summary>
@@ -22,13 +23,13 @@ namespace LankaConnect.Modules.Communications.Application.Queries.GetPublishedNe
 public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNewslettersQuery, IReadOnlyList<NewsletterDto>>
 {
     private readonly INewsletterRepository _newsletterRepository;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly CommunicationsDbContext _dbContext;
     private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.3
     private readonly ILogger<GetPublishedNewslettersQueryHandler> _logger;
 
     public GetPublishedNewslettersQueryHandler(
         INewsletterRepository newsletterRepository,
-        IApplicationDbContext dbContext,
+        CommunicationsDbContext dbContext,
         IEmailGroupQueries emailGroupQueries, // Wave 5.4.d.3
         ILogger<GetPublishedNewslettersQueryHandler> logger)
     {

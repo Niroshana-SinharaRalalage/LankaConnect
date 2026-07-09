@@ -13,6 +13,7 @@ using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog.Context;
+using LankaConnect.Modules.Communications.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): CommunicationsDbContext
 namespace LankaConnect.Modules.Communications.Application.Commands.SubscribeToNewsletter;
 
 /// <summary>
@@ -26,7 +27,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
     private readonly INewsletterSubscriberRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITypedEmailService _typedEmailService;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly CommunicationsDbContext _dbContext;
     private readonly ILogger<SubscribeToNewsletterCommandHandler> _logger;
     private readonly IConfiguration _configuration;
 
@@ -34,7 +35,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
         INewsletterSubscriberRepository repository,
         IUnitOfWork unitOfWork,
         ITypedEmailService typedEmailService,
-        IApplicationDbContext dbContext,
+        CommunicationsDbContext dbContext,
         ILogger<SubscribeToNewsletterCommandHandler> logger,
         IConfiguration configuration)
     {

@@ -9,6 +9,7 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Modules.Identity.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): IdentityDbContext
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdatePreferredMetroAreas;
 
 /// <summary>
@@ -20,13 +21,13 @@ namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdatePreferr
 public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<UpdateUserPreferredMetroAreasCommand>
 {
     private readonly IUserRepository _userRepository;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly IdentityDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateUserPreferredMetroAreasCommandHandler> _logger;
 
     public UpdateUserPreferredMetroAreasCommandHandler(
         IUserRepository userRepository,
-        IApplicationDbContext dbContext,
+        IdentityDbContext dbContext,
         IUnitOfWork unitOfWork,
         ILogger<UpdateUserPreferredMetroAreasCommandHandler> logger)
     {
@@ -139,8 +140,8 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
                 // We cannot modify shadow navigation from domain layer - must use EF Core's API
                 // This is the CORRECT way to handle many-to-many with shadow properties per ADR-009
                 // Cast to AppDbContext to access Entry() method (infrastructure layer detail)
-                var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
-                    ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+                var dbContext = _dbContext
+                    ;
 
                 _logger.LogInformation(
                     "UpdatePreferredMetroAreas: Using EF Core ChangeTracker API to update shadow navigation - UserId={UserId}",

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using LankaConnect.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): AppDbContext direct
 namespace LankaConnect.Host.AllInOne.Services.Validation;
 
 /// <summary>
@@ -32,7 +33,7 @@ public class EnumSyncValidator : IHostedService
         {
             // Create a scope to resolve scoped IApplicationDbContext
             using var scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
             // Validate EventCategory enum
             await ValidateEventCategoryAsync(dbContext, cancellationToken);
@@ -52,7 +53,7 @@ public class EnumSyncValidator : IHostedService
         return Task.CompletedTask;
     }
 
-    private async Task ValidateEventCategoryAsync(IApplicationDbContext applicationDbContext, CancellationToken cancellationToken)
+    private async Task ValidateEventCategoryAsync(AppDbContext applicationDbContext, CancellationToken cancellationToken)
     {
         var dbContext = applicationDbContext as DbContext;
         if (dbContext == null)

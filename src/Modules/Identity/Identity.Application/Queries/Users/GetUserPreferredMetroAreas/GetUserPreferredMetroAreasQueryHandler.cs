@@ -10,6 +10,7 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Modules.Identity.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): IdentityDbContext
 namespace LankaConnect.Modules.Identity.Application.Queries.Users.GetUserPreferredMetroAreas;
 
 /// <summary>
@@ -20,13 +21,13 @@ namespace LankaConnect.Modules.Identity.Application.Queries.Users.GetUserPreferr
 public class GetUserPreferredMetroAreasQueryHandler : IQueryHandler<GetUserPreferredMetroAreasQuery, IReadOnlyList<MetroAreaDto>>
 {
     private readonly IUserRepository _userRepository;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly IdentityDbContext _dbContext;
     private readonly IMapper _mapper;
     private readonly ILogger<GetUserPreferredMetroAreasQueryHandler> _logger;
 
     public GetUserPreferredMetroAreasQueryHandler(
         IUserRepository userRepository,
-        IApplicationDbContext dbContext,
+        IdentityDbContext dbContext,
         IMapper mapper,
         ILogger<GetUserPreferredMetroAreasQueryHandler> logger)
     {
@@ -80,8 +81,8 @@ public class GetUserPreferredMetroAreasQueryHandler : IQueryHandler<GetUserPrefe
                 // Phase 6A.9 FIX: Access shadow navigation directly using EF.Property<>
                 // The domain's _preferredMetroAreaIds collection is not synchronized on load
                 // Infrastructure layer manages shadow navigation per ADR-009
-                var efDbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
-                    ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+                var efDbContext = _dbContext
+                    ;
 
                 // Load shadow navigation if not already tracked
                 var metroAreasCollection = efDbContext.Entry(user).Collection("_preferredMetroAreaEntities");

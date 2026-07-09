@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 // Phase 6A.99: Email failure detail persistence imports
+using LankaConnect.Modules.Communications.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): CommunicationsDbContext
 namespace LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 
 /// <summary>
@@ -357,13 +358,13 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
     private async Task LoadMetricsFromDatabaseAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CommunicationsDbContext>();
 
         // Load metrics for today (most relevant for dashboard)
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var startDate = today.AddDays(-7); // Load last 7 days for historical context
 
-        var records = await ((DbContext)dbContext).Set<EmailMetricRecord>()
+        var records = await dbContext.Set<EmailMetricRecord>()
             .Where(m => m.MetricDate >= startDate)
             .ToListAsync(cancellationToken);
 
@@ -395,14 +396,14 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
     /// <summary>
     /// Phase 6A.99: Load recent failure details from database on startup
     /// </summary>
-    private async Task LoadFailureDetailsFromDatabaseAsync(IApplicationDbContext dbContext, CancellationToken cancellationToken)
+    private async Task LoadFailureDetailsFromDatabaseAsync(CommunicationsDbContext dbContext, CancellationToken cancellationToken)
     {
         try
         {
             var encryptionService = _scopeFactory.CreateScope().ServiceProvider.GetService<IEmailEncryptionService>();
             var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
 
-            var recentFailures = await ((DbContext)dbContext).Set<EmailFailureDetail>()
+            var recentFailures = await dbContext.Set<EmailFailureDetail>()
                 .Where(f => f.Timestamp >= thirtyDaysAgo && f.ExpiresAt > DateTime.UtcNow)
                 .OrderByDescending(f => f.Timestamp)
                 .Take(MaxFailureRecords)
@@ -464,7 +465,7 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
         try
         {
             using var scope = _scopeFactory.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<CommunicationsDbContext>();
 
             // Flush metrics
             if (hasMetrics)
@@ -480,13 +481,13 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
                     try
                     {
                         // Get or create record for today's date and this template
-                        var existingRecord = await ((DbContext)dbContext).Set<EmailMetricRecord>()
+                        var existingRecord = await dbContext.Set<EmailMetricRecord>()
                             .FirstOrDefaultAsync(m => m.MetricDate == today && m.TemplateName == templateName);
 
                         if (existingRecord == null)
                         {
                             existingRecord = EmailMetricRecord.Create(today, templateName);
-                            ((DbContext)dbContext).Set<EmailMetricRecord>().Add(existingRecord);
+                            dbContext.Set<EmailMetricRecord>().Add(existingRecord);
                         }
 
                         // Merge pending updates
@@ -517,7 +518,7 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
                 FlushFailureDetailsToDatabaseSync(scope, dbContext);
             }
 
-            await dbContext.CommitAsync();
+            await dbContext.SaveChangesAsync();
             _logger.LogDebug("[Phase 6A.89/6A.99] Metrics and failure details flushed to database successfully");
         }
         catch (Exception ex)
@@ -529,7 +530,7 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
     /// <summary>
     /// Phase 6A.99: Flush pending failure details to database with email encryption
     /// </summary>
-    private void FlushFailureDetailsToDatabaseSync(IServiceScope scope, IApplicationDbContext dbContext)
+    private void FlushFailureDetailsToDatabaseSync(IServiceScope scope, CommunicationsDbContext dbContext)
     {
         if (_pendingFailureDetails.IsEmpty)
             return;
@@ -567,7 +568,7 @@ public class DatabaseEmailMetrics : IEmailMetrics, IHostedService, IDisposable
 
             if (detailsToSave.Count > 0)
             {
-                ((DbContext)dbContext).Set<EmailFailureDetail>().AddRange(detailsToSave);
+                dbContext.Set<EmailFailureDetail>().AddRange(detailsToSave);
                 _logger.LogInformation("[Phase 6A.99] Queued {Count} failure details for database persistence", detailsToSave.Count);
             }
         }

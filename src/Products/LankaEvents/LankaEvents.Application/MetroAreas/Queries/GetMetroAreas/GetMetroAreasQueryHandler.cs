@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f mirror: LankaEventsDbContext
 namespace LankaConnect.SharedKernel.Geo.MetroAreas.Queries.GetMetroAreas;
 
 /// <summary>
@@ -35,13 +36,13 @@ public class GetMetroAreasQueryHandler : IQueryHandler<GetMetroAreasQuery, IRead
         Priority = CacheItemPriority.High // Reference data rarely changes
     };
 
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IMapper _mapper;
     private readonly IMemoryCache _cache;
     private readonly ILogger<GetMetroAreasQueryHandler> _logger;
 
     public GetMetroAreasQueryHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IMapper mapper,
         IMemoryCache cache,
         ILogger<GetMetroAreasQueryHandler> logger)

@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Identity.Application\Identity.Application.csproj" />
+    <!-- Wave 6.5.f mirror (2026-07-09 Day 4): reverse-direction PR to Identity.Application DELETED. Identity.Infrastructure has zero usings of Identity.Application types — the reverse edge was false. Removal opens Identity.Application → Identity.Infrastructure clean-direction (matches Forms/LankaEvents/Communications). -->
     <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
     <!--
       Wave 4.6.c.5 TRANSITIONAL EDGES (2026-06-24). The 4 moved security

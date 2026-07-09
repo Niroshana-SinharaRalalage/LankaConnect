@@ -27,6 +27,10 @@
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
     <ProjectReference Include="..\Identity.Domain\Identity.Domain.csproj" />
+    <!-- Wave 6.5.f mirror (2026-07-09 Day 4): clean-direction PR to
+         Identity.Infrastructure after the Infra→App reverse edge was found
+         false + dropped. Enables handlers to inject IdentityDbContext directly. -->
+    <ProjectReference Include="..\Identity.Infrastructure\Identity.Infrastructure.csproj" />
     <!-- Wave 6.5.c: NotificationsDbContext type reference needed by the 3 handlers
          (AdminUpgradeUser, ApproveRoleUpgrade, RejectRoleUpgrade) that call
          _unitOfWork.CommitAsync(new DbContext[] { _notificationsContext }, ct).

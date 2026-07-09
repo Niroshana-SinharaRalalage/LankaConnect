@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): CommunicationsDbContext
 namespace LankaConnect.Host.AllInOne.BackgroundServices;
 
 /// <summary>
@@ -88,12 +89,12 @@ public class EmailFailureCleanupService : BackgroundService
         try
         {
             using var scope = _scopeFactory.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<CommunicationsDbContext>();
 
             var now = DateTime.UtcNow;
 
             // Count expired records first
-            var expiredCount = await ((DbContext)dbContext).Set<EmailFailureDetail>()
+            var expiredCount = await dbContext.Set<EmailFailureDetail>()
                 .Where(f => f.ExpiresAt < now)
                 .CountAsync(cancellationToken);
 
@@ -108,7 +109,7 @@ public class EmailFailureCleanupService : BackgroundService
                 expiredCount);
 
             // Use ExecuteDeleteAsync for efficient bulk deletion (EF Core 7+)
-            var deletedCount = await ((DbContext)dbContext).Set<EmailFailureDetail>()
+            var deletedCount = await dbContext.Set<EmailFailureDetail>()
                 .Where(f => f.ExpiresAt < now)
                 .ExecuteDeleteAsync(cancellationToken);
 

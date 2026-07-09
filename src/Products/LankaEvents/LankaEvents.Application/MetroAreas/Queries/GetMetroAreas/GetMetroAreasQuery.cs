@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.SharedKernel.Geo.MetroAreas.Common;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f mirror: LankaEventsDbContext
 namespace LankaConnect.SharedKernel.Geo.MetroAreas.Queries.GetMetroAreas;
 
 /// <summary>

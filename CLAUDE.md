@@ -40,32 +40,77 @@ If documents conflict: STOP, request architect review. Do not pick a side.
 
 **Day 4 slot C sub-slice labels** (Consult #14 PASS B `IApplicationDbContext` teardown; architect called these "6.5.g.0..7" — translate to plan-conformant labels below):
 
-- **4C.a** — preamble ash-sweep (delete dead types + dead-using sweep)
-- **4C.b** — Business/Service/Review orphan cleanup (Consult #12 Option D follow-through)
-- **4C.c** — create `CommunicationsDbContext` + relocate 3 email configs (BLOCKS 4C.f)
-- **4C.d** — LankaEvents 10 DbSets → `LankaEventsDbContext` (Metro+Templates, SignUp, Registration sub-sub-slices)
-- **4C.e** — `User` → `IdentityDbContext` (~50 sites)
-- **4C.f** — Communications 3 DbSets → `CommunicationsDbContext` callers (4 sites, depends on 4C.c)
-- **4C.g** — `ReferenceValue` → `AppDbContext` direct (5 sites)
-- **4C.h** — delete `IApplicationDbContext` + ArchTest forbidden-type rule + full `Run-Wave9` smoke
+- **4C.a** — preamble ash-sweep (delete dead types + dead-using sweep) ✅ CLOSED 2026-07-07
+- **4C.b** — Business/Service/Review orphan cleanup (Consult #12 Option D follow-through) ✅ CLOSED 2026-07-07
+- **4C.c** — create `CommunicationsDbContext` + relocate 3 email configs (BLOCKS 4C.f) ✅ CLOSED 2026-07-07
+- **4C.d** — LankaEvents 10 DbSets → `LankaEventsDbContext` (Metro+Templates, SignUp, Registration sub-sub-slices) ✅ CLOSED 2026-07-08 at commit `2d46557b` (full production-code zero-error milestone)
+- **4C.e** — `User` → `IdentityDbContext` (~50 sites → 6 files after enum) ✅ CLOSED 2026-07-08 as 4C.e.1 (skeleton) + 4C.e.2 (parity test) + 4C.e.3 (caller cutover + empty-Up migration)
+- **4C.f** — Communications 3 DbSets → `CommunicationsDbContext` callers ✅ CLOSED 2026-07-08 (no-op — DbSets already excised in 4C.c; verified `grep -rn "context\.EmailMessages"` returns 0)
+- **4C.g** — `ReferenceValue` → `AppDbContext` direct (5 sites → 1 caller after enum) ✅ CLOSED 2026-07-08
+- **4C.h** — delete `IApplicationDbContext` + ArchTest forbidden-type rule + full `Run-Wave9` smoke — **BLOCKED on Wave 6.5.f** (~40+ `IApplicationDbContext` refs in LankaEvents.Application handlers migrate under Day 5 slot B; ~10 more in Communications.Application / Identity.Application / Media.Infra / LC.Infra / Host DI); closes once ALL injectors are 0.
 
 **Hard rule**: NO new wave labels without ADR + architect approval. If a consult reuses a label for a new concept, translate to the plan-conformant sub-slice label above.
 
+**Sub-slice granularity guardrail (architect ruling 2026-07-09):** 4C.d was over-granulated into `.i–.xiii` sub-sub-slices (13 commits). That is anti-pattern going forward. Cap each 4C.* sub-slice at ONE commit (skeleton + config move + parity test + caller cutover + migration all in a single commit when the scope fits). Sub-sub-slice ID-ing (`.1`, `.2`, `.3`) is permitted only when the sub-slice must physically split across days (architect approves at consult time).
+
 ---
 
-# 🛑 SECTION 0.6: RECENT ARCHITECT RULINGS (2026-07-06)
+# 🛑 SECTION 0.6: RECENT ARCHITECT RULINGS (as of 2026-07-09)
 
 Rulings materially change behavior — refresh these at every session start.
 
-**Consult #12 Option D** — `LankaConnect.Domain.Business` aggregate + all consumers deleted. LankaBusiness product will re-surface in Phase B. Any `Business`/`Service`/`Review` reference in new code is a bug.
+**Consult #12 Option D (2026-07-06)** — `LankaConnect.Domain.Business` aggregate + all consumers deleted. LankaBusiness product will re-surface in Phase B. Any `Business`/`Service`/`Review` reference in new code is a bug.
 
-**Consult #13 Q1 amendment (`[SetsRequiredMembers]` scope)** — `[SetsRequiredMembers]` is permitted on `LegacyBaseEntity` (2 ctors) + non-generic `AggregateRoot` (2 ctors) ONLY. Rationale: those are transitional-bridge ctors whose bodies already assign `Id = Guid.NewGuid()`; the attribute annotates existing truth for the C# 11 required-members analyzer. **Explicitly forbidden elsewhere** — do not add to `Entity<T>`, generic `AggregateRoot<T>`, or any application-layer type. Remove with `LegacyBaseEntity` post-Wave-6.5.
+**Consult #13 Q1 amendment (2026-07-06 — `[SetsRequiredMembers]` scope)** — `[SetsRequiredMembers]` is permitted on `LegacyBaseEntity` (2 ctors) + non-generic `AggregateRoot` (2 ctors) ONLY. Rationale: those are transitional-bridge ctors whose bodies already assign `Id = Guid.NewGuid()`; the attribute annotates existing truth for the C# 11 required-members analyzer. **Explicitly forbidden elsewhere** — do not add to `Entity<T>`, generic `AggregateRoot<T>`, or any application-layer type. Remove with `LegacyBaseEntity` post-Wave-6.5.
 
-**Consult #13 Q2 Money-API operator form** — SharedKernel.Money exposes `+`/`*`/`-`/`>`/`<=` operators + `new Money(decimal, Currency)` constructor. Do NOT add legacy method aliases (`Money.Create`, `.Add`, `.Multiply`, `.IsGreaterThan`) to `SharedKernel.Money`. Rewrite callers to operator form. Same applies going forward.
+**Consult #13 Q2 Money-API operator form (2026-07-06)** — SharedKernel.Money exposes `+`/`*`/`-`/`>`/`<=` operators + `new Money(decimal, Currency)` constructor. Do NOT add legacy method aliases (`Money.Create`, `.Add`, `.Multiply`, `.IsGreaterThan`) to `SharedKernel.Money`. Rewrite callers to operator form. Same applies going forward.
 
-**Consult #14 PASS B (`IApplicationDbContext` teardown)** — 44 consumers of `IApplicationDbContext` migrate to their respective module DbContexts per Consult #7 Delta multi-DbContext plan. Sequenced as 4C.a..h (see Section 0.5). New code MUST NOT inject `IApplicationDbContext` — inject the correct module DbContext (`LankaEventsDbContext`, `IdentityDbContext`, `CommunicationsDbContext`, `AppDbContext` for cross-cutting `ReferenceValue`).
+**Consult #14 PASS B (2026-07-06 — `IApplicationDbContext` teardown)** — 44 consumers of `IApplicationDbContext` migrate to their respective module DbContexts per Consult #7 Delta multi-DbContext plan. Sequenced as 4C.a..h (see Section 0.5). New code MUST NOT inject `IApplicationDbContext` — inject the correct module DbContext (`LankaEventsDbContext`, `IdentityDbContext`, `CommunicationsDbContext`, `AppDbContext` for cross-cutting `ReferenceValue`).
 
-**Consult #15 PASS C — Interface + DTO placement rule (permanent)** — **Interfaces + their DTO signatures live in `Module.Contracts`, never in `Module.Application`.** Any new interface introducing DTO records goes in Contracts. Existing violations (interface + DTOs in `.Application/Contracts/`) get relocated on any touch. This is the third instance of the same shape biting the project ([[feedback-roslyn-analyzer-recurrence-trigger]]); ArchTest rule follows post-sprint. Rule 5j config-relocation audit MANDATORY in commit message for any such move.
+**Consult #15 PASS C — Interface + DTO placement rule (permanent, 2026-07-06)** — **Interfaces + their DTO signatures live in `Module.Contracts`, never in `Module.Application`.** Any new interface introducing DTO records goes in Contracts. Existing violations (interface + DTOs in `.Application/Contracts/`) get relocated on any touch. This is the third instance of the same shape biting the project ([[feedback-roslyn-analyzer-recurrence-trigger]]); ArchTest rule follows post-sprint. Rule 5j config-relocation audit MANDATORY in commit message for any such move.
+
+**Consult #16 (2026-07-08 — 4C.e User caller migration pattern)** — Option C mixed pattern for cycle-constrained callers. Cross-boundary READS route through the Contracts surface (`IIdentityQueries` etc.). Owned-writes stay on module DbContexts. Seeders (`UserSeeder`, `DbInitializer` cross-module orchestrators) physically MOVE — `UserSeeder` into `Identity.Infrastructure/Data/Seeders/`, `DbInitializer` into the host (`LankaConnect.API/Data/`) so it can PR every module without cycles. Host DI construction wires up both contexts. Landed at commit `8465d219`.
+
+**Consult #17 (2026-07-09 — Wave 6.5.f cycle-break)** — LankaEvents.Infrastructure → LankaEvents.Application cycle blocked handler migration to `IMultiContextUnitOfWork`. Fix: **Option A — promote Application-declared interfaces + DTOs consumed by Infrastructure into `<Module>.Contracts/LegacyPromotions/`** (temporary bucket per Consult #17 refinement). Shipped as TWO commits per architect Q2 (one commit per module, single-concern per commit for revertability). Constraints:
+  - Only INTERFACES + DTO records + static shim helpers move to LegacyPromotions. Implementation classes (repos, services) MUST stay in Infrastructure.
+  - `IHostedService` background-service CLASSES stay in Infrastructure (no interface promotion needed).
+  - Cycle-break commits ship ZERO runtime change — pure compile-time module-boundary reshape.
+  - Post-cycle-break: DROP `<Module>.Infrastructure → <Module>.Application` PR; the reverse `<Module>.Application → <Module>.Infrastructure` PR is added in the FOLLOWING Wave 6.5.f handler-migration commit (mirror Forms' clean direction).
+  - **Pre-flip grep evidence MANDATORY**: `grep -rn "using LankaConnect.{ModuleNs}.Application" src/{ModulePath}/Infrastructure/` must return zero. Paste result in commit body.
+  - Rule 5j config-relocation audit STILL required in commit body (all moved files listed).
+  - LankaEvents landed at commit `8c912ca1` (11 files promoted). Communications mirror commit pending.
+
+**Day 10 debt (LegacyPromotions cleanup)** — `<Module>.Contracts/LegacyPromotions/` is a TEMPORARY BUCKET. Day 10 (2026-07-15) legacy-deletion pass splits each LegacyPromotions folder into domain-specific folders (`Contracts/Repositories/`, `Contracts/Services/`, `Contracts/DTOs/`) alongside the legacy csproj deletion. TRACEABILITY_MATRIX.md row pending. Do NOT forget.
+
+---
+
+# 🛑 SECTION 0.7: SPRINT-DAY DISCIPLINE DELTA (Days 2-6 vs Day 7+)
+
+**Two-week bulk-move sprint (2026-07-06 → 2026-07-19) has a discipline bypass window per `docs/MASTER_TODO_SPRINT_TWO_WEEK_BULK_MOVE.md` §"What Breaks During Sprint" + §"Sprint Discipline Reminders".**
+
+**Days 2-6 (2026-07-07 → 2026-07-11) — BYPASSED:**
+- Rule 5j.4 handler-audit line: SUSPENDED (do NOT add `T-triggers:` / `S-class:` lines to commit bodies).
+- PR-validation CI gate: BYPASSED via admin merge.
+- Migration snapshot integrity: DEGRADED (Rule 5c staging-smoke deferred to Day 6 develop-merge).
+- Unit tests: RED tolerated.
+- develop: RED tolerated (bulk-move/integration is the sprint-active branch).
+
+**Days 2-6 commit-body annotation (REQUIRED substitute)**:
+```
+Sprint-Day: <N> — <plan slot reference, e.g. "Day 4 slot C sub-slice 4C.e.3">
+
+Discipline bypass: Rule 5j.4 SUSPENDED Days 2-6 per sprint bible.
+```
+
+**Rule 5j config-relocation audit** — STILL MANDATORY every commit that relocates a config/interface/DTO file, regardless of sprint day. Include old-path → new-path table + delta with fixes.
+
+**Day 7+ (2026-07-12 onward) — DISCIPLINE BACK ON:**
+- Rule 5j.4 T-triggers + S-class lines resume in every commit body.
+- Rule 5c staging-smoke resumes as pre-merge gate.
+- ArchTest gate resumes.
+- PR-validation gate resumes.
+
+**Fail-state trigger:** if `bulk-move/integration` not merged to `develop` by Day 6 EOD (2026-07-11 18:00 UTC) → sprint FAILS, invoke Consult #10 for Consult #8 12-16 wk plan transition.
 
 ---
 
@@ -744,6 +789,8 @@ Every behavior-touching wave gets `docs/MASTER_TODO_WAVE_<N>.md` with 4 mandator
 
 **Remember: This file is LAW. Follow it without exception. If something is unclear, ASK the user.**
 
-**Last Updated**: 2026-07-06 — Added SECTION 0.5 (Wave label lexicon — binding, prevents label collisions after "Wave 6.5.g" was accidentally reused mid-session) + SECTION 0.6 (Recent architect rulings: Consult #12 Option D Business delete, Consult #13 Q1 `[SetsRequiredMembers]` transitional-bridge scope + Q2 Money-operator form, Consult #14 PASS B `IApplicationDbContext` teardown 4C.a..h, Consult #15 PASS C interface + DTO in `.Contracts` permanent rule).
+**Last Updated**: 2026-07-09 (Sprint Day 4 in-flight) — SECTION 0.5 refreshed with 4C.a-g CLOSED status + 4C.h blocker note + sub-slice granularity guardrail (no more `.i-.xiii` fanout — cap at one commit per sub-slice). SECTION 0.6 gained Consult #16 (4C.e User caller Option C mixed pattern — Contracts surface for reads, physical move for cross-module orchestrator seeders) + Consult #17 (Wave 6.5.f cycle-break via `<Module>.Contracts/LegacyPromotions/` temporary bucket, TWO commits per module, mandatory pre-flip grep evidence). NEW SECTION 0.7 codifies the Days 2-6 discipline bypass window (Rule 5j.4 SUSPENDED, T-triggers/S-class OFF, `Sprint-Day: N` commit-body annotation REQUIRED) + Day 7+ resume gate. Day 10 debt row added for LegacyPromotions folder split alongside legacy csproj deletion.
 
-**Previous update**: 2026-06-08 (Section 13 added per founder mandate)
+**Previous updates**:
+- 2026-07-06 — Added SECTION 0.5 (Wave label lexicon binding) + SECTION 0.6 (Consult #12/13/14/15).
+- 2026-06-08 — Section 13 added per founder mandate (Testing Discipline Ruling).

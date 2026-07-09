@@ -1,5 +1,4 @@
-using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Products.LankaEvents.Application.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break (2026-07-09 Day 4)
 using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

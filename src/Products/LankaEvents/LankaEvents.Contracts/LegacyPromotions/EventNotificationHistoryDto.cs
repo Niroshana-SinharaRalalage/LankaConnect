@@ -1,4 +1,4 @@
-namespace LankaConnect.Products.LankaEvents.Application.Common;
+namespace LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: promoted from LankaEvents.Application (2026-07-09 Day 4).
 
 /// <summary>
 /// Phase 6A.61: DTO for event notification history display in Communication tab

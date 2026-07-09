@@ -1,6 +1,6 @@
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-namespace LankaConnect.Products.LankaEvents.Application.Common;
+namespace LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq (2026-07-09 Day 4): promoted from LankaEvents.Application per Consult #15 PASS C.
 
 /// <summary>
 /// Phase 7F-E.4a (architect-approved 2026-05-01): adapts a <see cref="Registration"/>

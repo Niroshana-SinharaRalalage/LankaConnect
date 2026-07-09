@@ -9,7 +9,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LankaEvents.Domain\LankaEvents.Domain.csproj" />
-    <ProjectReference Include="..\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <ProjectReference Include="..\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />
+    <!-- 4C.h prereq / Wave 6.5.f prep (2026-07-09 Day 4): reverse-direction PR
+         to LankaEvents.Application DELETED. Interfaces/DTOs the 7 Infra
+         consumers used were promoted to LankaEvents.Contracts.LegacyPromotions
+         per Consult #15 PASS C + architect ruling Option A. Unlocks
+         LankaEvents.Application → LankaEvents.Infrastructure (mirror Forms
+         module clean direction) for Wave 6.5.f handler migration to
+         IMultiContextUnitOfWork + LankaEventsDbContext. -->
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
 
     <!-- Transitional: legacy LankaConnect.Infrastructure hosts AppDbContext + Repository<T> base

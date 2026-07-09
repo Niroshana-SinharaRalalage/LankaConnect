@@ -1,4 +1,5 @@
 using LankaConnect.Products.LankaEvents.Contracts;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: EventNotificationHistoryDto/EventReminderHistoryDto moved (2026-07-09 Day 4)
 using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

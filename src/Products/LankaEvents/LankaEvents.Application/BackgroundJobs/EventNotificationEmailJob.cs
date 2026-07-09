@@ -5,7 +5,8 @@ using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.BuildingBlocks.Application.Common.Constants;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Application.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
+using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;

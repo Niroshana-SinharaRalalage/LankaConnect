@@ -1,6 +1,6 @@
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-namespace LankaConnect.Products.LankaEvents.Application.Common;
+namespace LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq (2026-07-09 Day 4): promoted from LankaEvents.Application per Consult #15 PASS C.
 
 /// <summary>
 /// Phase 7F-E.1 (architect-approved 2026-05-01): shared projection of a registration

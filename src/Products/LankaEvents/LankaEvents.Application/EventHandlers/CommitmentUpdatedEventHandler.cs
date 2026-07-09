@@ -18,6 +18,7 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: EventExtensions.ProjectEmailLocation/GetDisplayLabel moved (2026-07-09 Day 4)
 namespace LankaConnect.Products.LankaEvents.Application.EventHandlers;
 
 /// <summary>

@@ -1,5 +1,5 @@
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Products.LankaEvents.Application.Repositories;
 using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 using Microsoft.Extensions.Logging;

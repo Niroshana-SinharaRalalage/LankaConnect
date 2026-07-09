@@ -529,7 +529,7 @@ public static class InfrastructureDependencyInjection
 
         // Phase 6A.24: Ticket services for QR code and PDF generation
         services.AddScoped<IQrCodeService, QrCodeService>();
-        services.AddScoped<IPdfTicketService, PdfTicketService>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IPdfTicketService, PdfTicketService>();
         services.AddScoped<ITicketService, TicketService>();
 
         // Phase 6A.141: Ticket QR signature service. HMAC-SHA256 backed by Azure Key Vault

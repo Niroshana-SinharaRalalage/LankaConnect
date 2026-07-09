@@ -80,7 +80,7 @@ public static class LankaEventsModule
         services.AddScoped<IStructuralEditGuard, StructuralEditGuard>();
         services.AddScoped<ISeatAssignmentValidator, SeatAssignmentValidator>();
         services.AddScoped<ILayoutMetrics, LayoutMetrics>();
-        services.AddScoped<ISeatHoldMetrics, SeatHoldMetrics>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.ISeatHoldMetrics, SeatHoldMetrics>();
 
         // W5.3.a1 (2026-06-28): first Infrastructure repo relocated to Products.
         // MetroAreaRepository moved from LankaConnect.SPLIT_PER_ENTITY.Repositories
@@ -96,8 +96,8 @@ public static class LankaEventsModule
         // EventAnalytics + EventViewRecord intentionally deferred: their interfaces
         // remain in LankaConnect.Domain.Analytics and a separate slice (W5.3.b or
         // dedicated cleanup) will move them.
-        services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventReminderRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventReminderRepository>();
-        services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventNotificationHistoryRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventNotificationHistoryRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IEventReminderRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventReminderRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IEventNotificationHistoryRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventNotificationHistoryRepository>();
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketScanLogRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.TicketScanLogRepository>();
 
         // W5.3.b (2026-06-28): 8 Event-finance repositories relocated to Products.

@@ -4,6 +4,8 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
+using LankaConnect.Products.LankaEvents.Application.Common; // (2026-07-09 Day 4)
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 /// <summary>

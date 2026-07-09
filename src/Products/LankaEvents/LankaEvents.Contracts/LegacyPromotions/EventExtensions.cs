@@ -3,7 +3,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
-namespace LankaConnect.Products.LankaEvents.Application.Common;
+namespace LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq (2026-07-09 Day 4): promoted from LankaEvents.Application per Consult #15 PASS C.
 
 /// <summary>
 /// Phase 7C.2: Static labels rendered in email templates next to the event's secondary location.

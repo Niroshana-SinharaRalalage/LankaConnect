@@ -2,8 +2,8 @@ using LankaConnect.Modules.Identity.Contracts;
 using EmailDateTimeHelper = LankaConnect.Modules.Communications.Contracts.Email.Helpers.EmailDateTimeHelper;
 using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Products.LankaEvents.Application.Repositories;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain;

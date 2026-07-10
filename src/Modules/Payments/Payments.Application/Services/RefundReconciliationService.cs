@@ -1,4 +1,3 @@
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
 using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5 // W4.4.c.4: interfaces stay in legacy (4 cross-module consumers; circular ref otherwise)
 using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
@@ -37,7 +36,7 @@ public class RefundReconciliationService : IRefundReconciliationService
     // and the prior W5.D7 stuck-Approved refund (RR 624b07c5) sat there for hours undetected
     // partly because the reconciler couldn't see it without these deps. Non-nullable here
     // forces the DI container to throw at boot if the registration is missing.
-    private readonly LankaConnect.Modules.Payments.Domain.Repositories.IRefundRequestRepository _refundRequestRepository;
+    private readonly LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IRefundRequestRepository _refundRequestRepository;
     private readonly IRefundExecutionService _refundExecutionService;
 
     public RefundReconciliationService(
@@ -45,7 +44,7 @@ public class RefundReconciliationService : IRefundReconciliationService
         IStripePaymentService stripePaymentService,
         IUnitOfWork unitOfWork,
         ILogger<RefundReconciliationService> logger,
-        LankaConnect.Modules.Payments.Domain.Repositories.IRefundRequestRepository refundRequestRepository,
+        LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IRefundRequestRepository refundRequestRepository,
         IRefundExecutionService refundExecutionService)
     {
         _registrationRepository = registrationRepository;

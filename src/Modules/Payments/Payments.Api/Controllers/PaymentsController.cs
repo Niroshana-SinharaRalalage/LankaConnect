@@ -1,5 +1,6 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.7.d.3
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
+using LankaConnect.Modules.Payments.Domain.Repositories; // IStripe* interfaces remain in Payments.Domain
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // W4.4.d.2: 3 repo interfaces moved here
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -11,7 +12,6 @@ using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Products.LankaEvents.Domain;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5
 namespace LankaConnect.Modules.Payments.Api.Controllers;
 
 /// <summary>
@@ -41,7 +41,7 @@ public class PaymentsController : ControllerBase
     // this the dispatcher uses charge.Refunds.Data.FirstOrDefault() and silently mis-routes
     // when a single PI carries multiple refunds of different types (Bug 1: ticket+sponsor
     // on shared PI with operator-UAT registration 8df17ec1 stuck Cancelled).
-    private readonly LankaConnect.Modules.Payments.Domain.Repositories.IRefundRequestRepository _refundRequestRepository;
+    private readonly LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IRefundRequestRepository _refundRequestRepository;
     private readonly StripeOptions _stripeOptions;
     private readonly ILogger<PaymentsController> _logger;
 
@@ -57,7 +57,7 @@ public class PaymentsController : ControllerBase
         ISponsorWebhookHandler sponsorWebhookHandler,
         IAddOnPurchaseWebhookHandler addOnPurchaseWebhookHandler,
         IPackageSponsorWebhookHandler packageSponsorWebhookHandler,
-        LankaConnect.Modules.Payments.Domain.Repositories.IRefundRequestRepository refundRequestRepository,
+        LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IRefundRequestRepository refundRequestRepository,
         IOptions<StripeOptions> stripeOptions,
         ILogger<PaymentsController> logger)
     {
@@ -610,7 +610,7 @@ public class PaymentsController : ControllerBase
     /// <c>8df17ec1-42b5-41ed-808c-d66914e5699d</c> on event ad8903c4 on 2026-05-22.
     ///
     /// Per-refund routing precedence:
-    ///   1. Workflow-line lookup via <see cref="LankaConnect.Modules.Payments.Domain.Repositories.IRefundRequestRepository.GetWorkflowLineByStripeRefundIdAsync"/>
+    ///   1. Workflow-line lookup via <see cref="LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IRefundRequestRepository.GetWorkflowLineByStripeRefundIdAsync"/>
     ///      (authoritative for refunds dispatched through the 6A.148 approval workflow).
     ///   2. Metadata-based switch on <c>refund_type</c> / <c>payment_type</c> (legacy fallback
     ///      for pre-6A.148 direct-Stripe refunds, donation, etc.).

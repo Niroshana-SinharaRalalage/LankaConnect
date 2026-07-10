@@ -1,5 +1,5 @@
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
@@ -7,10 +7,18 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-namespace LankaConnect.Modules.Payments.Infrastructure.Repositories;
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>
 /// Phase 6A.148 — EF Core implementation of <see cref="IRefundRequestRepository"/>.
+///
+/// <para>
+/// Consult #22 (2026-07-10): moved from <c>Payments.Infrastructure.Repositories</c> to
+/// <c>LankaEvents.Infrastructure.Repositories</c> per Consult #21 Q2 (2a) ruling.
+/// Ctor injects <c>LankaEventsDbContext</c> — the module DbContext that owns RefundRequest,
+/// RefundRequestLineItem, and Registration aggregates. Previously injected AppDbContext
+/// (cross-module boundary violation masked by dual-mapping ApplyConfigurationsFromAssembly).
+/// </para>
 ///
 /// Read operations involving the organizer queue use AsNoTracking projections per the
 /// architect's review (read-side repository pattern). Command operations (Approve /
@@ -19,10 +27,10 @@ namespace LankaConnect.Modules.Payments.Infrastructure.Repositories;
 /// </summary>
 public class RefundRequestRepository : IRefundRequestRepository
 {
-    private readonly AppDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly ILogger<RefundRequestRepository> _logger;
 
-    public RefundRequestRepository(AppDbContext context, ILogger<RefundRequestRepository> logger)
+    public RefundRequestRepository(LankaEventsDbContext context, ILogger<RefundRequestRepository> logger)
     {
         _context = context;
         _logger = logger;

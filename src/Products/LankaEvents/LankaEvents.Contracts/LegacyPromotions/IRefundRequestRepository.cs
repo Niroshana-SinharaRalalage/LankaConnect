@@ -1,9 +1,17 @@
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-namespace LankaConnect.Modules.Payments.Domain.Repositories;
+namespace LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions;
 
 /// <summary>
 /// Phase 6A.148 — repository for the refund_requests aggregate-internal entity.
+///
+/// <para>
+/// Consult #22 (2026-07-10) — moved from <c>Payments.Domain.Repositories</c> to
+/// <c>LankaEvents.Contracts.LegacyPromotions</c> per Consult #21 Q2 ruling. RefundRequest is a
+/// LankaEvents-owned aggregate child of Registration; the repository was a cross-module boundary
+/// violation while it lived in Payments.Domain. Day 10 debt: split <c>LegacyPromotions/</c> into
+/// <c>Contracts/Repositories/</c> per Consult #17 end-state.
+/// </para>
 ///
 /// Separate from <c>IRegistrationRepository</c> so the organizer queue can be queried
 /// with AsNoTracking projections without round-tripping through the full Registration

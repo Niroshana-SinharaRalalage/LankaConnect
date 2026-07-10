@@ -1,10 +1,10 @@
 using FluentValidation;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5 // W4.4.c.4: refund service interfaces remain in legacy (avoids circular ref from 4 cross-module consumers).
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g + Consult #22: refund service interfaces + IRefundRequestRepository interface
 using LankaConnect.Modules.Payments.Application.Queries;
 using LankaConnect.Modules.Payments.Application.Services;
 using LankaConnect.Modules.Payments.Contracts;
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo interfaces moved here
-using LankaConnect.Modules.Payments.Infrastructure.Repositories; // W4.4.d.2: 3 repo impls moved here
+using LankaConnect.Modules.Payments.Domain.Repositories; // IStripeCustomerRepository + IStripeWebhookEventRepository (still in Payments.Domain)
+using LankaConnect.Modules.Payments.Infrastructure.Repositories; // Stripe* repo impls remain here
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -62,13 +62,12 @@ public static class PaymentsModule
         services.AddSingleton<IRefundLineDispatcher, RefundLineDispatcher>();
         services.AddScoped<IRefundTotalCalculator, RefundTotalCalculator>();
 
-        // Wave 4.4.d.2 (2026-06-23): 3 repository registrations relocated from
-        // LankaConnect.Infrastructure.DependencyInjection alongside the physical
-        // file move into Payments.Domain (interfaces) + Payments.Infrastructure
-        // (impls). Mirrors the W5.4.d.2 CommunicationsModule repository pattern.
+        // Wave 4.4.d.2 (2026-06-23): Stripe repository registrations.
+        // Consult #22 (2026-07-10): IRefundRequestRepository registration REMOVED —
+        // interface + impl relocated to LankaEvents.Contracts/LegacyPromotions + LankaEvents.Infrastructure
+        // (cross-module boundary correction). Registered by LankaEventsModule instead.
         services.AddScoped<IStripeCustomerRepository, StripeCustomerRepository>();
         services.AddScoped<IStripeWebhookEventRepository, StripeWebhookEventRepository>();
-        services.AddScoped<IRefundRequestRepository, RefundRequestRepository>();
 
         return services;
     }

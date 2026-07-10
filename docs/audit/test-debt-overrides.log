@@ -98,3 +98,7 @@ Reason: Sprint Days 2-6 bypass; docs-only commit.
 2026-07-10 — Consult #21 Q3 audit push (97396689)
 Bypass: git push --no-verify
 Reason: Sprint Days 2-6 bypass; docs-only commit.
+
+2026-07-10 — Consult #22 Category B relocation push (66b450df)
+Bypass: git push --no-verify
+Reason: Sprint Days 2-6 bypass; namespace-move + DI-rewire (T7 no test trigger per §13.1).

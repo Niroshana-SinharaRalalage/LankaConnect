@@ -91,6 +91,11 @@ public static class LankaEventsModule
         services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.IFormResponseExporter,
             LankaConnect.Products.LankaEvents.Application.Common.Export.FormResponseExporterFacade>();
 
+        // Consult #22 (2026-07-10): IRefundRequestRepository moved from Payments to LankaEvents
+        // per Consult #21 Q2 (2a). Impl uses LankaEventsDbContext (was AppDbContext in Payments.Infra).
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IRefundRequestRepository,
+            LankaConnect.Products.LankaEvents.Infrastructure.Repositories.RefundRequestRepository>();
+
         // W5.3.a1 (2026-06-28): first Infrastructure repo relocated to Products.
         // MetroAreaRepository moved from LankaConnect.SPLIT_PER_ENTITY.Repositories
         // to Products/LankaEvents.Infrastructure/Repositories. Same AppDbContext, same

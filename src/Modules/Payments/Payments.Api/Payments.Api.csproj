@@ -23,6 +23,9 @@
          DI registrations relocated from LankaConnect.Infrastructure. -->
     <ProjectReference Include="..\Payments.Infrastructure\Payments.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+    <!-- Wave 6.5.g Day 5 (2026-07-10): IRefundReconciliationService promoted to
+         LE.Contracts.LegacyPromotions. RefundReconciliationController uses it. -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

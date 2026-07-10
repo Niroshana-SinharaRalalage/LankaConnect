@@ -4,8 +4,7 @@ using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.BuildingBlocks.Application.Common.Constants;
 using EmailDateTimeHelper = LankaConnect.Modules.Communications.Contracts.Email.Helpers.EmailDateTimeHelper;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: EventExtensions moved (2026-07-09 Day 4)
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

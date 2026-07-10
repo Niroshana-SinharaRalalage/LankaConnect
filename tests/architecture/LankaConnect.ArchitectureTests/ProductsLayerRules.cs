@@ -383,12 +383,14 @@ public sealed class ProductsLayerRules
     /// Rule 5 legacy-Infrastructure services (14) and LankaEventsDbContext extraction.
     /// One coherent Wave 6.5 slice.
     /// </remarks>
-    [Fact(Skip = "Wave 6.5 target — 11 Payments.Application services + event handlers " +
-                 "directly reference Products.LankaEvents.Application. Cleanup via " +
-                 "integration events / outbox per blueprint §7.4 / D5. Structural twin " +
-                 "of Rule 5 debt. Tracked: Wave 6.X.W in MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md. " +
-                 "Un-skip when violations are resolved as part of Wave 6.5 Outbox cutover.")]
+    [Fact]
     [Trait("Category", "ArchTest")]
+    // Wave 6.5.g Day 5 (2026-07-10): UN-SKIPPED. 12 Payments.Application types that
+    // reached Products.LankaEvents.Application internals were rewired through
+    // LankaEvents.Contracts.LegacyPromotions per Consult #15 PASS C. Payments.Application
+    // → LankaEvents.Application PR DELETED. Full integration-event dependency inversion
+    // (Wave 6.5.g §Acceptance criteria original scope) deferred to Phase B — pragmatic
+    // Contracts-promotion path unblocks Day 6 develop-merge without violating Rule 9b.
     public void Rule9b_PaymentsApplication_DoesNotReferenceProducts_LankaEvents_Internals()
     {
         var paymentsApplication = typeof(LankaConnect.Modules.Payments.Application.AssemblyMarker).Assembly;

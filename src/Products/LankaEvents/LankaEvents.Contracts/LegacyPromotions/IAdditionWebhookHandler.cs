@@ -1,4 +1,4 @@
-namespace LankaConnect.Products.LankaEvents.Application.Services;
+namespace LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5 (2026-07-10): promoted per Consult #15 PASS C — webhook handler interfaces belong in Contracts (final home Payments.Contracts in Phase B).
 
 /// <summary>
 /// Handles Stripe webhook events for add-only attendee (addition) payments.

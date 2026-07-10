@@ -13,6 +13,7 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5: refund interfaces promoted
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CancelRsvp;
 
 public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, CancelRsvpResult>

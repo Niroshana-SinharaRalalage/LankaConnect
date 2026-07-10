@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.Products.LankaEvents.Application.Services;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5
 namespace LankaConnect.Modules.Payments.Api.Controllers;
 
 /// <summary>

@@ -1,4 +1,4 @@
-namespace LankaConnect.Products.LankaEvents.Application.Services;
+namespace LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5 (2026-07-10): promoted per Consult #15 PASS C — interfaces belong in Contracts. Interfaces are Payments-domain concepts (final home is Payments.Contracts in Phase B).
 
 /// <summary>
 /// Phase 6A.148.W5.6.A — single source of truth for the attendee-facing GRAND TOTAL

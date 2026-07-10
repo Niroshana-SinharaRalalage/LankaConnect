@@ -48,7 +48,8 @@
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
     <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
-    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <!-- Wave 6.5.g Day 5 (2026-07-10): PR to LankaEvents.Application DELETED. 12 Payments.Application handlers/services previously reached Rule 9b-flagged types (6 refund interfaces + Renderer + Assembler) directly; those types now live in LankaEvents.Contracts.LegacyPromotions (Consult #15 PASS C). Rule 9b un-skip candidate. -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />
     <!-- Day 4 slot C sub-slice 4C.d.iv (2026-07-06): PaymentCompletedEventHandler +
          RegistrationPendingPaymentEventHandler consume EmailDateTimeHelper from
          Communications.Contracts.Email.Helpers. -->

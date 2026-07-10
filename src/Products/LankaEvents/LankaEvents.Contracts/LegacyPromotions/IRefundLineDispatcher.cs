@@ -1,5 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
-namespace LankaConnect.Products.LankaEvents.Application.Services;
+namespace LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5 (2026-07-10): promoted per Consult #15 PASS C — interfaces belong in Contracts. Interfaces are Payments-domain concepts (final home is Payments.Contracts in Phase B).
 
 /// <summary>
 /// Phase 6A.148.W5.D2 — per-line Stripe dispatcher that runs each refund line in its

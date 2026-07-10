@@ -1,13 +1,13 @@
-namespace LankaConnect.Products.LankaEvents.Application.Services;
+namespace LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5 (2026-07-10): promoted per Consult #15 PASS C — webhook handler interfaces belong in Contracts (final home Payments.Contracts in Phase B).
 
 /// <summary>
-/// Handles Stripe webhook events for sponsor payments.
+/// Handles Stripe webhook events for collection payments.
 /// Phase 0: Placeholder interface — implementation will be added in Phase 3D.
 /// </summary>
-public interface ISponsorWebhookHandler
+public interface ICollectionWebhookHandler
 {
     /// <summary>
-    /// Handles checkout.session.completed for sponsor payments.
+    /// Handles checkout.session.completed for collection payments.
     /// </summary>
     Task HandleCheckoutCompletedAsync(
         string sessionId,
@@ -17,7 +17,7 @@ public interface ISponsorWebhookHandler
         CancellationToken ct = default);
 
     /// <summary>
-    /// Handles checkout.session.expired for sponsor payments.
+    /// Handles checkout.session.expired for collection payments.
     /// </summary>
     Task HandleCheckoutExpiredAsync(
         string sessionId,
@@ -26,8 +26,8 @@ public interface ISponsorWebhookHandler
         CancellationToken ct = default);
 
     /// <summary>
-    /// Phase 6A.136E: Handles charge.refunded for sponsor payments.
-    /// Marks the sponsor as Refunded when Stripe processes a refund.
+    /// Phase 6A.136E: Handles charge.refunded for collection payments.
+    /// Marks the collection as Refunded when Stripe processes a refund.
     /// </summary>
     Task HandleChargeRefundedAsync(
         string paymentIntentId,

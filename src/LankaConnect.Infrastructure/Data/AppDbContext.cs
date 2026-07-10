@@ -92,11 +92,12 @@ public class AppDbContext : DbContext
     public DbSet<EmailFailureDetail> EmailFailureDetails => Set<EmailFailureDetail>();
     public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup> EmailGroups => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup>();
 
-    // Consult #20 (2026-07-10): Badge + EventBadge Ignore<>()d on AppDbContext (routed via
-    // LankaEventsDbContext instead). Existing AppDbContext callers migrated in ca5431d9 caller
-    // migration. BadgeSeeder + DbInitializer still take AppDbContext but Badge access must
-    // go through LankaEventsDbContext — routed via _lankaEventsContext at all call sites.
-    // Removed here to break EF's DbSet-convention discovery cascade.
+    // Consult #21 backlog: Badge + EventBadge stay on AppDbContext (BadgeConfiguration lives
+    // in LC.Infra/Data/Configurations/; relocation to LankaEventsDbContext deferred pending
+    // config file move + BadgeLocationConfig VO handling). BadgeSeeder + DbInitializer route
+    // Badge access via _context (AppDbContext).
+    public DbSet<Badge> Badges => Set<Badge>();
+    public DbSet<EventBadge> EventBadges => Set<EventBadge>();
 
     // Stripe Customer + Webhook Event DbSets removed Day 4 slot C sub-slice
     // 4C.d.vii (2026-07-06). Types live in Payments.Infrastructure.Entities;
@@ -136,6 +137,11 @@ public class AppDbContext : DbContext
     public DbSet<WhatsAppTemplate> WhatsAppTemplates => Set<WhatsAppTemplate>();
     public DbSet<UserWhatsAppPreferences> UserWhatsAppPreferences => Set<UserWhatsAppPreferences>();
     public DbSet<WhatsAppWebhookEvent> WhatsAppWebhookEvents => Set<WhatsAppWebhookEvent>();
+
+    // Consult #23 (2026-07-10): Global Properties<Currency>.HaveConversion removed —
+    // over-applied to non-Currency-typed properties named "Currency". Per-site
+    // .HasConversion<CurrencyValueConverter>() in each OwnsOne<Money> block provides
+    // the surgical fix.
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -203,10 +209,14 @@ public class AppDbContext : DbContext
         // + AddOnPurchase configurations moved to LankaEvents.Infrastructure (registered
         // above via the assembly sweep).
 
-        // Consult #20 (2026-07-10): Badge + EventBadge configurations DELETED from
-        // AppDbContext. Both types are now Ignore<>()d on this model — LankaEventsDbContext
-        // owns them (configs + FK Restrict semantic all defined in LankaEvents.Infrastructure/
-        // Configurations/BadgeConfiguration.cs + EventBadgeConfiguration.cs).
+        // Consult #21 backlog: Badge + EventBadge stay on AppDbContext for now (config move
+        // to LankaEventsDbContext pending). Apply BadgeConfiguration + restore FK Restrict.
+        modelBuilder.ApplyConfiguration(new BadgeConfiguration());
+        modelBuilder.Entity<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge>()
+            .HasOne(eb => eb.Badge)
+            .WithMany()
+            .HasForeignKey(eb => eb.BadgeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Wave 6.5.e: EventOrganizerContact + EventSlugAlias configurations moved to
         // LankaEvents.Infrastructure (registered above via the assembly sweep).
@@ -603,10 +613,15 @@ public class AppDbContext : DbContext
             }
         }
 
-        // LankaEvents.Domain — Ignore EVERYTHING (entities AND VOs). AppDbContext no longer
-        // owns any LankaEvents type; LankaEventsDbContext owns them exclusively.
+        // LankaEvents.Domain — Ignore ALL entities + VOs EXCEPT Badge + EventBadge (Consult
+        // #21 backlog keeps them on AppDbContext until BadgeConfiguration + EventBadgeConfiguration
+        // relocation).
+        var badgeType = typeof(LankaConnect.Products.LankaEvents.Domain.Badges.Badge);
+        var eventBadgeType = typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge);
+        var badgeLocationConfigType = typeof(LankaConnect.Products.LankaEvents.Domain.Badges.BadgeLocationConfig);
         foreach (var type in productsAssembly.GetTypes().Where(t => t.IsClass && !t.IsAbstract))
         {
+            if (type == badgeType || type == eventBadgeType || type == badgeLocationConfigType) continue;
             try { modelBuilder.Ignore(type); }
             catch { }
         }

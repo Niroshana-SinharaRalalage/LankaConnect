@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Infrastructure.ValueConverters; // Consult #23: ConfigureMoneyProperties
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.SharedKernel.Money;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -93,7 +94,7 @@ public class RegistrationAdditionConfiguration : IEntityTypeConfiguration<Regist
 
             money.Property(m => m.Currency)
                 .HasColumnName("previous_total_price_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3)
                 .IsRequired();
         });
@@ -108,7 +109,7 @@ public class RegistrationAdditionConfiguration : IEntityTypeConfiguration<Regist
 
             money.Property(m => m.Currency)
                 .HasColumnName("new_total_price_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3)
                 .IsRequired();
         });
@@ -123,7 +124,7 @@ public class RegistrationAdditionConfiguration : IEntityTypeConfiguration<Regist
 
             money.Property(m => m.Currency)
                 .HasColumnName("additional_amount_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3)
                 .IsRequired();
         });

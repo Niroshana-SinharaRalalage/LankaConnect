@@ -183,40 +183,42 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
         // Configure TicketPrice as JSONB for consistency with Pricing (Epic 2 Phase 2 - legacy single pricing)
         // Converted from separate columns to ToJson to resolve EF Core shared-type conflict with Pricing.AdultPrice
+        // Consult #23 (2026-07-10): inline Currency property conversion — the global
+        // ConfigureConventions Properties<Currency>.HaveConversion doesn't reach into OwnsOne+ToJson
+        // shared-type walks; declare per-property here so EF binds Money(decimal, Currency) ctor.
         builder.OwnsOne(e => e.TicketPrice, money =>
         {
-            money.ToJson("ticket_price");  // Store as JSONB column
+            money.Property(m => m.Amount);   // Explicit binding — required alongside Currency conversion for OwnsOne+ToJson.
+            money.Property(m => m.Currency)
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>();
+            money.ToJson("ticket_price");
         });
 
         // Session 21 + Phase 6D: Configure Pricing as JSONB for dual/group pricing
         // ToJson() automatically serializes Type, AdultPrice, ChildPrice, ChildAgeLimit, and GroupTiers
+        // Consult #23 (2026-07-10): every OwnsOne<Money> needs explicit Property(Amount) +
+        // Property(Currency).HasConversion so EF Core 8 binds Money(decimal, Currency) ctor.
         builder.OwnsOne(e => e.Pricing, pricing =>
         {
-            pricing.ToJson("pricing");  // Store entire Pricing as JSONB column
-
-            // Explicitly configure nested Money types to prevent EF Core shared-type conflict
-            pricing.OwnsOne(p => p.AdultPrice);
-            pricing.OwnsOne(p => p.ChildPrice);
-
-            // Configure GroupTiers collection
+            pricing.ToJson("pricing");
+            pricing.OwnsOne(p => p.AdultPrice, m => { m.Property(x => x.Amount); m.Property(x => x.Currency).HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>(); });
+            pricing.OwnsOne(p => p.ChildPrice, m => { m.Property(x => x.Amount); m.Property(x => x.Currency).HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>(); });
             pricing.OwnsMany(p => p.GroupTiers, tier =>
             {
-                tier.OwnsOne(t => t.PricePerPerson);
+                tier.OwnsOne(t => t.PricePerPerson, m => { m.Property(x => x.Amount); m.Property(x => x.Currency).HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>(); });
             });
         });
 
         // Phase 6A.X: Configure RevenueBreakdown as JSONB
         builder.OwnsOne(e => e.RevenueBreakdown, breakdown =>
         {
-            breakdown.ToJson("revenue_breakdown");  // Store entire breakdown as JSONB
-
-            // Explicitly configure nested Money types to prevent EF Core shared-type conflict
-            breakdown.OwnsOne(b => b.GrossAmount);
-            breakdown.OwnsOne(b => b.SalesTaxAmount);
-            breakdown.OwnsOne(b => b.TaxableAmount);
-            breakdown.OwnsOne(b => b.StripeFeeAmount);
-            breakdown.OwnsOne(b => b.PlatformCommission);
-            breakdown.OwnsOne(b => b.OrganizerPayout);
+            breakdown.ToJson("revenue_breakdown");
+            breakdown.OwnsOne(b => b.GrossAmount, m => { m.Property(x => x.Amount); m.Property(x => x.Currency).HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>(); });
+            breakdown.OwnsOne(b => b.SalesTaxAmount, m => { m.Property(x => x.Amount); m.Property(x => x.Currency).HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>(); });
+            breakdown.OwnsOne(b => b.TaxableAmount, m => { m.Property(x => x.Amount); m.Property(x => x.Currency).HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>(); });
+            breakdown.OwnsOne(b => b.StripeFeeAmount, m => { m.Property(x => x.Amount); m.Property(x => x.Currency).HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>(); });
+            breakdown.OwnsOne(b => b.PlatformCommission, m => { m.Property(x => x.Amount); m.Property(x => x.Currency).HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>(); });
+            breakdown.OwnsOne(b => b.OrganizerPayout, m => { m.Property(x => x.Amount); m.Property(x => x.Currency).HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>(); });
         });
 
         // Donation Configuration: JSONB value object (C5 Guard: flat primitives only, no nested Money)

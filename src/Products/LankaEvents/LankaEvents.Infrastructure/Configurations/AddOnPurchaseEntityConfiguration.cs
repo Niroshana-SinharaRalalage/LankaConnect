@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Infrastructure.ValueConverters; // Consult #23: ConfigureMoneyProperties
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.SharedKernel.Money;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -70,7 +71,7 @@ public class AddOnPurchaseEntityConfiguration : IEntityTypeConfiguration<AddOnPu
 
             money.Property(m => m.Currency)
                 .HasColumnName("unit_price_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3)
                 .IsRequired();
         });
@@ -85,7 +86,7 @@ public class AddOnPurchaseEntityConfiguration : IEntityTypeConfiguration<AddOnPu
 
             money.Property(m => m.Currency)
                 .HasColumnName("total_amount_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3)
                 .IsRequired();
         });
@@ -115,7 +116,7 @@ public class AddOnPurchaseEntityConfiguration : IEntityTypeConfiguration<AddOnPu
 
             money.Property(m => m.Currency)
                 .HasColumnName("stripe_fee_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 
@@ -127,7 +128,7 @@ public class AddOnPurchaseEntityConfiguration : IEntityTypeConfiguration<AddOnPu
 
             money.Property(m => m.Currency)
                 .HasColumnName("platform_commission_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 
@@ -139,7 +140,7 @@ public class AddOnPurchaseEntityConfiguration : IEntityTypeConfiguration<AddOnPu
 
             money.Property(m => m.Currency)
                 .HasColumnName("organizer_payout_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 

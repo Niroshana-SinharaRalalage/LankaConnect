@@ -119,16 +119,16 @@ public class DbInitializer
     private async Task SeedBadgesAsync()
     {
         // Badge stays on AppDbContext (Consult #20 OUT-OF-SCOPE — Badge DbSet not on LankaEventsDbContext).
-        var existingSystemBadgesCount = await _lankaEventsContext.Badges.CountAsync(b => b.IsSystem);
+        var existingSystemBadgesCount = await _context.Badges.CountAsync(b => b.IsSystem);
         if (existingSystemBadgesCount > 0)
         {
             _logger.LogInformation("Database already contains {Count} system badges. Skipping seed.", existingSystemBadgesCount);
             return;
         }
 
-        var existingTotalBadgesCount = await _lankaEventsContext.Badges.CountAsync();
+        var existingTotalBadgesCount = await _context.Badges.CountAsync();
         _logger.LogInformation("Seeding predefined system badges... (found {Count} existing custom badges)", existingTotalBadgesCount);
-        await BadgeSeeder.SeedAsync(_lankaEventsContext);
+        await BadgeSeeder.SeedAsync(_context);
         _logger.LogInformation("Successfully seeded predefined system badges to the database.");
     }
 

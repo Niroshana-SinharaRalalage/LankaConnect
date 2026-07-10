@@ -100,10 +100,9 @@ public sealed class LankaEventsDbContext : DbContext
     public DbSet<SeatHold> SeatHolds => Set<SeatHold>();
     public DbSet<SeatReservation> SeatReservations => Set<SeatReservation>();
 
-    // Consult #20 (2026-07-10): Badge + EventBadge relocated from AppDbContext.
-    // Physical schema unchanged (badges.badges + badges.event_badges).
-    public DbSet<LankaConnect.Products.LankaEvents.Domain.Badges.Badge> Badges => Set<LankaConnect.Products.LankaEvents.Domain.Badges.Badge>();
-    public DbSet<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge> EventBadges => Set<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge>();
+    // Consult #21 backlog: Badge + EventBadge stay on AppDbContext for now. BadgeConfiguration
+    // still lives in LC.Infra/Data/Configurations/ and can't be applied here without a proper
+    // move. Callers seeding badges route via _context (AppDbContext) in DbInitializer.
 
     // Financial sub-aggregates
     public DbSet<Donation> Donations => Set<Donation>();
@@ -132,6 +131,11 @@ public sealed class LankaEventsDbContext : DbContext
 
     /// <summary>Per-module idempotency-keys table (<c>events.idempotency_keys</c>).</summary>
     public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
+
+    // Consult #23 (2026-07-10): Global Properties<Currency>.HaveConversion attempted but
+    // over-applied to non-Currency properties named "Currency" (TicketingMode enum, etc.).
+    // Per-site money.Property(m => m.Currency).HasConversion<CurrencyValueConverter>() in
+    // each OwnsOne<Money> config provides the surgical fix instead.
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -191,13 +195,18 @@ public sealed class LankaEventsDbContext : DbContext
         // and HasMany(e => e.Badges) and produced 46 API smoke failures on staging
         // before the hotfix. Architect ruling docs/architect-consults/2026-07-04-*.
         //
-        // The far-principal Communications.EmailGroup and Badges.Badge STAY Ignored —
-        // those are cross-module principals owned by other bounded contexts. Junction
-        // FKs (EmailGroupId, BadgeId) remain scalar. Cross-module hydration happens
-        // at the application layer via IEmailGroupRepository / IBadgeRepository per
-        // Blueprint §7.8.
+        // Consult #21 backlog: Badge + EventBadge still owned by AppDbContext (config file
+        // relocation pending). Ignore them here to break EventBadgeConfiguration's discovery
+        // walk (which walks into Badge → BadgeLocationConfig VO chain).
         modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup>();
         modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Badges.Badge>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Badges.BadgeLocationConfig>();
+
+        // Consult #23 (2026-07-10): explicitly Ignore Currency at model level so EF doesn't
+        // walk it as an entity. Per-site HasConversion<CurrencyValueConverter> on Money.Currency
+        // handles the actual persistence.
+        modelBuilder.Ignore<LankaConnect.SharedKernel.Money.Currency>();
 
         base.OnModelCreating(modelBuilder);
     }

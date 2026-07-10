@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Infrastructure.ValueConverters; // Consult #23: ConfigureMoneyProperties
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.SharedKernel.Money;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -206,7 +207,7 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 
             money.Property(m => m.Currency)
                 .HasColumnName("total_price_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3); // ISO 4217 currency codes (USD, LKR, etc.)
         });
 
@@ -219,7 +220,7 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 
             money.Property(m => m.Currency)
                 .HasColumnName("sales_tax_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 
@@ -231,7 +232,7 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 
             money.Property(m => m.Currency)
                 .HasColumnName("stripe_fee_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 
@@ -243,7 +244,7 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 
             money.Property(m => m.Currency)
                 .HasColumnName("platform_commission_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 
@@ -255,7 +256,7 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 
             money.Property(m => m.Currency)
                 .HasColumnName("organizer_payout_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 

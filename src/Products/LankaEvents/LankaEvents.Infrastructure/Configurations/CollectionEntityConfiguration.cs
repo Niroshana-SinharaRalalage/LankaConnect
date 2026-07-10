@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Infrastructure.ValueConverters; // Consult #23: ConfigureMoneyProperties
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.SharedKernel.Money;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -62,7 +63,7 @@ public class CollectionEntityConfiguration : IEntityTypeConfiguration<Collection
 
             money.Property(m => m.Currency)
                 .HasColumnName("amount_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3)
                 .IsRequired();
         });
@@ -92,7 +93,7 @@ public class CollectionEntityConfiguration : IEntityTypeConfiguration<Collection
 
             money.Property(m => m.Currency)
                 .HasColumnName("stripe_fee_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 
@@ -104,7 +105,7 @@ public class CollectionEntityConfiguration : IEntityTypeConfiguration<Collection
 
             money.Property(m => m.Currency)
                 .HasColumnName("platform_commission_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 
@@ -116,7 +117,7 @@ public class CollectionEntityConfiguration : IEntityTypeConfiguration<Collection
 
             money.Property(m => m.Currency)
                 .HasColumnName("organizer_payout_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 

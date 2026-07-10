@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Infrastructure.ValueConverters; // Consult #23: ConfigureMoneyProperties
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.SharedKernel.Money;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -57,7 +58,7 @@ public class SponsorshipPackageEntityConfiguration : IEntityTypeConfiguration<Sp
 
             money.Property(m => m.Currency)
                 .HasColumnName("price_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3)
                 .IsRequired();
         });

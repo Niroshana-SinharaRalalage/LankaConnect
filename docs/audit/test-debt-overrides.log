@@ -120,3 +120,6 @@ Reason: Sprint Days 2-6 bypass; DI wiring changes prep for Consult #20 sweep.
 2026-07-10 — Consult #20 sweep push (a9e3497f)
 Bypass: git push --no-verify
 Reason: Sprint Days 2-6 bypass; Consult #20 ownership boundary hardening lands.
+
+2026-07-10 — Consult #23 CurrencyValueConverter push (89fbc551)
+Bypass: git push --no-verify

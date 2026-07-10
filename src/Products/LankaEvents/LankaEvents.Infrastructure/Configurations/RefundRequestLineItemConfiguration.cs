@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Infrastructure.ValueConverters; // Consult #23: ConfigureMoneyProperties
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
@@ -45,7 +46,7 @@ public class RefundRequestLineItemConfiguration : IEntityTypeConfiguration<Refun
 
             money.Property(m => m.Currency)
                 .HasColumnName("requested_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3)
                 .IsRequired();
         });
@@ -60,7 +61,7 @@ public class RefundRequestLineItemConfiguration : IEntityTypeConfiguration<Refun
 
             money.Property(m => m.Currency)
                 .HasColumnName("approved_currency")
-                .HasConversion<string>()
+                .HasConversion<LankaConnect.BuildingBlocks.Infrastructure.ValueConverters.CurrencyValueConverter>()
                 .HasMaxLength(3);
         });
 

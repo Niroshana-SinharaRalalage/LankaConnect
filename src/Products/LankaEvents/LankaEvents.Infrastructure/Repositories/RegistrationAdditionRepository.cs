@@ -1,5 +1,5 @@
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
+using LankaConnect.Products.LankaEvents.Infrastructure.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -16,13 +16,12 @@ namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 /// Repository implementation for RegistrationAddition operations.
 /// Part of the Add-Only Attendees with Delta Payment feature.
 /// </summary>
-[Wave6_5TransitionalException("Inherits Repository<T> + uses AppDbContext via LankaConnect.Infrastructure.Data; cleared in Wave 6.5 LankaEventsDbContext extraction")]
-public class RegistrationAdditionRepository : Repository<RegistrationAddition>, IRegistrationAdditionRepository
+public class RegistrationAdditionRepository : ProductRepositoryBase<RegistrationAddition>, IRegistrationAdditionRepository
 {
     private readonly ILogger<RegistrationAdditionRepository> _repoLogger;
 
     public RegistrationAdditionRepository(
-        AppDbContext context,
+        LankaEventsDbContext context,
         ILogger<RegistrationAdditionRepository> logger) : base(context)
     {
         _repoLogger = logger;

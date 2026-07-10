@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Infrastructure.Data;                     // 4C.d.xiv: AppDbContext
-using LankaConnect.Infrastructure.Data.Repositories;        // 4C.d.xiv: Repository<T> base
+using LankaConnect.Modules.Identity.Infrastructure.Data;                  // Consult #21 Cat-A: IdentityDbContext
+using LankaConnect.Modules.Identity.Infrastructure.Common;             // Consult #21 Cat-A: IdentityRepositoryBase
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Enums;
@@ -11,12 +11,12 @@ using Serilog.Context;
 
 namespace LankaConnect.Modules.Identity.Infrastructure.Repositories;
 
-public class UserRepository : Repository<User>, IUserRepository
+public class UserRepository : IdentityRepositoryBase<User>, IUserRepository
 {
     private readonly ILogger<UserRepository> _repoLogger;
 
     public UserRepository(
-        AppDbContext context,
+        IdentityDbContext context,
         ILogger<UserRepository> logger) : base(context)
     {
         _repoLogger = logger;

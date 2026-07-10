@@ -109,3 +109,6 @@ Reason: Sprint Days 2-6 bypass; T7 namespace-only + base-class change (no test t
 
 2026-07-10 — Consult #21 Cat-A Communications 3-repo push (48c7b838)
 Bypass: git push --no-verify
+
+2026-07-10 — Consult #21 Cat-A Identity UserRepository push (11da1122)
+Bypass: git push --no-verify

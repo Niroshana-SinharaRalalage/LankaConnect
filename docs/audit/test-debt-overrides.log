@@ -60,3 +60,18 @@ sanctioned by ADR-6.5.f-sln-exclusions.md and Consult #13.5.2 PASS B ruling.
 IApplicationDbContext seam disposition pending Consult #14; Wave 6.5.g will
 close-out. Sprint bible compile-green invariant temporarily broken; explicit
 architect sanction on record.
+
+2026-07-10 — Sprint Day 6 develop merge (bulk-move/integration → develop, merge commit 1f9ed6fd)
+Bypass: git push --no-verify
+Reason: Days 2-6 sprint discipline bypass per CLAUDE.md SECTION 0.7 + sprint bible.
+        b45c5631 / ce766e53 / 8473f4af / 3848d8e9 are Sprint Day 2 bulk-move
+        agent commits (LEAVE BROKEN, compile fixes Day 3.) — T-triggers/S-class
+        annotations were SUSPENDED for Sprint Days 2-6. This is Day 6 EOD merge
+        gate; founder sign-off received in-session; architect approved plan.
+        Rule 5j.4 & PR-validation gate resume Day 7+.
+
+2026-07-10 — Consult #18 workflow-scope commit push (9e1bca30 → develop)
+Bypass: git push --no-verify
+Reason: Same Sprint Days 2-6 bypass window. Prior bulk-move commits
+        (b45c5631/ce766e53/8473f4af/3848d8e9) still lack T-triggers/S-class
+        per bible §What Breaks During Sprint. Rule 5j.4 SUSPENDED.

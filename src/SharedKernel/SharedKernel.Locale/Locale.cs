@@ -94,7 +94,7 @@ public sealed class Locale : ValueObject
     public CultureInfo ToCultureInfo() => CultureInfo.GetCultureInfo(Tag);
 
     /// <inheritdoc />
-    protected override IEnumerable<object?> GetEqualityComponents()
+    public override IEnumerable<object> GetEqualityComponents()
     {
         yield return Tag;
     }

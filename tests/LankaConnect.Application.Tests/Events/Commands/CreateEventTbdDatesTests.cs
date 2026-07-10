@@ -1,10 +1,10 @@
 using LankaConnect.Modules.Identity.Contracts;
 using FluentAssertions;
 using LankaConnect.Modules.Communications.Contracts;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateEvent;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
@@ -16,7 +16,7 @@ using LankaConnect.Modules.Identity.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Tests.Events.Commands;
 

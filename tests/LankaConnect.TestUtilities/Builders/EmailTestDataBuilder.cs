@@ -1,8 +1,8 @@
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.ValueObjects;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Application.Common.DTOs;
-using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.BuildingBlocks.Application.Common.DTOs;
+using UserEmail = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.TestUtilities.Builders;
 

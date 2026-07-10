@@ -1,14 +1,13 @@
 using System.Diagnostics;
 using AutoMapper;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Common.Models;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Models;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.SearchEvents;
 
 /// <summary>

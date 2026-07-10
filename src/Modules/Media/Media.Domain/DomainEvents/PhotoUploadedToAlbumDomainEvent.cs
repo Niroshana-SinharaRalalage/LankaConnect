@@ -1,4 +1,5 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.Contracts;
 
 namespace LankaConnect.Modules.Media.Domain.DomainEvents;
 

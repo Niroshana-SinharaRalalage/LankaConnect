@@ -5,8 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Npgsql;
-
-namespace LankaConnect.Infrastructure.Services.Validation;
+namespace LankaConnect.Host.AllInOne.Services.Validation;
 
 /// <summary>
 /// Phase 8 (post-prod-perf-RCA hygiene) — validates the Npgsql client-side

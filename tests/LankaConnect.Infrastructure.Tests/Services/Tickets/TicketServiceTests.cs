@@ -9,15 +9,15 @@ using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Infrastructure.Services.Tickets;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
@@ -252,7 +252,7 @@ public class TicketServiceTests
             eventId,
             userId,
             1,
-            LankaConnect.Domain.Shared.ValueObjects.Money.Create(50.00m, "USD").Value,
+            LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money.Create(50.00m, "USD").Value,
             new LankaConnect.Products.LankaEvents.Domain.ValueObjects.ContactInfo(
                 "john.doe@example.com",
                 "John",

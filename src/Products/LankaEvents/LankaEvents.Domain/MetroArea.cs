@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-
+using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -17,6 +17,7 @@ public class MetroArea : LegacyBaseEntity
     public bool IsActive { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private MetroArea()
     {
         Name = null!;
@@ -24,6 +25,7 @@ public class MetroArea : LegacyBaseEntity
     }
 
     // Private constructor for controlled instantiation
+    [SetsRequiredMembers]
     private MetroArea(
         Guid id,
         string name,

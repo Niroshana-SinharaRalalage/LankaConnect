@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using LankaConnect.Infrastructure.Data.Migrations.Resources;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -169,7 +169,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Restore each template's pre-7F-A body from the backup table. Idempotent — if the
+            // Restore each template's pre-7F-A body from the backup table. Idempotent � if the
             // backup row is missing (e.g. someone wiped it), the UPDATE simply does nothing.
             foreach (var templateName in TemplateNames)
             {

@@ -1,9 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using Microsoft.Extensions.Logging;
-
-namespace LankaConnect.API.Controllers;
+namespace LankaConnect.Host.AllInOne.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

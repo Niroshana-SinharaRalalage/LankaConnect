@@ -1,12 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using LankaConnect.Domain.ReferenceData.Entities;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace LankaConnect.Infrastructure.Data.Configurations.ReferenceData;
+namespace LankaConnect.Infrastructure.Data.ReferenceData;
 
 /// <summary>
 /// EF Core configuration for unified ReferenceValue entity

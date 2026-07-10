@@ -1,6 +1,5 @@
-using LankaConnect.Domain.Shared.Enums;
-
 namespace LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
 
 /// <summary>
 /// Phase 6A.X: DTO for revenue breakdown showing detailed fee structure
@@ -46,7 +45,7 @@ public record RevenueBreakdownDto
     /// <summary>
     /// Currency for all amounts
     /// </summary>
-    public Currency Currency { get; init; }
+    public Currency Currency { get; init; } = null!;
 
     /// <summary>
     /// Sales tax rate as decimal (e.g., 0.0725 for 7.25%)

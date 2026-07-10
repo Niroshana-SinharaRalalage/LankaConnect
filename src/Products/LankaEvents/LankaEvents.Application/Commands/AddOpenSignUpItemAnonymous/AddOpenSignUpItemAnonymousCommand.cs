@@ -1,5 +1,4 @@
-using LankaConnect.Application.Common.Interfaces;
-
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AddOpenSignUpItemAnonymous;
 
 /// <summary>

@@ -1,5 +1,4 @@
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>

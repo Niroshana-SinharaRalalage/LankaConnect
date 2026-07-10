@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -10,7 +10,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     /// Phase 7D.1 Phase C: Seed volunteer commitment email templates.
     /// Clones html/text/subject from existing signup-commitment templates and relabels
     /// visible "Sign-Up"/"Signed up"/etc wording to volunteer equivalents via targeted
-    /// REGEXP_REPLACE (MEMORY 6A.117 — avoid literal REPLACE on multi-line strings).
+    /// REGEXP_REPLACE (MEMORY 6A.117 � avoid literal REPLACE on multi-line strings).
     /// Handlebars placeholders ({{ListName}}, {{CommitmentItem}}, ...) are preserved
     /// so the existing SignupCommitmentEmailParams contract is reused.
     /// NO File.ReadAllText (MEMORY 6A.129b).

@@ -1,5 +1,4 @@
-using LankaConnect.Domain.Common;
-
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 public class EventDescription : ValueObject

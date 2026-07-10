@@ -1,8 +1,7 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-namespace LankaConnect.API.Controllers;
+namespace LankaConnect.Host.AllInOne.Controllers;
 
 /// <summary>
 /// Temporary diagnostic endpoints for troubleshooting email template issues

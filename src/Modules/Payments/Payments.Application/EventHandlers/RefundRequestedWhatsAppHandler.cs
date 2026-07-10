@@ -1,18 +1,18 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.7.d.2
-using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.SharedKernel.Identity;
+using LankaConnect.BuildingBlocks.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Shared.WhatsApp.Contracts;
+using LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Modules.Payments.Application.EventHandlers;
 
 /// <summary>

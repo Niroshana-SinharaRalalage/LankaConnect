@@ -1,12 +1,12 @@
-using LankaConnect.Application.Common;
-using LankaConnect.Products.LankaEvents.Application.Services;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.EventHandlers;
 
 /// <summary>

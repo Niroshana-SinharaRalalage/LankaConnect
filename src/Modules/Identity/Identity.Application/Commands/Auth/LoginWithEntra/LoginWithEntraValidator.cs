@@ -1,5 +1,4 @@
 using FluentValidation;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 
 /// <summary>

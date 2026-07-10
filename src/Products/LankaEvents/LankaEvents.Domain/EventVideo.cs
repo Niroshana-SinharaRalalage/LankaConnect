@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-
+using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -23,6 +23,7 @@ public class EventVideo : LegacyBaseEntity
     public Guid EventId { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private EventVideo()
     {
         VideoUrl = null!;
@@ -32,6 +33,7 @@ public class EventVideo : LegacyBaseEntity
         Format = null!;
     }
 
+    [SetsRequiredMembers]
     private EventVideo(
         Guid id,
         Guid eventId,

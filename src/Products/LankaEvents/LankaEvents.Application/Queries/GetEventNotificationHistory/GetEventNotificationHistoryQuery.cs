@@ -1,7 +1,7 @@
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventNotificationHistory;
 
 /// <summary>

@@ -1,7 +1,7 @@
 using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Common;

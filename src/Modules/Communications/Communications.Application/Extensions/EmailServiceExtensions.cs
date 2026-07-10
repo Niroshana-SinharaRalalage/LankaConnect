@@ -1,0 +1,276 @@
+using LankaConnect.Modules.Communications.Contracts.Email.Observability;
+using Microsoft.Extensions.Logging;
+
+namespace LankaConnect.Modules.Communications.Contracts.Email.Extensions;
+
+/// <summary>
+/// Phase 6A.100: Email logging and metrics implementations.
+///
+/// Note: ITypedEmailService registration moved to LankaConnect.Infrastructure.DependencyInjection.cs
+/// using InfrastructureTypedEmailService which directly uses AzureEmailService (no bridge pattern).
+///
+/// All handlers now use ITypedEmailService.SendEmailAsync(IEmailParameters).
+/// IEmailService and bridge pattern have been removed.
+/// </summary>
+public static class EmailServiceExtensions
+{
+    // Phase 6A.100: AddTypedEmailServices removed - registration now in Infrastructure.DependencyInjection
+    // Phase 6A.100: AddEmailServiceBridge removed - bridge pattern eliminated
+}
+
+/// <summary>
+/// Default implementation of IEmailLogger using Microsoft.Extensions.Logging.
+/// </summary>
+public class DefaultEmailLogger : IEmailLogger
+{
+    private readonly ILogger<DefaultEmailLogger> _logger;
+
+    public DefaultEmailLogger(ILogger<DefaultEmailLogger> logger)
+    {
+        _logger = logger;
+    }
+
+    public string GenerateCorrelationId()
+    {
+        return Guid.NewGuid().ToString();
+    }
+
+    public void LogEmailSendStart(string correlationId, string templateName, string recipientEmail)
+    {
+        _logger.LogInformation(
+            "[{CorrelationId}] Starting email send: Template={TemplateName}, Recipient={RecipientEmail}",
+            correlationId, templateName, recipientEmail);
+    }
+
+    public void LogEmailSendSuccess(string correlationId, string templateName, int durationMs)
+    {
+        _logger.LogInformation(
+            "[{CorrelationId}] Email sent successfully: Template={TemplateName}, Duration={DurationMs}ms",
+            correlationId, templateName, durationMs);
+    }
+
+    public void LogEmailSendFailure(string correlationId, string templateName, string errorMessage, Exception? exception = null)
+    {
+        _logger.LogError(exception,
+            "[{CorrelationId}] Email send failed: Template={TemplateName}, Error={ErrorMessage}",
+            correlationId, templateName, errorMessage);
+    }
+
+    public void LogParameterValidationFailure(string correlationId, string templateName, List<string> errors)
+    {
+        _logger.LogWarning(
+            "[{CorrelationId}] Parameter validation failed: Template={TemplateName}, Errors={ErrorCount} ({Errors})",
+            correlationId, templateName, errors.Count, string.Join(", ", errors));
+    }
+
+    public void LogTemplateNotFound(string correlationId, string templateName)
+    {
+        _logger.LogError(
+            "[{CorrelationId}] Email template not found: Template={TemplateName}",
+            correlationId, templateName);
+    }
+
+    // Phase 6A.100: LogFeatureFlagCheck removed - all handlers now use typed parameters
+}
+
+/// <summary>
+/// Default implementation of IEmailMetrics with in-memory storage.
+/// For production, consider using Application Insights or Prometheus.
+/// Phase 6A.87 Week 3: Enhanced with dashboard API support methods.
+/// </summary>
+public class DefaultEmailMetrics : IEmailMetrics
+{
+    private readonly Dictionary<string, TemplateMetrics> _templateMetrics = new();
+    private readonly Dictionary<string, HandlerMetrics> _handlerMetrics = new();
+    private readonly List<EmailFailureRecord> _failedEmails = new();
+    private readonly List<ValidationFailureRecord> _validationFailures = new();
+    private readonly object _lock = new();
+
+    // Maximum number of failure records to keep (prevent memory growth)
+    private const int MaxFailureRecords = 1000;
+
+    public void RecordEmailSent(string templateName, int durationMs, bool success)
+    {
+        lock (_lock)
+        {
+            var metrics = GetOrCreateTemplateMetrics(templateName);
+            metrics.TotalSent++;
+            metrics.TotalDurationMs += durationMs;
+            metrics.AverageDurationMs = metrics.TotalDurationMs / metrics.TotalSent;
+
+            if (success)
+                metrics.SuccessCount++;
+            else
+                metrics.FailureCount++;
+        }
+    }
+
+    public void RecordParameterValidationFailure(string templateName)
+    {
+        lock (_lock)
+        {
+            var metrics = GetOrCreateTemplateMetrics(templateName);
+            metrics.ValidationFailures++;
+        }
+    }
+
+    public void RecordTemplateNotFound(string templateName)
+    {
+        lock (_lock)
+        {
+            var metrics = GetOrCreateTemplateMetrics(templateName);
+            metrics.TemplateNotFoundCount++;
+        }
+    }
+
+    public void RecordHandlerUsage(string handlerName, bool usedTypedParameters)
+    {
+        lock (_lock)
+        {
+            var metrics = GetOrCreateHandlerMetrics(handlerName);
+            metrics.TotalEmailsSent++;
+
+            if (usedTypedParameters)
+                metrics.TypedParameterUsageCount++;
+            else
+                metrics.DictionaryParameterUsageCount++;
+        }
+    }
+
+    public TemplateMetrics GetStatsByTemplate(string templateName)
+    {
+        lock (_lock)
+        {
+            return _templateMetrics.GetValueOrDefault(templateName) ?? new TemplateMetrics();
+        }
+    }
+
+    public HandlerMetrics GetStatsByHandler(string handlerName)
+    {
+        lock (_lock)
+        {
+            return _handlerMetrics.GetValueOrDefault(handlerName) ?? new HandlerMetrics();
+        }
+    }
+
+    public GlobalMetrics GetGlobalStats()
+    {
+        lock (_lock)
+        {
+            return new GlobalMetrics
+            {
+                TotalEmailsSent = _templateMetrics.Values.Sum(m => m.TotalSent),
+                TotalSuccesses = _templateMetrics.Values.Sum(m => m.SuccessCount),
+                TotalFailures = _templateMetrics.Values.Sum(m => m.FailureCount)
+            };
+        }
+    }
+
+    public void ResetMetrics()
+    {
+        lock (_lock)
+        {
+            _templateMetrics.Clear();
+            _handlerMetrics.Clear();
+            _failedEmails.Clear();
+            _validationFailures.Clear();
+        }
+    }
+
+    // ================================================================
+    // Phase 6A.87 Week 3: Dashboard API support methods
+    // ================================================================
+
+    public IReadOnlyDictionary<string, TemplateMetrics> GetAllTemplateStats()
+    {
+        lock (_lock)
+        {
+            // Return a copy to prevent external modification
+            return new Dictionary<string, TemplateMetrics>(_templateMetrics);
+        }
+    }
+
+    public IReadOnlyDictionary<string, HandlerMetrics> GetAllHandlerStats()
+    {
+        lock (_lock)
+        {
+            // Return a copy to prevent external modification
+            return new Dictionary<string, HandlerMetrics>(_handlerMetrics);
+        }
+    }
+
+    public void RecordFailedEmail(string correlationId, string templateName, string recipientEmail, string errorMessage, string handlerName)
+    {
+        lock (_lock)
+        {
+            // Trim old records if limit exceeded
+            if (_failedEmails.Count >= MaxFailureRecords)
+            {
+                _failedEmails.RemoveAt(0);
+            }
+
+            _failedEmails.Add(new EmailFailureRecord
+            {
+                CorrelationId = correlationId,
+                TemplateName = templateName,
+                RecipientEmail = recipientEmail,
+                ErrorMessage = errorMessage,
+                HandlerName = handlerName,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    public IReadOnlyList<EmailFailureRecord> GetFailedEmails()
+    {
+        lock (_lock)
+        {
+            // Return a copy to prevent external modification
+            return _failedEmails.ToList();
+        }
+    }
+
+    public void RecordValidationFailureDetails(string correlationId, string templateName, List<string> missingParameters, string handlerName)
+    {
+        lock (_lock)
+        {
+            // Trim old records if limit exceeded
+            if (_validationFailures.Count >= MaxFailureRecords)
+            {
+                _validationFailures.RemoveAt(0);
+            }
+
+            _validationFailures.Add(new ValidationFailureRecord
+            {
+                CorrelationId = correlationId,
+                TemplateName = templateName,
+                MissingParameters = new List<string>(missingParameters),
+                HandlerName = handlerName,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    public IReadOnlyList<ValidationFailureRecord> GetValidationFailures()
+    {
+        lock (_lock)
+        {
+            // Return a copy to prevent external modification
+            return _validationFailures.ToList();
+        }
+    }
+
+    private TemplateMetrics GetOrCreateTemplateMetrics(string templateName)
+    {
+        if (!_templateMetrics.ContainsKey(templateName))
+            _templateMetrics[templateName] = new TemplateMetrics();
+        return _templateMetrics[templateName];
+    }
+
+    private HandlerMetrics GetOrCreateHandlerMetrics(string handlerName)
+    {
+        if (!_handlerMetrics.ContainsKey(handlerName))
+            _handlerMetrics[handlerName] = new HandlerMetrics();
+        return _handlerMetrics[handlerName];
+    }
+}

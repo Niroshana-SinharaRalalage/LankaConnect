@@ -1,11 +1,10 @@
 using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Products.LankaEvents.Application.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using System.Diagnostics;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
 
 /// <summary>

@@ -3,7 +3,6 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.SharedKernel.Money;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 namespace LankaConnect.BuildingBlocks.Infrastructure.Persistence;
 
 /// <summary>

@@ -1,12 +1,11 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using LankaConnect.Infrastructure.Data; // Wave 5.4.d.2 transitional: AppDbContext
+using Microsoft.Extensions.Logging;
 using LankaConnect.Infrastructure.Data.Repositories; // Wave 5.4.d.2 transitional: Repository<T> base
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using System.Diagnostics;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Communications.Infrastructure.Repositories;
 
 /// <summary>

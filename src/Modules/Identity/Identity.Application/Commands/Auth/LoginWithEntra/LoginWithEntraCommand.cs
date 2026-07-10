@@ -1,6 +1,5 @@
 using MediatR;
-using LankaConnect.Domain.Common;
-
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 
 /// <summary>

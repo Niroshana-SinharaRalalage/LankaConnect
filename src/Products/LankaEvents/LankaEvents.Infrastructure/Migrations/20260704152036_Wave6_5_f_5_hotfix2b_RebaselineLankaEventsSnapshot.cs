@@ -1,9 +1,7 @@
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
-
-namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations
-{
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
     /// <summary>
     /// Wave 6.5.f.5-hotfix2b snapshot rebaseline migration. Empty-Up/Down per
     /// [[feedback-empty-up-snapshot-rebaseline]] and the precedent

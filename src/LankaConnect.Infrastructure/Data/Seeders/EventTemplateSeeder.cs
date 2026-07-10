@@ -1,4 +1,5 @@
 using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.EntityFrameworkCore;

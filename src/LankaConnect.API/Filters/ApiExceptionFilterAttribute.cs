@@ -1,5 +1,5 @@
-using LankaConnect.Application.Common.Exceptions;
-using LankaConnect.Domain.Common.Exceptions;
+using LankaConnect.BuildingBlocks.Application.Common.Exceptions;
+using LankaConnect.BuildingBlocks.Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using System.Net;

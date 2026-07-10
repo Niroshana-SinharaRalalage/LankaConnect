@@ -1,16 +1,17 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
+using LankaConnect.Modules.Communications.Contracts;
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Common;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Modules.Communications.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): CommunicationsDbContext
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // 4C.h Day 5: MetroAreas cross-module
 namespace LankaConnect.Modules.Communications.Application.Queries.GetNewsletterById;
 
 /// <summary>
@@ -21,18 +22,21 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
 {
     private readonly INewsletterRepository _newsletterRepository;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly CommunicationsDbContext _dbContext;
+    private readonly LankaEventsDbContext _eventsContext;
     private readonly ILogger<GetNewsletterByIdQueryHandler> _logger;
 
     public GetNewsletterByIdQueryHandler(
         INewsletterRepository newsletterRepository,
         ICurrentUserService currentUserService,
-        IApplicationDbContext dbContext,
+        CommunicationsDbContext dbContext,
+        LankaEventsDbContext eventsContext,
         ILogger<GetNewsletterByIdQueryHandler> logger)
     {
         _newsletterRepository = newsletterRepository;
         _currentUserService = currentUserService;
         _dbContext = dbContext;
+        _eventsContext = eventsContext;
         _logger = logger;
     }
 
@@ -112,12 +116,8 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
                     emailGroupDtos = await dbContext.Set<EmailGroup>()
                         .AsNoTracking()
                         .Where(eg => newsletter.EmailGroupIds.Contains(eg.Id))
-                        .Select(eg => new EmailGroupSummaryDto
-                        {
-                            Id = eg.Id,
-                            Name = eg.Name,
-                            IsActive = eg.IsActive
-                        })
+                        .Select(eg => new EmailGroupSummaryDto(
+                            eg.Id, eg.Name, null, Guid.Empty, 0, eg.IsActive, DateTime.UtcNow, null))
                         .ToListAsync(cancellationToken);
                 }
 
@@ -125,7 +125,7 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
                 var metroAreaDtos = new List<MetroAreaSummaryDto>();
                 if (newsletter.MetroAreaIds.Any())
                 {
-                    metroAreaDtos = await _dbContext.MetroAreas
+                    metroAreaDtos = await _eventsContext.MetroAreas
                         .AsNoTracking()
                         .Where(m => newsletter.MetroAreaIds.Contains(m.Id))
                         .Select(m => new MetroAreaSummaryDto

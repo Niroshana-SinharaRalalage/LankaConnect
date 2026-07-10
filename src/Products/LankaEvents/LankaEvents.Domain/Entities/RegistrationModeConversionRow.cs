@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -5,7 +6,7 @@ namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 /// recorded for every registration touched by a conversion (migrated, skipped, OR failed).
 /// Joined to <see cref="RegistrationModeConversion"/> via <see cref="AggregateConversionId"/>.
 /// </summary>
-public class RegistrationModeConversionRow : LankaConnect.Domain.Common.LegacyBaseEntity
+public class RegistrationModeConversionRow : LankaConnect.BuildingBlocks.Domain.LegacyBaseEntity
 {
     public Guid AggregateConversionId { get; private set; }
     public Guid RegistrationId { get; private set; }
@@ -37,8 +38,10 @@ public class RegistrationModeConversionRow : LankaConnect.Domain.Common.LegacyBa
 
     public DateTime ConvertedAt { get; private set; }
 
+    [SetsRequiredMembers]
     private RegistrationModeConversionRow() { /* EF Core */ }
 
+    [SetsRequiredMembers]
     private RegistrationModeConversionRow(
         Guid aggregateConversionId, Guid registrationId,
         ConversionOutcome outcome, string? outcomeReason,

@@ -145,7 +145,7 @@ public sealed class Money : ValueObject
     // ---------- Value-object equality (inherited; components below) ----------
 
     /// <inheritdoc />
-    protected override IEnumerable<object?> GetEqualityComponents()
+    public override IEnumerable<object> GetEqualityComponents()
     {
         yield return Amount;
         yield return Currency;

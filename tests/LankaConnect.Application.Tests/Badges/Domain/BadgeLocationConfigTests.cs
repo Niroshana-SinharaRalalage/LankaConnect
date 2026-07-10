@@ -1,6 +1,6 @@
 using FluentAssertions;
-using LankaConnect.Domain.Badges;
-using LankaConnect.Domain.Common.Exceptions;
+using LankaConnect.Products.LankaEvents.Domain.Badges;
+using LankaConnect.BuildingBlocks.Domain.Exceptions;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Badges.Domain;

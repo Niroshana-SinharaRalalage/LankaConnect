@@ -1,3 +1,4 @@
+using LankaConnect.BuildingBlocks.Domain.Contracts;
 using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.BuildingBlocks.Domain.Tests;
@@ -19,7 +20,8 @@ public sealed class EntityTests
 
     private sealed record TestDomainEvent : IDomainEvent
     {
-        public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+        public Guid Id { get; init; } = Guid.NewGuid();
+        public DateTime OccurredOn { get; init; } = DateTime.UtcNow;
     }
 
     [Fact]

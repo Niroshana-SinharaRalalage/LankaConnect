@@ -1,12 +1,12 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AddTicketTier;
 
 public class AddTicketTierCommandHandler : ICommandHandler<AddTicketTierCommand, Guid>
@@ -49,7 +49,7 @@ public class AddTicketTierCommandHandler : ICommandHandler<AddTicketTierCommand,
                 }
 
                 // Create adult price
-                var adultPriceResult = Money.Create(request.AdultPriceAmount, request.AdultPriceCurrency);
+                var adultPriceResult = MoneyBuilder.Create(request.AdultPriceAmount, request.AdultPriceCurrency);
                 if (adultPriceResult.IsFailure)
                 {
                     _logger.LogWarning(
@@ -60,9 +60,9 @@ public class AddTicketTierCommandHandler : ICommandHandler<AddTicketTierCommand,
 
                 // Create child price if provided
                 Money? childPrice = null;
-                if (request.ChildPriceAmount.HasValue && request.ChildPriceCurrency.HasValue)
+                if (request.ChildPriceAmount.HasValue && request.ChildPriceCurrency != null)
                 {
-                    var childPriceResult = Money.Create(request.ChildPriceAmount.Value, request.ChildPriceCurrency.Value);
+                    var childPriceResult = MoneyBuilder.Create(request.ChildPriceAmount.Value, request.ChildPriceCurrency);
                     if (childPriceResult.IsFailure)
                     {
                         _logger.LogWarning(

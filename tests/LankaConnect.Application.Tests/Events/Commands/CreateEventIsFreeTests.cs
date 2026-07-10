@@ -1,9 +1,9 @@
 using LankaConnect.Modules.Identity.Contracts;
 using FluentAssertions;
 using LankaConnect.Modules.Communications.Contracts;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateEvent;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
@@ -13,13 +13,13 @@ using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Shared.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Tests.Events.Commands;
 
@@ -100,7 +100,7 @@ public class CreateEventIsFreeTests
 
         // Revenue calculator returns failure by default (informational only, doesn't block event creation)
         _mockRevenueCalculatorService
-            .Setup(x => x.CalculateBreakdownAsync(It.IsAny<LankaConnect.Domain.Shared.ValueObjects.Money>(), It.IsAny<EventLocation?>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.CalculateBreakdownAsync(It.IsAny<LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money>(), It.IsAny<EventLocation?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<RevenueBreakdown>.Failure("Not configured for testing"));
     }
 

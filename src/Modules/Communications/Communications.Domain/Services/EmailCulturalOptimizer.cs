@@ -1,0 +1,85 @@
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.SharedKernel.Cultural;
+using LankaConnect.SharedKernel.Cultural.Enums;
+namespace LankaConnect.Modules.Communications.Domain.Services;
+
+/// <summary>
+/// Domain service for cultural optimization of email timing and content
+/// </summary>
+public class EmailCulturalOptimizer
+{
+    private readonly ICulturalCalendarService _culturalCalendar;
+    private readonly IGeographicTimeZoneService _timezoneService;
+    private readonly IReligiousObservanceService _religiousService;
+
+    public EmailCulturalOptimizer(
+        ICulturalCalendarService culturalCalendar,
+        IGeographicTimeZoneService timezoneService,
+        IReligiousObservanceService religiousService)
+    {
+        _culturalCalendar = culturalCalendar;
+        _timezoneService = timezoneService;
+        _religiousService = religiousService;
+    }
+
+    public Result<CulturalOptimizationResult> OptimizeSendingTime(EmailMessage email, CulturalEmailContext context, DateTime? requestedTime = null)
+    {
+        var targetTime = requestedTime ?? DateTime.UtcNow;
+        var culturalContextResult = CulturalContext.Create(
+            context.PreferredLanguage,
+            CulturalBackground.SinhalaBuddhist, // Map from context.PrimaryCulture
+            context.TargetRegion);
+
+        if (culturalContextResult.IsFailure)
+            return Result<CulturalOptimizationResult>.Failure(culturalContextResult.Error);
+
+        var optimizedTiming = _culturalCalendar.GetOptimalSendTime(targetTime, culturalContextResult.Value);
+
+        var result = new CulturalOptimizationResult(
+            optimizedTiming.OptimalSendTime,
+            optimizedTiming.Reason,
+            optimizedTiming.ReligiousContext,
+            optimizedTiming.AlternativeTimeSlots,
+            GetAuspiciousTimingReason(optimizedTiming),
+            GetAvoidanceReason(optimizedTiming));
+
+        return Result<CulturalOptimizationResult>.Success(result);
+    }
+
+    private string GetAuspiciousTimingReason(CulturalTimingPreference timing)
+    {
+        return timing.ReligiousContext switch
+        {
+            LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext.BuddhistPoyaday => "Brahma Muhurta",
+            LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext.HinduFestival => "Brahma Muhurta",
+            _ => "Optimal community engagement time"
+        };
+    }
+
+    private string GetAvoidanceReason(CulturalTimingPreference timing)
+    {
+        return timing.ReligiousContext switch
+        {
+            LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext.ChristianSabbath => "Church service time",
+            LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext.BuddhistPoyaday => "Poyaday observance",
+            LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext.Ramadan => "Fasting hours",
+            _ => "Cultural consideration"
+        };
+    }
+}
+
+
+/// <summary>
+/// Result of cultural optimization with detailed explanations
+/// </summary>
+public record CulturalOptimizationResult(
+    DateTime OptimizedSendTime,
+    string CulturalDelayReason,
+    LankaConnect.SharedKernel.Cultural.Enums.ReligiousContext ReligiousContext,
+    IReadOnlyList<DateTime> AlternativeTimeSlots,
+    string AuspiciousTimingReason,
+    string AvoidanceReason);
+

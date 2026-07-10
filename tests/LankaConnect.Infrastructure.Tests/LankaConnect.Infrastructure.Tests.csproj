@@ -44,6 +44,8 @@
     <ProjectReference Include="..\..\src\Modules\Notifications\Notifications.Infrastructure\Notifications.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Media\Media.Infrastructure\Media.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Forms\Forms.Infrastructure\Forms.Infrastructure.csproj" />
+    <!-- 4C.e (2026-07-08): IdentityDbContext parity test needs the module Infrastructure. -->
+    <ProjectReference Include="..\..\src\Modules\Identity\Identity.Infrastructure\Identity.Infrastructure.csproj" />
 
     <!-- Wave 6.5.e (2026-07-03): AppDbContext.OnModelCreating loads
          LankaConnect.Products.LankaEvents.Infrastructure by name via
@@ -88,6 +90,9 @@
     <Compile Include="Data\LankaEventsDbContextModelParityTests.cs" />
     <!-- Wave 6.5.f.5-hotfix2: schema + table-name parity per revised Rule 5e (assertions 2 + 3). -->
     <Compile Include="Data\LankaEventsDbContextTableParityTests.cs" />
+    <!-- 4C.e (2026-07-08): IdentityDbContext parity per Rule 5e — mapping presence,
+         table name, schema, cross-module principal not-mapped assertions. -->
+    <Compile Include="Data\IdentityDbContextModelParityTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

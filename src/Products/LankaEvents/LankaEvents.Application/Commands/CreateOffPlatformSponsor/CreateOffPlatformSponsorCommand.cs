@@ -1,15 +1,15 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Domain.Shared.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5: IImageService promoted
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreateOffPlatformSponsor;
 
 /// <summary>
@@ -101,11 +101,11 @@ public class CreateOffPlatformSponsorCommandHandler
                 Sponsor sponsor;
                 if (request.Type == SponsorType.Money)
                 {
-                    if (!request.Amount.HasValue || !request.Currency.HasValue)
+                    if (!request.Amount.HasValue || request.Currency is null)
                         return Result<CreateOffPlatformSponsorResult>.Failure(
                             "Money sponsors require amount and currency.");
 
-                    var moneyResult = Money.Create(request.Amount.Value, request.Currency.Value);
+                    var moneyResult = MoneyBuilder.Create(request.Amount.Value, request.Currency);
                     if (!moneyResult.IsSuccess)
                         return Result<CreateOffPlatformSponsorResult>.Failure(moneyResult.Errors);
 

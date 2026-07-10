@@ -1,7 +1,7 @@
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Application.Queries;
 using LankaConnect.Modules.Communications.Contracts;
 using Moq;

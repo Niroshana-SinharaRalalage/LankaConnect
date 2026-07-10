@@ -1,5 +1,4 @@
 using LankaConnect.Products.LankaEvents.Domain.Entities;
-
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 /// <summary>

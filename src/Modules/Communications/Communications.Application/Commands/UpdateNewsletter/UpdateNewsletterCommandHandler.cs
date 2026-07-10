@@ -2,17 +2,16 @@ using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService mo
 using System.Diagnostics;
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Modules.Communications.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): CommunicationsDbContext
 namespace LankaConnect.Modules.Communications.Application.Commands.UpdateNewsletter;
 
 /// <summary>
@@ -26,7 +25,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
     private readonly IEmailGroupRepository _emailGroupRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly CommunicationsDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateNewsletterCommandHandler> _logger;
 
@@ -35,7 +34,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
         IEmailGroupRepository emailGroupRepository,
         IEventRepository eventRepository,
         ICurrentUserService currentUserService,
-        IApplicationDbContext dbContext,
+        CommunicationsDbContext dbContext,
         IUnitOfWork unitOfWork,
         ILogger<UpdateNewsletterCommandHandler> logger)
     {

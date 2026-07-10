@@ -1,10 +1,10 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CancelPendingAddition;
 
 /// <summary>
@@ -16,12 +16,12 @@ public class CancelPendingAdditionCommandHandler
     : ICommandHandler<CancelPendingAdditionCommand, CancelPendingAdditionResult>
 {
     private readonly IRegistrationAdditionRepository _additionRepository;
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly ILogger<CancelPendingAdditionCommandHandler> _logger;
 
     public CancelPendingAdditionCommandHandler(
         IRegistrationAdditionRepository additionRepository,
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         ILogger<CancelPendingAdditionCommandHandler> logger)
     {
         _additionRepository = additionRepository;
@@ -75,7 +75,7 @@ public class CancelPendingAdditionCommandHandler
                 }
 
                 // Save changes
-                await _context.CommitAsync(cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

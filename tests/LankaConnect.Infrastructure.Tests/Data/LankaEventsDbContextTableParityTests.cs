@@ -1,6 +1,6 @@
 using FluentAssertions;
-using LankaConnect.Domain.Analytics;
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.Products.LankaEvents.Domain.Analytics;
+using LankaConnect.SPLIT_PER_ENTITY;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Infrastructure.Data;

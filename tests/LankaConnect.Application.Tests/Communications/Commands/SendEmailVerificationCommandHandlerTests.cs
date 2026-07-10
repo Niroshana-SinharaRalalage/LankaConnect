@@ -1,5 +1,5 @@
-using LankaConnect.Application.Communications.Commands.SendEmailVerification;
-using LankaConnect.Domain.Common;
+using LankaConnect.Modules.Communications.Application.Commands.SendEmailVerification;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Contracts;
 using Microsoft.Extensions.Logging;
 using Moq;

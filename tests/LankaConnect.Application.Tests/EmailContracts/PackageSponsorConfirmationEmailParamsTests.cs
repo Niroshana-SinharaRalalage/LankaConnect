@@ -1,9 +1,9 @@
 using FluentAssertions;
-using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using Xunit;
 
 // Note: nested under .EmailContracts (NOT .Email) — a top-level Email namespace
-// here would shadow the LankaConnect.Domain.Shared.ValueObjects.Email VO used
+// here would shadow the LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email VO used
 // across the test project (Email.Create(...) calls in other test files).
 namespace LankaConnect.Application.Tests.EmailContracts;
 

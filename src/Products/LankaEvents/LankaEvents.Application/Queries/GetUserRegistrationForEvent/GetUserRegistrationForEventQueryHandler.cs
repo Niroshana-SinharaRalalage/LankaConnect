@@ -1,19 +1,19 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetUserRegistrationForEvent;
 
 public class GetUserRegistrationForEventQueryHandler
     : IQueryHandler<GetUserRegistrationForEventQuery, RegistrationDetailsDto?>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IDonationRepository _donationRepository;
     private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
@@ -22,7 +22,7 @@ public class GetUserRegistrationForEventQueryHandler
     private readonly ILogger<GetUserRegistrationForEventQueryHandler> _logger;
 
     public GetUserRegistrationForEventQueryHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IStripePaymentService stripePaymentService,
         IDonationRepository donationRepository,
         IAddOnPurchaseRepository addOnPurchaseRepository,

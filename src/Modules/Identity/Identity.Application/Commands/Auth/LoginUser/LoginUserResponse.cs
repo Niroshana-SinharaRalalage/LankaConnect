@@ -1,6 +1,5 @@
 using LankaConnect.Modules.Identity.Domain.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
-
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 
 public record LoginUserResponse(

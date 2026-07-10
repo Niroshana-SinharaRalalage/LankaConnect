@@ -1,4 +1,4 @@
-namespace LankaConnect.SharedKernel.Cultural;
+namespace LankaConnect.SharedKernel.Cultural.Enums;
 
 /// <summary>
 /// Cultural and religious backgrounds for Sri Lankan diaspora communities
@@ -7,7 +7,7 @@ namespace LankaConnect.SharedKernel.Cultural;
 /// filtering, and respectful timing rules.
 /// </summary>
 /// <remarks>
-/// Moved from <c>LankaConnect.Domain.Communications.Enums</c> to
+/// Moved from <c>LankaConnect.Modules.Communications.Domain.Enums</c> to
 /// <c>SharedKernel.Cultural</c> in W2C.4 (2026-06-05) per ADR-008.
 ///
 /// This is the CANONICAL CulturalBackground. Two dead/orphan variants were

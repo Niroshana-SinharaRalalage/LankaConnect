@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -28,8 +28,10 @@ public class RegistrationModeConversion : LegacyBaseEntity
     /// </summary>
     public byte[]? EventRowVersionSnapshot { get; private set; }
 
+    [SetsRequiredMembers]
     private RegistrationModeConversion() { /* EF Core */ }
 
+    [SetsRequiredMembers]
     private RegistrationModeConversion(
         Guid eventId, Guid organiserId,
         RegistrationMode fromMode, RegistrationMode toMode,

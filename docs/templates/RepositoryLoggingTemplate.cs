@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.SPLIT_PER_ENTITY.Repositories;
 
 /// <summary>
 /// Phase 6A.X: Repository implementation template with comprehensive logging

@@ -1,14 +1,14 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
-using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreatePackageSponsor;
 
 /// <summary>
@@ -234,7 +234,7 @@ public class CreatePackageSponsorCommandHandler : ICommandHandler<CreatePackageS
                 // 9. Calculate + store revenue breakdown
                 try
                 {
-                    var totalMoney = Money.Create(package.Price.Amount, package.Price.Currency);
+                    var totalMoney = MoneyBuilder.Create(package.Price.Amount, package.Price.Currency);
                     if (totalMoney.IsSuccess)
                     {
                         var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(

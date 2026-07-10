@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -75,8 +75,10 @@ public class Ticket : LegacyBaseEntity
     public string? AttendeeNames { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private Ticket() { }
 
+    [SetsRequiredMembers]
     private Ticket(
         Guid registrationId,
         Guid eventId,

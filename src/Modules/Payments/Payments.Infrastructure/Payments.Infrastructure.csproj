@@ -18,6 +18,9 @@
       pass.
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
+    <!-- Wave 6.5.g Day 5 (2026-07-10): IRefundReconciliationService promoted to
+         LE.Contracts.LegacyPromotions. RefundReconciliationBackgroundService uses it. -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

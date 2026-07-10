@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
-using LankaConnect.Domain.Common;
-
+using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -46,10 +46,12 @@ public class EventOrganizerContact : LegacyBaseEntity
     public int SortOrder { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private EventOrganizerContact()
     {
     }
 
+    [SetsRequiredMembers]
     private EventOrganizerContact(
         Guid eventId,
         string contactName,

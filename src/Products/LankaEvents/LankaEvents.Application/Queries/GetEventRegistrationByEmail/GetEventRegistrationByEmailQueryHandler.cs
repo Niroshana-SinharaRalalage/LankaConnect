@@ -1,10 +1,10 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventRegistrationByEmail;
 
 /// <summary>
@@ -14,11 +14,11 @@ namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventRegistra
 public class GetEventRegistrationByEmailQueryHandler
     : IQueryHandler<GetEventRegistrationByEmailQuery, bool>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly ILogger<GetEventRegistrationByEmailQueryHandler> _logger;
 
     public GetEventRegistrationByEmailQueryHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         ILogger<GetEventRegistrationByEmailQueryHandler> logger)
     {
         _context = context;

@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Infrastructure.Data;                     // 4C.d.xiv: AppDbContext
+using LankaConnect.Infrastructure.Data.Repositories;        // 4C.d.xiv: Repository<T> base
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Enums;
-using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects; // 4C.d.xiv: Email VO (User.Email type)
 using System.Diagnostics;
 using Serilog.Context;
 
@@ -103,7 +103,7 @@ public class UserRepository : Repository<User>, IUserRepository
         }
     }
 
-    public async Task<User?> GetByEmailAsync(UserEmail email, CancellationToken cancellationToken = default)
+    public async Task<User?> GetByEmailAsync(Email email, CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetByEmail"))
         using (LogContext.PushProperty("EntityType", "User"))
@@ -148,7 +148,7 @@ public class UserRepository : Repository<User>, IUserRepository
         }
     }
 
-    public async Task<bool> ExistsWithEmailAsync(UserEmail email, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistsWithEmailAsync(Email email, CancellationToken cancellationToken = default)
     {
         return await _dbSet
             .AnyAsync(u => u.Email.Value == email.Value, cancellationToken);

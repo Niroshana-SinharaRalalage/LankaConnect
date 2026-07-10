@@ -53,7 +53,7 @@ public sealed class WaitlistPolicy : ValueObject
         return currentWaitlistSize < MaxSize;
     }
 
-    protected override IEnumerable<object?> GetEqualityComponents()
+    public override IEnumerable<object> GetEqualityComponents()
     {
         yield return Mode;
         yield return MaxSize;

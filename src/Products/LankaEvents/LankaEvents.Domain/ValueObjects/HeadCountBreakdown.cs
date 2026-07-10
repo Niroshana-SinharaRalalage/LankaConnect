@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
-using LankaConnect.Domain.Common;
-
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
@@ -17,7 +16,7 @@ namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 /// 3. If <see cref="TierCounts"/> is set, the sum of counts equals <see cref="Total"/>.
 ///
 /// Persisted as a flat JSONB string via a custom <c>ValueConverter</c> + deep-copy
-/// <c>ValueComparer</c> in <see cref="LankaConnect.Infrastructure.Data.Configurations.RegistrationConfiguration"/>
+/// <c>ValueComparer</c> in <see cref="LankaConnect.SPLIT_PER_ENTITY.RegistrationConfiguration"/>
 /// — NOT via <c>OwnsOne(...).ToJson()</c>, which has the Phase 6A.130 IReadOnlyList rehydration trap.
 ///
 /// Construction paths:

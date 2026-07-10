@@ -40,6 +40,9 @@
          the Forms handlers relocate to a Products-owning assembly (Wave 6.5.f/g)
          or a DbContext-accessor abstraction lands in BuildingBlocks.Application. -->
     <ProjectReference Include="..\Forms.Infrastructure\Forms.Infrastructure.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d (2026-07-06): FormResponseWhatsAppHandler
+         consumes Communications.Domain.Enums (WhatsApp response type). -->
+    <ProjectReference Include="..\..\Communications\Communications.Domain\Communications.Domain.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,5 @@
 using LankaConnect.BuildingBlocks.Application.Abstractions;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Enums;
 

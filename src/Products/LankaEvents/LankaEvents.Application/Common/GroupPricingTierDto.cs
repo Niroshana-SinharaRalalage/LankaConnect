@@ -1,6 +1,5 @@
-using LankaConnect.Domain.Shared.Enums;
-
 namespace LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
 
 /// <summary>
 /// Phase 6D: DTO for group pricing tier in tiered group pricing
@@ -27,7 +26,7 @@ public record GroupPricingTierDto
     /// <summary>
     /// Currency for the price (USD, LKR, etc.)
     /// </summary>
-    public Currency Currency { get; init; }
+    public Currency Currency { get; init; } = null!;
 
     /// <summary>
     /// Display-friendly tier range (e.g., "1-2", "3-5", "6+")

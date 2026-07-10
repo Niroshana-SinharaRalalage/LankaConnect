@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.BuildingBlocks.Application.Behaviors;
 
 /// <summary>

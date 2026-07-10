@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -35,7 +35,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 <!-- Top decoration -->
                                 <tr>
                                     <td align=""center"" style=""padding: 15px 0 10px 0; font-size: 12px; letter-spacing: 6px; color: rgba(255,255,255,0.2);"">
-                                        ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+                                        ? ? ? ? ? ? ? ? ? ? ?
                                     </td>
                                 </tr>
                                 <!-- Logo -->

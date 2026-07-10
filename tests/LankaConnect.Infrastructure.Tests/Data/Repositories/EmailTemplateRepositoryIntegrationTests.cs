@@ -1,7 +1,7 @@
 using FluentAssertions;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.SPLIT_PER_ENTITY.Repositories;
 using LankaConnect.Infrastructure.Tests.Common;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;

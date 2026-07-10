@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Infrastructure.Data;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Support;
+using LankaConnect.Modules.Communications.Domain.Support;
 using Serilog.Context;
 using System.Diagnostics;
 

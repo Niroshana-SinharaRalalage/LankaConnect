@@ -1,11 +1,11 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.EventHandlers;
 
 /// <summary>
@@ -26,11 +26,11 @@ namespace LankaConnect.Products.LankaEvents.Application.EventHandlers;
 public class CommitmentCancelledEventHandler
     : INotificationHandler<DomainEventNotification<CommitmentCancelledEvent>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly ILogger<CommitmentCancelledEventHandler> _logger;
 
     public CommitmentCancelledEventHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         ILogger<CommitmentCancelledEventHandler> logger)
     {
         _context = context;

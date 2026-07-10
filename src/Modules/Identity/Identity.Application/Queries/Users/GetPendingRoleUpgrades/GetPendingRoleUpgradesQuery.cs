@@ -1,6 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Identity.Application.DTOs;
-
 namespace LankaConnect.Modules.Identity.Application.Queries.Users.GetPendingRoleUpgrades;
 
 /// <summary>

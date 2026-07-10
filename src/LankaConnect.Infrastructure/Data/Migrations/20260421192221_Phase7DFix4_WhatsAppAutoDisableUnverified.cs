@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -137,7 +137,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 filter: "whatsapp_enabled = true AND phone_verified = false");
 
             // Phase 7D Fix 4: seed template-whatsapp-auto-disabled email.
-            // Inline SQL per MEMORY 6A.129b (no File.ReadAllText â€” fragile across
+            // Inline SQL per MEMORY 6A.129b (no File.ReadAllText — fragile across
             // local dev / CI / Docker working directories). Dollar-quoting for the
             // HTML body so double quotes inside attributes never need escaping.
             // Idempotent: ON CONFLICT (name) DO NOTHING keeps re-runs safe.
@@ -153,7 +153,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     'System',
                     'Transactional',
                     'We''ve turned off WhatsApp notifications for your account',
-                    E'Hi {{UserName}},\n\nWe''ve turned off WhatsApp notifications on your LankaEvents account because we never received a verification code for the phone number you added ({{MaskedPhone}}) after you enabled it on {{EnabledAt}}.\n\nFor your security, we only send WhatsApp messages to verified numbers. After {{GracePeriodDays}} days without verification, we automatically turn the channel off.\n\nIf you''d still like WhatsApp updates, you can re-enable and verify your number here:\n{{ReEnableUrl}}\n\nYou''ll keep receiving the same notifications over email in the meantime â€” nothing else has changed on your account.\n\n\u00A9 {{Year}} LankaEvents',
+                    E'Hi {{UserName}},\n\nWe''ve turned off WhatsApp notifications on your LankaEvents account because we never received a verification code for the phone number you added ({{MaskedPhone}}) after you enabled it on {{EnabledAt}}.\n\nFor your security, we only send WhatsApp messages to verified numbers. After {{GracePeriodDays}} days without verification, we automatically turn the channel off.\n\nIf you''d still like WhatsApp updates, you can re-enable and verify your number here:\n{{ReEnableUrl}}\n\nYou''ll keep receiving the same notifications over email in the meantime — nothing else has changed on your account.\n\n\u00A9 {{Year}} LankaEvents',
                     $html_template$<!DOCTYPE html>
 <html lang=""en"">
 <head>

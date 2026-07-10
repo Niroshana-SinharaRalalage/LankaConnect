@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Xunit;

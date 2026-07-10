@@ -1,10 +1,9 @@
 using FluentAssertions;
 using LankaConnect.Application.Businesses.Commands.UploadBusinessImage;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Business;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Business.Enums;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;

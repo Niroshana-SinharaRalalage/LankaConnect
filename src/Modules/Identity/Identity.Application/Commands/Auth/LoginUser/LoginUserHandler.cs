@@ -1,16 +1,15 @@
 using System.Diagnostics;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 
 public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUserResponse>>
@@ -18,7 +17,7 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
     private readonly LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository _userRepository;
     private readonly IPasswordHashingService _passwordHashingService;
     private readonly IJwtTokenService _jwtTokenService;
-    private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
+    private readonly LankaConnect.BuildingBlocks.Domain.IUnitOfWork _unitOfWork;
     private readonly ITokenConfiguration _tokenConfiguration;
     private readonly ILogger<LoginUserHandler> _logger;
 
@@ -26,7 +25,7 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
         LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository userRepository,
         IPasswordHashingService passwordHashingService,
         IJwtTokenService jwtTokenService,
-        LankaConnect.Domain.Common.IUnitOfWork unitOfWork,
+        LankaConnect.BuildingBlocks.Domain.IUnitOfWork unitOfWork,
         ITokenConfiguration tokenConfiguration,
         ILogger<LoginUserHandler> logger)
     {

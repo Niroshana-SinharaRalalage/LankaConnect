@@ -1,7 +1,7 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -42,8 +42,10 @@ public class VenueLayout : LegacyBaseEntity
         _zones.Sum(z => z.EnabledSeatCount) + _tables.Sum(t => t.EnabledSeatCount);
 
     // EF Core parameterless constructor
+    [SetsRequiredMembers]
     private VenueLayout() { }
 
+    [SetsRequiredMembers]
     private VenueLayout(
         string name,
         LayoutType layoutType,

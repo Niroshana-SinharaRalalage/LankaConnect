@@ -1,7 +1,6 @@
 using LankaConnect.Modules.Media.Contracts.IntegrationEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.EventHandlers;
 
 /// <summary>

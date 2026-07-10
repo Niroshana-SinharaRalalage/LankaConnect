@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.Infrastructure.Data.Configurations;
 // Wave 4.9.5 (2026-06-10): Modules.Forms.Domain.* + Modules.Media.Domain.* usings
 // removed -- those types are owned by Forms/MediaDbContext after the W4.3 + W4.2
 // extractions and the Wave 4.9.3/4.9.4 schema renames. AppDbContext does not
@@ -10,26 +12,32 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Domain.Community;
-using LankaConnect.Domain.Business;
-using LankaConnect.Domain.Communications.Entities;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Analytics;
-using LankaConnect.Domain.Badges;
-using LankaConnect.Domain.ReferenceData.Entities;
-using LankaConnect.Domain.Support;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Infrastructure.Data.Configurations;
-using LankaConnect.Infrastructure.Data.Configurations.ReferenceData;
-using LankaConnect.Infrastructure.Payments.Entities;
-using LankaConnect.Infrastructure.Payments.Configurations;
+using LankaConnect.Modules.Communications.Domain.Community;
+// Business/Review/Service tables retained in schema; entity mapping removed Day 5, LankaBusiness product will re-map in Phase B (Consult #12).
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Products.LankaEvents.Domain.Analytics;
+using LankaConnect.Products.LankaEvents.Domain.Badges;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
+using LankaConnect.Modules.Communications.Domain.Support;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.ReferenceData;
+// Payments.Infrastructure PR would cycle; StripeCustomer + StripeWebhookEvent
+// DbSets removed 4C.d.vii (2026-07-06) — see comment near line 141.
 using LankaConnect.Infrastructure.Data.Seeders;
 using MediatR;
-using LankaConnect.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common;
 
 namespace LankaConnect.Infrastructure.Data;
 
-public class AppDbContext : DbContext, IApplicationDbContext
+// 4C.h (2026-07-10 Day 5): IApplicationDbContext interface DELETED. AppDbContext no
+// longer implements a legacy marker — module DbContexts (LankaEventsDbContext,
+// IdentityDbContext, CommunicationsDbContext, FormsDbContext, MediaDbContext,
+// NotificationsDbContext) own their aggregates; AppDbContext hosts cross-cutting
+// ReferenceValue + operational tables + the still-transitional AppDbContext-anchored
+// writes until per-module migrations relocate them (post-sprint work).
+public class AppDbContext : DbContext
 {
     private readonly IPublisher _publisher;
     private readonly ILogger<AppDbContext> _logger;
@@ -65,18 +73,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow> RegistrationModeConversionRows
         => Set<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow>();
 
-    // Business Entity Sets
-    public DbSet<Business> Businesses => Set<Business>();
-    public DbSet<Service> Services => Set<Service>();
-    public DbSet<Review> Reviews => Set<Review>();
-    
+    // Business/Review/Service DbSets removed Day 5 per Consult #12.
+    // Tables retained in schema; LankaBusiness product will re-map in Phase B.
+
     // Communications Entity Sets
-    public DbSet<LankaConnect.Domain.Communications.Entities.EmailMessage> EmailMessages => Set<LankaConnect.Domain.Communications.Entities.EmailMessage>();
-    public DbSet<LankaConnect.Domain.Communications.Entities.EmailTemplate> EmailTemplates => Set<LankaConnect.Domain.Communications.Entities.EmailTemplate>();
-    // Phase 6A.148.W5.6.B.OBS1 — durable email dispatch audit log (operator post-mortem
-    // capability without screenshots; queryable by refund_request_id / recipient / template).
-    public DbSet<LankaConnect.Domain.Communications.Entities.EmailDispatchLog> EmailDispatchLogs => Set<LankaConnect.Domain.Communications.Entities.EmailDispatchLog>();
-    public DbSet<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> UserEmailPreferences => Set<LankaConnect.Domain.Communications.Entities.UserEmailPreferences>();
+    // Day 4 slot C sub-slice 4C.c (2026-07-06): EmailMessage, EmailTemplate,
+    // UserEmailPreferences DbSets relocated to CommunicationsDbContext.
+    // EmailDispatchLog stays here until a dedicated relocation pass.
+    public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog> EmailDispatchLogs => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog>();
     public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
     public DbSet<Newsletter> Newsletters => Set<Newsletter>(); // Phase 6A.74: Newsletter/News Alert Feature
     public DbSet<NewsletterEmailHistory> NewsletterEmailHistories => Set<NewsletterEmailHistory>(); // Phase 6A.74 Part 13 Issue #1: Newsletter email send history
@@ -141,11 +145,13 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // transitional window (W5.4 doesn't carve out CommunicationsDbContext yet).
     public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup> EmailGroups => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup>(); // Phase 6A.25: Email Groups Management
 
-    // Stripe Customer Entity Set (Phase 6A.4)
-    public DbSet<StripeCustomer> StripeCustomers => Set<StripeCustomer>(); // Phase 6A.4: Stripe Payment Integration
-
-    // Stripe Webhook Event Entity Set (Phase 6A.24)
-    public DbSet<LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent> StripeWebhookEvents => Set<LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent>(); // Phase 6A.24: Webhook idempotency tracking
+    // Stripe Customer + Webhook Event DbSets removed Day 4 slot C sub-slice
+    // 4C.d.vii (2026-07-06). Types live in Payments.Infrastructure.Entities;
+    // LankaConnect.Infrastructure cannot PR Payments.Infrastructure (cycle —
+    // Payments.Infrastructure references LankaConnect.Infrastructure per
+    // W4.4.d.2 permanent edge). Physical tables (payments.stripe_customers +
+    // payments.stripe_webhook_events) unchanged; ownership moves to
+    // PaymentsDbContext in a follow-up wave.
 
     // Reference Data Entity Sets - Phase 6A.47
     public DbSet<EventCategoryRef> EventCategories => Set<EventCategoryRef>();
@@ -154,7 +160,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<ReferenceValue> ReferenceValues => Set<ReferenceValue>(); // Phase 6A.47: Unified Reference Data
 
     // Tax Reference Data - Phase 6A.X
-    public DbSet<LankaConnect.Domain.Tax.StateTaxRate> StateTaxRates => Set<LankaConnect.Domain.Tax.StateTaxRate>(); // Phase 6A.X: US State Sales Tax Rates
+    public DbSet<LankaConnect.Modules.Payments.Domain.Tax.StateTaxRate> StateTaxRates => Set<LankaConnect.Modules.Payments.Domain.Tax.StateTaxRate>(); // Phase 6A.X: US State Sales Tax Rates
 
     // Custom Form Entity Sets (Custom Form/Survey Sign-Up Feature)
     // W4.3 (2026-06-06): Form + FormQuestion + FormResponse + FormAnswer DbSets +
@@ -202,8 +208,18 @@ public class AppDbContext : DbContext, IApplicationDbContext
             new System.Reflection.AssemblyName("LankaConnect.Products.LankaEvents.Infrastructure"));
         modelBuilder.ApplyConfigurationsFromAssembly(lankaEventsInfrastructureAssembly);
 
-        // Apply entity configurations
-        modelBuilder.ApplyConfiguration(new UserConfiguration());
+        // 4C.e (2026-07-08): UserConfiguration relocated to
+        // LankaConnect.Modules.Identity.Infrastructure.Data.Configurations per Consult
+        // #14 PASS B. Same Assembly.Load pattern as LankaEvents above — the module
+        // Infrastructure assembly is in the load closure because LankaConnect.API →
+        // Identity.Api → Identity.Infrastructure. Dual mapping is intentional and
+        // temporary; the ~18 callers touching AppDbContext.Users cut over site-by-site
+        // in sub-slice 4C.e.2, at which point the explicit ApplyConfiguration line for
+        // UserConfiguration can be dropped from this context.
+        var identityInfrastructureAssembly = System.Reflection.Assembly.Load(
+            new System.Reflection.AssemblyName("LankaConnect.Modules.Identity.Infrastructure"));
+        modelBuilder.ApplyConfigurationsFromAssembly(identityInfrastructureAssembly);
+
         // Wave 6.5.f.5-hotfix (2026-07-04): EventEmailGroupLinkConfiguration relocated
         // to Products.LankaEvents.Infrastructure.Configurations; the ApplyConfigurationsFromAssembly
         // sweep at line 203 picks it up. The class type still needs to be in the
@@ -220,16 +236,13 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new ForumTopicConfiguration());
         modelBuilder.ApplyConfiguration(new ReplyConfiguration());
 
-        // Business entity configurations
-        modelBuilder.ApplyConfiguration(new BusinessConfiguration());
-        modelBuilder.ApplyConfiguration(new ServiceConfiguration());
-        modelBuilder.ApplyConfiguration(new ReviewConfiguration());
+        // Business entity configurations removed Day 5 per Consult #12 (Phase B territory).
 
         // Communications entity configurations
-        modelBuilder.ApplyConfiguration(new EmailMessageConfiguration());
-        modelBuilder.ApplyConfiguration(new EmailTemplateConfiguration());
+        // Day 4 slot C sub-slice 4C.c (2026-07-06): EmailMessage/EmailTemplate/
+        // UserEmailPreferences configurations relocated to CommunicationsDbContext.
+        // AppDbContext no longer applies these; physical schema unchanged (communications.*).
         modelBuilder.ApplyConfiguration(new EmailDispatchLogConfiguration());
-        modelBuilder.ApplyConfiguration(new UserEmailPreferencesConfiguration());
         modelBuilder.ApplyConfiguration(new NewsletterSubscriberConfiguration());
         modelBuilder.ApplyConfiguration(new NewsletterConfiguration()); // Phase 6A.74: Newsletter/News Alert Feature
         modelBuilder.ApplyConfiguration(new NewsletterEmailHistoryConfiguration()); // Phase 6A.74 Part 13 Issue #1: Newsletter email history
@@ -289,11 +302,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Email Group entity configuration (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new EmailGroupConfiguration());
 
-        // Stripe Customer configuration (Phase 6A.4)
-        modelBuilder.ApplyConfiguration(new StripeCustomerConfiguration());
-
-        // Stripe Webhook Event configuration (Phase 6A.24)
-        modelBuilder.ApplyConfiguration(new StripeWebhookEventConfiguration());
+        // Stripe Customer + Webhook Event configurations removed 4C.d.vii
+        // (2026-07-06) — Payments.Infrastructure PR cycle. Types will re-map
+        // via PaymentsDbContext in follow-up wave.
 
         // Reference Data entity configurations (Phase 6A.47)
         modelBuilder.ApplyConfiguration(new EventCategoryRefConfiguration());
@@ -366,33 +377,31 @@ public class AppDbContext : DbContext, IApplicationDbContext
         var phase1RelaxedTypes = new HashSet<Type>
         {
             typeof(LankaConnect.Modules.Identity.Domain.Entities.User),                          // Phase 1.1 (Wave4.9.2.1, 2026-06-08): identity.users
-            typeof(LankaConnect.Domain.Tax.StateTaxRate),                    // Phase 1.2 (Wave4.9.2.2, 2026-06-08): reference_data.state_tax_rates
-            typeof(LankaConnect.Domain.Badges.Badge),                        // Phase 1.3 (Wave4.9.2.3, 2026-06-08): badges.badges
+            typeof(LankaConnect.Modules.Payments.Domain.Tax.StateTaxRate),                    // Phase 1.2 (Wave4.9.2.2, 2026-06-08): reference_data.state_tax_rates
+            typeof(LankaConnect.Products.LankaEvents.Domain.Badges.Badge),                        // Phase 1.3 (Wave4.9.2.3, 2026-06-08): badges.badges
             typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge),          // Phase 1.3 (Wave4.9.2.3, 2026-06-08): badges.event_badges
-            typeof(LankaConnect.Domain.Business.Business),                   // Phase 1.4 (Wave4.9.2.4, 2026-06-08): business.businesses
-            typeof(LankaConnect.Domain.Business.Service),                    // Phase 1.4 (Wave4.9.2.4, 2026-06-08): business.services
-            typeof(LankaConnect.Domain.Business.Review),                     // Phase 1.4 (Wave4.9.2.4, 2026-06-08): business.reviews
-            typeof(LankaConnect.Domain.Community.ForumTopic),                // Phase 1.5 (Wave4.9.2.5, 2026-06-09): community.topics
-            typeof(LankaConnect.Domain.Community.Reply),                     // Phase 1.5 (Wave4.9.2.5, 2026-06-09): community.replies
-            typeof(LankaConnect.Domain.Analytics.EventAnalytics),            // Phase 1.6 (Wave4.9.2.6, 2026-06-09): analytics.event_analytics
+            // Business/Service/Review typeof entries removed Day 5 per Consult #12.
+            typeof(LankaConnect.Modules.Communications.Domain.Community.ForumTopic),                // Phase 1.5 (Wave4.9.2.5, 2026-06-09): community.topics
+            typeof(LankaConnect.Modules.Communications.Domain.Community.Reply),                     // Phase 1.5 (Wave4.9.2.5, 2026-06-09): community.replies
+            typeof(LankaConnect.Products.LankaEvents.Domain.Analytics.EventAnalytics),            // Phase 1.6 (Wave4.9.2.6, 2026-06-09): analytics.event_analytics
             // Phase 1.7 (Wave4.9.2.7, 2026-06-09): communications email-side subset (8 entities)
-            typeof(LankaConnect.Domain.Communications.Entities.EmailDispatchLog),
-            typeof(LankaConnect.Domain.Communications.Entities.EmailFailureDetail),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailFailureDetail),
             typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailGroup), // Wave 5.4.d.2: moved to Communications.Domain
-            typeof(LankaConnect.Domain.Communications.Entities.EmailMessage),
-            typeof(LankaConnect.Domain.Communications.Entities.EmailMetricRecord),
-            typeof(LankaConnect.Domain.Communications.Entities.EmailTemplate),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailMessage),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailMetricRecord),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailTemplate),
             typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventNotificationHistory),
-            typeof(LankaConnect.Domain.Communications.Entities.UserEmailPreferences),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.UserEmailPreferences),
             // Phase 1.8 (Wave4.9.2.8, 2026-06-09): communications newsletter subset
-            typeof(LankaConnect.Domain.Communications.Entities.Newsletter),
-            typeof(LankaConnect.Domain.Communications.Entities.NewsletterEmailHistory),
-            typeof(LankaConnect.Domain.Communications.Entities.NewsletterSubscriber),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.Newsletter),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.NewsletterEmailHistory),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.NewsletterSubscriber),
             // Phase 1.9 (Wave4.9.2.9, 2026-06-09): communications whatsapp subset
-            typeof(LankaConnect.Domain.Communications.Entities.UserWhatsAppPreferences),
-            typeof(LankaConnect.Domain.Communications.Entities.WhatsAppMessageRecord),
-            typeof(LankaConnect.Domain.Communications.Entities.WhatsAppTemplate),
-            typeof(LankaConnect.Domain.Communications.Entities.WhatsAppWebhookEvent),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.UserWhatsAppPreferences),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.WhatsAppMessageRecord),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.WhatsAppTemplate),
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.WhatsAppWebhookEvent),
             // Phase 1.10a (Wave4.9.2.10a, 2026-06-09): events schema - Event aggregate proper (10 entities)
             typeof(LankaConnect.Products.LankaEvents.Domain.Event),
             typeof(LankaConnect.Products.LankaEvents.Domain.Registration),
@@ -476,10 +485,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<ForumTopic>().ToTable("topics", "community");
         modelBuilder.Entity<Reply>().ToTable("replies", "community");
 
-        // Business schema
-        modelBuilder.Entity<Business>().ToTable("businesses", "business");
-        modelBuilder.Entity<Service>().ToTable("services", "business");
-        modelBuilder.Entity<Review>().ToTable("reviews", "business");
+        // Business schema removed Day 5 per Consult #12 (Phase B territory).
 
         // Communications schema
         modelBuilder.Entity<EmailMessage>().ToTable("email_messages", "communications");
@@ -505,7 +511,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Tax schema (Phase 6A.X)
         // Migration 20260114170149 created in public schema, will be moved to reference_data schema
-        modelBuilder.Entity<LankaConnect.Domain.Tax.StateTaxRate>().ToTable("state_tax_rates", "reference_data");
+        modelBuilder.Entity<LankaConnect.Modules.Payments.Domain.Tax.StateTaxRate>().ToTable("state_tax_rates", "reference_data");
     }
 
     private static void IgnoreUnconfiguredEntities(ModelBuilder modelBuilder)
@@ -527,12 +533,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EventTemplate), // Phase 6A.8
             typeof(ForumTopic),
             typeof(Reply),
-            typeof(Business),
-            typeof(Service),
-            typeof(Review),
+            // Business/Service/Review removed Day 5 per Consult #12.
             typeof(EmailMessage),
             typeof(EmailTemplate),
-            typeof(LankaConnect.Domain.Communications.Entities.EmailDispatchLog), // Phase 6A.148.W5.6.B.OBS1: durable email dispatch audit log
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog), // Phase 6A.148.W5.6.B.OBS1: durable email dispatch audit log
             typeof(UserEmailPreferences),
             typeof(NewsletterSubscriber), // Phase 5
             typeof(Newsletter), // Phase 6A.74: Newsletter/News Alert Feature
@@ -550,10 +554,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(Badge), // Phase 6A.25
             typeof(EventBadge), // Phase 6A.25
             typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailGroup), // Phase 6A.25: Email Groups Management (Wave 5.4.d.2: moved to Communications.Domain)
-            typeof(StripeCustomer), // Phase 6A.4: Stripe Payment Integration
-            typeof(LankaConnect.Infrastructure.Payments.Entities.StripeWebhookEvent), // Phase 6A.24: Webhook idempotency tracking
+            // StripeCustomer + StripeWebhookEvent typeof-refs removed 4C.d.vii; cycle avoidance.
             typeof(ReferenceValue), // Phase 6A.47: Unified Reference Data
-            typeof(LankaConnect.Domain.Tax.StateTaxRate), // Phase 6A.X: US State Sales Tax Rates
+            typeof(LankaConnect.Modules.Payments.Domain.Tax.StateTaxRate), // Phase 6A.X: US State Sales Tax Rates
             typeof(SupportTicket), // Phase 6A.89: Support/Feedback System
             typeof(AdminAuditLog), // Phase 6A.89: Admin Audit Logging
             // W4.3: Form + FormQuestion + FormResponse + FormAnswer moved to FormsDbContext.
@@ -566,8 +569,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventOrganizerContact), // Multiple Organizer Contacts
             typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventSlugAlias), // Phase 6A.154: retired vanity slug aliases (permanent 301 sources)
             typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventEmailGroupLink), // Wave 5.4.c.0: explicit junction CLR type replacing the Phase 6A.32 typed M2M nav
-            typeof(LankaConnect.Domain.Communications.Entities.NewsletterEmailGroupLink), // Wave 5.4.d.1b: mirror of EventEmailGroupLink for Newsletter side
-            typeof(LankaConnect.Domain.Communications.Entities.NewsletterMetroAreaLink), // W5.2.d-hotfix2: junction CLR for Newsletter -> MetroArea M2M
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.NewsletterEmailGroupLink), // Wave 5.4.d.1b: mirror of EventEmailGroupLink for Newsletter side
+            typeof(LankaConnect.Modules.Communications.Domain.Entities.NewsletterMetroAreaLink), // W5.2.d-hotfix2: junction CLR for Newsletter -> MetroArea M2M
             // W4.2: PhotoAlbum + AlbumPhoto moved to MediaDbContext.
             typeof(WhatsAppMessageRecord), // Phase 7A: WhatsApp Integration
             typeof(WhatsAppTemplate), // Phase 7A: WhatsApp Integration

@@ -1,16 +1,16 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
 
 // Session 23: Updated to support Stripe payment integration for paid events
@@ -502,9 +502,9 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 {
                     var currency = registration.TotalPrice?.Currency
                         ?? @event.Pricing?.Currency
-                        ?? LankaConnect.Domain.Shared.Enums.Currency.USD;
+                        ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-                    var amountResult = Money.Create(request.CollectionAmount.Value, currency);
+                    var amountResult = MoneyBuilder.Create(request.CollectionAmount.Value, currency);
                     if (amountResult.IsSuccess)
                     {
                         var collectionResult = Collection.Create(
@@ -567,9 +567,9 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             {
                 var currency = registration.TotalPrice?.Currency
                     ?? @event.Pricing?.Currency
-                    ?? LankaConnect.Domain.Shared.Enums.Currency.USD;
+                    ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-                var amountResult = Money.Create(request.SponsorAmount.Value, currency);
+                var amountResult = MoneyBuilder.Create(request.SponsorAmount.Value, currency);
                 if (amountResult.IsSuccess)
                 {
                     // W5.D10.c — prefer caller-supplied sponsor contact fields when provided
@@ -995,9 +995,9 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         // Determine currency from registration's pricing or event
         var currency = registration.TotalPrice?.Currency
             ?? @event.Pricing?.Currency
-            ?? LankaConnect.Domain.Shared.Enums.Currency.USD;
+            ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-        var amountResult = Money.Create(donationAmount, currency);
+        var amountResult = MoneyBuilder.Create(donationAmount, currency);
         if (amountResult.IsFailure)
         {
             _logger.LogWarning("Failed to create donation Money - Error={Error}", amountResult.Error);

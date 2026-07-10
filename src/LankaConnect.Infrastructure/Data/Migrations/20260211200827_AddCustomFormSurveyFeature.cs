@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore.Migrations;

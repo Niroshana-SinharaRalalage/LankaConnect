@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -7,12 +7,12 @@ namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     /// <summary>
-    /// Phase 7C.2 â€” Bug B fix (five commitment templates): the EVENT DETAILS CARD
+    /// Phase 7C.2 — Bug B fix (five commitment templates): the EVENT DETAILS CARD
     /// renders <c>&lt;p&gt;{{EventLocation}}&lt;/p&gt;</c>, where <c>{{EventLocation}}</c>
     /// is bound to <c>EventLocation.ToString()</c> which appends a GPS-coordinate suffix
     /// (<c>"{Street}, {City}, {State}, {ZipCode}, {Country} ({Coordinates})"</c>). Admin UI
     /// + diaspora sync still depend on that <c>ToString()</c> shape, so we cannot change
-    /// the value-object â€” we replace the template's <c>&lt;p&gt;</c> wrapper with the
+    /// the value-object — we replace the template's <c>&lt;p&gt;</c> wrapper with the
     /// decomposed two-sibling-if block that the Phase 7C.2 projection populates:
     ///   - bold <c>{{LocationName}}</c> (when venue has a name)
     ///   - full 5-part <c>{{LocationAddress}}</c> (falls back to "Online Event")
@@ -38,7 +38,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         private const string EventLocationWrapperRegex =
             @"<p\s+style=""[^""]+""\s*>\s*\{\{EventLocation\}\}\s*</p>";
 
-        // Phase 7C.2 decomposed block. No {{else}} â€” the custom template engine
+        // Phase 7C.2 decomposed block. No {{else}} — the custom template engine
         // strips falsy {{#if}}...{{/if}} blocks but does not branch on {{else}}.
         // LocationAddress is guaranteed non-empty by the Application-layer projection.
         private const string NewBlock =
@@ -96,7 +96,7 @@ BEGIN
         WHERE name = '{name}'
           AND html_template LIKE '%{{{{EventLocation}}}}%'
     ) THEN
-        RAISE EXCEPTION 'Phase 7C.2 rewrite-event-location migration: template ""{name}"" still contains {{{{EventLocation}}}} after rewrite â€” regex did not match. Aborting.';
+        RAISE EXCEPTION 'Phase 7C.2 rewrite-event-location migration: template ""{name}"" still contains {{{{EventLocation}}}} after rewrite — regex did not match. Aborting.';
     END IF;
 END
 $migration$;
@@ -203,7 +203,7 @@ $migration$;
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Phase 7C.2 â€” rolling back the template rewrite is intentionally a no-op.
+            // Phase 7C.2 — rolling back the template rewrite is intentionally a no-op.
             // The original <p style="...">{{EventLocation}}</p> wrapper carried multi-line
             // inline CSS whose exact whitespace varied across seed migrations, so a
             // faithful restore cannot be expressed as a single SQL string. If rollback

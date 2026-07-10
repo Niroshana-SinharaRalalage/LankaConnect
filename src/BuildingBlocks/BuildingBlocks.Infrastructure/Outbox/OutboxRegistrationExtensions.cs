@@ -1,7 +1,6 @@
 using LankaConnect.BuildingBlocks.Contracts.IntegrationEvents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-
 namespace LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 
 /// <summary>
@@ -24,7 +23,7 @@ namespace LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 /// </list>
 /// <para>
 /// Handlers inject <c>IIntegrationEventOutbox&lt;TDbContext&gt;</c> to enqueue
-/// events. The adapter <c>LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox&lt;TDbContext&gt;</c>
+/// events. The adapter <c>LankaConnect.BuildingBlocks.Infrastructure.Outbox.IntegrationEventOutbox&lt;TDbContext&gt;</c>
 /// bridges the Application-layer interface to the concrete
 /// <see cref="OutboxIntegrationEventDispatcher{TDbContext}"/> — and IS registered
 /// separately by the composition root because it depends on

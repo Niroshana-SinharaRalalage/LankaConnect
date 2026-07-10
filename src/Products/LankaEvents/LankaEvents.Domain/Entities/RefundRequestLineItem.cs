@@ -1,7 +1,7 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
-
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -33,8 +33,10 @@ public class RefundRequestLineItem : LegacyBaseEntity
         Status == RefundLineItemStatus.Refunded || Status == RefundLineItemStatus.Failed;
 
     // EF Core
+    [SetsRequiredMembers]
     private RefundRequestLineItem() { }
 
+    [SetsRequiredMembers]
     private RefundRequestLineItem(
         Guid refundRequestId,
         RefundLineItemType type,

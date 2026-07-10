@@ -1,0 +1,382 @@
+using LankaConnect.BuildingBlocks.Application.Common.Models;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+// 4C.d.xiii: LankaConnect.API.Extensions dead ref removed
+using LankaConnect.Modules.Identity.Application.Commands.Users.AdminActivateUser;
+using LankaConnect.Modules.Identity.Application.Commands.Users.AdminDeactivateUser;
+using LankaConnect.Modules.Identity.Application.Commands.Users.AdminDowngradeUser;
+using LankaConnect.Modules.Identity.Application.Commands.Users.AdminLockUser;
+using LankaConnect.Modules.Identity.Application.Commands.Users.AdminUnlockUser;
+using LankaConnect.Modules.Identity.Application.Commands.Users.AdminUpgradeUser;
+using LankaConnect.Modules.Identity.Application.DTOs;
+using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUserDetails;
+using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUsersPaged;
+using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUserStatistics;
+using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5
+using LankaConnect.Modules.Identity.Domain.Enums;
+namespace LankaConnect.Modules.Identity.Api.Controllers;
+
+/// <summary>
+/// Admin user management endpoints
+/// Phase 6A.90: Admin User Management System
+/// </summary>
+[ApiController]
+[Route("api/admin/users")]
+[Produces("application/json")]
+[Authorize(Policy = "RequireAdmin")]
+public class AdminUsersController : BaseController<AdminUsersController>
+{
+    public AdminUsersController(IMediator mediator, ILogger<AdminUsersController> logger) : base(mediator, logger)
+    {
+    }
+
+    /// <summary>
+    /// Get paginated list of users for admin management
+    /// Phase 6A.90: Returns filtered/searched users with pagination
+    /// </summary>
+    /// <param name="page">Page number (1-based, default: 1)</param>
+    /// <param name="pageSize">Items per page (default: 20, max: 100)</param>
+    /// <param name="search">Search term for name/email</param>
+    /// <param name="role">Filter by role</param>
+    /// <param name="isActive">Filter by active status</param>
+    /// <returns>Paginated list of users</returns>
+    [HttpGet]
+    [ProducesResponseType(typeof(PagedResultDto<AdminUserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetUsers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] UserRole? role = null,
+        [FromQuery] bool? isActive = null)
+    {
+        Logger.LogInformation(
+            "Admin {AdminUserId} retrieving users - Page={Page}, PageSize={PageSize}, Search={Search}, Role={Role}, IsActive={IsActive}",
+            User.TryGetUserId(), page, pageSize, search, role, isActive);
+
+        var query = new GetAdminUsersPagedQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            SearchTerm = search,
+            RoleFilter = role,
+            IsActiveFilter = isActive
+        };
+
+        var result = await Mediator.Send(query);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get detailed user information for admin view
+    /// Phase 6A.90: Returns full user details including account status
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <returns>User details</returns>
+    [HttpGet("{userId:guid}")]
+    [ProducesResponseType(typeof(AdminUserDetailsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetUserDetails(Guid userId)
+    {
+        Logger.LogInformation(
+            "Admin {AdminUserId} retrieving user details - TargetUserId={TargetUserId}",
+            User.TryGetUserId(), userId);
+
+        var query = new GetAdminUserDetailsQuery(userId);
+        var result = await Mediator.Send(query);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get user statistics for admin dashboard
+    /// Phase 6A.90: Returns counts by role, active/inactive, locked accounts
+    /// </summary>
+    /// <returns>User statistics</returns>
+    [HttpGet("statistics")]
+    [ProducesResponseType(typeof(AdminUserStatisticsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetStatistics()
+    {
+        Logger.LogInformation(
+            "Admin {AdminUserId} retrieving user statistics",
+            User.TryGetUserId());
+
+        var query = new GetAdminUserStatisticsQuery();
+        var result = await Mediator.Send(query);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Deactivate a user account
+    /// Phase 6A.90: Prevents user from logging in or performing actions
+    /// </summary>
+    /// <param name="userId">User ID to deactivate</param>
+    /// <returns>Success or failure result</returns>
+    [HttpPost("{userId:guid}/deactivate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DeactivateUser(Guid userId)
+    {
+        var (ipAddress, userAgent) = GetClientInfo();
+
+        Logger.LogInformation(
+            "Admin {AdminUserId} deactivating user - TargetUserId={TargetUserId}, IP={IpAddress}",
+            User.TryGetUserId(), userId, ipAddress);
+
+        var command = new AdminDeactivateUserCommand(userId, ipAddress, userAgent);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Activate a user account
+    /// Phase 6A.90: Allows user to login and perform actions again
+    /// </summary>
+    /// <param name="userId">User ID to activate</param>
+    /// <returns>Success or failure result</returns>
+    [HttpPost("{userId:guid}/activate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ActivateUser(Guid userId)
+    {
+        var (ipAddress, userAgent) = GetClientInfo();
+
+        Logger.LogInformation(
+            "Admin {AdminUserId} activating user - TargetUserId={TargetUserId}, IP={IpAddress}",
+            User.TryGetUserId(), userId, ipAddress);
+
+        var command = new AdminActivateUserCommand(userId, ipAddress, userAgent);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Lock a user account
+    /// Phase 6A.90: Temporarily locks account until specified date
+    /// </summary>
+    /// <param name="userId">User ID to lock</param>
+    /// <param name="request">Lock request with duration and reason</param>
+    /// <returns>Success or failure result</returns>
+    [HttpPost("{userId:guid}/lock")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> LockUser(Guid userId, [FromBody] LockUserRequest request)
+    {
+        var (ipAddress, userAgent) = GetClientInfo();
+
+        Logger.LogInformation(
+            "Admin {AdminUserId} locking user - TargetUserId={TargetUserId}, LockUntil={LockUntil}, IP={IpAddress}",
+            User.TryGetUserId(), userId, request.LockUntil, ipAddress);
+
+        var command = new AdminLockUserCommand(userId, request.LockUntil, request.Reason, ipAddress, userAgent);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Unlock a user account
+    /// Phase 6A.90: Clears lock and resets failed login attempts
+    /// </summary>
+    /// <param name="userId">User ID to unlock</param>
+    /// <returns>Success or failure result</returns>
+    [HttpPost("{userId:guid}/unlock")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> UnlockUser(Guid userId)
+    {
+        var (ipAddress, userAgent) = GetClientInfo();
+
+        Logger.LogInformation(
+            "Admin {AdminUserId} unlocking user - TargetUserId={TargetUserId}, IP={IpAddress}",
+            User.TryGetUserId(), userId, ipAddress);
+
+        var command = new AdminUnlockUserCommand(userId, ipAddress, userAgent);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Resend email verification to a user
+    /// Phase 6A.90: Admin can trigger verification email resend for any user
+    /// </summary>
+    /// <param name="userId">User ID to resend verification for</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Success or failure result</returns>
+    [HttpPost("{userId:guid}/resend-verification")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ResendVerification(Guid userId, CancellationToken cancellationToken)
+    {
+        Logger.LogInformation(
+            "Admin {AdminUserId} resending verification email - TargetUserId={TargetUserId}",
+            User.TryGetUserId(), userId);
+
+        try
+        {
+            var command = new SendEmailVerificationCommand(userId, ForceResend: true);
+            var result = await Mediator.Send(command, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                if (result.Error.Contains("recently sent") || result.Error.Contains("rate limit"))
+                {
+                    return StatusCode(429, new { error = result.Error });
+                }
+
+                Logger.LogWarning(
+                    "Admin {AdminUserId} resend verification failed for user {TargetUserId}: {Error}",
+                    User.TryGetUserId(), userId, result.Error);
+                return BadRequest(new { error = result.Error });
+            }
+
+            Logger.LogInformation(
+                "Admin {AdminUserId} successfully resent verification email to user {TargetUserId} ({Email})",
+                User.TryGetUserId(), userId, result.Value.Email);
+
+            return Ok(new
+            {
+                message = "Verification email has been sent.",
+                userId = result.Value.UserId,
+                email = result.Value.Email,
+                expiresAt = result.Value.TokenExpiresAt
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "Admin {AdminUserId} failed to resend verification email for user {TargetUserId}",
+                User.TryGetUserId(), userId);
+            return StatusCode(500, new { error = "An error occurred while sending the verification email" });
+        }
+    }
+
+    /// <summary>
+    /// Downgrade a user's role to GeneralUser
+    /// Phase 6A.106: Admin/AdminManager can downgrade users following role hierarchy rules
+    /// </summary>
+    /// <param name="userId">User ID to downgrade</param>
+    /// <param name="request">Downgrade request with reason</param>
+    /// <returns>Success or failure result</returns>
+    [HttpPost("{userId:guid}/downgrade")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DowngradeUser(Guid userId, [FromBody] DowngradeUserRequest request)
+    {
+        var (ipAddress, userAgent) = GetClientInfo();
+
+        Logger.LogInformation(
+            "Admin {AdminUserId} downgrading user - TargetUserId={TargetUserId}, IP={IpAddress}",
+            User.TryGetUserId(), userId, ipAddress);
+
+        var command = new AdminDowngradeUserCommand(userId, request.Reason, ipAddress, userAgent);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Upgrade a GeneralUser to EventOrganizer (admin-initiated, no user request needed).
+    /// Phase 6A.139: Symmetric counterpart to the existing downgrade endpoint (Phase 6A.106).
+    /// </summary>
+    /// <param name="userId">User ID to upgrade</param>
+    /// <param name="request">Upgrade request with reason</param>
+    /// <returns>Success or failure result</returns>
+    [HttpPost("{userId:guid}/upgrade")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> UpgradeUser(Guid userId, [FromBody] UpgradeUserRequest request)
+    {
+        var (ipAddress, userAgent) = GetClientInfo();
+
+        Logger.LogInformation(
+            "Admin {AdminUserId} upgrading user to EventOrganizer - TargetUserId={TargetUserId}, IP={IpAddress}",
+            User.TryGetUserId(), userId, ipAddress);
+
+        var command = new AdminUpgradeUserCommand(userId, request.Reason, ipAddress, userAgent);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    #region Private Helpers
+
+    private (string? IpAddress, string? UserAgent) GetClientInfo()
+    {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        // Check for forwarded IP addresses (when behind a proxy/load balancer)
+        if (Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+        {
+            ipAddress = forwardedFor.ToString().Split(',')[0].Trim();
+        }
+
+        var userAgent = Request.Headers.UserAgent.ToString();
+        if (userAgent.Length > 500)
+        {
+            userAgent = userAgent.Substring(0, 500);
+        }
+
+        return (ipAddress, userAgent);
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Request body for locking a user account
+/// Phase 6A.90: Admin User Management
+/// </summary>
+public record LockUserRequest
+{
+    /// <summary>
+    /// Date/time until which the account will be locked
+    /// </summary>
+    public DateTime LockUntil { get; init; }
+
+    /// <summary>
+    /// Optional reason for the lock (for audit trail)
+    /// </summary>
+    public string? Reason { get; init; }
+}
+
+/// <summary>
+/// Request body for downgrading a user's role
+/// Phase 6A.106: Admin User Role Downgrade
+/// </summary>
+public record DowngradeUserRequest
+{
+    /// <summary>
+    /// Required reason for the downgrade (for audit trail)
+    /// </summary>
+    public string Reason { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Request body for upgrading a user's role to EventOrganizer.
+/// Phase 6A.139: Admin-initiated upgrade (mirrors DowngradeUserRequest).
+/// </summary>
+public record UpgradeUserRequest
+{
+    /// <summary>
+    /// Required reason for the upgrade (for audit trail)
+    /// </summary>
+    public string Reason { get; init; } = string.Empty;
+}

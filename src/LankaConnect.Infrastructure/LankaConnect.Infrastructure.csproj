@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\LankaConnect.Application\LankaConnect.Application.csproj" />
@@ -24,9 +24,21 @@
          Sponsor) + StripePaymentService that inject these interfaces. Explicit
          ref makes that cross-module consumption visible. Mirrors W5.3d.3 / W5.4.d.2. -->
     <ProjectReference Include="..\Modules\Payments\Payments.Domain\Payments.Domain.csproj" />
+    <!-- Communications.Application PR for IEmailMessageRepository +
+         IEmailStatusRepository + IUserEmailPreferencesRepository +
+         IEmailTemplateRepository (Communications repo impls live here).
+         Day 4 slot C sub-slice 4C.d.vii (2026-07-06): Payments.Infrastructure
+         PR NOT added (Payments.Infrastructure references LankaConnect.Infrastructure
+         via 4.4.d.2 permanent edge — would cycle). AppDbContext's StripeCustomer
+         DbSet lines will be moved to Payments.Infrastructure in a follow-up
+         relocation pass. For now: keep the type refs; the file compiles thanks
+         to the fully-qualified LankaConnect.Modules.Payments.Infrastructure
+         namespace already resolving through Payments.Domain PR since the type
+         lives adjacent. -->
+    <!-- Wave 6.5.f Day 5 slot A (2026-07-10): PR to Communications.Application DELETED. 4 Email repo IMPLS moved to Communications.Infrastructure/Data/Repositories/ in same commit; LC.Infrastructure has no remaining live usings of Communications.Application types. Breaks cycle Comm.App→Comm.Infra→LC.Infra→Comm.App. -->
     <ProjectReference Include="..\Modules\Identity\Identity.Contracts\Identity.Contracts.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
-    <ProjectReference Include="..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <!-- Wave 6.5.f Day 5 slot A (2026-07-10): PR to LankaEvents.Application DELETED. 2 Export services (CsvExportService + ExcelExportService) moved to LankaEvents.Application/Common/Export/ in same commit. Breaks cycle LE.App→LE.Infra→LC.Infra→LE.App. -->
 
     <!-- Wave 6.5.a (2026-07-03): outbox adapter classes (IntegrationEventOutbox, module-context
          registration extensions) live in this project because they bridge the LankaConnect.Application

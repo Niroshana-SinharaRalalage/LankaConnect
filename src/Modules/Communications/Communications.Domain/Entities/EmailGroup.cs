@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
-using LankaConnect.Domain.Common;
-
+using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Modules.Communications.Domain.Entities;
 
 /// <summary>
@@ -17,6 +17,7 @@ public class EmailGroup : LegacyBaseEntity
     public bool IsActive { get; private set; } = true;
 
     // For EF Core
+    [SetsRequiredMembers]
     private EmailGroup() { }
 
     /// <summary>

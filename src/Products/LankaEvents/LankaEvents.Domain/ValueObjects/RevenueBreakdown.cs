@@ -1,7 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
-
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
@@ -152,16 +150,16 @@ public class RevenueBreakdown : ValueObject
         var preTaxAmount = grossAmount.Amount / (1 + salesTaxRate);
         var salesTaxAmount = grossAmount.Amount - preTaxAmount;
 
-        var salesTax = Money.Create(salesTaxAmount, currency).Value;
-        var taxableAmount = Money.Create(preTaxAmount, currency).Value;
+        var salesTax = new Money(salesTaxAmount, currency);
+        var taxableAmount = new Money(preTaxAmount, currency);
 
         // 2. Calculate Stripe fee on taxable amount
         var stripeFeeAmountCalculated = (preTaxAmount * stripeFeeRate) + stripeFeeFixed;
-        var stripeFee = Money.Create(stripeFeeAmountCalculated, currency).Value;
+        var stripeFee = new Money(stripeFeeAmountCalculated, currency);
 
         // 3. Calculate platform commission on taxable amount
         var platformCommissionAmountCalculated = preTaxAmount * platformCommissionRate;
-        var platformCommission = Money.Create(platformCommissionAmountCalculated, currency).Value;
+        var platformCommission = new Money(platformCommissionAmountCalculated, currency);
 
         // 4. Calculate organizer payout
         var payoutAmount = preTaxAmount - stripeFeeAmountCalculated - platformCommissionAmountCalculated;
@@ -172,7 +170,7 @@ public class RevenueBreakdown : ValueObject
                 $"Revenue breakdown results in negative payout (${payoutAmount:F2}). " +
                 "Ticket price is too low to cover transaction fees. Consider increasing the price.");
 
-        var payout = Money.Create(payoutAmount, currency).Value;
+        var payout = new Money(payoutAmount, currency);
 
         return Result<RevenueBreakdown>.Success(new RevenueBreakdown(
             grossAmount,

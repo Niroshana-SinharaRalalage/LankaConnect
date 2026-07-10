@@ -1,7 +1,7 @@
-using LankaConnect.Application.Common.Behaviors;
+using LankaConnect.BuildingBlocks.Application.Common.Behaviors;
 using LankaConnect.Application.Tests.TestHelpers;
 using LankaConnect.Modules.Identity.Application.Commands.Users.CreateUser;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
 using Microsoft.Extensions.Logging;
 

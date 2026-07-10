@@ -1,7 +1,6 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using MediatR;
-
-namespace LankaConnect.Application.Dashboard.Queries.GetCommunityStats;
+namespace LankaConnect.Host.AllInOne.Dashboard.Queries.GetCommunityStats;
 
 /// <summary>
 /// Phase 6A.69: Query for public community statistics (hero numbers on landing page)

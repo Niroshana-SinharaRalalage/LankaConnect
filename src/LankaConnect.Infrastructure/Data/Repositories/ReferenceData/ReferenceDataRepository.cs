@@ -1,6 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.ReferenceData.Entities;
-using LankaConnect.Domain.ReferenceData.Interfaces;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -15,11 +14,15 @@ namespace LankaConnect.Infrastructure.Data.Repositories.ReferenceData;
 /// </summary>
 public class ReferenceDataRepository : IReferenceDataRepository
 {
-    private readonly IApplicationDbContext _context;
+    // 4C.g (2026-07-08): injected AppDbContext directly per Consult #14 PASS B —
+    // ReferenceValue is a cross-cutting SharedKernel entity that stays in the
+    // shared context, so the repo talks to AppDbContext straight without going
+    // through IApplicationDbContext (which is deleted at 4C.h).
+    private readonly AppDbContext _context;
     private readonly ILogger<ReferenceDataRepository> _logger;
 
     public ReferenceDataRepository(
-        IApplicationDbContext context,
+        AppDbContext context,
         ILogger<ReferenceDataRepository> logger)
     {
         _context = context;

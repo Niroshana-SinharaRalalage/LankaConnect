@@ -1,5 +1,4 @@
 using FluentValidation;
-
 namespace LankaConnect.Modules.Communications.Application.Commands.CreateEmailGroup;
 
 /// <summary>

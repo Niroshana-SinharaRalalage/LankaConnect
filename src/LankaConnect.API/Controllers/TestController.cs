@@ -1,8 +1,7 @@
-using LankaConnect.Infrastructure.Email.Services;
+using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-namespace LankaConnect.API.Controllers;
+namespace LankaConnect.Host.AllInOne.Controllers;
 
 /// <summary>
 /// Controller for testing and diagnostics endpoints.
@@ -47,7 +46,7 @@ public class TestController : ControllerBase
             _logger.LogInformation("Sending test email to {ToEmail}", toEmail);
 
             // Create email message DTO for direct sending
-            var emailMessage = new LankaConnect.Application.Common.DTOs.EmailMessageDto
+            var emailMessage = new LankaConnect.BuildingBlocks.Application.Common.DTOs.EmailMessageDto
             {
                 ToEmail = toEmail,
                 ToName = "Test Recipient",

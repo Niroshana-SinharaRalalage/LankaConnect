@@ -6,7 +6,7 @@ namespace LankaConnect.Modules.Notifications.Domain;
 /// Repository interface for the <see cref="Notification"/> aggregate.
 /// Originated in Phase 6A.6; moved into the Notifications module Domain layer
 /// during Phase A W3.2 (2026-06-02); refactored from legacy
-/// <c>LankaConnect.Domain.Common.IRepository&lt;T&gt;</c> to
+/// <c>LankaConnect.BuildingBlocks.Domain.IRepository&lt;T&gt;</c> to
 /// <see cref="IAggregateRepository{TAggregate, TId}"/> in W3A (2026-06-05)
 /// per ADR-010.
 /// </summary>

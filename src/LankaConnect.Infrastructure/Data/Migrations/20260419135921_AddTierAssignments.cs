@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -134,9 +134,9 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 table: "tier_assignments",
                 columns: new[] { "assignable_kind", "assignable_id" });
 
-            // Slice 4 Release N — backfill tier_assignments from the legacy venue_zones.ticket_tier_id column.
+            // Slice 4 Release N � backfill tier_assignments from the legacy venue_zones.ticket_tier_id column.
             // The column stays nullable in DB (Release N dual-read window); Release N+1 drops it after
-            // ≥1 week in production with no rollback triggered (architect decision #11).
+            // =1 week in production with no rollback triggered (architect decision #11).
             // ON CONFLICT DO NOTHING guards against re-apply on environments where backfill already ran.
             // NOTE: "Id" is quoted because venue_zones.Id was created without HasColumnName override,
             // so EF's default naming produced a mixed-case quoted identifier at table-creation time.

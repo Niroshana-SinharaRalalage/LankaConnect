@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>

@@ -1,25 +1,24 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.CreateUser;
 
 public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Guid>
 {
     private readonly LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository _userRepository;
-    private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
+    private readonly LankaConnect.BuildingBlocks.Domain.IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateUserCommandHandler> _logger;
 
     public CreateUserCommandHandler(
         LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository userRepository,
-        LankaConnect.Domain.Common.IUnitOfWork unitOfWork,
+        LankaConnect.BuildingBlocks.Domain.IUnitOfWork unitOfWork,
         ILogger<CreateUserCommandHandler> logger)
     {
         _userRepository = userRepository;
@@ -44,7 +43,7 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Guid>
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Create Email value object
-                var emailResult = LankaConnect.Domain.Shared.ValueObjects.Email.Create(request.Email);
+                var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(request.Email);
                 if (emailResult.IsFailure)
                 {
                     stopwatch.Stop();
@@ -78,10 +77,10 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Guid>
                     emailResult.Value.Value);
 
                 // Create PhoneNumber value object if provided
-                LankaConnect.Domain.Shared.ValueObjects.PhoneNumber? phoneNumber = null;
+                LankaConnect.Products.LankaEvents.Domain.ValueObjects.PhoneNumber? phoneNumber = null;
                 if (!string.IsNullOrEmpty(request.PhoneNumber))
                 {
-                    var phoneResult = LankaConnect.Domain.Shared.ValueObjects.PhoneNumber.Create(request.PhoneNumber);
+                    var phoneResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.PhoneNumber.Create(request.PhoneNumber);
                     if (phoneResult.IsFailure)
                     {
                         stopwatch.Stop();

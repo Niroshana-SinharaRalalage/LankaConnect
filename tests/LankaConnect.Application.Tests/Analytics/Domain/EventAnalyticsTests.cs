@@ -1,6 +1,6 @@
 using FluentAssertions;
-using LankaConnect.Domain.Analytics;
-using LankaConnect.Domain.Analytics.DomainEvents;
+using LankaConnect.Products.LankaEvents.Domain.Analytics;
+using LankaConnect.Products.LankaEvents.Domain.Analytics.DomainEvents;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Analytics;

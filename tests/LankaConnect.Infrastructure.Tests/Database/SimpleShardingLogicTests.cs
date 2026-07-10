@@ -4,7 +4,7 @@ using LankaConnect.Infrastructure.Database.Sharding;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.Infrastructure.Tests.Database;
 

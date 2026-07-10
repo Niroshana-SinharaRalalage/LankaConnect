@@ -1,18 +1,19 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Queries.CalculateAdditionPrice;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddAttendees;
 
 /// <summary>
@@ -23,7 +24,7 @@ namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddAtte
 public class InitiateAddAttendeesCommandHandler
     : ICommandHandler<InitiateAddAttendeesCommand, InitiateAddAttendeesResult>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IRegistrationAdditionRepository _additionRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IStripePaymentService _stripePaymentService;
@@ -31,7 +32,7 @@ public class InitiateAddAttendeesCommandHandler
     private readonly ILogger<InitiateAddAttendeesCommandHandler> _logger;
 
     public InitiateAddAttendeesCommandHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IRegistrationAdditionRepository additionRepository,
         IEventRepository eventRepository,
         IStripePaymentService stripePaymentService,
@@ -163,10 +164,10 @@ public class InitiateAddAttendeesCommandHandler
                 }
 
                 // Step 4: Create Money value objects
-                var currency = Enum.Parse<LankaConnect.Domain.Shared.Enums.Currency>(pricing.Currency, true);
-                var previousTotalPriceResult = Money.Create(pricing.CurrentTotalPaid, currency);
-                var newTotalPriceResult = Money.Create(pricing.NewTotalPrice, currency);
-                var additionalAmountResult = Money.Create(pricing.AdditionalAmount, currency);
+                var currency = LankaConnect.SharedKernel.Money.Currency.FromCode(pricing.Currency);
+                var previousTotalPriceResult = MoneyBuilder.Create(pricing.CurrentTotalPaid, currency);
+                var newTotalPriceResult = MoneyBuilder.Create(pricing.NewTotalPrice, currency);
+                var additionalAmountResult = MoneyBuilder.Create(pricing.AdditionalAmount, currency);
 
                 if (previousTotalPriceResult.IsFailure || newTotalPriceResult.IsFailure || additionalAmountResult.IsFailure)
                 {
@@ -247,7 +248,7 @@ public class InitiateAddAttendeesCommandHandler
 
                 // Step 8: Save RegistrationAddition to database
                 await _additionRepository.AddAsync(addition, cancellationToken);
-                await _context.CommitAsync(cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

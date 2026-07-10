@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Infrastructure.Data;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Community;
-using LankaConnect.Domain.Community.Enums;
+using LankaConnect.Modules.Communications.Domain.Community;
+using LankaConnect.Modules.Communications.Domain.Community.Enums;
 using System.Diagnostics;
 using Serilog.Context;
 

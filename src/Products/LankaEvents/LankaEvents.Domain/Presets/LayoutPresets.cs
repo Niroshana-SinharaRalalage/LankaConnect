@@ -1,8 +1,7 @@
 using System.Globalization;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-
 namespace LankaConnect.Products.LankaEvents.Domain.Presets;
 
 /// <summary>

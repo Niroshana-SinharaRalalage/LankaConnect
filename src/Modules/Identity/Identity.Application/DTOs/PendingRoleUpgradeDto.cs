@@ -1,4 +1,5 @@
 namespace LankaConnect.Modules.Identity.Application.DTOs;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// DTO for pending role upgrade approval request

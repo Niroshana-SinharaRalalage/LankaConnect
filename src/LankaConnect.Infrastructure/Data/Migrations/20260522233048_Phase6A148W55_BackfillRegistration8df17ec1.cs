@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -18,13 +18,13 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     ///
     /// However the registration row stayed <c>Status=Cancelled</c> because Bug 1 (W5.5
     /// router) mis-routed the ticket refund's <c>charge.refunded</c> webhook to the
-    /// sponsor handler instead of the registration handler â€” so
+    /// sponsor handler instead of the registration handler — so
     /// <c>RegistrationWebhookHandler.HandleChargeRefundedAsync</c>'s W5.D5 workflow
     /// branch never invoked <c>Registration.CompleteRefundFromCancelled</c>.
     ///
     /// W5.5.D4 prevents recurrence for new refunds. W5.5.D6.5 reconciler will heal new
     /// occurrences within the cron interval. This migration heals THE ONE specific
-    /// row the operator UAT surfaced â€” applies the same DB updates
+    /// row the operator UAT surfaced — applies the same DB updates
     /// <c>CompleteRefundFromCancelled</c> would have applied:
     ///   - Status='Refunded'
     ///   - PaymentStatus=3 (Refunded)
@@ -32,9 +32,9 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     ///   - RefundCompletedAt=NOW() UTC
     ///   - UpdatedAt=NOW() UTC
     ///
-    /// Per operator decision (Q2): quiet backfill â€” DO NOT raise domain events / send
+    /// Per operator decision (Q2): quiet backfill — DO NOT raise domain events / send
     /// recovery emails. Raw SQL bypasses the EF change tracker so no events fire.
-    /// Idempotent â€” guarded by current-state WHERE clause; re-run is a no-op.
+    /// Idempotent — guarded by current-state WHERE clause; re-run is a no-op.
     /// </summary>
     public partial class Phase6A148W55_BackfillRegistration8df17ec1 : Migration
     {
@@ -137,8 +137,8 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 column: "created_at",
                 value: new DateTime(2026, 5, 22, 23, 30, 45, 402, DateTimeKind.Utc).AddTicks(1643));
 
-            // === W5.5.D7 Backfill: registration 8df17ec1 stuck Cancelledâ†’Refunded ===
-            // Quiet fix per operator Q2 â€” raw SQL bypasses domain event dispatch so no
+            // === W5.5.D7 Backfill: registration 8df17ec1 stuck Cancelled?Refunded ===
+            // Quiet fix per operator Q2 — raw SQL bypasses domain event dispatch so no
             // recovery email fires. Idempotent: WHERE clause matches only the stuck state.
             migrationBuilder.Sql(@"
 UPDATE events.registrations

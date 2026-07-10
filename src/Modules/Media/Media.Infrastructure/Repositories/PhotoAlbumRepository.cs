@@ -5,7 +5,6 @@ using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Infrastructure.Data;
 using Serilog;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Media.Infrastructure.Repositories;
 
 /// <summary>
@@ -18,7 +17,7 @@ namespace LankaConnect.Modules.Media.Infrastructure.Repositories;
 /// Wave 6.5.b retired the self-saving pattern that used to live here (the class
 /// remark documenting it was deleted along with the SaveChangesAsync calls
 /// inside AddAsync/UpdateAsync/DeleteAsync). Callers now use
-/// <see cref="LankaConnect.Application.Common.Interfaces.IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken)"/>
+/// <see cref="LankaConnect.BuildingBlocks.Application.Common.Interfaces.IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken)"/>
 /// so AppDbContext + MediaDbContext commit atomically inside a single Postgres
 /// transaction — the F30a class of production data-loss cannot recur through
 /// this repository.

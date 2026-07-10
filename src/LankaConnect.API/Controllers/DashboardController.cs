@@ -2,8 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LankaConnect.API.Extensions;
-
-namespace LankaConnect.API.Controllers;
+namespace LankaConnect.Host.AllInOne.Controllers;
 
 /// <summary>
 /// Dashboard endpoints for authenticated users

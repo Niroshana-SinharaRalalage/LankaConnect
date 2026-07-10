@@ -20,16 +20,16 @@ global using AutoFixture;
 global using LankaConnect.Domain.Business;
 global using LankaConnect.Domain.Business.ValueObjects;
 global using LankaConnect.Domain.Business.Enums;
-global using LankaConnect.Domain.Communications.Entities;
-global using LankaConnect.Domain.Communications.ValueObjects;
-global using LankaConnect.Domain.Communications.Enums;
-global using LankaConnect.Domain.Shared.ValueObjects;
-global using LankaConnect.Domain.Shared.Enums;
+global using LankaConnect.Modules.Communications.Domain.Entities;
+global using LankaConnect.Modules.Communications.Domain.ValueObjects;
+global using LankaConnect.Modules.Communications.Domain.Enums;
+global using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+global using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
 global using LankaConnect.Modules.Identity.Domain.ValueObjects;
 global using LankaConnect.Domain.Common;
 
 // Application interfaces
-global using LankaConnect.Application.Common.Interfaces;
+global using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 // Test utilities
 global using LankaConnect.TestUtilities.Builders;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -13,7 +13,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     /// Every email send silently failed with "template not found" while the
     /// API returned HTTP 200 (false success via fire-and-forget pattern).
     ///
-    /// This migration seeds the missing template inline (no File.ReadAllText —
+    /// This migration seeds the missing template inline (no File.ReadAllText �
     /// per project memory rule from Phase 6A.129b).
     ///
     /// Template variables: {UserName}, {EventTitle}, {AlbumName}, {AlbumUrl},
@@ -27,7 +27,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // ─── Seed the missing photo-album-published email template ────────────
+            // --- Seed the missing photo-album-published email template ------------
             // Uses PostgreSQL dollar-quoting ($html_template$) for the HTML body so
             // that HTML attribute quotes, apostrophes, and special characters never
             // need escaping. Idempotent: the WHERE NOT EXISTS guard prevents duplicates.

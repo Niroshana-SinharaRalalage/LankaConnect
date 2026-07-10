@@ -10,6 +10,8 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
+    <!-- Sprint Day 5 Consult #13.3: mechanical addition per same-shape pattern. -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Cultural\SharedKernel.Cultural.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

@@ -1,6 +1,5 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Analytics;
-
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Products.LankaEvents.Domain.Analytics;
 namespace LankaConnect.Products.LankaEvents.Domain.Repositories;
 
 /// <summary>

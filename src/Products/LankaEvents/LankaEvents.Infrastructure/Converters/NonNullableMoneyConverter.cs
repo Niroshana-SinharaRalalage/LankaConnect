@@ -1,8 +1,6 @@
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Money;
 using System.Text.Json;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Converters;
 
 /// <summary>
@@ -48,9 +46,13 @@ public class NonNullableMoneyConverter : ValueConverter<Money, string>
         try
         {
             var data = JsonSerializer.Deserialize<MoneyData>(json);
-            if (data != null && Enum.TryParse<Currency>(data.Currency, out var currency))
+            if (data != null)
             {
-                return Money.Create(data.Amount, currency).Value;
+                var currencyMaybe = Currency.TryFromCode(data.Currency);
+                if (currencyMaybe.HasValue)
+                {
+                    return new Money(data.Amount, currencyMaybe.Value);
+                }
             }
         }
         catch (System.Exception ex)
@@ -63,7 +65,7 @@ public class NonNullableMoneyConverter : ValueConverter<Money, string>
         }
         // Fallback - shouldn't happen for required columns. Renders as $0 USD
         // on the dashboard so the operator notices.
-        return Money.Create(0, Currency.USD).Value;
+        return new Money(0, Currency.USD);
     }
 
     private static string Sanitize(string? json)

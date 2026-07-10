@@ -1,5 +1,5 @@
-using LankaConnect.Application.Communications.WhatsApp.Queries.GetWhatsAppMetrics;
-using LankaConnect.Domain.Communications;
+using LankaConnect.Modules.Communications.Application.WhatsApp.Queries.GetWhatsAppMetrics;
+using LankaConnect.Modules.Communications.Domain;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Tests.Communications.WhatsApp.Queries;

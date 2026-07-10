@@ -1,6 +1,5 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.MetroAreas.Common;
-
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.SharedKernel.Geo.MetroAreas.Common;
 namespace LankaConnect.Modules.Identity.Application.Queries.Users.GetUserPreferredMetroAreas;
 
 /// <summary>

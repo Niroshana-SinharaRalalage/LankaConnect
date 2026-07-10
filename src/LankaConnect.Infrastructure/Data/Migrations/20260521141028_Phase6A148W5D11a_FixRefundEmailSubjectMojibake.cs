@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -8,21 +8,21 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     /// <summary>
     /// Phase 6A.148.W5.D11.a: Fix UTF-8 mojibake in 4 refund-workflow email subject_template
     /// rows. Original D7/D13 migrations used em-dash characters that got encoded as CP-1252
-    /// and stored as U+FFFD (replacement char) â€” visible as <c>?</c> in subject lines:
+    /// and stored as U+FFFD (replacement char) — visible as <c>?</c> in subject lines:
     ///
-    ///   "Your Refund Decision ? {{EventTitle}}"               â†’ should be U+2014 em-dash
+    ///   "Your Refund Decision ? {{EventTitle}}"               ? should be U+2014 em-dash
     ///   "Refund Request Received ? Pending Organizer Review ? {{EventTitle}}"
     ///   "Refund Request Declined ? {{EventTitle}}"
     ///   "Refund Request Withdrawn ? {{EventTitle}}"
     ///
-    /// This migration restores proper em-dash using Unicode escape (â€”) in the C# source
-    /// so the encoding survives editor/CI roundtrips. Verified at the byte level â€” em-dash
+    /// This migration restores proper em-dash using Unicode escape (—) in the C# source
+    /// so the encoding survives editor/CI roundtrips. Verified at the byte level — em-dash
     /// in UTF-8 is the 3-byte sequence 0xE2 0x80 0x94.
     ///
     /// W5.D11.b (separate follow-up) will rewrite the html_template bodies with full
     /// LankaConnect brand parity to match template-event-registration-cancellation.
     ///
-    /// Idempotent â€” UPDATEs overwrite whatever's currently stored.
+    /// Idempotent — UPDATEs overwrite whatever's currently stored.
     /// </summary>
     public partial class Phase6A148W5D11a_FixRefundEmailSubjectMojibake : Migration
     {
@@ -126,26 +126,26 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 value: new DateTime(2026, 5, 21, 14, 10, 24, 194, DateTimeKind.Utc).AddTicks(5956));
 
             // === W5.D11.a: fix UTF-8 mojibake in 4 refund-workflow subject_template rows ===
-            // Em-dash (â€”) is U+2014. Stored at byte level as 0xE2 0x80 0x94 in UTF-8.
-            // Using â€” Unicode escape keeps the encoding intact across editors/CI.
+            // Em-dash (—) is U+2014. Stored at byte level as 0xE2 0x80 0x94 in UTF-8.
+            // Using — Unicode escape keeps the encoding intact across editors/CI.
             migrationBuilder.Sql(@"
 UPDATE communications.email_templates
-SET subject_template = 'Your Refund Decision â€” {{EventTitle}}',
+SET subject_template = 'Your Refund Decision — {{EventTitle}}',
     updated_at = NOW() AT TIME ZONE 'UTC'
 WHERE name = 'template-refund-decision';
 
 UPDATE communications.email_templates
-SET subject_template = 'Refund Request Received â€” Pending Organizer Review â€” {{EventTitle}}',
+SET subject_template = 'Refund Request Received — Pending Organizer Review — {{EventTitle}}',
     updated_at = NOW() AT TIME ZONE 'UTC'
 WHERE name = 'template-refund-pending-review';
 
 UPDATE communications.email_templates
-SET subject_template = 'Refund Request Declined â€” {{EventTitle}}',
+SET subject_template = 'Refund Request Declined — {{EventTitle}}',
     updated_at = NOW() AT TIME ZONE 'UTC'
 WHERE name = 'template-refund-rejected';
 
 UPDATE communications.email_templates
-SET subject_template = 'Refund Request Withdrawn â€” {{EventTitle}}',
+SET subject_template = 'Refund Request Withdrawn — {{EventTitle}}',
     updated_at = NOW() AT TIME ZONE 'UTC'
 WHERE name = 'template-refund-withdrawn';
 ");

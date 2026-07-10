@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -8,7 +8,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     /// <summary>
     /// Phase 6A.148.W4.D13 (G2 fix): Adds the dedicated <c>template-refund-withdrawn</c>
     /// email template. Fires once when an attendee uses the in-app Withdraw button on
-    /// the pending-review status banner — confirms to them that the request was withdrawn,
+    /// the pending-review status banner � confirms to them that the request was withdrawn,
     /// the registration is back to Confirmed, and no money moved. Closes the silent gap
     /// surfaced in Wave 4 plan G2 (RefundRequestWithdrawnEvent had zero subscribers).
     ///
@@ -16,7 +16,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     /// that already has the row is a no-op (same pattern as Phase6A148D7 + Phase6A137B2).
     ///
     /// The UpdateData calls below for reference_data.reference_values are snapshot-drift
-    /// bookkeeping inserted by `dotnet ef migrations add` — same convention as prior
+    /// bookkeeping inserted by `dotnet ef migrations add` � same convention as prior
     /// migrations Phase6A148, Phase6A148b, Phase6A148D7, Phase6A151.
     /// </summary>
     public partial class Phase6A148W4D13_AddRefundWithdrawnTemplate : Migration
@@ -120,15 +120,15 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 column: "created_at",
                 value: new DateTime(2026, 5, 19, 21, 24, 37, 938, DateTimeKind.Utc).AddTicks(1411));
 
-            // ─────────────────────────────────────────────────────────────────
+            // -----------------------------------------------------------------
             // 6A.148.W4.D13: template-refund-withdrawn (new lifecycle stage)
-            // ─────────────────────────────────────────────────────────────────
+            // -----------------------------------------------------------------
 
             var withdrawnHtml = GetStandardTemplate(
                 "Refund Request Withdrawn",
                 @"<p style=""margin: 0 0 20px 0; font-size: 16px; color: #374151;"">Hi <strong>{{UserName}}</strong>,</p>
 
-                <p style=""margin: 0 0 20px 0; font-size: 16px; color: #374151;"">You have withdrawn your refund request for <strong>{{EventTitle}}</strong>. <strong>No money has been refunded</strong> — your original payment remains in place, and your registration is back to Confirmed.</p>
+                <p style=""margin: 0 0 20px 0; font-size: 16px; color: #374151;"">You have withdrawn your refund request for <strong>{{EventTitle}}</strong>. <strong>No money has been refunded</strong> � your original payment remains in place, and your registration is back to Confirmed.</p>
 
                 <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" border=""0"" style=""margin: 30px 0;"">
                     <tr>
@@ -181,12 +181,12 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     gen_random_uuid(),
                     'template-refund-withdrawn',
                     'Phase 6A.148.W4.D13: Sent once when an attendee withdraws their own pending refund request. Confirms the request was withdrawn, registration back to Confirmed, no money moved.',
-                    'Refund Request Withdrawn — {{{{EventTitle}}}}',
+                    'Refund Request Withdrawn � {{{{EventTitle}}}}',
                     'Hi {{{{UserName}}}},
 
 You have withdrawn your refund request for {{{{EventTitle}}}}.
 
-NO MONEY HAS BEEN REFUNDED — your original payment remains in place, and your registration is back to Confirmed.
+NO MONEY HAS BEEN REFUNDED � your original payment remains in place, and your registration is back to Confirmed.
 
 WITHDRAWN ITEMS
 ---------------
@@ -203,7 +203,7 @@ Questions? Contact {{{{SupportEmail}}}}.
 Best regards,
 The LankaConnect Team
 
-© {{{{Year}}}} LankaConnect. All rights reserved.',
+� {{{{Year}}}} LankaConnect. All rights reserved.',
                     '{EscapeSql(withdrawnHtml)}',
                     'RefundWithdrawn',
                     'Notification',
@@ -323,7 +323,7 @@ The LankaConnect Team
         }
 
         /// <summary>
-        /// Standard 850px-wide email shell — same as Phase6A148D7 + Phase6A137B2 for visual
+        /// Standard 850px-wide email shell � same as Phase6A148D7 + Phase6A137B2 for visual
         /// consistency across all refund emails (only the header colour + title differ).
         /// </summary>
         private string GetStandardTemplate(string headerTitle, string contentHtml)

@@ -1,18 +1,19 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddAttendees;
 using LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddHeadCount;
 
 /// <summary>
@@ -30,7 +31,7 @@ namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddHead
 public class InitiateAddHeadCountCommandHandler
     : ICommandHandler<InitiateAddHeadCountCommand, InitiateAddAttendeesResult>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationAdditionRepository _additionRepository;
     private readonly IStripePaymentService _stripePaymentService;
@@ -38,7 +39,7 @@ public class InitiateAddHeadCountCommandHandler
     private readonly ILogger<InitiateAddHeadCountCommandHandler> _logger;
 
     public InitiateAddHeadCountCommandHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IEventRepository eventRepository,
         IRegistrationAdditionRepository additionRepository,
         IStripePaymentService stripePaymentService,
@@ -120,13 +121,13 @@ public class InitiateAddHeadCountCommandHandler
                     return Ok(InitiateAddAttendeesResult.Failed(newPriceResult.Error));
                 var newTotal = newPriceResult.Value;
 
-                var previousTotal = registration.TotalPrice ?? Money.Create(0m, newTotal.Currency).Value;
+                var previousTotal = registration.TotalPrice ?? MoneyBuilder.Create(0m, newTotal.Currency).Value;
                 var deltaAmount = newTotal.Amount - previousTotal.Amount;
                 if (deltaAmount < 0)
                     return Ok(InitiateAddAttendeesResult.Failed(
                         "Computed delta amount is negative — refund-on-shrink is out of scope (Phase 7F-D §5)."));
 
-                var deltaMoneyResult = Money.Create(deltaAmount, newTotal.Currency);
+                var deltaMoneyResult = MoneyBuilder.Create(deltaAmount, newTotal.Currency);
                 if (deltaMoneyResult.IsFailure)
                     return Ok(InitiateAddAttendeesResult.Failed(deltaMoneyResult.Error));
 

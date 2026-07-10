@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.Domain.Tax;
-using LankaConnect.Domain.Tax.Repositories;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Modules.Payments.Domain.Tax;
+using LankaConnect.Modules.Payments.Domain.Tax.Repositories;
 using System.Diagnostics;
 using Serilog.Context;
 

@@ -1,8 +1,8 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
-
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -61,10 +61,12 @@ public class Collection : LegacyBaseEntity
     public DateTime? RefundedAt { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private Collection()
     {
     }
 
+    [SetsRequiredMembers]
     private Collection(
         Guid eventId,
         Guid? contributorUserId,

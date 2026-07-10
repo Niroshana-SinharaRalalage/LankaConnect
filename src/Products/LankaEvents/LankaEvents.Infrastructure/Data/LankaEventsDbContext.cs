@@ -1,10 +1,9 @@
 using LankaConnect.BuildingBlocks.Infrastructure.Idempotency;
 using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
-using LankaConnect.Domain.Analytics;
+using LankaConnect.Products.LankaEvents.Domain.Analytics;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Data;
 
 /// <summary>
@@ -193,7 +192,7 @@ public sealed class LankaEventsDbContext : DbContext
         // at the application layer via IEmailGroupRepository / IBadgeRepository per
         // Blueprint §7.8.
         modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup>();
-        modelBuilder.Ignore<LankaConnect.Domain.Badges.Badge>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Badges.Badge>();
 
         base.OnModelCreating(modelBuilder);
     }

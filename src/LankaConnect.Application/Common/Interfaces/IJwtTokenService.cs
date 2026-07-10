@@ -1,19 +1,8 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Domain.Business;
-using LankaConnect.Domain.Enterprise;
-using LankaConnect.Domain.Common.Models;
-using LankaConnect.Domain.Common.Monitoring;
-using LankaConnect.Domain.Common.ValueObjects;
-using LankaConnect.Domain.Common.Security;
-using LankaConnect.Domain.Common.Recovery;
-using LankaConnect.Domain.Common.Database;
-using LankaConnect.Domain.Common.Enums;
-using MultiLanguageModels = LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels;
-
-namespace LankaConnect.Application.Common.Interfaces;
+namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 public interface IJwtTokenService
 {

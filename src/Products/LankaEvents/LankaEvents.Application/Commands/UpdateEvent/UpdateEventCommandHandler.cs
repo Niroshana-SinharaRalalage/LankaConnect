@@ -1,19 +1,19 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateEvent;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateEventOrganizerContact;
-using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums; // Phase 8X: EventPaymentMode
 using LankaConnect.Products.LankaEvents.Domain.Services; // Phase 6A.X: Revenue breakdown
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateEvent;
 
 public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
@@ -21,7 +21,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.1
-    private readonly IApplicationDbContext _dbContext; // legacy injection (unused after W5.4.d.1 but kept for DI compatibility until W5.4.d.3 cleanup)
+    private readonly LankaEventsDbContext _dbContext; // Wave 6.5.f (2026-07-09 Day 4): module DbContext for multi-context commit path
     private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
     private readonly ITimeZoneLookupService _timeZoneLookupService; // Issue #55: Timezone lookup
     private readonly ILogger<UpdateEventCommandHandler> _logger;
@@ -30,7 +30,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
         IEmailGroupQueries emailGroupQueries, // Wave 5.4.d.1
-        IApplicationDbContext dbContext, // Phase 6A.32: ChangeTracker API
+        LankaEventsDbContext dbContext, // Phase 6A.32: ChangeTracker API — Wave 6.5.f (2026-07-09) LankaEventsDbContext
         IRevenueCalculatorService revenueCalculatorService, // Phase 6A.X: Revenue breakdown
         ITimeZoneLookupService timeZoneLookupService, // Issue #55: Timezone lookup
         ILogger<UpdateEventCommandHandler> logger)
@@ -38,7 +38,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
         _emailGroupQueries = emailGroupQueries;
-        _dbContext = dbContext; // Phase 6A.32: ChangeTracker API
+        _dbContext = dbContext; // Phase 6A.32: ChangeTracker API — Wave 6.5.f (2026-07-09) LankaEventsDbContext
         _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
         _timeZoneLookupService = timeZoneLookupService; // Issue #55: Timezone lookup
         _logger = logger;
@@ -223,7 +223,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
 
             foreach (var tierRequest in request.GroupPricingTiers)
             {
-                var priceResult = Money.Create(tierRequest.PricePerPerson, tierRequest.Currency);
+                var priceResult = MoneyBuilder.Create(tierRequest.PricePerPerson, tierRequest.Currency);
                 if (priceResult.IsFailure)
                     return Result.Failure(priceResult.Error);
 
@@ -255,17 +255,17 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             isGroupPricing = true;
         }
         // Session 21: Check if dual pricing fields are provided
-        else if (request.AdultPriceAmount.HasValue && request.AdultPriceCurrency.HasValue)
+        else if (request.AdultPriceAmount.HasValue && request.AdultPriceCurrency != null)
         {
             // Build dual pricing using TicketPricing value object
-            var adultPriceResult = Money.Create(request.AdultPriceAmount.Value, request.AdultPriceCurrency.Value);
+            var adultPriceResult = MoneyBuilder.Create(request.AdultPriceAmount.Value, request.AdultPriceCurrency);
             if (adultPriceResult.IsFailure)
                 return Result.Failure(adultPriceResult.Error);
 
             Money? childPrice = null;
-            if (request.ChildPriceAmount.HasValue && request.ChildPriceCurrency.HasValue)
+            if (request.ChildPriceAmount.HasValue && request.ChildPriceCurrency != null)
             {
-                var childPriceResult = Money.Create(request.ChildPriceAmount.Value, request.ChildPriceCurrency.Value);
+                var childPriceResult = MoneyBuilder.Create(request.ChildPriceAmount.Value, request.ChildPriceCurrency);
                 if (childPriceResult.IsFailure)
                     return Result.Failure(childPriceResult.Error);
 
@@ -279,9 +279,9 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             pricing = pricingResult.Value;
         }
         // Fallback to legacy single pricing format if dual pricing not provided
-        else if (request.TicketPriceAmount.HasValue && request.TicketPriceCurrency.HasValue)
+        else if (request.TicketPriceAmount.HasValue && request.TicketPriceCurrency != null)
         {
-            var moneyResult = Money.Create(request.TicketPriceAmount.Value, request.TicketPriceCurrency.Value);
+            var moneyResult = MoneyBuilder.Create(request.TicketPriceAmount.Value, request.TicketPriceCurrency);
             if (moneyResult.IsFailure)
                 return Result.Failure(moneyResult.Error);
 

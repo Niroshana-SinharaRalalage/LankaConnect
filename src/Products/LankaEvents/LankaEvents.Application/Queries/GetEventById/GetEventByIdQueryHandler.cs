@@ -1,17 +1,15 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using System.Diagnostics;
 using AutoMapper;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Communications.Common; // Phase 6A.32: legacy EmailGroupSummaryDto consumed by EventDto
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Contracts; // Phase 6A.32: legacy EmailGroupSummaryDto consumed by EventDto
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEventById;
 
 /// <summary>
@@ -94,7 +92,7 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
                 var result = _mapper.Map<EventDto>(@event);
 
                 // Phase 6A.32: Batch query for email groups (Fix #3: No N+1)
-                var emailGroupSummaries = new List<LankaConnect.Application.Communications.Common.EmailGroupSummaryDto>();
+                var emailGroupSummaries = new List<LankaConnect.Modules.Communications.Contracts.EmailGroupSummaryDto>();
                 if (@event.EmailGroupIds.Any())
                 {
                     _logger.LogInformation(
@@ -113,12 +111,15 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
 
                         if (group != null)
                         {
-                            emailGroupSummaries.Add(new LankaConnect.Application.Communications.Common.EmailGroupSummaryDto
-                            {
-                                Id = group.Id,
-                                Name = group.Name,
-                                IsActive = group.IsActive
-                            });
+                            emailGroupSummaries.Add(new LankaConnect.Modules.Communications.Contracts.EmailGroupSummaryDto(
+                                Id: group.Id,
+                                Name: group.Name,
+                                Description: null,
+                                OwnerId: Guid.Empty,
+                                EmailCount: 0,
+                                IsActive: group.IsActive,
+                                CreatedAt: DateTime.UtcNow,
+                                UpdatedAt: null));
                         }
                         else
                         {

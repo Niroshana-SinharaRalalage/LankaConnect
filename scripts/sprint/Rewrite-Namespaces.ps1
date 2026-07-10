@@ -128,7 +128,10 @@ function Get-TargetNamespace {
     $tokens = $projRoot -split '\\'
     $srcIdx = [Array]::IndexOf($tokens, 'src')
     if ($srcIdx -lt 0) {
-        throw "Project root must be inside a 'src' directory. Got: $projRoot"
+        $srcIdx = [Array]::IndexOf($tokens, 'tests')
+    }
+    if ($srcIdx -lt 0) {
+        throw "Project root must be inside 'src' or 'tests'. Got: $projRoot"
     }
 
     # Layer folder = tokens[srcIdx+1] (Modules/Products/BuildingBlocks/SharedKernel/Hosts)
@@ -198,6 +201,7 @@ function Update-Usings {
     )
 
     $content = Get-Content -Raw -LiteralPath $FilePath
+    if ($null -eq $content) { return 0 }  # skip empty files
     $original = $content
     $changes = 0
 

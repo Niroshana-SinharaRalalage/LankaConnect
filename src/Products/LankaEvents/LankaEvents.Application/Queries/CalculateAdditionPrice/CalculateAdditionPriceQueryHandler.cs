@@ -1,15 +1,15 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Domain.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.CalculateAdditionPrice;
 
 /// <summary>
@@ -20,13 +20,13 @@ namespace LankaConnect.Products.LankaEvents.Application.Queries.CalculateAdditio
 public class CalculateAdditionPriceQueryHandler
     : IQueryHandler<CalculateAdditionPriceQuery, AdditionPriceResultDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationAdditionRepository _additionRepository;
     private readonly ILogger<CalculateAdditionPriceQueryHandler> _logger;
 
     public CalculateAdditionPriceQueryHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IEventRepository eventRepository,
         IRegistrationAdditionRepository additionRepository,
         ILogger<CalculateAdditionPriceQueryHandler> logger)
@@ -256,7 +256,7 @@ public class CalculateAdditionPriceQueryHandler
 
     private (decimal TotalPrice, List<AttendeePrice> Breakdown) CalculateNewTotalPrice(
         LankaConnect.Products.LankaEvents.Domain.ValueObjects.TicketPricing? pricing,
-        LankaConnect.Domain.Shared.ValueObjects.Money? ticketPrice,
+        LankaConnect.SharedKernel.Money.Money? ticketPrice,
         List<LankaConnect.Products.LankaEvents.Domain.ValueObjects.AttendeeDetails> existingAttendees,
         List<NewAttendeeDto> newAttendees,
         int totalAttendeeCount)

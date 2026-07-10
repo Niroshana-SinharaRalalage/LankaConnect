@@ -9,7 +9,6 @@ using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Products.LankaEvents.Infrastructure.Data;
 using LankaConnect.Products.LankaEvents.Infrastructure.Repositories;
-
 namespace LankaConnect.Products.LankaEvents.Api;
 
 /// <summary>
@@ -81,10 +80,10 @@ public static class LankaEventsModule
         services.AddScoped<IStructuralEditGuard, StructuralEditGuard>();
         services.AddScoped<ISeatAssignmentValidator, SeatAssignmentValidator>();
         services.AddScoped<ILayoutMetrics, LayoutMetrics>();
-        services.AddScoped<ISeatHoldMetrics, SeatHoldMetrics>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.ISeatHoldMetrics, SeatHoldMetrics>();
 
         // W5.3.a1 (2026-06-28): first Infrastructure repo relocated to Products.
-        // MetroAreaRepository moved from LankaConnect.Infrastructure.Data.Repositories
+        // MetroAreaRepository moved from LankaConnect.SPLIT_PER_ENTITY.Repositories
         // to Products/LankaEvents.Infrastructure/Repositories. Same AppDbContext, same
         // Repository<T> base, same SQL — only the assembly + DI registration site
         // changed. Proves the cross-module DI pattern for W5.3.a2 (bulk leaves) +
@@ -97,8 +96,8 @@ public static class LankaEventsModule
         // EventAnalytics + EventViewRecord intentionally deferred: their interfaces
         // remain in LankaConnect.Domain.Analytics and a separate slice (W5.3.b or
         // dedicated cleanup) will move them.
-        services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventReminderRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventReminderRepository>();
-        services.AddScoped<LankaConnect.Products.LankaEvents.Application.Repositories.IEventNotificationHistoryRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventNotificationHistoryRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IEventReminderRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventReminderRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IEventNotificationHistoryRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventNotificationHistoryRepository>();
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketScanLogRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.TicketScanLogRepository>();
 
         // W5.3.b (2026-06-28): 8 Event-finance repositories relocated to Products.
@@ -152,7 +151,7 @@ public static class LankaEventsModule
     /// <c>IIntegrationEventOutbox&lt;LankaEventsDbContext&gt;</c> adapter is
     /// registered by the composition root
     /// (<c>LankaConnect.API.Program.cs</c>) because it depends on the legacy
-    /// <c>LankaConnect.Infrastructure.Outbox.IntegrationEventOutbox&lt;T&gt;</c>
+    /// <c>LankaConnect.BuildingBlocks.Infrastructure.Outbox.IntegrationEventOutbox&lt;T&gt;</c>
     /// concrete — matching the Media + Notifications pattern.
     /// </summary>
     private static void AddLankaEventsDbContext(IServiceCollection services, IConfiguration configuration)

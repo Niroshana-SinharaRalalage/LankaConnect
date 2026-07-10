@@ -1,10 +1,10 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
-
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 public class Registration : LegacyBaseEntity
@@ -120,9 +120,11 @@ public class Registration : LegacyBaseEntity
     public decimal SalesTaxRate { get; private set; }  // Tax rate at time of registration
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private Registration() { }
 
     // Authenticated user registration
+    [SetsRequiredMembers]
     private Registration(Guid eventId, Guid userId, int quantity)
     {
         EventId = eventId;
@@ -134,6 +136,7 @@ public class Registration : LegacyBaseEntity
     }
 
     // Anonymous user registration
+    [SetsRequiredMembers]
     private Registration(Guid eventId, AttendeeInfo attendeeInfo, int quantity)
     {
         EventId = eventId;
@@ -215,6 +218,7 @@ public class Registration : LegacyBaseEntity
 
         var registration = new Registration
         {
+            Id = Guid.NewGuid(),
             EventId = eventId,
             UserId = userId,
             AttendeeInfo = null,  // New format doesn't use legacy AttendeeInfo
@@ -305,6 +309,7 @@ public class Registration : LegacyBaseEntity
 
         var registration = new Registration
         {
+            Id = Guid.NewGuid(),
             EventId = eventId,
             UserId = userId,
             AttendeeInfo = null,

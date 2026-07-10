@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -51,6 +51,7 @@ public class SignUpItem : LegacyBaseEntity
         : SignUpItemType.Quantity;
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private SignUpItem()
     {
         ItemDescription = null!;
@@ -59,6 +60,7 @@ public class SignUpItem : LegacyBaseEntity
     /// <summary>
     /// Phase 6A.121: Private constructor for quantity-based items
     /// </summary>
+    [SetsRequiredMembers]
     private SignUpItem(
         Guid signUpListId,
         string itemDescription,
@@ -80,6 +82,7 @@ public class SignUpItem : LegacyBaseEntity
     /// <summary>
     /// Phase 6A.121: Private constructor for slot-based items
     /// </summary>
+    [SetsRequiredMembers]
     private SignUpItem(
         Guid signUpListId,
         string itemDescription,

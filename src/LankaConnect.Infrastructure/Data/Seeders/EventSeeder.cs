@@ -1,10 +1,11 @@
 using LankaConnect.Products.LankaEvents.Domain;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Shared.Enums;
+// LankaConnect.Domain.Business.ValueObjects removed 4C.d.vii (Business aggregate
+// deleted per Consult #12 Option D). Any Address VO ref falls back to
+// LankaEvents.Domain.ValueObjects.Address (already imported above).
 
 namespace LankaConnect.Infrastructure.Data.Seeders;
 
@@ -606,7 +607,6 @@ public static class EventSeeder
 
     private static Money? CreateMoney(decimal amount, Currency currency)
     {
-        var moneyResult = Money.Create(amount, currency);
-        return moneyResult.IsSuccess ? moneyResult.Value : null;
+        return new Money(amount, currency);
     }
 }

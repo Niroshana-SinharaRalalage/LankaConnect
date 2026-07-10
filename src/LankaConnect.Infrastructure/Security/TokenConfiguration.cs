@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Configuration;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces; // 4C.d.xiii: ITokenConfiguration lives in BB.Application
 
 namespace LankaConnect.Infrastructure.Security;
 

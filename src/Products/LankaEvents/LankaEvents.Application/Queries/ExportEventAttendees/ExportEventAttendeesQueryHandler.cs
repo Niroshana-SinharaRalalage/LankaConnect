@@ -1,10 +1,10 @@
 using LankaConnect.Products.LankaEvents.Contracts;
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Application.Common.Options;
+using LankaConnect.BuildingBlocks.Application.Common.Options;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventAttendees;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
@@ -13,13 +13,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.ExportEventAttendees;
 
 public class ExportEventAttendeesQueryHandler
     : IQueryHandler<ExportEventAttendeesQuery, ExportResult>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
     private readonly IEventRepository _eventRepository;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly IExcelExportService _excelService;
@@ -29,7 +29,7 @@ public class ExportEventAttendeesQueryHandler
     private readonly ILogger<ExportEventAttendeesQueryHandler> _logger;
 
     public ExportEventAttendeesQueryHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
         IEventRepository eventRepository,
         IRevenueCalculatorService revenueCalculatorService,
         IExcelExportService excelService,

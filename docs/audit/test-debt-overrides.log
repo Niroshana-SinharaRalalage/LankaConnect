@@ -51,3 +51,12 @@ test-debt-override: W4.7.b.2 pre-push --no-verify reason: IntegrationTests UserR
              Full test suite validates staging deploy anyway; smoke suite (Wave 9) will catch functional regressions.
   Sprint context: 2-week bulk-move sprint Day 1 AM equivalent per docs/MASTER_TODO_SPRINT_TWO_WEEK_BULK_MOVE.md
   Author: Claude, on develop branch
+
+2026-07-06 SPRINT DAY 5 | commit 26a67b98 | branch bulk-move/integration | --no-verify
+Reason: Wave 6.5.f Modules-Domain cutover checkpoint. Compile-red state
+(149 residual errors in LankaConnect.Application + 4 downstream projects)
+sanctioned by ADR-6.5.f-sln-exclusions.md and Consult #13.5.2 PASS B ruling.
+9 Domain projects (BuildingBlocks + LankaEvents + 7 Modules) compile clean.
+IApplicationDbContext seam disposition pending Consult #14; Wave 6.5.g will
+close-out. Sprint bible compile-green invariant temporarily broken; explicit
+architect sanction on record.

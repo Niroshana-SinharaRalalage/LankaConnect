@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-
+using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -103,6 +103,7 @@ public class TicketScanLog : LegacyBaseEntity
     /// scripted scanner that's not the official UI).</summary>
     public string? UserAgent { get; private set; }
 
+    [SetsRequiredMembers]
     private TicketScanLog() { } // EF Core
 
     // ============================================================
@@ -131,6 +132,7 @@ public class TicketScanLog : LegacyBaseEntity
 
         return new TicketScanLog
         {
+            Id = Guid.NewGuid(),
             TicketId = ticketId,
             EventId = eventId,
             TicketCode = ticketCode,
@@ -169,6 +171,7 @@ public class TicketScanLog : LegacyBaseEntity
 
         return new TicketScanLog
         {
+            Id = Guid.NewGuid(),
             TicketId = ticketId,
             EventId = eventId,
             TicketCode = ticketCode,
@@ -204,6 +207,7 @@ public class TicketScanLog : LegacyBaseEntity
 
         return new TicketScanLog
         {
+            Id = Guid.NewGuid(),
             TicketId = ticketId,
             EventId = eventId,
             TicketCode = ticketCode,

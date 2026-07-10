@@ -1,9 +1,9 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using System.Diagnostics;
 using AutoMapper;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
@@ -12,7 +12,7 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetEvents;
 
 /// <summary>
@@ -25,7 +25,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     private readonly IEventRepository _eventRepository;
     private readonly IIdentityQueries _identityQueries;
     private readonly IRegistrationRepository _registrationRepository;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly LankaEventsDbContext _dbContext;
     private readonly ICurrentUserService _currentUserService; // Phase 6A.133: Multi-organizer
     private readonly IMapper _mapper;
     private readonly ILogger<GetEventsQueryHandler> _logger;
@@ -34,7 +34,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         IEventRepository eventRepository,
         IIdentityQueries identityQueries,
         IRegistrationRepository registrationRepository,
-        IApplicationDbContext dbContext,
+        LankaEventsDbContext dbContext,
         ICurrentUserService currentUserService, // Phase 6A.133: Multi-organizer
         IMapper mapper,
         ILogger<GetEventsQueryHandler> logger)
@@ -579,8 +579,8 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                         var distance = CalculateDistance(
                             metroData.Value.Latitude,
                             metroData.Value.Longitude,
-                            e.Location!.Coordinates!.Latitude,
-                            e.Location.Coordinates.Longitude);
+                            (decimal)e.Location!.Coordinates!.Latitude,
+                            (decimal)e.Location.Coordinates.Longitude);
                         // Convert radius from miles to kilometers (1 mile = 1.60934 km)
                         var radiusKm = metroData.Value.RadiusMiles * 1.60934;
                         return distance <= radiusKm;
@@ -636,8 +636,8 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                 var distance = CalculateDistance(
                     latitude,
                     longitude,
-                    e.Location.Coordinates.Latitude,
-                    e.Location.Coordinates.Longitude);
+                    (decimal)e.Location.Coordinates.Latitude,
+                    (decimal)e.Location.Coordinates.Longitude);
                 eventsWithCoords.Add((e, distance));
             }
             else

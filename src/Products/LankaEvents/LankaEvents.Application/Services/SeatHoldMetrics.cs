@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
-
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
+using LankaConnect.Products.LankaEvents.Application.Common; // (2026-07-09 Day 4)
 namespace LankaConnect.Products.LankaEvents.Application.Services;
 
 /// <inheritdoc cref="ISeatHoldMetrics"/>

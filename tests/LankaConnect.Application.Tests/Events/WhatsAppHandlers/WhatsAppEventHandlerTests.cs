@@ -1,16 +1,16 @@
 using LankaConnect.Modules.Identity.Contracts;
-using LankaConnect.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.Modules.Forms.Domain;
 using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.EventHandlers;
 using LankaConnect.Modules.Payments.Application.EventHandlers; // W4.4.c.3: PaymentCompletedWhatsAppHandler moved here
 using LankaConnect.Modules.Forms.Application.EventHandlers; // W5.3d.2: FormResponseWhatsAppHandler moved here
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;

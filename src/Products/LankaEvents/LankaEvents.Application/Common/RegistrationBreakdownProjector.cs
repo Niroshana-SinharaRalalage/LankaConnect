@@ -1,10 +1,12 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
-
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
+using LankaConnect.Products.LankaEvents.Application.Common; // (2026-07-09 Day 4)
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 /// <summary>
@@ -30,7 +32,7 @@ public static class RegistrationBreakdownProjector
         RegistrationBreakdown? Breakdown);
 
     public static async Task<BreakdownProjection> LoadAsync(
-        IApplicationDbContext context, Guid registrationId, CancellationToken ct = default)
+        LankaEventsDbContext context, Guid registrationId, CancellationToken ct = default)
     {
         // Load the full Registration entity. Using a Select projection with
         // `r.Attendees.ToList()` doesn't translate cleanly because Attendees is mapped

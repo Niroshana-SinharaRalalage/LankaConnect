@@ -1,7 +1,7 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Notifications.Domain;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -107,9 +107,9 @@ public class MarkNotificationAsReadCommandHandler : ICommandHandler<MarkNotifica
 
                         // W3A boundary conversion: Notification.MarkAsRead() now returns
                         // BuildingBlocks.Domain.Result. Handler contract returns legacy
-                        // LankaConnect.Domain.Common.Result. Cut conversion when handler
+                        // LankaConnect.BuildingBlocks.Domain.Result. Cut conversion when handler
                         // migrates to BB.Domain abstractions (Wave 4 capability extraction).
-                        return Result.Failure(markAsReadResult.Error.Message);
+                        return Result.Failure(markAsReadResult.Error);
                     }
 
                     _notificationRepository.Update(notification);

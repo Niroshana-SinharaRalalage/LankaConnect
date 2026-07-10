@@ -6,7 +6,7 @@ namespace LankaConnect.Modules.Payments.Contracts;
 /// </summary>
 /// <remarks>
 /// Wave 4.4.a (2026-06-23). Money is projected to (decimal Amount + string Currency)
-/// instead of carrying <c>LankaConnect.Domain.Shared.ValueObjects.Money</c> directly -
+/// instead of carrying <c>LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money</c> directly -
 /// the Contracts layer must not pull <c>LankaConnect.Domain</c>. Mapping happens in
 /// <c>Payments.Application.Mappings.PaymentContractMappings</c> at 4.4.b.
 /// <para>

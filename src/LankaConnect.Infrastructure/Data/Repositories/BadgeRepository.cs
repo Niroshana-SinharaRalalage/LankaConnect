@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Infrastructure.Data;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Domain.Badges;
+using LankaConnect.Products.LankaEvents.Domain.Badges;
 using System.Diagnostics;
 using Serilog.Context;
 

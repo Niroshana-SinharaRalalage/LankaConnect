@@ -1,4 +1,5 @@
 namespace LankaConnect.Modules.Identity.Application.DTOs;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>
 /// Phase 6A.90: DTO for admin user management list view
@@ -64,7 +65,7 @@ public record AdminUserStatisticsDto
 }
 
 // Wave 4.6.c.3 (2026-06-24): PagedResultDto<T> extracted to
-// LankaConnect.Application.Common.Models.PagedResultDto so legacy consumers
+// LankaConnect.BuildingBlocks.Application.Common.Models.PagedResultDto so legacy consumers
 // (UserMappingProfile, GetSupportTicketsPagedQuery, etc.) can keep using it
 // without taking an Identity.Application ProjectReference (which would create
 // a circular ref Identity.Application -> LankaConnect.Application -> Identity.Application).

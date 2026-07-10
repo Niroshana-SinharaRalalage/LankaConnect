@@ -1,8 +1,8 @@
 using FluentAssertions;
-using LankaConnect.Application.ReferenceData.DTOs;
-using LankaConnect.Application.ReferenceData.Services;
-using LankaConnect.Domain.ReferenceData.Entities;
-using LankaConnect.Domain.ReferenceData.Interfaces;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.DTOs;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Services;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Entities;
+using LankaConnect.SharedKernel.Cultural.ReferenceData.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Moq;

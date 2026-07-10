@@ -1,0 +1,1371 @@
+namespace LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+
+/// <summary>
+/// Phase 6A.97: Single source of truth for ALL email template parameter names.
+///
+/// PURPOSE:
+/// These constants MUST match the Handlebars placeholders in database templates.
+/// When adding new parameters, ADD them here FIRST, then update the TypedEmailParams class.
+///
+/// USAGE:
+/// - Use these constants in ToDictionary() methods instead of hardcoded strings
+/// - Use these constants when creating database migrations for templates
+/// - Reference this file when troubleshooting "raw placeholder" issues in emails
+///
+/// MAINTENANCE:
+/// - When adding a new template: Add to TemplateNames class
+/// - When adding a new parameter: Add to appropriate parameter class
+/// - Keep this file in sync with database templates
+/// </summary>
+public static class EmailTemplateContract
+{
+    #region Template Names
+
+    /// <summary>
+    /// All email template names in the system.
+    /// Phase 6A.113: Updated all constants to match EXACT database template names.
+    /// These must match the 'name' column in communications.email_templates table.
+    ///
+    /// CRITICAL: These values are NOW synchronized with database. Do NOT change without migration!
+    /// </summary>
+    public static class TemplateNames
+    {
+        // Authentication Templates
+        public const string PasswordReset = "template-password-reset";
+        public const string PasswordChangeConfirmation = "template-password-change-confirmation";
+        public const string EmailVerification = "template-membership-email-verification"; // Phase 6A.113: Corrected
+        public const string WelcomeEmail = "template-welcome"; // Phase 6A.113: Corrected (removed -email suffix)
+
+        // Event Publication Templates
+        public const string NewEventPublication = "template-new-event-publication";
+        public const string EventDetailsPublication = "template-event-details-publication";
+
+        // Registration Templates
+        public const string PaidEventRegistration = "template-paid-event-registration-confirmation-with-ticket"; // Phase 6A.113: Corrected
+        public const string FreeEventRegistration = "template-free-event-registration-confirmation"; // Phase 6A.113: Corrected
+        public const string EventRegistrationCancellation = "template-event-registration-cancellation";
+        public const string PreliminaryRegistrationPayment = "template-preliminary-registration-payment-pending"; // Phase 6A.113: Added missing constant
+
+        // Refund Templates
+        public const string RefundRequested = "template-refund-requested";
+        public const string RefundCompleted = "template-refund-completed";
+
+        // Event Management Templates
+        public const string EventApproval = "template-event-approval"; // Phase 6A.113: Renamed from EventApproved, corrected value
+        public const string EventRejected = "template-event-rejected";
+        public const string EventPostponed = "template-event-postponed";
+        public const string EventCancellation = "template-event-cancellation-notifications"; // Phase 6A.113: Corrected
+        public const string EventReminder = "template-event-reminder";
+        public const string AttendeesAdded = "template-attendees-added-confirmation"; // Phase 6A.113: Corrected
+
+        // Sign-up List Templates
+        public const string SignupCommitmentConfirmation = "template-signup-list-commitment-confirmation";
+        public const string SignupCommitmentUpdate = "template-signup-list-commitment-update";
+        public const string SignupCommitmentCancellation = "template-signup-list-commitment-cancellation";
+
+        // Phase 7D.1: Volunteer Recruitment Templates
+        public const string VolunteerCommitmentConfirmation = "template-volunteer-commitment-confirmation";
+        public const string VolunteerCommitmentCancellation = "template-volunteer-commitment-cancellation";
+
+        // Phase 7D Fix 4: Auto-disabled WhatsApp notification (30-day unverified grace expired)
+        public const string WhatsAppAutoDisabled = "template-whatsapp-auto-disabled";
+
+        // Support Templates
+        public const string SupportTicketConfirmation = "template-support-ticket-confirmation"; // Phase 6A.113: Renamed from SupportTicketReceived, corrected value
+        public const string SupportTicketReply = "template-support-ticket-reply";
+
+        // Admin Templates
+        public const string AccountActivatedByAdmin = "template-account-activated-by-admin"; // Phase 6A.113: Renamed from AdminUserActivation, corrected value
+        public const string AccountDeactivatedByAdmin = "template-account-deactivated-by-admin"; // Phase 6A.113: Renamed from AdminUserDeactivation, corrected value
+
+        // Organizer Templates
+        public const string OrganizerRoleApproval = "template-organizer-role-approval";
+
+        // Newsletter Templates
+        public const string NewsletterSubscriptionConfirmation = "template-newsletter-subscription-confirmation";
+        public const string NewsletterNotification = "template-newsletter-notification";
+
+        // Form Response Templates (Phase 6A.107)
+        public const string FormResponseConfirmation = "template-form-response-confirmation";
+        public const string FormResponseUpdate = "template-form-response-update";
+        public const string FormResponseCancellation = "template-form-response-cancellation";
+
+        // Donation Templates
+        public const string DonationReceipt = "template-donation-receipt";
+
+        // Phase 6A.137B: Financial Receipt Templates
+        public const string AddOnPurchaseReceipt = "template-addon-purchase-receipt";
+        public const string CollectionReceipt = "template-collection-receipt";
+        public const string SponsorConfirmation = "template-sponsor-confirmation";
+        // Phase 6A.157: Packaged-sponsorship confirmation (forked from
+        // SponsorConfirmation — different voice + perks + included-tickets line).
+        public const string PackageSponsorConfirmation = "template-package-sponsor-confirmation";
+
+        // Phase 6A.137B2: Financial Refund Templates
+        public const string DonationRefund = "template-donation-refund";
+        public const string CollectionRefund = "template-collection-refund";
+        public const string SponsorRefund = "template-sponsor-refund";
+
+        // Phase 6A.148.D7: Refund-approval-workflow lifecycle templates.
+        // Each maps to a distinct lifecycle stage so attendees can tell "we got your
+        // request" apart from "Stripe is actually moving money" apart from "declined".
+        // The legacy template-refund-requested ("Refund In Progress") is intentionally
+        // NOT reused — its header is hard-baked legacy 6A.92 vocabulary that confused
+        // operators during 148.c UAT (E1/E2).
+        public const string RefundPendingReview = "template-refund-pending-review";
+        public const string RefundDecision = "template-refund-decision";
+        public const string RefundRejected = "template-refund-rejected";
+
+        // Phase 6A.148.W4.D13: closes the silent "withdraw has no email" gap (G2 in
+        // Wave 4 gap inventory). Fires when an attendee withdraws their own pending
+        // refund request; confirms to them that the registration is back to Confirmed
+        // and no money moved. Per Q2 user decision, organizer is NOT notified
+        // (the row simply disappears from their pending queue).
+        public const string RefundWithdrawn = "template-refund-withdrawn";
+    }
+
+    #endregion
+
+    #region Common Parameters (Used across ALL templates)
+
+    /// <summary>
+    /// Parameters common to all or most email templates.
+    /// </summary>
+    public static class Common
+    {
+        /// <summary>
+        /// Recipient's display name. Used in greeting: "Hi {{UserName}},"
+        /// </summary>
+        public const string UserName = "UserName";
+
+        /// <summary>
+        /// User's first name (used in welcome/business emails).
+        /// </summary>
+        public const string FirstName = "FirstName";
+
+        /// <summary>
+        /// Current year for footer copyright. E.g., "© {{Year}} LankaConnect"
+        /// </summary>
+        public const string Year = "Year";
+
+        /// <summary>
+        /// Support email address for help links.
+        /// </summary>
+        public const string SupportEmail = "SupportEmail";
+
+        /// <summary>
+        /// Company name for branding.
+        /// </summary>
+        public const string CompanyName = "CompanyName";
+
+        /// <summary>
+        /// URL to the user dashboard.
+        /// </summary>
+        public const string DashboardUrl = "DashboardUrl";
+
+        /// <summary>
+        /// Site URL for template linking.
+        /// </summary>
+        public const string SiteUrl = "SiteUrl";
+    }
+
+    #endregion
+
+    #region Event Parameters
+
+    /// <summary>
+    /// Parameters related to event information.
+    /// </summary>
+    public static class Event
+    {
+        /// <summary>
+        /// Event title/name.
+        /// </summary>
+        public const string EventTitle = "EventTitle";
+
+        /// <summary>
+        /// Formatted event date (e.g., "February 15, 2026").
+        /// </summary>
+        public const string EventStartDate = "EventStartDate";
+
+        /// <summary>
+        /// Formatted event time (e.g., "5:00 PM EST").
+        /// </summary>
+        public const string EventStartTime = "EventStartTime";
+
+        /// <summary>
+        /// Combined date and time (e.g., "February 15, 2026 at 5:00 PM EST").
+        /// Preferred for standardized templates.
+        /// </summary>
+        public const string EventDateTime = "EventDateTime";
+
+        /// <summary>
+        /// Event location/address.
+        /// Phase 7C.2: Legacy single-line format preserved for backward compatibility with
+        /// un-migrated templates. Prefer the decomposed <see cref="LocationName"/> +
+        /// <see cref="LocationAddress"/> pair introduced in Phase 7C.2.
+        /// </summary>
+        public const string EventLocation = "EventLocation";
+
+        /// <summary>
+        /// Phase 7C.2: Bold first line of the primary location block — the venue name
+        /// (e.g., "Aurora Clubhouse"). Empty string when the event has no venue name
+        /// or no physical location.
+        /// </summary>
+        public const string LocationName = "LocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Second line of the primary location block — the full comma-separated
+        /// address: "Street, City, State, ZipCode, Country". Empty string for online events.
+        /// </summary>
+        public const string LocationAddress = "LocationAddress";
+
+        /// <summary>
+        /// Phase 7C.2: Boolean flag for {{#if HasLocationName}} — true when a venue name
+        /// is present on the primary location.
+        /// </summary>
+        public const string HasLocationName = "HasLocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Boolean flag for {{#if HasSecondaryLocation}} — true when the event
+        /// has a secondary (parking lot / secondary venue) address configured.
+        /// </summary>
+        public const string HasSecondaryLocation = "HasSecondaryLocation";
+
+        /// <summary>
+        /// Phase 7C.2: Visible label for the secondary location block — "Parking Lot" or
+        /// "Secondary Venue" based on <c>SecondaryLocationType</c>. No trailing colon
+        /// (the template supplies the colon).
+        /// </summary>
+        public const string SecondaryLocationLabel = "SecondaryLocationLabel";
+
+        /// <summary>
+        /// Phase 7C.2: Bold first line of the secondary location block — the venue name
+        /// (e.g., "Geoga Lake Parking"). Empty string when the secondary location is
+        /// unnamed.
+        /// </summary>
+        public const string SecondaryLocationName = "SecondaryLocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Boolean flag for {{#if HasSecondaryLocationName}} — true when the
+        /// secondary location has a venue name.
+        /// </summary>
+        public const string HasSecondaryLocationName = "HasSecondaryLocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Second line of the secondary location block — the full
+        /// comma-separated address. Empty string when no secondary location.
+        /// </summary>
+        public const string SecondaryLocationAddress = "SecondaryLocationAddress";
+
+        /// <summary>
+        /// URL to the event details page.
+        /// Used for "View Event Details" CTA button.
+        /// </summary>
+        public const string EventDetailsUrl = "EventDetailsUrl";
+
+        /// <summary>
+        /// Alias for EventDetailsUrl (some templates use this).
+        /// </summary>
+        public const string EventUrl = "EventUrl";
+
+        /// <summary>
+        /// URL to the sign-up lists section of event page.
+        /// </summary>
+        public const string SignUpListsUrl = "SignUpListsUrl";
+
+        /// <summary>
+        /// Alias for SignUpListsUrl - templates use singular form {{SignupListUrl}}.
+        /// </summary>
+        public const string SignupListUrl = "SignupListUrl";
+
+        /// <summary>
+        /// Boolean flag for {{#HasSignUpLists}} conditional blocks in templates.
+        /// </summary>
+        public const string HasSignUpLists = "HasSignUpLists";
+
+        /// <summary>
+        /// URL to the signup forms section of event page.
+        /// Phase 6A.112: Added for "View Signup Forms" button in event emails.
+        /// </summary>
+        public const string SignupFormsUrl = "SignupFormsUrl";
+
+        /// <summary>
+        /// Boolean flag for {{#HasSignupForms}} conditional blocks in templates.
+        /// Phase 6A.112: Added for "View Signup Forms" button in event emails.
+        /// </summary>
+        public const string HasSignupForms = "HasSignupForms";
+
+        /// <summary>
+        /// Alias for EventStartDate - some templates use {{EventDate}}.
+        /// </summary>
+        public const string EventDate = "EventDate";
+
+        /// <summary>
+        /// Organizer's display name (used in cancellation, approval, rejection emails).
+        /// </summary>
+        public const string OrganizerName = "OrganizerName";
+
+        /// <summary>
+        /// URL to manage the event (organizer-facing).
+        /// </summary>
+        public const string EventManageUrl = "EventManageUrl";
+
+        /// <summary>
+        /// URL to browse other events.
+        /// </summary>
+        public const string BrowseEventsUrl = "BrowseEventsUrl";
+
+        /// <summary>
+        /// Event description text.
+        /// </summary>
+        public const string EventDescription = "EventDescription";
+
+        /// <summary>
+        /// Event image URL.
+        /// </summary>
+        public const string EventImageUrl = "EventImageUrl";
+
+        /// <summary>
+        /// Maximum attendee capacity.
+        /// </summary>
+        public const string MaxAttendees = "MaxAttendees";
+    }
+
+    #endregion
+
+    #region Organizer Contact Parameters
+
+    /// <summary>
+    /// Parameters for event organizer contact information.
+    /// Used with {{#if HasOrganizerContact}} conditionals.
+    /// </summary>
+    public static class OrganizerContact
+    {
+        /// <summary>
+        /// Boolean flag for Handlebars {{#if HasOrganizerContact}} conditional.
+        /// </summary>
+        public const string HasOrganizerContact = "HasOrganizerContact";
+
+        /// <summary>
+        /// Organizer's display name.
+        /// </summary>
+        public const string OrganizerContactName = "OrganizerContactName";
+
+        /// <summary>
+        /// Organizer's email address.
+        /// </summary>
+        public const string OrganizerContactEmail = "OrganizerContactEmail";
+
+        /// <summary>
+        /// Organizer's phone number.
+        /// </summary>
+        public const string OrganizerContactPhone = "OrganizerContactPhone";
+
+        /// <summary>
+        /// Phase 6A.133 Email: Pre-formatted HTML for all organizer contacts (multi-contact support).
+        /// Used with triple-brace {{{OrganizerContactsHtml}}} for unescaped rendering.
+        /// </summary>
+        public const string OrganizerContactsHtml = "OrganizerContactsHtml";
+
+        /// <summary>
+        /// Phase 6A.133 Email: Dynamic header text — "EVENT ORGANIZER" or "EVENT ORGANIZERS".
+        /// </summary>
+        public const string OrganizerContactHeader = "OrganizerContactHeader";
+    }
+
+    #endregion
+
+    #region Event Cancellation Parameters
+
+    /// <summary>
+    /// Parameters specific to event cancellation emails.
+    /// </summary>
+    public static class EventCancellation
+    {
+        /// <summary>
+        /// Whether refunds will be processed for cancelled event.
+        /// </summary>
+        public const string RefundsWillBeProcessed = "RefundsWillBeProcessed";
+
+        /// <summary>
+        /// Refund status message for cancelled event.
+        /// </summary>
+        public const string RefundMessage = "RefundMessage";
+    }
+
+    #endregion
+
+    #region Refund Parameters
+
+    /// <summary>
+    /// Parameters specific to refund-related emails.
+    /// </summary>
+    public static class Refund
+    {
+        /// <summary>
+        /// Refund amount (formatted without $ symbol as templates have it hardcoded).
+        /// </summary>
+        public const string RefundAmount = "RefundAmount";
+
+        /// <summary>
+        /// Original payment amount.
+        /// </summary>
+        public const string OriginalAmount = "OriginalAmount";
+
+        /// <summary>
+        /// Stripe refund ID (e.g., "re_xxx123").
+        /// </summary>
+        public const string StripeRefundId = "StripeRefundId";
+
+        /// <summary>
+        /// Reference ID - StripeRefundId or PaymentIntentId fallback.
+        /// </summary>
+        public const string ReferenceId = "ReferenceId";
+
+        /// <summary>
+        /// Reason for refund request.
+        /// </summary>
+        public const string RefundReason = "RefundReason";
+
+        /// <summary>
+        /// Refund status (e.g., "Pending", "Completed").
+        /// </summary>
+        public const string RefundStatus = "RefundStatus";
+
+        /// <summary>
+        /// Timestamp when refund was requested.
+        /// </summary>
+        public const string RequestedAt = "RequestedAt";
+
+        /// <summary>
+        /// Timestamp when refund was completed.
+        /// </summary>
+        public const string CompletedAt = "CompletedAt";
+
+        /// <summary>
+        /// Processing method (e.g., "Original Payment Method").
+        /// </summary>
+        public const string ProcessingMethod = "ProcessingMethod";
+
+        /// <summary>
+        /// Currency code (e.g., "USD").
+        /// </summary>
+        public const string Currency = "Currency";
+
+        /// <summary>
+        /// URL to refund details page.
+        /// </summary>
+        public const string RefundDetailsUrl = "RefundDetailsUrl";
+    }
+
+    #endregion
+
+    #region Registration Parameters
+
+    /// <summary>
+    /// Parameters for registration-related emails.
+    /// </summary>
+    public static class Registration
+    {
+        /// <summary>
+        /// Reason for cancellation.
+        /// </summary>
+        public const string CancellationReason = "CancellationReason";
+
+        /// <summary>
+        /// Date/time of cancellation.
+        /// </summary>
+        public const string CancelledAt = "CancelledAt";
+
+        /// <summary>
+        /// Alias for CancelledAt (some templates use this).
+        /// </summary>
+        public const string CancellationDate = "CancellationDate";
+
+        /// <summary>
+        /// Registration confirmation number.
+        /// </summary>
+        public const string ConfirmationNumber = "ConfirmationNumber";
+
+        /// <summary>
+        /// Ticket type name.
+        /// </summary>
+        public const string TicketType = "TicketType";
+
+        /// <summary>
+        /// Ticket price.
+        /// </summary>
+        public const string TicketPrice = "TicketPrice";
+
+        /// <summary>
+        /// Number of tickets purchased.
+        /// </summary>
+        public const string TicketQuantity = "TicketQuantity";
+
+        /// <summary>
+        /// Total amount paid.
+        /// </summary>
+        public const string TotalAmount = "TotalAmount";
+
+        /// <summary>
+        /// URL to download/view ticket.
+        /// </summary>
+        public const string TicketUrl = "TicketUrl";
+
+        /// <summary>
+        /// Registration date.
+        /// </summary>
+        public const string RegistrationDate = "RegistrationDate";
+
+        /// <summary>
+        /// Number of registrations/quantity.
+        /// </summary>
+        public const string Quantity = "Quantity";
+
+        /// <summary>
+        /// Flag for whether attendee details are available.
+        /// </summary>
+        public const string HasAttendeeDetails = "HasAttendeeDetails";
+
+        /// <summary>
+        /// Attendee details (JSON or formatted string).
+        /// </summary>
+        public const string Attendees = "Attendees";
+
+        /// <summary>
+        /// Flag for whether contact info is available.
+        /// </summary>
+        public const string HasContactInfo = "HasContactInfo";
+
+        /// <summary>
+        /// Contact email address.
+        /// </summary>
+        public const string ContactEmail = "ContactEmail";
+
+        /// <summary>
+        /// Contact phone number.
+        /// </summary>
+        public const string ContactPhone = "ContactPhone";
+    }
+
+    #endregion
+
+    #region Payment Parameters
+
+    /// <summary>
+    /// Parameters for payment-related emails.
+    /// </summary>
+    public static class Payment
+    {
+        /// <summary>
+        /// Amount paid (formatted).
+        /// </summary>
+        public const string AmountPaid = "AmountPaid";
+
+        /// <summary>
+        /// Total amount for the order.
+        /// </summary>
+        public const string TotalAmount = "TotalAmount";
+
+        /// <summary>
+        /// Stripe Payment Intent ID.
+        /// </summary>
+        public const string PaymentIntentId = "PaymentIntentId";
+
+        /// <summary>
+        /// Order confirmation number.
+        /// </summary>
+        public const string OrderNumber = "OrderNumber";
+
+        /// <summary>
+        /// Date of payment.
+        /// </summary>
+        public const string PaymentDate = "PaymentDate";
+
+        /// <summary>
+        /// URL for making a payment (e.g., preliminary registration payment).
+        /// </summary>
+        public const string PaymentLink = "PaymentLink";
+
+        /// <summary>
+        /// Alias for PaymentLink - some templates use {{PaymentUrl}}.
+        /// </summary>
+        public const string PaymentUrl = "PaymentUrl";
+
+        /// <summary>
+        /// Payment expiration time (alias for ExpiresAt in payment contexts).
+        /// </summary>
+        public const string ExpirationTime = "ExpirationTime";
+    }
+
+    #endregion
+
+    #region Ticket Parameters
+
+    /// <summary>
+    /// Parameters for ticket-related emails.
+    /// </summary>
+    public static class Ticket
+    {
+        /// <summary>
+        /// Flag for whether a ticket is attached/included.
+        /// </summary>
+        public const string HasTicket = "HasTicket";
+
+        /// <summary>
+        /// Ticket code/number.
+        /// </summary>
+        public const string TicketCode = "TicketCode";
+
+        /// <summary>
+        /// Ticket expiry date.
+        /// </summary>
+        public const string TicketExpiryDate = "TicketExpiryDate";
+
+        /// <summary>
+        /// URL to view/download ticket.
+        /// </summary>
+        public const string TicketUrl = "TicketUrl";
+
+        /// <summary>
+        /// Ticket type name (e.g., "General Admission", "VIP").
+        /// </summary>
+        public const string TicketType = "TicketType";
+    }
+
+    #endregion
+
+    #region Event Image Parameters
+
+    /// <summary>
+    /// Parameters for event image display.
+    /// </summary>
+    public static class EventImage
+    {
+        /// <summary>
+        /// Flag for whether an event image should be displayed.
+        /// </summary>
+        public const string HasEventImage = "HasEventImage";
+
+        /// <summary>
+        /// URL to the event image.
+        /// </summary>
+        public const string EventImageUrl = "EventImageUrl";
+    }
+
+    #endregion
+
+    #region Sign-up List Parameters
+
+    /// <summary>
+    /// Parameters for sign-up list commitment emails.
+    /// </summary>
+    public static class SignupList
+    {
+        /// <summary>
+        /// Name of the sign-up list.
+        /// </summary>
+        public const string ListName = "ListName";
+
+        /// <summary>
+        /// Item(s) committed to bring.
+        /// </summary>
+        public const string CommitmentItem = "CommitmentItem";
+
+        /// <summary>
+        /// Item description (alias for SignupItem in templates).
+        /// </summary>
+        public const string ItemDescription = "ItemDescription";
+
+        /// <summary>
+        /// Signup item name.
+        /// </summary>
+        public const string SignupItem = "SignupItem";
+
+        /// <summary>
+        /// Type of commitment (e.g., "Item Contribution").
+        /// </summary>
+        public const string CommitmentType = "CommitmentType";
+
+        /// <summary>
+        /// Instructions for pickup/delivery.
+        /// </summary>
+        public const string PickupInstructions = "PickupInstructions";
+
+        /// <summary>
+        /// Quantity committed.
+        /// </summary>
+        public const string CommitmentQuantity = "CommitmentQuantity";
+
+        /// <summary>
+        /// New quantity (for commitment update emails).
+        /// </summary>
+        public const string NewQuantity = "NewQuantity";
+
+        /// <summary>
+        /// Previous quantity (for commitment update emails).
+        /// </summary>
+        public const string OldQuantity = "OldQuantity";
+
+        /// <summary>
+        /// Total number of slots available.
+        /// </summary>
+        public const string TotalSlots = "TotalSlots";
+
+        /// <summary>
+        /// Number of slots taken.
+        /// </summary>
+        public const string SlotsTaken = "SlotsTaken";
+    }
+
+    #endregion
+
+    #region Password/Auth Parameters
+
+    /// <summary>
+    /// Parameters for password reset and auth emails.
+    /// </summary>
+    public static class Auth
+    {
+        /// <summary>
+        /// User's email address.
+        /// </summary>
+        public const string UserEmail = "UserEmail";
+
+        /// <summary>
+        /// Password reset token.
+        /// </summary>
+        public const string ResetToken = "ResetToken";
+
+        /// <summary>
+        /// Full password reset link.
+        /// </summary>
+        public const string ResetLink = "ResetLink";
+
+        /// <summary>
+        /// Token expiration timestamp.
+        /// </summary>
+        public const string ExpiresAt = "ExpiresAt";
+
+        /// <summary>
+        /// Timestamp when password was changed.
+        /// </summary>
+        public const string ChangedAt = "ChangedAt";
+
+        /// <summary>
+        /// Login page URL.
+        /// </summary>
+        public const string LoginUrl = "LoginUrl";
+
+        /// <summary>
+        /// Email verification link.
+        /// </summary>
+        public const string VerificationLink = "VerificationLink";
+    }
+
+    #endregion
+
+    #region Support Ticket Parameters
+
+    /// <summary>
+    /// Parameters for support ticket emails.
+    /// </summary>
+    public static class Support
+    {
+        /// <summary>
+        /// Support ticket ID/number.
+        /// </summary>
+        public const string TicketId = "TicketId";
+
+        /// <summary>
+        /// Ticket subject/title.
+        /// </summary>
+        public const string TicketSubject = "TicketSubject";
+
+        /// <summary>
+        /// Ticket message/description.
+        /// </summary>
+        public const string TicketMessage = "TicketMessage";
+
+        /// <summary>
+        /// Reply message from support.
+        /// </summary>
+        public const string ReplyMessage = "ReplyMessage";
+
+        /// <summary>
+        /// Ticket category.
+        /// </summary>
+        public const string Category = "Category";
+
+        /// <summary>
+        /// Ticket status.
+        /// </summary>
+        public const string TicketStatus = "TicketStatus";
+    }
+
+    #endregion
+
+    #region Admin User Parameters
+
+    /// <summary>
+    /// Parameters for admin user management emails.
+    /// </summary>
+    public static class AdminUser
+    {
+        /// <summary>
+        /// Reason for account activation/deactivation.
+        /// </summary>
+        public const string Reason = "Reason";
+
+        /// <summary>
+        /// Admin who took the action.
+        /// </summary>
+        public const string AdminName = "AdminName";
+
+        /// <summary>
+        /// Timestamp of the action.
+        /// </summary>
+        public const string ActionTimestamp = "ActionTimestamp";
+    }
+
+    #endregion
+
+    #region Newsletter Parameters
+
+    /// <summary>
+    /// Parameters for newsletter-related emails.
+    /// </summary>
+    public static class Newsletter
+    {
+        /// <summary>
+        /// Newsletter title/subject.
+        /// </summary>
+        public const string NewsletterTitle = "NewsletterTitle";
+
+        /// <summary>
+        /// Newsletter HTML content.
+        /// </summary>
+        public const string NewsletterContent = "NewsletterContent";
+
+        /// <summary>
+        /// URL to unsubscribe from newsletter.
+        /// </summary>
+        public const string UnsubscribeLink = "UnsubscribeLink";
+
+        /// <summary>
+        /// Whether this newsletter is event-specific.
+        /// </summary>
+        public const string IsEventNewsletter = "IsEventNewsletter";
+    }
+
+    /// <summary>
+    /// Phase 6A.107: Parameters for form response emails.
+    /// Architect Review: Approved - includes all required parameters with timestamp and deadline support.
+    /// </summary>
+    public static class FormResponse
+    {
+        /// <summary>
+        /// Form title/name.
+        /// </summary>
+        public const string FormTitle = "FormTitle";
+
+        /// <summary>
+        /// Form description (optional).
+        /// </summary>
+        public const string FormDescription = "FormDescription";
+
+        /// <summary>
+        /// Summary of user's responses (e.g., "Vegetarian preference, Arriving Friday").
+        /// </summary>
+        public const string ResponseSummary = "ResponseSummary";
+
+        /// <summary>
+        /// URL to edit the form response (includes access token for anonymous users).
+        /// </summary>
+        public const string EditFormUrl = "EditFormUrl";
+
+        /// <summary>
+        /// When the response was submitted.
+        /// </summary>
+        public const string SubmittedAt = "SubmittedAt";
+
+        /// <summary>
+        /// When the response was last updated (for update emails).
+        /// </summary>
+        public const string UpdatedAt = "UpdatedAt";
+
+        /// <summary>
+        /// When the response was cancelled (for cancellation emails).
+        /// </summary>
+        public const string CancelledAt = "CancelledAt";
+
+        /// <summary>
+        /// Response deadline (if set by organizer).
+        /// </summary>
+        public const string ResponseDeadline = "ResponseDeadline";
+
+        /// <summary>
+        /// Whether the form has a description.
+        /// </summary>
+        public const string HasFormDescription = "HasFormDescription";
+
+        /// <summary>
+        /// Whether the form has a response deadline.
+        /// </summary>
+        public const string HasResponseDeadline = "HasResponseDeadline";
+    }
+
+    #endregion
+
+    #region Business Notification Parameters
+
+    /// <summary>
+    /// Phase 6A.100: Parameters for business notification emails.
+    /// Supports 15+ notification types: approval, rejection, suspension, reviews, payments, etc.
+    /// </summary>
+    public static class Business
+    {
+        /// <summary>
+        /// Business name.
+        /// </summary>
+        public const string BusinessName = "BusinessName";
+
+        /// <summary>
+        /// Business identifier.
+        /// </summary>
+        public const string BusinessId = "BusinessId";
+
+        /// <summary>
+        /// Business category (e.g., "Restaurant", "Retail").
+        /// </summary>
+        public const string BusinessCategory = "BusinessCategory";
+
+        /// <summary>
+        /// Business status (e.g., "Active", "Pending", "Suspended").
+        /// </summary>
+        public const string BusinessStatus = "BusinessStatus";
+
+        /// <summary>
+        /// Notification type (e.g., "BusinessApproved", "NewReview").
+        /// </summary>
+        public const string NotificationType = "NotificationType";
+
+        /// <summary>
+        /// Date/time of notification.
+        /// </summary>
+        public const string NotificationDate = "NotificationDate";
+
+        /// <summary>
+        /// URL to the business page.
+        /// </summary>
+        public const string BusinessUrl = "BusinessUrl";
+
+        /// <summary>
+        /// Whether this is an approval notification.
+        /// </summary>
+        public const string IsApproval = "IsApproval";
+
+        /// <summary>
+        /// Whether this is a rejection notification.
+        /// </summary>
+        public const string IsRejection = "IsRejection";
+
+        /// <summary>
+        /// Whether this is a suspension notification.
+        /// </summary>
+        public const string IsSuspension = "IsSuspension";
+
+        /// <summary>
+        /// Whether this is a critical notification (high priority).
+        /// </summary>
+        public const string IsCritical = "IsCritical";
+
+        /// <summary>
+        /// Whether this is a report notification.
+        /// </summary>
+        public const string IsReport = "IsReport";
+
+        /// <summary>
+        /// Whether this notification requires user action.
+        /// </summary>
+        public const string RequiresAction = "RequiresAction";
+
+        /// <summary>
+        /// Next steps instructions for the user.
+        /// </summary>
+        public const string NextSteps = "NextSteps";
+
+        /// <summary>
+        /// Action URL (e.g., review page, payment page).
+        /// </summary>
+        public const string ActionUrl = "ActionUrl";
+
+        /// <summary>
+        /// Report URL (e.g., analytics page).
+        /// </summary>
+        public const string ReportUrl = "ReportUrl";
+    }
+
+    #endregion
+
+    #region Donation Parameters
+
+    /// <summary>
+    /// Parameters for donation receipt email.
+    /// Template: template-donation-receipt
+    /// </summary>
+    public static class Donation
+    {
+        public const string DonorName = "DonorName";
+        public const string DonorEmail = "DonorEmail";
+        public const string EventTitle = "EventTitle";
+        public const string DonationAmount = "DonationAmount";
+        public const string DonationCurrency = "DonationCurrency";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string PaymentDate = "PaymentDate";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Add-On Purchase Parameters
+
+    /// <summary>
+    /// Phase 6A.137B: Parameters for add-on purchase receipt email.
+    /// Template: template-addon-purchase-receipt
+    /// </summary>
+    public static class AddOnPurchase
+    {
+        public const string BuyerName = "BuyerName";
+        public const string BuyerEmail = "BuyerEmail";
+        public const string EventTitle = "EventTitle";
+        public const string AddOnName = "AddOnName";
+        public const string Quantity = "Quantity";
+        public const string UnitPrice = "UnitPrice";
+        public const string TotalAmount = "TotalAmount";
+        public const string Currency = "Currency";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string PaymentDate = "PaymentDate";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Collection Parameters
+
+    /// <summary>
+    /// Phase 6A.137B: Parameters for collection receipt email.
+    /// Template: template-collection-receipt
+    /// </summary>
+    public static class Collection
+    {
+        public const string ContributorName = "ContributorName";
+        public const string ContributorEmail = "ContributorEmail";
+        public const string EventTitle = "EventTitle";
+        public const string ContributionAmount = "ContributionAmount";
+        public const string Currency = "Currency";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string PaymentDate = "PaymentDate";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Sponsor Parameters
+
+    /// <summary>
+    /// Phase 6A.137B: Parameters for sponsor confirmation email (money + item).
+    /// Template: template-sponsor-confirmation
+    /// </summary>
+    public static class Sponsor
+    {
+        public const string SponsorName = "SponsorName";
+        public const string SponsorEmail = "SponsorEmail";
+        public const string SponsorOrganization = "SponsorOrganization";
+        public const string HasOrganization = "HasOrganization";
+        public const string EventTitle = "EventTitle";
+        public const string SponsorType = "SponsorType";
+        public const string IsMonetarySponsor = "IsMonetarySponsor";
+        public const string IsItemSponsor = "IsItemSponsor";
+        public const string Amount = "Amount";
+        public const string Currency = "Currency";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string PaymentDate = "PaymentDate";
+        public const string ItemName = "ItemName";
+        public const string ItemDescription = "ItemDescription";
+        public const string HasItemDescription = "HasItemDescription";
+        public const string EstimatedValue = "EstimatedValue";
+        public const string HasEstimatedValue = "HasEstimatedValue";
+        public const string RecordedAt = "RecordedAt";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Donation Refund Parameters
+
+    /// <summary>
+    /// Phase 6A.137B2: Parameters for donation refund email.
+    /// Template: template-donation-refund
+    /// </summary>
+    public static class DonationRefund
+    {
+        public const string DonorName = "DonorName";
+        public const string DonorEmail = "DonorEmail";
+        public const string EventTitle = "EventTitle";
+        public const string DonationAmount = "DonationAmount";
+        public const string Currency = "Currency";
+        public const string RefundedAt = "RefundedAt";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Collection Refund Parameters
+
+    /// <summary>
+    /// Phase 6A.137B2: Parameters for collection refund email.
+    /// Template: template-collection-refund
+    /// </summary>
+    public static class CollectionRefund
+    {
+        public const string ContributorName = "ContributorName";
+        public const string ContributorEmail = "ContributorEmail";
+        public const string EventTitle = "EventTitle";
+        public const string ContributionAmount = "ContributionAmount";
+        public const string Currency = "Currency";
+        public const string RefundedAt = "RefundedAt";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region WhatsApp Auto-Disabled Parameters
+
+    /// <summary>
+    /// Phase 7D Fix 4: parameters for the "we turned WhatsApp off because you never verified"
+    /// email. Sent by the daily <c>ExpireUnverifiedWhatsAppPreferencesJob</c> — never user-triggered.
+    /// </summary>
+    public static class WhatsAppAutoDisabled
+    {
+        /// <summary>Last 4 digits of the phone number, e.g. "•••• 3717" — never the full number.</summary>
+        public const string MaskedPhone = "MaskedPhone";
+
+        /// <summary>Formatted enable date, e.g. "March 22, 2026".</summary>
+        public const string EnabledAt = "EnabledAt";
+
+        /// <summary>Grace window size in days (e.g. 30) so the copy reads "after 30 days".</summary>
+        public const string GracePeriodDays = "GracePeriodDays";
+
+        /// <summary>URL to the WhatsApp preferences page where the user can re-enable.</summary>
+        public const string ReEnableUrl = "ReEnableUrl";
+    }
+
+    #endregion
+
+    #region Sponsor Refund Parameters
+
+    /// <summary>
+    /// Phase 6A.137B2: Parameters for sponsor refund email.
+    /// Template: template-sponsor-refund
+    /// </summary>
+    public static class SponsorRefund
+    {
+        public const string SponsorName = "SponsorName";
+        public const string SponsorEmail = "SponsorEmail";
+        public const string SponsorOrganization = "SponsorOrganization";
+        public const string HasOrganization = "HasOrganization";
+        public const string EventTitle = "EventTitle";
+        public const string Amount = "Amount";
+        public const string Currency = "Currency";
+        public const string RefundedAt = "RefundedAt";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Phase 6A.148.D7 — Refund Lifecycle Email Parameters
+
+    /// <summary>
+    /// Phase 6A.148.D7: Parameters for the "your refund request is pending organizer review" email.
+    /// Template: template-refund-pending-review (header: "Refund Request Received").
+    ///
+    /// Fires once at attendee-initiated refund request creation. Operator UAT (E1/E2 in
+    /// MASTER_TODO_PHASE_6A_148) confirmed the previously-reused template-refund-requested
+    /// template's "Refund In Progress" header misled attendees into thinking Stripe was
+    /// already moving money. This dedicated template + params class fixes that.
+    /// </summary>
+    public static class RefundPendingReview
+    {
+        /// <summary>Pre-formatted HTML table listing each requested line (Ticket/AddOn/Collection/Sponsor + amount). Triple-brace token.</summary>
+        public const string LineItemsHtml = "LineItemsHtml";
+
+        /// <summary>Total requested amount across all line items (no currency symbol — template hard-codes "$").</summary>
+        public const string RequestedTotal = "RequestedTotal";
+
+        /// <summary>Currency code (e.g., "USD").</summary>
+        public const string Currency = "Currency";
+
+        /// <summary>Attendee-supplied reason for the refund (optional). Empty string when not supplied.</summary>
+        public const string RequesterReason = "RequesterReason";
+
+        /// <summary>Boolean flag for {{#if HasRequesterReason}} conditional rendering.</summary>
+        public const string HasRequesterReason = "HasRequesterReason";
+
+        /// <summary>Formatted requested-at timestamp (e.g., "May 18, 2026 3:42 PM").</summary>
+        public const string RequestedAt = "RequestedAt";
+    }
+
+    /// <summary>
+    /// Phase 6A.148.D7: Parameters for the "your refund decision" email.
+    /// Template: template-refund-decision (header: "Refund Decision").
+    ///
+    /// Fires after organizer approves (attendee-initiated path) OR at organizer-initiated
+    /// request creation (organizer path). Body lists every line with its decision —
+    /// approved $X / declined / processing — so attendees see exactly what the organizer
+    /// decided per bucket (E3 in MASTER_TODO_PHASE_6A_148).
+    /// </summary>
+    public static class RefundDecision
+    {
+        /// <summary>Pre-formatted HTML table listing each line + decision. Triple-brace token.</summary>
+        public const string LineItemsHtml = "LineItemsHtml";
+
+        /// <summary>Sum of approved amounts across the request (no currency symbol).</summary>
+        public const string ApprovedTotal = "ApprovedTotal";
+
+        /// <summary>Sum of originally-requested amounts (no currency symbol).</summary>
+        public const string RequestedTotal = "RequestedTotal";
+
+        /// <summary>Currency code.</summary>
+        public const string Currency = "Currency";
+
+        /// <summary>Boolean flag — true when the organizer initiated the refund on behalf of the attendee. Drives body copy variant.</summary>
+        public const string IsOrganizerInitiated = "IsOrganizerInitiated";
+
+        /// <summary>Formatted decision timestamp.</summary>
+        public const string DecidedAt = "DecidedAt";
+    }
+
+    /// <summary>
+    /// Phase 6A.148.W4.D13: Parameters for the "you withdrew your refund request" email.
+    /// Template: template-refund-withdrawn (header: "Refund Request Withdrawn").
+    ///
+    /// Fires once when an attendee uses the in-app withdraw button on the pending-review
+    /// status banner. Confirms to them the request was withdrawn, the registration is
+    /// back to Confirmed, and no money moved. Per Q2 user decision, organizer is NOT
+    /// notified (queue item just disappears).
+    /// </summary>
+    public static class RefundWithdrawn
+    {
+        /// <summary>Pre-formatted HTML table listing each line item that was in the withdrawn request. Triple-brace token.</summary>
+        public const string LineItemsHtml = "LineItemsHtml";
+
+        /// <summary>Total amount that was in the withdrawn request (no currency symbol).</summary>
+        public const string RequestedTotal = "RequestedTotal";
+
+        /// <summary>Currency code (e.g., "USD").</summary>
+        public const string Currency = "Currency";
+
+        /// <summary>Formatted withdrawn-at timestamp (e.g., "May 19, 2026 3:42 PM").</summary>
+        public const string WithdrawnAt = "WithdrawnAt";
+    }
+
+    /// <summary>
+    /// Phase 6A.148.D7: Parameters for the "your refund request was declined" email.
+    /// Template: template-refund-rejected (header: "Refund Request Declined").
+    ///
+    /// Fires when the organizer rejects the entire request. The customer-facing
+    /// RejectionReason is the first-class field in the body — no body-stuffing.
+    /// </summary>
+    public static class RefundRejected
+    {
+        /// <summary>Pre-formatted HTML table listing each requested line (Ticket/AddOn/Collection/Sponsor + amount). Triple-brace token.</summary>
+        public const string LineItemsHtml = "LineItemsHtml";
+
+        /// <summary>Total originally-requested amount (no currency symbol).</summary>
+        public const string RequestedTotal = "RequestedTotal";
+
+        /// <summary>Currency code.</summary>
+        public const string Currency = "Currency";
+
+        /// <summary>Customer-facing rejection reason (mandatory, set by organizer).</summary>
+        public const string RejectionReason = "RejectionReason";
+
+        /// <summary>Formatted rejection timestamp.</summary>
+        public const string RejectedAt = "RejectedAt";
+    }
+
+    #endregion
+
+    #region Phase 7E — Flexible Registration Modes Parameters
+
+    /// <summary>
+    /// Phase 7E.2: Mode-aware Handlebars block parameters for the registration-lifecycle templates
+    /// (event-registration-confirmation, event-anonymous-registration-confirmation,
+    /// event-cancellation, event-organizer-cancelled-the-event, event-reminder,
+    /// event-registration-modified, event-add-attendees-confirmation,
+    /// organizer-new-registration-notification, event-waitlist-promoted).
+    ///
+    /// Population rule: every handler MUST set ALL booleans (true AND false) — never omit them.
+    /// Handlebars <c>{{#if undefined}}</c> evaluates to false silently, but the
+    /// <c>EmailTemplateValidationService</c> startup check warns on undefined parameters
+    /// and we want a hard signal, not a quiet fallthrough.
+    ///
+    /// HTML for the conditional blocks lands in 7E.4 — these constants are the API contract
+    /// that gates that release.
+    /// </summary>
+    public static class FlexibleRegistration
+    {
+        /// <summary>True for Mode A (DetailedAttendees) — toggles the per-attendee table block.</summary>
+        public const string HasDetailedAttendees = "HasDetailedAttendees";
+
+        /// <summary>True for any of the four Mode B variants — toggles the head-count summary block.</summary>
+        public const string HasHeadCount = "HasHeadCount";
+
+        /// <summary>
+        /// True for B2/B3/B4 (any demographic axis present); false for B1 (Total only).
+        /// Templates use this to decide whether to render the demographic line.
+        /// </summary>
+        public const string HasHeadCountBreakdown = "HasHeadCountBreakdown";
+
+        /// <summary>True when the registration carries TierCounts (event has tiers and Mode B captured per-tier counts).</summary>
+        public const string HasTierBreakdown = "HasTierBreakdown";
+
+        /// <summary>Pre-rendered total head count, e.g. "5".</summary>
+        public const string HeadCountTotal = "HeadCountTotal";
+
+        /// <summary>
+        /// Pre-rendered demographic line, e.g. "3 adults · 2 children", "2 males · 3 females",
+        /// "1 adult male · 2 adult females · 1 child male · 1 child female". Empty string when
+        /// <see cref="HasHeadCountBreakdown"/> is false.
+        /// </summary>
+        public const string HeadCountBreakdownLine = "HeadCountBreakdownLine";
+
+        /// <summary>
+        /// Pre-rendered tier line, e.g. "VIP × 2, General × 3". Empty string when
+        /// <see cref="HasTierBreakdown"/> is false. Tier names are SNAPSHOTS at registration
+        /// time — survive downstream tier rename/delete.
+        /// </summary>
+        public const string TierBreakdownLine = "TierBreakdownLine";
+
+        /// <summary>
+        /// Phase 7F-E.3 (architect-approved 2026-05-01): pre-rendered HTML fragment
+        /// produced by <c>RegistrationBreakdownEmailRenderer.Render</c>. Drops in at the
+        /// <c>&lt;!-- attendee-block-7e --&gt;</c> anchor of every email template. ONE
+        /// token replaces the legacy <see cref="HeadCountTotal"/> +
+        /// <see cref="HeadCountBreakdownLine"/> + <see cref="TierBreakdownLine"/> trio,
+        /// keeping rendering logic out of the templates (memory
+        /// <c>feedback_regex_on_email_html.md</c>).
+        ///
+        /// Empty string when the registration has no <c>RegistrationBreakdown</c> rows
+        /// (defensive — surrounding template renders nothing).
+        /// </summary>
+        public const string RegistrationBreakdownHtml = "RegistrationBreakdownHtml";
+    }
+
+    #endregion
+}

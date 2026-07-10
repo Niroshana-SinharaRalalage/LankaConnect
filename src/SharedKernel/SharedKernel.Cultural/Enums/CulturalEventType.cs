@@ -1,4 +1,4 @@
-namespace LankaConnect.SharedKernel.Cultural;
+namespace LankaConnect.SharedKernel.Cultural.Enums;
 
 /// <summary>
 /// Consolidated cultural event types with traffic predictions and cultural significance.

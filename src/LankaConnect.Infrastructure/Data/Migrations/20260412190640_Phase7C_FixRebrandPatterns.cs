@@ -110,7 +110,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // =========================================================================
             // Phase 7C Fix: Correct rebrand patterns for multi-line HTML in DB
             //
-            // Migration 2 (Phase7C_ReбрандAllTemplates) used patterns designed for
+            // Migration 2 (Phase7C_RebrandAllTemplates) used patterns designed for
             // compact single-line CSS (e.g. "font-size: 20px; font-weight: 500;").
             // The DB stores multi-line deeply-indented CSS where "LankaConnect" brand
             // text is on its own indented line between ">" and "</p>".

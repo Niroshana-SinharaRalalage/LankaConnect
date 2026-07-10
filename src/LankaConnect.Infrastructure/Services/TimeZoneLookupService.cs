@@ -1,7 +1,6 @@
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using Serilog;
-
-namespace LankaConnect.Infrastructure.Services;
+namespace LankaConnect.Host.AllInOne.Services;
 
 /// <summary>
 /// Phase 6A.97: Maps US states to IANA timezone identifiers.

@@ -1,6 +1,7 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -8,7 +9,8 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Modules.Identity.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): IdentityDbContext
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // 4C.h Day 5: LankaEventsDbContext for MetroAreas (cross-module)
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdatePreferredMetroAreas;
 
 /// <summary>
@@ -20,18 +22,21 @@ namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdatePreferr
 public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<UpdateUserPreferredMetroAreasCommand>
 {
     private readonly IUserRepository _userRepository;
-    private readonly IApplicationDbContext _dbContext;
+    private readonly IdentityDbContext _dbContext;
+    private readonly LankaEventsDbContext _eventsContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateUserPreferredMetroAreasCommandHandler> _logger;
 
     public UpdateUserPreferredMetroAreasCommandHandler(
         IUserRepository userRepository,
-        IApplicationDbContext dbContext,
+        IdentityDbContext dbContext,
+        LankaEventsDbContext eventsContext,
         IUnitOfWork unitOfWork,
         ILogger<UpdateUserPreferredMetroAreasCommandHandler> logger)
     {
         _userRepository = userRepository;
         _dbContext = dbContext;
+        _eventsContext = eventsContext;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -83,7 +88,7 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
                         string.Join(", ", command.MetroAreaIds));
 
                     // Load actual entities from database
-                    metroAreaEntities = await _dbContext.MetroAreas
+                    metroAreaEntities = await _eventsContext.MetroAreas
                         .Where(m => command.MetroAreaIds.Contains(m.Id))
                         .ToListAsync(cancellationToken);
 
@@ -139,8 +144,8 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
                 // We cannot modify shadow navigation from domain layer - must use EF Core's API
                 // This is the CORRECT way to handle many-to-many with shadow properties per ADR-009
                 // Cast to AppDbContext to access Entry() method (infrastructure layer detail)
-                var dbContext = _dbContext as Microsoft.EntityFrameworkCore.DbContext
-                    ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
+                var dbContext = _dbContext
+                    ;
 
                 _logger.LogInformation(
                     "UpdatePreferredMetroAreas: Using EF Core ChangeTracker API to update shadow navigation - UserId={UserId}",

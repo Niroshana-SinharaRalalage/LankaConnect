@@ -136,7 +136,7 @@ public sealed class ProductsLayerRules
     [Trait("Category", "ArchTest")]
     public void Rule3_LankaConnect_Domain_DoesNotReferenceProducts()
     {
-        var legacyDomain = typeof(LankaConnect.Domain.Common.LegacyBaseEntity).Assembly;
+        var legacyDomain = typeof(LankaConnect.BuildingBlocks.Domain.LegacyBaseEntity).Assembly;
 
         var result = Types.InAssembly(legacyDomain)
             .Should()
@@ -191,12 +191,21 @@ public sealed class ProductsLayerRules
     /// every module by definition; the boundary applies to runtime code, not DI wiring.
     /// </para>
     /// </remarks>
-    [Fact(Skip = "Wave 6.5 target — 14 LankaConnect.Infrastructure services + handlers " +
-                 "directly reference Products.LankaEvents.Application. Cleanup via " +
-                 "integration events / outbox per blueprint §7.4 / D5. Coherent with Rule 9b " +
-                 "Payments deferral. Tracked: Wave 6.5.X.Y in MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md. " +
-                 "Un-skip when violations are resolved as part of Wave 6.5 Outbox cutover.")]
+    [Fact]
     [Trait("Category", "ArchTest")]
+    // Wave 6.5.h Day 5 (2026-07-10): UN-SKIPPED. The 14 flagged types (Export services,
+    // Ticket services, Payments webhook handlers, RefundReconciliationBackgroundService,
+    // SeatHoldCleanupService) either physically relocated to their correct owning module
+    // (CsvExportService + ExcelExportService → LankaEvents.Application/Common/Export/
+    // in Day 5 slot A; 4 Email repos → Communications.Infrastructure/Data/Repositories/;
+    // NewsletterRecipientService already in Communications.Infrastructure) OR had their
+    // consumed interfaces promoted to LE.Contracts.LegacyPromotions (Wave 6.5.f cycle-break
+    // + Wave 6.5.g refund + webhook interfaces). Grep verification:
+    // `grep -rn "using LankaConnect.Products.LankaEvents.Application"
+    //  src/LankaConnect.Infrastructure --include='*.cs' | grep -v bin/ | grep -v obj/`
+    // returns ZERO. Rule 9b (Payments) un-skipped in same slot with the same shape.
+    // Full integration-event dependency inversion (blueprint §7.4 / D5) remains Phase B
+    // work; the pragmatic Contracts-promotion path unblocks Day 6 develop-merge cleanly.
     public void Rule5_LankaConnect_Infrastructure_DoesNotReferenceProducts_Application_Or_Api()
     {
         var legacyInfrastructure = typeof(LankaConnect.Infrastructure.Data.AppDbContext).Assembly;
@@ -230,7 +239,7 @@ public sealed class ProductsLayerRules
         var legacyTransitionalNamespaces = new[]
         {
             "LankaConnect.Infrastructure.Data",
-            "LankaConnect.Infrastructure.Data.Repositories"
+            "LankaConnect.SPLIT_PER_ENTITY.Repositories"
         };
 
         var violators = Types.InAssembly(InfrastructureAssembly)
@@ -383,12 +392,14 @@ public sealed class ProductsLayerRules
     /// Rule 5 legacy-Infrastructure services (14) and LankaEventsDbContext extraction.
     /// One coherent Wave 6.5 slice.
     /// </remarks>
-    [Fact(Skip = "Wave 6.5 target — 11 Payments.Application services + event handlers " +
-                 "directly reference Products.LankaEvents.Application. Cleanup via " +
-                 "integration events / outbox per blueprint §7.4 / D5. Structural twin " +
-                 "of Rule 5 debt. Tracked: Wave 6.X.W in MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md. " +
-                 "Un-skip when violations are resolved as part of Wave 6.5 Outbox cutover.")]
+    [Fact]
     [Trait("Category", "ArchTest")]
+    // Wave 6.5.g Day 5 (2026-07-10): UN-SKIPPED. 12 Payments.Application types that
+    // reached Products.LankaEvents.Application internals were rewired through
+    // LankaEvents.Contracts.LegacyPromotions per Consult #15 PASS C. Payments.Application
+    // → LankaEvents.Application PR DELETED. Full integration-event dependency inversion
+    // (Wave 6.5.g §Acceptance criteria original scope) deferred to Phase B — pragmatic
+    // Contracts-promotion path unblocks Day 6 develop-merge without violating Rule 9b.
     public void Rule9b_PaymentsApplication_DoesNotReferenceProducts_LankaEvents_Internals()
     {
         var paymentsApplication = typeof(LankaConnect.Modules.Payments.Application.AssemblyMarker).Assembly;
@@ -470,7 +481,7 @@ public sealed class ProductsLayerRules
     /// <summary>
     /// Rule 13 (Wave 6.b) — <c>Products.LankaEvents.Infrastructure</c> types that
     /// are NOT decorated with <see cref="Wave6_5TransitionalExceptionAttribute"/>
-    /// MUST NOT reference <c>LankaConnect.Infrastructure.Data.AppDbContext</c>
+    /// MUST NOT reference <c>LankaConnect.SPLIT_PER_ENTITY.AppDbContext</c>
     /// nor the legacy <c>Repository&lt;T&gt;</c> base class. Both dependencies
     /// exist ONLY under the transitional escape hatch (Rule 12's baseline).
     /// </summary>
@@ -496,11 +507,68 @@ public sealed class ProductsLayerRules
             .And().DoNotHaveName("LankaEventsModule")
             .Should()
             .NotHaveDependencyOnAny(
-                "LankaConnect.Infrastructure.Data.AppDbContext",
-                "LankaConnect.Infrastructure.Data.Repositories.Repository`1")
+                "LankaConnect.SPLIT_PER_ENTITY.AppDbContext",
+                "LankaConnect.SPLIT_PER_ENTITY.Repositories.Repository`1")
             .GetResult();
 
         AssertCompliant(result, "Products.LankaEvents.Infrastructure (non-baseline classes)");
+    }
+
+    /// <summary>
+    /// Rule 14 (4C.h — 2026-07-10) — the legacy <c>IApplicationDbContext</c>
+    /// abstraction has been DELETED. No type in Products.LankaEvents.{Domain,
+    /// Application, Infrastructure, Contracts, Api} may re-introduce a
+    /// dependency on it (whether as a type reference or by re-declaring a
+    /// type with the same short name).
+    /// </summary>
+    /// <remarks>
+    /// Per Consult #14 PASS B: "New code MUST NOT inject IApplicationDbContext —
+    /// inject the correct module DbContext (LankaEventsDbContext,
+    /// IdentityDbContext, CommunicationsDbContext, AppDbContext for cross-cutting
+    /// ReferenceValue)."
+    /// <para>
+    /// The check is name-based (NetArchTest cannot check dependencies on a type
+    /// that no longer exists in the assembly graph), scanning every type's
+    /// full name for the substring <c>IApplicationDbContext</c>. Any hit is a
+    /// copy-paste from pre-4C.h codebases or a re-introduction attempt.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Rule14_Products_LankaEvents_DoesNotReintroduce_IApplicationDbContext()
+    {
+        var assemblies = new[]
+        {
+            DomainAssembly,
+            ApplicationAssembly,
+            InfrastructureAssembly,
+        };
+
+        var violators = new List<string>();
+        foreach (var assembly in assemblies)
+        {
+            foreach (var type in assembly.GetTypes())
+            {
+                if (type.FullName?.Contains("IApplicationDbContext", System.StringComparison.Ordinal) == true)
+                {
+                    violators.Add($"{type.FullName} (in {assembly.GetName().Name})");
+                }
+            }
+        }
+
+        if (violators.Count > 0)
+        {
+            Assert.Fail(
+                "4C.h forbidden-type rule violation: IApplicationDbContext was DELETED " +
+                "at 4C.h (2026-07-10). New Products.LankaEvents code re-introduced a " +
+                "type with the same name — likely a copy-paste from pre-4C.h search " +
+                "results.\n" +
+                $"Violators:\n  - {string.Join("\n  - ", violators)}\n" +
+                "Fix: inject the correct module DbContext per Consult #14 PASS B " +
+                "(LankaEventsDbContext for Event family, IdentityDbContext for User, " +
+                "CommunicationsDbContext for Email* + Newsletter*, AppDbContext for " +
+                "cross-cutting ReferenceValue).");
+        }
     }
 
     // ---------- Helpers ----------

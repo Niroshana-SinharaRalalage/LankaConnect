@@ -1,11 +1,10 @@
 using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Products.LankaEvents.Infrastructure.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 namespace LankaConnect.Products.LankaEvents.Infrastructure.Configurations;
 
 /// <summary>

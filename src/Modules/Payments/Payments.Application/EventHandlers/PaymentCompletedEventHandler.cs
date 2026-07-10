@@ -1,11 +1,13 @@
 using System.Diagnostics;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.SharedKernel.Identity;
 using LankaConnect.Modules.Forms.Contracts;
 using System.Globalization;
-using LankaConnect.Application.Common;
-using LankaConnect.Application.Common.Helpers;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common;
+using EmailDateTimeHelper = LankaConnect.Modules.Communications.Contracts.Email.Helpers.EmailDateTimeHelper;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5
+using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
@@ -14,13 +16,12 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Shared.Email.Contracts;
-using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
-using LankaConnect.Shared.Email.Services;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using OrganizerContactInfo = LankaConnect.Modules.Communications.Contracts.Email.Helpers.OrganizerContactInfo;
+using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Modules.Payments.Application.EventHandlers;
 
 /// <summary>

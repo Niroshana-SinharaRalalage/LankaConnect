@@ -1,8 +1,8 @@
 using FluentAssertions;
-using LankaConnect.Application.Badges.DTOs;
-using LankaConnect.Application.Badges.Queries.GetEventBadges;
-using LankaConnect.Domain.Badges;
-using LankaConnect.Domain.Badges.Enums;
+using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
+using LankaConnect.Products.LankaEvents.Application.Badges.Queries.GetEventBadges;
+using LankaConnect.Products.LankaEvents.Domain.Badges;
+using LankaConnect.Products.LankaEvents.Domain.Badges.Enums;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using Moq;

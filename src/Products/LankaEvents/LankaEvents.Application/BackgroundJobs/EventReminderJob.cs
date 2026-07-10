@@ -1,24 +1,23 @@
 using LankaConnect.Modules.Identity.Contracts;
+using EmailDateTimeHelper = LankaConnect.Modules.Communications.Contracts.Email.Helpers.EmailDateTimeHelper;
 using System.Diagnostics;
-using LankaConnect.Application.Common.Helpers;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Products.LankaEvents.Application.Repositories;
-using LankaConnect.Application.Interfaces;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
+using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Shared.Email.Contracts;
-using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
-using LankaConnect.Shared.Email.Services;
-using LankaConnect.Shared.WhatsApp.Contracts;
+using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
+using OrganizerContactInfo = LankaConnect.Modules.Communications.Contracts.Email.Helpers.OrganizerContactInfo;
+using LankaConnect.Modules.Communications.Contracts.Email.Services;
+using LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 
 /// <summary>
@@ -307,8 +306,8 @@ public class EventReminderJob
 
                         // Convert to Result pattern for existing logic compatibility
                         var result = typedResult.Success
-                            ? LankaConnect.Domain.Common.Result.Success()
-                            : LankaConnect.Domain.Common.Result.Failure(typedResult.Errors.ToArray());
+                            ? LankaConnect.BuildingBlocks.Domain.Result.Success()
+                            : LankaConnect.BuildingBlocks.Domain.Result.Failure(typedResult.Errors.ToArray());
 
                         if (result.IsSuccess)
                         {
@@ -546,8 +545,8 @@ public class EventReminderJob
 
                     // Convert to Result pattern for existing logic compatibility
                     var result = typedResult.Success
-                        ? LankaConnect.Domain.Common.Result.Success()
-                        : LankaConnect.Domain.Common.Result.Failure(typedResult.Errors.ToArray());
+                        ? LankaConnect.BuildingBlocks.Domain.Result.Success()
+                        : LankaConnect.BuildingBlocks.Domain.Result.Failure(typedResult.Errors.ToArray());
 
                     if (result.IsSuccess)
                     {

@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
+using LankaConnect.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using Serilog;
 using Serilog.Context;
 

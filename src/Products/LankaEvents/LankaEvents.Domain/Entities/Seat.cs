@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-
+using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -39,8 +39,10 @@ public class Seat : LegacyBaseEntity
     public double? Y { get; private set; }
 
     // EF Core parameterless constructor
+    [SetsRequiredMembers]
     private Seat() { }
 
+    [SetsRequiredMembers]
     private Seat(
         Guid? venueZoneId,
         Guid? venueTableId,

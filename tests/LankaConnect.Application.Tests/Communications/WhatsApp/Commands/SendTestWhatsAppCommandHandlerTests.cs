@@ -1,7 +1,7 @@
-using LankaConnect.Application.Communications.WhatsApp.Commands.SendTestWhatsApp;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Common.Options;
-using LankaConnect.Domain.Common;
+using LankaConnect.Modules.Communications.Application.WhatsApp.Commands.SendTestWhatsApp;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Options;
+using LankaConnect.BuildingBlocks.Domain;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

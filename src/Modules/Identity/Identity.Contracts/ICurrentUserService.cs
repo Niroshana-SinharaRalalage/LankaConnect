@@ -7,7 +7,7 @@ namespace LankaConnect.Modules.Identity.Contracts;
 /// </summary>
 /// <remarks>
 /// Wave 4.6.a (2026-06-24). Relocated from
-/// <c>LankaConnect.Application.Common.Interfaces</c> to
+/// <c>LankaConnect.BuildingBlocks.Application.Common.Interfaces</c> to
 /// <c>LankaConnect.Modules.Identity.Contracts</c> per architect Risk #2
 /// Option C ruling (2026-06-24). This is the textbook cross-module Contracts
 /// citizen: pure primitive surface (Guid, string?, bool) with no User-aggregate

@@ -1,9 +1,8 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
-
-namespace LankaConnect.Application.Common.Interfaces;
+namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>
 /// Service interface for Microsoft Entra External ID authentication and token validation

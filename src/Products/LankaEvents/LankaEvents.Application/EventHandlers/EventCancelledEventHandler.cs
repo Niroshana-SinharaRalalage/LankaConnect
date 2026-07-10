@@ -1,12 +1,11 @@
 using System.Diagnostics;
 using Hangfire;
-using LankaConnect.Application.Common;
+using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.EventHandlers;
 
 /// <summary>

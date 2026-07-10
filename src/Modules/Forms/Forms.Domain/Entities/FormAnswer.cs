@@ -1,4 +1,5 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LankaConnect.Modules.Forms.Domain.Entities;
 
@@ -57,10 +58,12 @@ public class FormAnswer : LegacyBaseEntity
     public bool? BooleanValue { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private FormAnswer()
     {
     }
 
+    [SetsRequiredMembers]
     private FormAnswer(
         Guid formResponseId,
         Guid formQuestionId,

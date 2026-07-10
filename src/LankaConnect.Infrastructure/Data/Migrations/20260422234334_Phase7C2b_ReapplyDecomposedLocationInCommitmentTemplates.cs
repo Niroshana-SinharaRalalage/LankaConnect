@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using LankaConnect.Shared.Email.Helpers;
+using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

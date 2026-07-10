@@ -1,9 +1,10 @@
 using System.Diagnostics;
+using LankaConnect.SharedKernel.Money;
 using System.Linq;
 using LankaConnect.Modules.Forms.Contracts;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Services;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
@@ -12,7 +13,7 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5: refund interfaces promoted
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CancelRsvp;
 
 public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, CancelRsvpResult>

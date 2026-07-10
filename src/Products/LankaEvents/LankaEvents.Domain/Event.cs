@@ -1,26 +1,28 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain.Contracts;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
-using LankaConnect.Domain.Shared.ValueObjects;
-
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 // W3C (2026-06-06): Event migrated from legacy BaseEntity to
 // BB.Domain.Entity<Guid> + IAuditable per ADR-007. Class declaration uses
 // fully-qualified BB types to avoid Result<T> namespace conflict with the
-// legacy LankaConnect.Domain.Common.Result still used by factories.
+// legacy LankaConnect.BuildingBlocks.Domain.Result still used by factories.
 public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnect.BuildingBlocks.Domain.IAuditable
 {
     // IAuditable members — interceptor-populated; treat as read-only from domain code.
-    public DateTime CreatedAt { get; set; }
+    // 'new' keyword hides Entity<Guid>.CreatedAt/UpdatedAt (private/protected setter)
+    // so IAuditable's public setter contract can be honored by SaveChangesInterceptor.
+    public new DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public new DateTime? UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
 
     /// <summary>Backward-compat for callers that used legacy BaseEntity.GetDomainEvents().</summary>
-    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.IDomainEvent> GetDomainEvents() => DomainEvents;
+    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.Contracts.IDomainEvent> GetDomainEvents() => DomainEvents;
 
     private readonly List<Registration> _registrations = new();
     private readonly List<EventImage> _images = new(); // Epic 2 Phase 2: Event images support
@@ -303,7 +305,10 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         if (capacity <= 0)
             return Result<Event>.Failure("Capacity must be greater than 0");
 
-        var @event = new Event(title, description, startDate, endDate, organizerId, capacity, location, category, ticketPrice);
+        var @event = new Event(title, description, startDate, endDate, organizerId, capacity, location, category, ticketPrice)
+        {
+            Id = Guid.NewGuid()
+        };
         return Result<Event>.Success(@event);
     }
 
@@ -358,7 +363,10 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
             DateTime.UtcNow.AddDays(2),
             Guid.NewGuid(),
             100
-        );
+        )
+        {
+            Id = Guid.NewGuid()
+        };
     }
 
     public Result Publish()
@@ -1200,11 +1208,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         IsFreeEvent = true;
 
         // Optional: Set explicit $0 pricing for display/reporting purposes
-        var zeroPrice = Money.Create(0m, LankaConnect.Domain.Shared.Enums.Currency.USD);
-        if (zeroPrice.IsSuccess)
-        {
-            SetTicketPriceInternal(zeroPrice.Value);
-        }
+        SetTicketPriceInternal(new Money(0m, LankaConnect.SharedKernel.Money.Currency.USD));
 
 
         return Result.Success();
@@ -1257,7 +1261,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         // EF Core cannot track the same owned entity instance in two different navigations
         if (pricing.AdultPrice != null)
         {
-            var copyResult = Money.Create(pricing.AdultPrice.Amount, pricing.AdultPrice.Currency);
+            var copyResult = Result<Money>.Success(new Money(pricing.AdultPrice.Amount, pricing.AdultPrice.Currency));
             if (copyResult.IsSuccess)
             {
                 SetTicketPriceInternal(copyResult.Value);
@@ -1328,7 +1332,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         // Free event
         if (IsFree())
         {
-            var freePrice = Pricing?.AdultPrice ?? TicketPrice ?? Money.Create(0, LankaConnect.Domain.Shared.Enums.Currency.USD).Value;
+            var freePrice = Pricing?.AdultPrice ?? TicketPrice ?? new Money(0m, LankaConnect.SharedKernel.Money.Currency.USD);
             return Result<Money>.Success(freePrice);
         }
 
@@ -1373,11 +1377,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
                 }
                 else
                 {
-                    var addResult = totalPrice.Add(attendeePrice);
-                    if (addResult.IsFailure)
-                        return Result<Money>.Failure(addResult.Errors);
-
-                    totalPrice = addResult.Value;
+                    totalPrice = totalPrice + attendeePrice;
                 }
             }
 
@@ -1387,11 +1387,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         // Legacy single pricing: Multiply ticket price by quantity
         if (TicketPrice != null)
         {
-            var multiplyResult = TicketPrice.Multiply(attendees.Count());
-            if (multiplyResult.IsFailure)
-                return Result<Money>.Failure(multiplyResult.Errors);
-
-            return Result<Money>.Success(multiplyResult.Value);
+            return Result<Money>.Success(TicketPrice * attendees.Count());
         }
 
         return Result<Money>.Failure("Event pricing is not configured");
@@ -2734,8 +2730,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         {
             // Clear pricing — Free events don't carry a non-zero ticket price.
             Pricing = null;
-            var zeroResult = Money.Create(0m, LankaConnect.Domain.Shared.Enums.Currency.USD);
-            SetTicketPriceInternal(zeroResult.IsSuccess ? zeroResult.Value : null);
+            SetTicketPriceInternal(new Money(0m, LankaConnect.SharedKernel.Money.Currency.USD));
         }
 
         SyncLegacyIsFree();

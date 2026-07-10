@@ -5,7 +5,7 @@ using FluentAssertions;
 using LankaConnect.Infrastructure;
 using LankaConnect.Application;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
-using LankaConnect.Application.Communications.BackgroundJobs;
+using LankaConnect.Modules.Communications.Application.BackgroundJobs;
 
 namespace LankaConnect.Infrastructure.Tests.Integration;
 

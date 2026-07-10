@@ -1,7 +1,7 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain.Contracts;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
-
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -13,12 +13,13 @@ namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 public class TicketTier : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnect.BuildingBlocks.Domain.IAuditable
 {
     // IAuditable members — interceptor-populated.
-    public DateTime CreatedAt { get; set; }
+    // 'new' hides Entity<Guid>.CreatedAt/UpdatedAt so IAuditable public setters compile.
+    public new DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public new DateTime? UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
 
-    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.IDomainEvent> GetDomainEvents() => DomainEvents;
+    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.Contracts.IDomainEvent> GetDomainEvents() => DomainEvents;
 
     /// <summary>
     /// The event this tier belongs to
@@ -171,7 +172,7 @@ public class TicketTier : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, Lanka
             if (adultPrice.Currency != childPrice.Currency)
                 return Result<TicketTier>.Failure("Adult and child prices must use the same currency");
 
-            if (childPrice.IsGreaterThan(adultPrice))
+            if (childPrice > adultPrice)
                 return Result<TicketTier>.Failure("Child price cannot be greater than adult price");
         }
 
@@ -184,7 +185,10 @@ public class TicketTier : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, Lanka
             childAgeLimit,
             capacity,
             maxPerUser,
-            sortOrder));
+            sortOrder)
+        {
+            Id = Guid.NewGuid()
+        });
     }
 
     /// <summary>
@@ -284,7 +288,7 @@ public class TicketTier : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, Lanka
             if (adultPrice.Currency != childPrice.Currency)
                 return Result.Failure("Adult and child prices must use the same currency");
 
-            if (childPrice.IsGreaterThan(adultPrice))
+            if (childPrice > adultPrice)
                 return Result.Failure("Child price cannot be greater than adult price");
         }
 

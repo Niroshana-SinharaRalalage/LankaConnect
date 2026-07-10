@@ -12,6 +12,17 @@
     <ProjectReference Include="..\Communications.Domain\Communications.Domain.csproj" />
     <ProjectReference Include="..\Communications.Contracts\Communications.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <!-- Wave 6.5.f mirror (2026-07-09 Day 4): clean-direction PR to
+         Communications.Infrastructure mirroring Forms/LankaEvents Application →
+         Infrastructure. Enabled by cycle-break commit that dropped the reverse
+         edge (INewsletterRecipientService + RecipientPreviewDto promoted to
+         Contracts.LegacyPromotions). Handlers now inject CommunicationsDbContext
+         directly. -->
+    <ProjectReference Include="..\Communications.Infrastructure\Communications.Infrastructure.csproj" />
+    <!-- 4C.h Day 5 (2026-07-10): GetPublishedNewslettersQueryHandler needs
+         LankaEventsDbContext.MetroAreas (LankaEvents-owned; newsletter has
+         location-based targeting via MetroArea associations). -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
     <!--
       W5.4.b TRANSITIONAL EDGE (2026-06-13). EmailGroupQueries wraps the
       existing IEmailGroupRepository which still lives in LankaConnect.Domain

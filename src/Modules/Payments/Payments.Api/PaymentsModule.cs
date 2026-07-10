@@ -1,5 +1,5 @@
 using FluentValidation;
-using LankaConnect.Products.LankaEvents.Application.Services; // W4.4.c.4: refund service interfaces remain in legacy (avoids circular ref from 4 cross-module consumers).
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5 // W4.4.c.4: refund service interfaces remain in legacy (avoids circular ref from 4 cross-module consumers).
 using LankaConnect.Modules.Payments.Application.Queries;
 using LankaConnect.Modules.Payments.Application.Services;
 using LankaConnect.Modules.Payments.Contracts;
@@ -8,7 +8,6 @@ using LankaConnect.Modules.Payments.Infrastructure.Repositories; // W4.4.d.2: 3 
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
 namespace LankaConnect.Modules.Payments.Api;
 
 /// <summary>

@@ -1,7 +1,6 @@
 using System.Text.Json;
 using MediatR;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 
 /// <summary>

@@ -1,8 +1,8 @@
 using System.Text.RegularExpressions;
 using BCrypt.Net;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.Modules.Identity.Infrastructure.Security;
 

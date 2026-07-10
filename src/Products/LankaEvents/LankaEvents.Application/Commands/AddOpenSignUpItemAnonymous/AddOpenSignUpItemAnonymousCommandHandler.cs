@@ -1,14 +1,14 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Queries.CheckEventRegistration;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AddOpenSignUpItemAnonymous;
 
 /// <summary>
@@ -23,20 +23,24 @@ namespace LankaConnect.Products.LankaEvents.Application.Commands.AddOpenSignUpIt
 public class AddOpenSignUpItemAnonymousCommandHandler : ICommandHandler<AddOpenSignUpItemAnonymousCommand, Guid>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
+    // 4C.e.3 (2026-07-08): CheckEventRegistrationQueryHandler now takes IIdentityQueries.
+    private readonly LankaConnect.Modules.Identity.Contracts.IIdentityQueries _identityQueries;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AddOpenSignUpItemAnonymousCommandHandler> _logger;
     private readonly ILogger<CheckEventRegistrationQueryHandler> _checkEventRegistrationLogger;
 
     public AddOpenSignUpItemAnonymousCommandHandler(
         IEventRepository eventRepository,
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
+        LankaConnect.Modules.Identity.Contracts.IIdentityQueries identityQueries,
         IUnitOfWork unitOfWork,
         ILogger<AddOpenSignUpItemAnonymousCommandHandler> logger,
         ILogger<CheckEventRegistrationQueryHandler> checkEventRegistrationLogger)
     {
         _eventRepository = eventRepository;
         _context = context;
+        _identityQueries = identityQueries;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _checkEventRegistrationLogger = checkEventRegistrationLogger;
@@ -79,7 +83,7 @@ public class AddOpenSignUpItemAnonymousCommandHandler : ICommandHandler<AddOpenS
                 // CommitToSignUpItemAnonymousCommandHandler — gates removed, real-UserId-when-
                 // member resolution + deterministic-GUID fallback.
                 var checkQuery = new CheckEventRegistrationQuery(request.EventId, emailToCheck);
-                var checkHandler = new CheckEventRegistrationQueryHandler(_context, _checkEventRegistrationLogger);
+                var checkHandler = new CheckEventRegistrationQueryHandler(_context, _identityQueries, _checkEventRegistrationLogger);
                 var registrationResult = await checkHandler.Handle(checkQuery, cancellationToken);
 
                 if (registrationResult.IsFailure)

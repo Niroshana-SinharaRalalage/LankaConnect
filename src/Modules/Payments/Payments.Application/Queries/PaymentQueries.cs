@@ -2,7 +2,6 @@ using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2: 3 repo int
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Modules.Payments.Application.Mappings;
 using LankaConnect.Modules.Payments.Contracts;
-
 namespace LankaConnect.Modules.Payments.Application.Queries;
 
 /// <summary>

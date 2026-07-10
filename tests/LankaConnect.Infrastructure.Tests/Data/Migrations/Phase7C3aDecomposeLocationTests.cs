@@ -1,6 +1,6 @@
 using System;
 using FluentAssertions;
-using LankaConnect.Shared.Email.Helpers;
+using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 using Xunit;
 
 namespace LankaConnect.Infrastructure.Tests.Data.Migrations;

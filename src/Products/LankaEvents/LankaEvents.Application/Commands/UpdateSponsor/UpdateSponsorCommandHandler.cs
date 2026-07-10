@@ -1,15 +1,13 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.Domain.Shared.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateSponsor;
 
 /// <summary>
@@ -153,7 +151,7 @@ public class UpdateSponsorCommandHandler : ICommandHandler<UpdateSponsorCommand,
                     if (request.Amount.HasValue)
                     {
                         var currency = ParseCurrency(request.Currency) ?? sponsor.Amount?.Currency ?? Currency.USD;
-                        var moneyResult = Money.Create(request.Amount.Value, currency);
+                        var moneyResult = MoneyBuilder.Create(request.Amount.Value, currency);
                         if (moneyResult.IsFailure)
                             return Reject(moneyResult.Error, nameof(request.Amount));
 
@@ -215,7 +213,7 @@ public class UpdateSponsorCommandHandler : ICommandHandler<UpdateSponsorCommand,
     private static Currency? ParseCurrency(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return null;
-        return Enum.TryParse<Currency>(raw, ignoreCase: true, out var c) ? c : null;
+        return MoneyBuilder.TryParseCurrency(raw, out var c) ? c : null;
     }
 
     private static SponsorDto MapToDto(Sponsor s) => new()

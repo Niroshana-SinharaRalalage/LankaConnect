@@ -1,4 +1,4 @@
-namespace LankaConnect.SharedKernel.Cultural;
+namespace LankaConnect.SharedKernel.Cultural.Enums;
 
 /// <summary>
 /// Broad South Asian language set used by the Phase 6 cultural intelligence
@@ -11,7 +11,7 @@ namespace LankaConnect.SharedKernel.Cultural;
 ///
 /// Regional variants (SriLankanTamil, IndianTamil, PakistaniUrdu, IndianUrdu,
 /// Arabic, Persian) absorbed in W2C.2 (2026-06-04) from the duplicate enum
-/// previously in <c>LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels</c>.
+/// previously in <c>LankaConnect.BuildingBlocks.Domain.Database.MultiLanguageRoutingModels</c>.
 /// </remarks>
 public enum SouthAsianLanguage
 {

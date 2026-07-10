@@ -1,10 +1,10 @@
 using LankaConnect.SharedKernel.Cultural;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
 // W2D.1d (2026-06-05): CulturalAppropriateness moved to SharedKernel.Cultural;
 // global alias resolves unqualified refs. Explicit alias removed (was duplicate).
 using CommunityCluster = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations.CommunityCluster;
 using CulturalSensitivityLevel = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations.CulturalSensitivityLevel;
-
 namespace LankaConnect.Products.LankaEvents.Domain.Services;
 
 /// <summary>

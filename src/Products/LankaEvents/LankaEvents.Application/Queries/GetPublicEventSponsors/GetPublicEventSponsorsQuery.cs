@@ -1,6 +1,6 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Products.LankaEvents.Application.Common;
-
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetPublicEventSponsors;
 
 /// <summary>

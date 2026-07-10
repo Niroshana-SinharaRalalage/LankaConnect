@@ -1,8 +1,7 @@
-using LankaConnect.Application.Common.Options;
+using LankaConnect.BuildingBlocks.Application.Common.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-
-namespace LankaConnect.API.Controllers;
+namespace LankaConnect.Host.AllInOne.Controllers;
 
 /// <summary>
 /// Phase 6A.95: Controller for exposing application configuration and feature flags.

@@ -1,9 +1,9 @@
 using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using LankaConnect.Modules.Payments.Application.Services; // W4.4.c.4: service impls moved here (interfaces stay in legacy)
 using FluentAssertions;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Services;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
@@ -172,8 +172,8 @@ public class RefundExecutionServiceIdempotencyTests
         SetProp(line, nameof(line.Type), LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.Sponsor);
         SetProp(line, nameof(line.ReferenceId), sponsorRefId);
         SetProp(line, nameof(line.Status), LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemStatus.Approved);
-        var money = new LankaConnect.Domain.Shared.ValueObjects.Money(
-            amount, LankaConnect.Domain.Shared.Enums.Currency.USD);
+        var money = new LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money(
+            amount, LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD);
         SetProp(line, nameof(line.RequestedAmount), money);
         SetProp(line, nameof(line.ApprovedAmount), money);
         return line;
@@ -189,8 +189,8 @@ public class RefundExecutionServiceIdempotencyTests
             sponsorPhone: null,
             sponsorOrganization: null,
             sponsorNotes: null,
-            amount: LankaConnect.Domain.Shared.ValueObjects.Money.Create(
-                50m, LankaConnect.Domain.Shared.Enums.Currency.USD).Value).Value;
+            amount: LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money.Create(
+                50m, LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD).Value).Value;
         sponsor.CompletePayment(paymentIntentId);
         SetProp(sponsor, nameof(sponsor.Id), id);
         return sponsor;

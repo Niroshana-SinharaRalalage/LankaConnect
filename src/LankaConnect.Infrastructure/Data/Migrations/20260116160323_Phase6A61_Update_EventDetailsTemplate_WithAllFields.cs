@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -133,8 +133,8 @@ LankaConnect - Sri Lankan Community Hub
                 {{#HasOrganizerContact}}
                 <div style=""border-top: 1px solid #E5E7EB; padding-top: 20px; margin-top: 30px;"">
                     <p style=""color: #1F2937; margin: 8px 0;""><strong>Organizer:</strong> {{OrganizerName}}</p>
-                    {{#OrganizerEmail}}<p style=""color: #4B5563; margin: 8px 0;"">📧 {{OrganizerEmail}}</p>{{/OrganizerEmail}}
-                    {{#OrganizerPhone}}<p style=""color: #4B5563; margin: 8px 0;"">📱 {{OrganizerPhone}}</p>{{/OrganizerPhone}}
+                    {{#OrganizerEmail}}<p style=""color: #4B5563; margin: 8px 0;"">?? {{OrganizerEmail}}</p>{{/OrganizerEmail}}
+                    {{#OrganizerPhone}}<p style=""color: #4B5563; margin: 8px 0;"">?? {{OrganizerPhone}}</p>{{/OrganizerPhone}}
                 </div>
                 {{/HasOrganizerContact}}
             </td>

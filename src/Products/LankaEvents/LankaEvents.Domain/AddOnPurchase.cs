@@ -1,8 +1,8 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Domain.Shared.ValueObjects;
-
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -79,6 +79,7 @@ public class AddOnPurchase : LegacyBaseEntity
     public DateTime? RefundedAt { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private AddOnPurchase()
     {
     }
@@ -160,12 +161,11 @@ public class AddOnPurchase : LegacyBaseEntity
             return Result<AddOnPurchase>.Failure("Unit price cannot be negative");
 
         // Calculate total amount
-        var totalAmountResult = Money.Create(unitPrice.Amount * quantity, unitPrice.Currency);
-        if (totalAmountResult.IsFailure)
-            return Result<AddOnPurchase>.Failure(totalAmountResult.Error);
+        var totalAmountResult = Result<Money>.Success(new Money(unitPrice.Amount * quantity, unitPrice.Currency));
 
         var purchase = new AddOnPurchase
         {
+            Id = Guid.NewGuid(),
             EventId = eventId,
             AddOnDefinitionId = addOnDefinitionId,
             RegistrationId = registrationId,

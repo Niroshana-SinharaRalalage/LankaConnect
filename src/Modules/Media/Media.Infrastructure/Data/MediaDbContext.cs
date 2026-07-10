@@ -4,7 +4,6 @@ using LankaConnect.Modules.Media.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Infrastructure.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
-
 namespace LankaConnect.Modules.Media.Infrastructure.Data;
 
 /// <summary>

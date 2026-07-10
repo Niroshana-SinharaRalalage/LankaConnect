@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using LankaConnect.Infrastructure.Data.Migrations.Resources;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -8,15 +8,15 @@ namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <summary>
     /// Phase 7E.4 (chunk 1 of 5): UPDATE the <c>template-free-event-registration-confirmation</c>
-    /// row in <c>communications.email_templates</c> with the v2 HTML â€” adds a Mode-B
+    /// row in <c>communications.email_templates</c> with the v2 HTML — adds a Mode-B
     /// "Registered Attendees" card (HasHeadCount block) right after the existing Mode-A
     /// HasAttendeeDetails block. The new card renders Lead name + Total + demographic
     /// breakdown line + tier breakdown line for HeadCountOnly / HeadCountByAge /
     /// HeadCountByGender / HeadCountByAgeAndGender registrations.
     ///
     /// The HTML is loaded from an embedded resource via <see cref="Phase7E4Templates.LoadHtml"/>
-    /// (per MEMORY 6A.129b â€” never <c>File.ReadAllText</c> in migrations: disk layout differs
-    /// across local / CI / Docker). PostgreSQL parameterised UPDATE â€” no escape headaches.
+    /// (per MEMORY 6A.129b — never <c>File.ReadAllText</c> in migrations: disk layout differs
+    /// across local / CI / Docker). PostgreSQL parameterised UPDATE — no escape headaches.
     /// </summary>
     public partial class Phase7E4_UpdateRegistrationConfirmationForModeB : Migration
     {
@@ -26,7 +26,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Backup current html_template into a recovery row before the UPDATE so we have
-            // a self-contained rollback path (per MEMORY 7C.2 â€” the over-greedy REGEXP
+            // a self-contained rollback path (per MEMORY 7C.2 — the over-greedy REGEXP
             // recovery would have been faster with an in-DB backup). The backup row is
             // keyed by template name + a tag identifying this migration.
             migrationBuilder.Sql(@"
@@ -159,7 +159,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Restore the html_template from the backup row created in Up(). Idempotent â€”
+            // Restore the html_template from the backup row created in Up(). Idempotent —
             // if the backup row is missing (manual cleanup), the UPDATE simply touches no rows
             // and the migration record is removed cleanly.
             migrationBuilder.Sql(@"

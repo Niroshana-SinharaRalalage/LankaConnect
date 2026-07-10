@@ -1,7 +1,6 @@
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent; // HeadCountDto
 using LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddAttendees; // InitiateAddAttendeesResult reuse
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.InitiateAddHeadCount;
 
 /// <summary>

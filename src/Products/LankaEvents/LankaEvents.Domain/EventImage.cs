@@ -1,5 +1,5 @@
-using LankaConnect.Domain.Common;
-
+using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -18,12 +18,14 @@ public class EventImage : LegacyBaseEntity
     public Guid EventId { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private EventImage()
     {
         ImageUrl = null!;
         BlobName = null!;
     }
 
+    [SetsRequiredMembers]
     private EventImage(Guid id, Guid eventId, string imageUrl, string blobName, int displayOrder, bool isPrimary = false)
     {
         Id = id;

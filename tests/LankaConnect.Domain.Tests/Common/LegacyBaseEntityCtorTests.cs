@@ -1,5 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.Domain.Tests.Common;
 

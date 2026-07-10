@@ -7,7 +7,6 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Modules.Payments.Infrastructure.Repositories;
 
 /// <summary>

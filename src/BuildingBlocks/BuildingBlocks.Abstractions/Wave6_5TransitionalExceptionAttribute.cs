@@ -2,7 +2,7 @@ namespace LankaConnect.BuildingBlocks.Abstractions;
 
 /// <summary>
 /// Marks a type as having a known, time-bounded dependency on the legacy
-/// <c>LankaConnect.Infrastructure.Data</c> + <c>LankaConnect.Infrastructure.Data.Repositories</c>
+/// <c>LankaConnect.Infrastructure.Data</c> + <c>LankaConnect.SPLIT_PER_ENTITY.Repositories</c>
 /// namespaces. These dependencies exist solely because Wave 5.0 declared
 /// <c>AppDbContext</c> and the generic <c>Repository&lt;T&gt;</c> base as transitional anchors
 /// that Products.LankaEvents.Infrastructure consumes via ProjectReference.
@@ -35,8 +35,8 @@ public sealed class Wave6_5TransitionalExceptionAttribute : Attribute
     /// Creates the attribute with a required reason.
     /// </summary>
     /// <param name="reason">
-    /// E.g. <c>"Uses LankaConnect.Infrastructure.Data.AppDbContext"</c> or
-    /// <c>"Inherits LankaConnect.Infrastructure.Data.Repositories.Repository&lt;T&gt; base class"</c>.
+    /// E.g. <c>"Uses LankaConnect.SPLIT_PER_ENTITY.AppDbContext"</c> or
+    /// <c>"Inherits LankaConnect.SPLIT_PER_ENTITY.Repositories.Repository&lt;T&gt; base class"</c>.
     /// </param>
     public Wave6_5TransitionalExceptionAttribute(string reason)
     {

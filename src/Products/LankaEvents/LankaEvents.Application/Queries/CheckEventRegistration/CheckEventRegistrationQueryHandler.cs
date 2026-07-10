@@ -1,11 +1,12 @@
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Identity.Contracts;                   // 4C.e.3: IIdentityQueries
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
 namespace LankaConnect.Products.LankaEvents.Application.Queries.CheckEventRegistration;
 
 /// <summary>
@@ -20,14 +21,17 @@ namespace LankaConnect.Products.LankaEvents.Application.Queries.CheckEventRegist
 public class CheckEventRegistrationQueryHandler
     : IQueryHandler<CheckEventRegistrationQuery, EventRegistrationCheckResult>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly LankaEventsDbContext _context;
+    private readonly IIdentityQueries _identityQueries;
     private readonly ILogger<CheckEventRegistrationQueryHandler> _logger;
 
     public CheckEventRegistrationQueryHandler(
-        IApplicationDbContext context,
+        LankaEventsDbContext context,
+        IIdentityQueries identityQueries,
         ILogger<CheckEventRegistrationQueryHandler> logger)
     {
         _context = context;
+        _identityQueries = identityQueries;
         _logger = logger;
     }
 
@@ -81,12 +85,12 @@ public class CheckEventRegistrationQueryHandler
                 // commit handlers depends on this being correct.
                 var emailToCheck = request.Email.Trim().ToLowerInvariant();
 
-                // Step 1: Check if email belongs to a LankaConnect member (User account)
-                // Note: u.Email is a Value Object, must use .Value to access underlying string for EF Core translation
-                var user = await _context.Users
-                    .Where(u => u.Email.Value == emailToCheck)
-                    .Select(u => new { u.Id })
-                    .FirstOrDefaultAsync(cancellationToken);
+                // Step 1: Check if email belongs to a LankaConnect member (User account).
+                // 4C.e.3 (2026-07-08): route the member lookup through the Identity
+                // Contracts surface instead of IApplicationDbContext.Users.
+                // IIdentityQueries.GetByEmailAsync handles the Email.Value normalisation
+                // + case-insensitive comparison internally.
+                var user = await _identityQueries.GetByEmailAsync(emailToCheck, cancellationToken);
 
                 _logger.LogInformation(
                     "CheckEventRegistration: Member check completed - EventId={EventId}, IsMember={IsMember}",

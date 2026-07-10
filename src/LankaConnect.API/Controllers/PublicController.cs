@@ -2,9 +2,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Application.Dashboard.Queries.GetCommunityStats;
-
-namespace LankaConnect.API.Controllers;
+using LankaConnect.Host.AllInOne.Dashboard.Queries.GetCommunityStats; // 4C.d.xiii: dead typo Hosts→Host
+namespace LankaConnect.Host.AllInOne.Controllers;
 
 /// <summary>
 /// Phase 6A.69: Public endpoints that don't require authentication

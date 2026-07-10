@@ -1,9 +1,7 @@
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
-
-namespace LankaConnect.Modules.Media.Infrastructure.Migrations
-{
+namespace LankaConnect.Modules.Media.Infrastructure.Migrations {
     /// <summary>
     /// SCHEMA-DESTRUCTIVE-APPROVED: cross-schema rename of legacy aggregate tables
     /// events.photo_albums → media.photo_albums and events.album_photos → media.album_photos

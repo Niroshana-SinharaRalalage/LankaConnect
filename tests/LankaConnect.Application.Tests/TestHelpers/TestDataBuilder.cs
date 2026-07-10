@@ -4,7 +4,6 @@ using LankaConnect.Application.Businesses.Commands.AddService;
 using LankaConnect.Application.Businesses.Common;
 using LankaConnect.Modules.Identity.Application.Commands.Users.CreateUser;
 using LankaConnect.Modules.Identity.Application.DTOs;
-using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Business.Enums;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Entities;
@@ -12,7 +11,7 @@ using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
 using AutoFixture;
 
 namespace LankaConnect.Application.Tests.TestHelpers;
@@ -109,7 +108,7 @@ public static class TestDataBuilder
 
     public static User CreateValidUser()
     {
-        var email = LankaConnect.Domain.Shared.ValueObjects.Email.Create($"test{_fixture.Create<int>()}@test.com").Value;
+        var email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create($"test{_fixture.Create<int>()}@test.com").Value;
         return User.Create(email, _fixture.Create<string>(), _fixture.Create<string>()).Value;
     }
 

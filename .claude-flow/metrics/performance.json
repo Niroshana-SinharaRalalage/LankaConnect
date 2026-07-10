@@ -1,9 +1,17 @@
 {
-  "startTime": 1771272953034,
-  "totalTasks": 1,
-  "successfulTasks": 1,
-  "failedTasks": 0,
-  "totalAgents": 0,
-  "activeAgents": 0,
-  "neuralEvents": 0
+  "timestamp": "2026-07-10T03:58:14.417Z",
+  "mode": "local",
+  "memoryUsage": {
+    "rss": 11550720,
+    "heapTotal": 21643264,
+    "heapUsed": 19608912,
+    "external": 3819303,
+    "arrayBuffers": 67902
+  },
+  "uptime": 33311.8642301,
+  "optimizations": {
+    "cacheHitRate": 0.78,
+    "avgResponseTime": 45
+  },
+  "note": "Install Claude Code CLI for AI-powered optimization suggestions"
 }

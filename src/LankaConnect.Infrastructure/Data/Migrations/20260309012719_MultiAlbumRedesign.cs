@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -37,11 +37,11 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 oldMaxLength: 100,
                 oldNullable: true);
 
-            // Step 4: Migrate Closed → Published status
+            // Step 4: Migrate Closed ? Published status
             migrationBuilder.Sql(
                 @"UPDATE events.photo_albums SET ""Status"" = 'Published' WHERE ""Status"" = 'Closed';");
 
-            // Step 5: Migrate non-Approved photo statuses → Approved
+            // Step 5: Migrate non-Approved photo statuses ? Approved
             migrationBuilder.Sql(
                 @"UPDATE events.album_photos SET ""Status"" = 'Approved' WHERE ""Status"" != 'Approved';");
 

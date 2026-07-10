@@ -4,12 +4,28 @@
     <RootNamespace>LankaConnect.Modules.Media.Api</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Media.Api</AssemblyName>
     <Description>Media module — Api layer. ASP.NET Core controllers + MediaModule DI extension. Composes Domain/Application/Infrastructure + BuildingBlocks.Web cross-cutting concerns.</Description>
+    <!-- Day 4 slot C sub-slice 4C.d.vi (2026-07-06): TargetFramework + enable
+         ImplicitUsings so Microsoft.AspNetCore.Http (StatusCodes/IFormFile) +
+         Microsoft.Extensions.Logging (ILogger) resolve without per-file using
+         directives (matches ASP.NET Core project template + LankaConnect.API
+         pattern). -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <!-- W4 SKELETON (2026-06-04). Empty shell — controllers move in W4.2.6 / module DI in W4.2.4 (pulled forward per W3.9 playbook §Step 4). -->
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Day 4 slot C sub-slice 4C.d.vi: implicit usings for common ASP.NET
+         Core + logging namespaces used across all controllers. -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Mvc" />
+    <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +36,16 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
     <!-- Wave 6.5.b: AddModuleOutbox&lt;MediaDbContext&gt;() DI extension lives here. -->
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d.vi (2026-07-06): PhotoAlbumsController
+         consumes PhotoAlbum command handlers hosted in LankaEvents.Application
+         per Wave 6.5.b canary (relocation to Media.Application deferred to
+         Wave 6.5.e). Also needs LankaConnect.API.Extensions for controller
+         base infrastructure. -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <!-- LankaConnect.API PR would create cycle (Host references Media.Api).
+         API.Extensions is Host territory; PhotoAlbumsController's use of it is
+         a legacy dependency that should relocate to Media.Api's own Extensions
+         namespace post-sprint. For now, inline the extension usage. -->
   </ItemGroup>
 
 </Project>

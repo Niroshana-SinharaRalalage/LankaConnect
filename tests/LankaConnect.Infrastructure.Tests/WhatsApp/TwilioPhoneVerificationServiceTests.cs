@@ -1,10 +1,10 @@
 using FluentAssertions;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.Infrastructure.WhatsApp.Configuration;
-using LankaConnect.Infrastructure.WhatsApp.Services;
-using LankaConnect.Shared.WhatsApp.Contracts;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Enums;
+using LankaConnect.Modules.Communications.Infrastructure.WhatsApp.Configuration;
+using LankaConnect.Modules.Communications.Infrastructure.WhatsApp.Services;
+using LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;

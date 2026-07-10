@@ -10,6 +10,8 @@
     <ProjectReference Include="..\CulturalIntelligence.Domain\CulturalIntelligence.Domain.csproj" />
     <ProjectReference Include="..\CulturalIntelligence.Contracts\CulturalIntelligence.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d (2026-07-06): consumes Identity.Domain.Entities. -->
+    <ProjectReference Include="..\..\Identity\Identity.Domain\Identity.Domain.csproj" />
   </ItemGroup>
 
 </Project>

@@ -8,6 +8,16 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d.i (2026-07-06, Consult #15 PASS C):
+         IStripePaymentService + 35 DTO records relocated here from
+         Payments.Application. Interface signatures reference Payments.Domain.
+         Billing types + BB.Domain.Result; Payments.Contracts therefore needs
+         those PRs. Namespace preserved as
+         LankaConnect.BuildingBlocks.Application.Common.Interfaces (namespace
+         realignment is a separate follow-up). -->
+    <ProjectReference Include="..\Payments.Domain\Payments.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Identity\SharedKernel.Identity.csproj" />
   </ItemGroup>
 
 </Project>

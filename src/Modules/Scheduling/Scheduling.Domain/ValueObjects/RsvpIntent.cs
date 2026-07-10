@@ -48,7 +48,7 @@ public sealed class RsvpIntent : ValueObject
 
     public bool IsActive => Status == RsvpStatus.Pending || Status == RsvpStatus.Confirmed;
 
-    protected override IEnumerable<object?> GetEqualityComponents()
+    public override IEnumerable<object> GetEqualityComponents()
     {
         yield return UserId;
         yield return Status;

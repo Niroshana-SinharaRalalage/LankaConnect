@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -60,7 +60,7 @@ Thank you for using LankaConnect to connect with the Sri Lankan community!
 ---
 LankaConnect
 Sri Lankan Community Hub
-© 2025 LankaConnect. All rights reserved.',
+� 2025 LankaConnect. All rights reserved.',
                     '<!DOCTYPE html>
 <html lang=""en"">
 <head>

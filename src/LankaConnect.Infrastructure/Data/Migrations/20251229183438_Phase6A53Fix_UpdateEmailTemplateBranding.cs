@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -28,13 +28,13 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         <tr>
             <td align=""center"" style=""padding: 40px 20px;"">
                 <table role=""presentation"" width=""650"" cellspacing=""0"" cellpadding=""0"" border=""0"" style=""max-width: 650px; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"">
-                    <!-- Header with Brand Gradient (Phase 6A.34 branding: Maroon → Orange → Green) -->
+                    <!-- Header with Brand Gradient (Phase 6A.34 branding: Maroon ? Orange ? Green) -->
                     <tr>
                         <td style=""background: linear-gradient(135deg, #8B1538 0%, #FF6600 50%, #2d5016 100%); padding: 0;"">
                             <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" border=""0"">
                                 <tr>
                                     <td align=""center"" style=""padding: 10px 0 5px 0; font-size: 14px; letter-spacing: 8px; color: rgba(255,255,255,0.25);"">
-                                        ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+                                        ? ? ? ? ? ? ? ? ? ? ?
                                     </td>
                                 </tr>
                                 <tr>
@@ -44,7 +44,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 </tr>
                                 <tr>
                                     <td align=""center"" style=""padding: 5px 0 10px 0; font-size: 14px; letter-spacing: 8px; color: rgba(255,255,255,0.25);"">
-                                        ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+                                        ? ? ? ? ? ? ? ? ? ? ?
                                     </td>
                                 </tr>
                             </table>
@@ -71,7 +71,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" border=""0"" style=""margin: 25px 0;"">
                                 <tr>
                                     <td style=""background: #fff8f5; padding: 20px; border-left: 4px solid #FF6600; border-radius: 0 8px 8px 0;"">
-                                        <p style=""margin: 0 0 10px 0; font-size: 14px; color: #666;""><strong style=""color: #8B1538;"">⏰ This link expires in {{ExpirationHours}} hours</strong></p>
+                                        <p style=""margin: 0 0 10px 0; font-size: 14px; color: #666;""><strong style=""color: #8B1538;"">? This link expires in {{ExpirationHours}} hours</strong></p>
                                         <p style=""margin: 0; font-size: 14px; color: #666;"">For your security, please verify your email soon.</p>
                                     </td>
                                 </tr>
@@ -86,7 +86,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" border=""0"">
                                 <tr>
                                     <td align=""center"" style=""padding: 15px 0 10px 0; font-size: 12px; letter-spacing: 6px; color: rgba(255,255,255,0.2);"">
-                                        ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+                                        ? ? ? ? ? ? ? ? ? ? ?
                                     </td>
                                 </tr>
                                 <tr>
@@ -106,7 +106,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 </tr>
                                 <tr>
                                     <td align=""center"" style=""padding: 0 0 15px 0; font-size: 12px; letter-spacing: 6px; color: rgba(255,255,255,0.2);"">
-                                        ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦ ✦
+                                        ? ? ? ? ? ? ? ? ? ? ?
                                     </td>
                                 </tr>
                             </table>

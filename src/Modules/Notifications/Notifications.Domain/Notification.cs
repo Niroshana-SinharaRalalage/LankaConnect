@@ -30,9 +30,10 @@ public class Notification : Entity<Guid>, IAuditable
     public string? RelatedEntityType { get; private set; }
 
     // IAuditable — interceptor-populated; treat as read-only from domain code.
-    public DateTime CreatedAt { get; set; }
+    // 'new' hides Entity<Guid>.CreatedAt/UpdatedAt (Consult #13 pattern).
+    public new DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public new DateTime? UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
 
     // EF Core constructor.
@@ -93,7 +94,10 @@ public class Notification : Entity<Guid>, IAuditable
             message,
             type,
             relatedEntityId,
-            relatedEntityType);
+            relatedEntityType)
+        {
+            Id = Guid.NewGuid()
+        };
         return Result<Notification>.Success(notification);
     }
 

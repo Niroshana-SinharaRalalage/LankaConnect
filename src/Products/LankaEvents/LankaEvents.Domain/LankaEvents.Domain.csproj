@@ -22,6 +22,8 @@
          compose Domain types that haven't moved yet. Cut at the end of W5.7. -->
     <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Cultural\SharedKernel.Cultural.csproj" />
+    <!-- Sprint Day 5 (2026-07-06): Money VO moved BB.Domain.Shared -> SharedKernel.Money per Consult #12. -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
   </ItemGroup>
 
 </Project>

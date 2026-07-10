@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.Tax;
+using LankaConnect.Modules.Payments.Domain.Tax;
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 

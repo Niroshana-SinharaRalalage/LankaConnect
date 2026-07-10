@@ -3,12 +3,14 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Seeders;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Infrastructure.Data;                                          // 4C.d.xiii: AppDbContext
+using LankaConnect.Infrastructure.Data.Seeders;                                  // MetroAreaSeeder, EventSeeder, EventTemplateSeeder (still legacy)
+using LankaConnect.Modules.Identity.Infrastructure.Data;                         // 4C.e.3: IdentityDbContext
+using LankaConnect.Modules.Identity.Infrastructure.Data.Seeders;                 // 4C.e.3: UserSeeder (moved)
+using LankaConnect.Host.AllInOne.Data;                                           // 4C.e.3: DbInitializer (moved to host)
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
-
-namespace LankaConnect.API.Controllers;
+namespace LankaConnect.Host.AllInOne.Controllers;
 
 /// <summary>
 /// Administrative endpoints for system maintenance
@@ -21,6 +23,10 @@ namespace LankaConnect.API.Controllers;
 public class AdminController : BaseController<AdminController>
 {
     private readonly AppDbContext _context;
+    // 4C.e.3 (2026-07-08): IdentityDbContext for the DbInitializer instantiation.
+    // Existing `_context.Users.*` seeding-tool calls stay on AppDbContext until 4C.h
+    // per architect ruling Q2 Option B (dual-mapping keeps them functional).
+    private readonly IdentityDbContext _identityContext;
     private readonly IPasswordHashingService _passwordHashingService;
     private readonly IWebHostEnvironment _environment;
     private readonly ILoggerFactory _loggerFactory;
@@ -30,6 +36,7 @@ public class AdminController : BaseController<AdminController>
         IMediator mediator,
         ILogger<AdminController> logger,
         AppDbContext context,
+        IdentityDbContext identityContext,
         IPasswordHashingService passwordHashingService,
         IWebHostEnvironment environment,
         ILoggerFactory loggerFactory,
@@ -37,6 +44,7 @@ public class AdminController : BaseController<AdminController>
         : base(mediator, logger)
     {
         _context = context;
+        _identityContext = identityContext;
         _passwordHashingService = passwordHashingService;
         _environment = environment;
         _loggerFactory = loggerFactory;
@@ -78,7 +86,7 @@ public class AdminController : BaseController<AdminController>
                 seedType);
 
             var dbInitializerLogger = _loggerFactory.CreateLogger<DbInitializer>();
-            var dbInitializer = new DbInitializer(_context, dbInitializerLogger, _passwordHashingService);
+            var dbInitializer = new DbInitializer(_context, _identityContext, dbInitializerLogger, _passwordHashingService);
 
             switch (seedType.ToLower())
             {
@@ -167,7 +175,8 @@ public class AdminController : BaseController<AdminController>
                     try
                     {
                         Logger.LogInformation("Starting UserSeeder.SeedAsync...");
-                        await UserSeeder.SeedAsync(_context, _passwordHashingService);
+                        // 4C.e.3 (2026-07-08): UserSeeder moved to Identity.Infrastructure + takes IdentityDbContext.
+                        await UserSeeder.SeedAsync(_identityContext, _passwordHashingService);
                         Logger.LogInformation("UserSeeder.SeedAsync completed without exception");
                     }
                     catch (Exception ex)

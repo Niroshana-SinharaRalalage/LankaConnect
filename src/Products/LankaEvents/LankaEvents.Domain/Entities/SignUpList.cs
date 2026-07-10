@@ -1,7 +1,7 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
-
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain.Entities;
 
 /// <summary>
@@ -39,12 +39,14 @@ public class SignUpList : LegacyBaseEntity
     public IReadOnlyList<SignUpItem> Items => _items.AsReadOnly(); // New
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private SignUpList()
     {
         Category = null!;
         Description = null!;
     }
 
+    [SetsRequiredMembers]
     private SignUpList(
         string category,
         string description,

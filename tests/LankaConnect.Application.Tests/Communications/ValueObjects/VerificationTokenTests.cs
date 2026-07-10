@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Communications.ValueObjects;

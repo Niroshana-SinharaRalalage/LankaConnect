@@ -1,6 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared.ValueObjects;
-
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -64,6 +64,7 @@ public class AddOnDefinition : LegacyBaseEntity
     public string? ImageBlobName { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private AddOnDefinition()
     {
     }
@@ -102,6 +103,7 @@ public class AddOnDefinition : LegacyBaseEntity
 
         var definition = new AddOnDefinition
         {
+            Id = Guid.NewGuid(),
             EventId = eventId,
             Name = name.Trim(),
             Description = description?.Trim(),

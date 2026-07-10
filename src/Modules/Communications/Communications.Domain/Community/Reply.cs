@@ -1,0 +1,82 @@
+using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Communications.Domain.Community.ValueObjects;
+using System.Diagnostics.CodeAnalysis;
+namespace LankaConnect.Modules.Communications.Domain.Community;
+
+public class Reply : LegacyBaseEntity
+{
+    public Guid TopicId { get; private set; }
+    public PostContent Content { get; private set; }
+    public Guid AuthorId { get; private set; }
+    public Guid? ParentReplyId { get; private set; }
+    public int HelpfulVotes { get; private set; }
+    public bool IsMarkedAsSolution { get; private set; }
+
+    // EF Core constructor
+    [SetsRequiredMembers]
+    private Reply() 
+    {
+        Content = null!;
+    }
+
+    [SetsRequiredMembers]
+    private Reply(Guid topicId, PostContent content, Guid authorId, Guid? parentReplyId = null)
+    {
+        TopicId = topicId;
+        Content = content;
+        AuthorId = authorId;
+        ParentReplyId = parentReplyId;
+        HelpfulVotes = 0;
+        IsMarkedAsSolution = false;
+    }
+
+    public static Result<Reply> Create(Guid topicId, PostContent content, Guid authorId, Guid? parentReplyId = null)
+    {
+        if (topicId == Guid.Empty)
+            return Result<Reply>.Failure("Topic ID is required");
+
+        if (content == null)
+            return Result<Reply>.Failure("Content is required");
+
+        if (authorId == Guid.Empty)
+            return Result<Reply>.Failure("Author ID is required");
+
+        var reply = new Reply(topicId, content, authorId, parentReplyId);
+        return Result<Reply>.Success(reply);
+    }
+
+    public Result UpdateContent(PostContent newContent, Guid editorId)
+    {
+        if (newContent == null)
+            return Result.Failure("Content is required");
+
+        if (editorId != AuthorId)
+            return Result.Failure("Only the author can update the reply");
+
+        Content = newContent;
+        return Result.Success();
+    }
+
+    public void AddHelpfulVote()
+    {
+        HelpfulVotes++;
+    }
+
+    public void RemoveHelpfulVote()
+    {
+        if (HelpfulVotes > 0)
+        {
+            HelpfulVotes--;
+        }
+    }
+
+    public void MarkAsSolution(Guid moderatorId)
+    {
+        IsMarkedAsSolution = true;
+    }
+
+    public void UnmarkAsSolution(Guid moderatorId)
+    {
+        IsMarkedAsSolution = false;
+    }
+}

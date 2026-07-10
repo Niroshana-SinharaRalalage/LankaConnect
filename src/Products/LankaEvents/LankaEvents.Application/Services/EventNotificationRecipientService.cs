@@ -1,13 +1,11 @@
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.Domain.Communications.Entities; // NewsletterSubscriber (EmailGroup no longer needed post-W5.4.d.1)
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Communications.Domain.Entities; // NewsletterSubscriber (EmailGroup no longer needed post-W5.4.d.1)
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Products.LankaEvents.Application.Services;
 
 /// <summary>
@@ -209,9 +207,9 @@ public class EventNotificationRecipientService : IEventNotificationRecipientServ
         // Execute 3-level location matching queries SEQUENTIALLY
         // Note: Cannot run in parallel because DbContext is not thread-safe
         // Each query shares the same scoped DbContext instance
-        IReadOnlyList<LankaConnect.Domain.Communications.Entities.NewsletterSubscriber> metroSubscribers;
-        IReadOnlyList<LankaConnect.Domain.Communications.Entities.NewsletterSubscriber> stateSubscribers;
-        IReadOnlyList<LankaConnect.Domain.Communications.Entities.NewsletterSubscriber> allLocationsSubscribers;
+        IReadOnlyList<LankaConnect.Modules.Communications.Domain.Entities.NewsletterSubscriber> metroSubscribers;
+        IReadOnlyList<LankaConnect.Modules.Communications.Domain.Entities.NewsletterSubscriber> stateSubscribers;
+        IReadOnlyList<LankaConnect.Modules.Communications.Domain.Entities.NewsletterSubscriber> allLocationsSubscribers;
 
         try
         {

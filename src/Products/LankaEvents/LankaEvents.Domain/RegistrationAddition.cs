@@ -1,8 +1,8 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
-
+using System.Diagnostics.CodeAnalysis;
 namespace LankaConnect.Products.LankaEvents.Domain;
 
 /// <summary>
@@ -100,11 +100,13 @@ public class RegistrationAddition : LegacyBaseEntity
     public DateTime? AbandonedAt { get; private set; }
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private RegistrationAddition()
     {
         // Required for EF Core
     }
 
+    [SetsRequiredMembers]
     private RegistrationAddition(
         Guid registrationId,
         Guid eventId,

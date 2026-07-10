@@ -1,19 +1,19 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.7.d.3
+using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.SharedKernel.Money;
 using System.Diagnostics;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
 using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-
 namespace LankaConnect.Products.LankaEvents.Application.Commands.RegisterAnonymousAttendee;
 
 /// <summary>
@@ -543,9 +543,9 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 {
                     var currency = registration.TotalPrice?.Currency
                         ?? @event.Pricing?.Currency
-                        ?? LankaConnect.Domain.Shared.Enums.Currency.USD;
+                        ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-                    var amountResult = Money.Create(request.CollectionAmount.Value, currency);
+                    var amountResult = MoneyBuilder.Create(request.CollectionAmount.Value, currency);
                     if (amountResult.IsSuccess)
                     {
                         // Anonymous users don't have a UserId — use Guid.Empty
@@ -608,9 +608,9 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             {
                 var currency = registration.TotalPrice?.Currency
                     ?? @event.Pricing?.Currency
-                    ?? LankaConnect.Domain.Shared.Enums.Currency.USD;
+                    ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-                var amountResult = Money.Create(request.SponsorAmount.Value, currency);
+                var amountResult = MoneyBuilder.Create(request.SponsorAmount.Value, currency);
                 if (amountResult.IsSuccess)
                 {
                     // Anonymous users don't have a UserId — use Guid.Empty
@@ -1000,9 +1000,9 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
         var currency = registration.TotalPrice?.Currency
             ?? @event.Pricing?.Currency
-            ?? LankaConnect.Domain.Shared.Enums.Currency.USD;
+            ?? LankaConnect.SharedKernel.Money.Currency.USD;
 
-        var amountResult = Money.Create(request.DonationAmount!.Value, currency);
+        var amountResult = MoneyBuilder.Create(request.DonationAmount!.Value, currency);
         if (amountResult.IsFailure)
         {
             _logger.LogWarning("Failed to create donation Money - Error={Error}", amountResult.Error);

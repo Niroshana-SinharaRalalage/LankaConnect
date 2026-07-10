@@ -1,10 +1,8 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
-
-namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations
-{
+namespace LankaConnect.Products.LankaEvents.Infrastructure.Migrations {
     /// <inheritdoc />
     public partial class Wave6_5_e_AddLankaEventsOperationalTables : Migration
     {

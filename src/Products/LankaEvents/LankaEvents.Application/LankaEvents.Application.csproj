@@ -11,6 +11,12 @@
     <ProjectReference Include="..\LankaEvents.Domain\LankaEvents.Domain.csproj" />
     <ProjectReference Include="..\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <!-- Wave 6.5.f (2026-07-09 Day 4): clean-direction PR to LankaEvents.Infrastructure
+         mirroring Forms.Application → Forms.Infrastructure. Enabled by the 6.5.f prereq
+         cycle-break commit `8c912ca1` that dropped the reverse edge. Handlers now
+         inject LankaEventsDbContext + IMultiContextUnitOfWork directly (matches Consult
+         #14 PASS B multi-DbContext plan). -->
+    <ProjectReference Include="..\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
 
     <!-- Capabilities depended on via Contracts only (per Wave 5 architectural ruling) -->
     <ProjectReference Include="..\..\..\Modules\Identity\Identity.Contracts\Identity.Contracts.csproj" />
@@ -32,11 +38,27 @@
          also need access to ICommand / ICommandHandler / IUnitOfWork etc. that live in
          the legacy LankaConnect.Application namespace. Mirror Identity 4.6.d.1 pattern. -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Day 4 slot C sub-slice 4C.d (2026-07-06): mechanical unblock adds.
+         Currency in SharedKernel.Money; NewsletterSubscriber in Communications.Domain;
+         INewsletterSubscriberRepository + IWhatsAppService in Communications.Application;
+         IStripePaymentService in Payments.Application. Transitional edges pending
+         Contracts elevation. -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
+    <!-- IStripePaymentService now lives in Payments.Contracts per Consult #15 PASS C
+         (moved 2026-07-06); no longer need Payments.Application PR from LankaEvents. -->
+
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
+    <!-- Wave 6.5.f Day 5 slot A (2026-07-10): CsvExportService + ExcelExportService
+         relocated from LC.Infrastructure per architect Option C — pure DTO-in/byte-out
+         transformers with no EF touch belong in Application. Their transitive deps
+         (CsvHelper for RFC-4180 CSV, ClosedXML for .xlsx generation) move with them. -->
+    <PackageReference Include="CsvHelper" />
+    <PackageReference Include="ClosedXML" />
   </ItemGroup>
 
 </Project>

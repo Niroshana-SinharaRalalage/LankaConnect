@@ -1,7 +1,8 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Media.Domain.Entities;
 using LankaConnect.Modules.Media.Domain.Enums;
 using LankaConnect.Modules.Media.Domain.DomainEvents;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LankaConnect.Modules.Media.Domain;
 
@@ -38,12 +39,14 @@ public class PhotoAlbum : LegacyBaseEntity
     public IReadOnlyList<AlbumPhoto> Photos => _photos.AsReadOnly();
 
     // EF Core constructor
+    [SetsRequiredMembers]
     private PhotoAlbum()
     {
         EventTitle = null!;
         Name = null!;
     }
 
+    [SetsRequiredMembers]
     private PhotoAlbum(
         Guid eventId,
         Guid organizerId,

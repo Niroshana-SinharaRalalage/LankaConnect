@@ -51,7 +51,7 @@ public sealed class CapacityRule : ValueObject
     public int Remaining(int currentlyReserved) =>
         Math.Max(0, Total - currentlyReserved);
 
-    protected override IEnumerable<object?> GetEqualityComponents()
+    public override IEnumerable<object> GetEqualityComponents()
     {
         yield return Total;
     }

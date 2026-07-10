@@ -1,15 +1,14 @@
 using System.Security.Cryptography;
-using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Interfaces;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.BuildingBlocks.Application.Interfaces;
+using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Contracts;
 using Microsoft.Extensions.Logging;
-
 namespace LankaConnect.Modules.Identity.Application.Commands;
 
 /// <summary>

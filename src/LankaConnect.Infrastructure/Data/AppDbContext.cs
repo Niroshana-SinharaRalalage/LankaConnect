@@ -488,9 +488,14 @@ public class AppDbContext : DbContext
         // Business schema removed Day 5 per Consult #12 (Phase B territory).
 
         // Communications schema
-        modelBuilder.Entity<EmailMessage>().ToTable("email_messages", "communications");
-        modelBuilder.Entity<EmailTemplate>().ToTable("email_templates", "communications");
-        modelBuilder.Entity<UserEmailPreferences>().ToTable("user_email_preferences", "communications");
+        // Day 6 hotfix (2026-07-10): EmailMessage / EmailTemplate / UserEmailPreferences
+        // ToTable() calls REMOVED. 4C.c moved their configurations (including OwnsOne<EmailSubject>)
+        // to CommunicationsDbContext, but these residual ToTable() lines kept EF discovering the
+        // entities in AppDbContext's model WITHOUT the owned-VO config — causing design-time
+        // context creation to throw "No suitable constructor for EmailSubject". Ownership is now
+        // exclusively CommunicationsDbContext. Physical tables unchanged (communications.*).
+        // See also IgnoreUnconfiguredEntities below — these 3 types removed from the
+        // "configuredEntityTypes" allowlist so the sweep now correctly Ignore<>s them.
         modelBuilder.Entity<NewsletterSubscriber>().ToTable("newsletter_subscribers", "communications");
         modelBuilder.Entity<Newsletter>().ToTable("newsletters", "communications"); // Phase 6A.74: Newsletter/News Alert Feature
         modelBuilder.Entity<NewsletterEmailHistory>().ToTable("newsletter_email_history", "communications"); // Phase 6A.74 Part 13
@@ -534,10 +539,11 @@ public class AppDbContext : DbContext
             typeof(ForumTopic),
             typeof(Reply),
             // Business/Service/Review removed Day 5 per Consult #12.
-            typeof(EmailMessage),
-            typeof(EmailTemplate),
+            // Day 6 hotfix (2026-07-10): EmailMessage / EmailTemplate / UserEmailPreferences
+            // removed from allowlist — their configs migrated to CommunicationsDbContext at 4C.c;
+            // AppDbContext must now Ignore<>() them so EF doesn't try to build a model without
+            // the OwnsOne<EmailSubject> config (fails design-time context creation).
             typeof(LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog), // Phase 6A.148.W5.6.B.OBS1: durable email dispatch audit log
-            typeof(UserEmailPreferences),
             typeof(NewsletterSubscriber), // Phase 5
             typeof(Newsletter), // Phase 6A.74: Newsletter/News Alert Feature
             typeof(NewsletterEmailHistory), // Phase 6A.74 Part 13 Issue #1: Newsletter email send history

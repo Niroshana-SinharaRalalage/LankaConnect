@@ -82,3 +82,7 @@ Reason: Sprint Days 2-6 bypass window. Prior bulk-move commits still lack
         T-triggers/S-class. Also — post-Consult #18 deploy attempt failure
         surfaced 3 DI wiring gaps that block staging deploy; hotfix commit
         does register-only changes (no test triggers per §13.1 T1-T8).
+
+2026-07-10 — AppDbContext EmailSubject hotfix push (f0a61649 → develop)
+Bypass: git push --no-verify
+Reason: Sprint Days 2-6 bypass; close 4C.c ownership-gap residues; removals only.

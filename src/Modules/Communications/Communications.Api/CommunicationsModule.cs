@@ -1,9 +1,12 @@
 using FluentValidation;
+using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Application.Queries;
 using LankaConnect.Modules.Communications.Contracts;
+using LankaConnect.Modules.Communications.Infrastructure.Data;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 namespace LankaConnect.Modules.Communications.Api;
@@ -27,12 +30,40 @@ namespace LankaConnect.Modules.Communications.Api;
 /// </remarks>
 public static class CommunicationsModule
 {
+    /// <summary>Per-context migrations history table name (EF convention).</summary>
+    public const string MigrationsHistoryTable = "__EFMigrationsHistory";
+
     public static IServiceCollection AddCommunicationsModule(
         this IServiceCollection services,
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        // Day 6 hotfix (2026-07-10, post-Consult #18 deploy attempt): CommunicationsDbContext
+        // DI registration was missing from all module DI extensions, causing NewsletterEmailJob +
+        // 5 Newsletter command/query handlers to fail DI validation on host startup. Mirrors the
+        // IdentityModule 4C.e / MediaModule 6.5.b canary / LankaEventsModule 6.5.f patterns.
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException(
+                "ConnectionStrings:DefaultConnection is required to register CommunicationsDbContext.");
+
+        services.AddDbContext<CommunicationsDbContext>(options =>
+        {
+            options.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                npgsqlOptions.MigrationsAssembly(typeof(CommunicationsDbContext).Assembly.GetName().Name);
+                npgsqlOptions.MigrationsHistoryTable(MigrationsHistoryTable, CommunicationsDbContext.SchemaName);
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(5),
+                    errorCodesToAdd: null);
+                npgsqlOptions.CommandTimeout(30);
+            });
+        }, ServiceLifetime.Scoped);
+
+        // Per-module outbox (mirrors IdentityModule 4C.e + MediaModule 6.5.b canary).
+        services.AddModuleOutbox<CommunicationsDbContext>();
 
         // Wave 5.4.b cross-module Contracts surface.
         services.AddScoped<IEmailGroupQueries, EmailGroupQueries>();

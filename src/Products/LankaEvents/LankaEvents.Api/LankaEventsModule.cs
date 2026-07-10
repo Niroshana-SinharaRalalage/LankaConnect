@@ -82,6 +82,15 @@ public static class LankaEventsModule
         services.AddScoped<ILayoutMetrics, LayoutMetrics>();
         services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.ISeatHoldMetrics, SeatHoldMetrics>();
 
+        // Day 6 hotfix (2026-07-10, post-Consult #18 deploy attempt): Wave 6.a.1 shipped
+        // IFormResponseExporter (Contracts) with two partial impls (CsvExportService throws
+        // NotSupported on Excel branch; ExcelExportService throws NotSupported on CSV branch).
+        // Neither impl alone satisfies Forms.ExportFormResponsesQueryHandler, which switches
+        // on request.Format at call time. Register the FormResponseExporterFacade so DI
+        // resolves ONE port to a delegating impl that dispatches to the correct concrete.
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.IFormResponseExporter,
+            LankaConnect.Products.LankaEvents.Application.Common.Export.FormResponseExporterFacade>();
+
         // W5.3.a1 (2026-06-28): first Infrastructure repo relocated to Products.
         // MetroAreaRepository moved from LankaConnect.SPLIT_PER_ENTITY.Repositories
         // to Products/LankaEvents.Infrastructure/Repositories. Same AppDbContext, same

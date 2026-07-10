@@ -173,7 +173,16 @@ public static class InfrastructureDependencyInjection
         // (ReferenceValue + operational tables).
 
         // Add Unit of Work
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        // Day 6 hotfix (2026-07-10, post-Consult #18 deploy attempt): UnitOfWork
+        // implements BOTH IUnitOfWork AND IMultiContextUnitOfWork (see
+        // src/LankaConnect.Infrastructure/Data/UnitOfWork.cs). The
+        // IMultiContextUnitOfWork registration was missing, causing ~26 Forms/Identity/
+        // LankaEvents PhotoAlbum handlers to fail DI validation on host startup.
+        // Register both surfaces against the same UnitOfWork instance via factory
+        // delegate so a single scoped lifetime backs both ports.
+        services.AddScoped<UnitOfWork>();
+        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<UnitOfWork>());
+        services.AddScoped<IMultiContextUnitOfWork>(sp => sp.GetRequiredService<UnitOfWork>());
 
         // Add Repositories
         // Business repository removed Day 5 per Consult #12 (Phase B territory).

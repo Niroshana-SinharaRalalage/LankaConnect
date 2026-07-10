@@ -75,3 +75,10 @@ Bypass: git push --no-verify
 Reason: Same Sprint Days 2-6 bypass window. Prior bulk-move commits
         (b45c5631/ce766e53/8473f4af/3848d8e9) still lack T-triggers/S-class
         per bible §What Breaks During Sprint. Rule 5j.4 SUSPENDED.
+
+2026-07-10 — DI hotfix push (4222e5f7 → develop)
+Bypass: git push --no-verify
+Reason: Sprint Days 2-6 bypass window. Prior bulk-move commits still lack
+        T-triggers/S-class. Also — post-Consult #18 deploy attempt failure
+        surfaced 3 DI wiring gaps that block staging deploy; hotfix commit
+        does register-only changes (no test triggers per §13.1 T1-T8).

@@ -100,6 +100,11 @@ public sealed class LankaEventsDbContext : DbContext
     public DbSet<SeatHold> SeatHolds => Set<SeatHold>();
     public DbSet<SeatReservation> SeatReservations => Set<SeatReservation>();
 
+    // Consult #20 (2026-07-10): Badge + EventBadge relocated from AppDbContext.
+    // Physical schema unchanged (badges.badges + badges.event_badges).
+    public DbSet<LankaConnect.Products.LankaEvents.Domain.Badges.Badge> Badges => Set<LankaConnect.Products.LankaEvents.Domain.Badges.Badge>();
+    public DbSet<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge> EventBadges => Set<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge>();
+
     // Financial sub-aggregates
     public DbSet<Donation> Donations => Set<Donation>();
     public DbSet<Collection> Collections => Set<Collection>();

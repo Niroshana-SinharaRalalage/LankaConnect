@@ -749,6 +749,8 @@ static async Task ValidateEfCoreConfigurationsAsync(IServiceProvider services)
 {
     using var scope = services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    // Consult #20 (2026-07-10): LankaEventsDbContext for LankaEvents-owned entity probes.
+    var lankaEventsContext = scope.ServiceProvider.GetRequiredService<LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext>();
     // 4C.e.3 (2026-07-08): probe the new IdentityDbContext.Users mapping too.
     var identityContext = scope.ServiceProvider.GetRequiredService<LankaConnect.Modules.Identity.Infrastructure.Data.IdentityDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
@@ -785,11 +787,12 @@ static async Task ValidateEfCoreConfigurationsAsync(IServiceProvider services)
         // This will throw if column mappings don't match database schema (like StateTaxRateConfiguration Phase 6A.X)
         var criticalEntityTests = new List<(string EntityName, Func<Task> TestQuery)>
         {
-            ("StateTaxRates", async () => await context.StateTaxRates.AsNoTracking().FirstOrDefaultAsync()),
-            ("Events", async () => await context.Events.AsNoTracking().FirstOrDefaultAsync()),
+            ("StateTaxRates", async () => { await context.StateTaxRates.AsNoTracking().FirstOrDefaultAsync(); }),
+            // Consult #20 (2026-07-10): Events/Registrations moved to LankaEventsDbContext.
+            ("Events", async () => { await lankaEventsContext.Events.AsNoTracking().FirstOrDefaultAsync(); }),
             // 4C.e.3 (2026-07-08): probe via IdentityDbContext (new home per Consult #14 PASS B).
-            ("Users", async () => await identityContext.Users.AsNoTracking().FirstOrDefaultAsync()),
-            ("Registrations", async () => await context.Registrations.AsNoTracking().FirstOrDefaultAsync())
+            ("Users", async () => { await identityContext.Users.AsNoTracking().FirstOrDefaultAsync(); }),
+            ("Registrations", async () => { await lankaEventsContext.Registrations.AsNoTracking().FirstOrDefaultAsync(); })
         };
 
         foreach (var (entityName, testQuery) in criticalEntityTests)

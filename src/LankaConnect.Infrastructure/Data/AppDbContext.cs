@@ -58,92 +58,45 @@ public class AppDbContext : DbContext
             publisher.GetType().FullName);
     }
 
-    // Domain Entity Sets
-    public DbSet<User> Users => Set<User>();
-    public DbSet<Event> Events => Set<Event>();
-    public DbSet<Registration> Registrations => Set<Registration>();
+    // Consult #20/22 (2026-07-10) — module-owned DbSets DELETED from AppDbContext.
+    // EF's DbSet convention discovery walk cascaded into VO ctor binding failures
+    // (Money(decimal, Currency), EmailSubject, EventDescription, RefreshToken, Email, ...)
+    // that Ignore<T>() could not defuse because the convention pass runs before Ignore.
+    // Ownership matrix: docs/architecture/appdbcontext-ownership-boundary.md
+    //
+    // DELETED module-owned DbSets (route via their module DbContext):
+    //   User → IdentityDbContext
+    //   Event, Registration, MetroArea, EventTemplate, RegistrationModeConversion(+Row),
+    //   EventNotificationHistory, EventAnalytics, EventViewRecord, SignUpList, SignUpItem,
+    //   SignUpCommitment, Ticket, RefundRequest, RefundRequestLineItem, TicketTier,
+    //   TicketScanLog, TierAssignment, VenueLayout, VenueZone, VenueTable, VenueDecoration,
+    //   Seat, SeatHold, SeatReservation, RegistrationAddition, RegistrationPayment,
+    //   Donation, Collection, Sponsor, AddOnDefinition, AddOnPurchase, SponsorshipPackage
+    //     → LankaEventsDbContext
+    //   Badge, EventBadge → STAY on AppDbContext (Consult #21 backlog: relocate to
+    //   LankaEventsDbContext once BadgeSeeder can route via LankaEventsDbContext with
+    //   Badge DbSet added there)
+
+    // Domain Entity Sets — AppDbContext-owned + Consult #20 OUT-OF-SCOPE
     public DbSet<ForumTopic> ForumTopics => Set<ForumTopic>();
     public DbSet<Reply> Replies => Set<Reply>();
-    public DbSet<MetroArea> MetroAreas => Set<MetroArea>();
-    public DbSet<EventTemplate> EventTemplates => Set<EventTemplate>(); // Phase 6A.8
-
-    // Phase 7F-B: registration-mode conversion audit
-    public DbSet<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversion> RegistrationModeConversions
-        => Set<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversion>();
-    public DbSet<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow> RegistrationModeConversionRows
-        => Set<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow>();
 
     // Business/Review/Service DbSets removed Day 5 per Consult #12.
-    // Tables retained in schema; LankaBusiness product will re-map in Phase B.
 
-    // Communications Entity Sets
-    // Day 4 slot C sub-slice 4C.c (2026-07-06): EmailMessage, EmailTemplate,
-    // UserEmailPreferences DbSets relocated to CommunicationsDbContext.
-    // EmailDispatchLog stays here until a dedicated relocation pass.
+    // Communications Entity Sets — Consult #20 OUT-OF-SCOPE (Consult #21 relocates later)
     public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog> EmailDispatchLogs => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailDispatchLog>();
     public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
-    public DbSet<Newsletter> Newsletters => Set<Newsletter>(); // Phase 6A.74: Newsletter/News Alert Feature
-    public DbSet<NewsletterEmailHistory> NewsletterEmailHistories => Set<NewsletterEmailHistory>(); // Phase 6A.74 Part 13 Issue #1: Newsletter email send history
-    public DbSet<LankaConnect.Products.LankaEvents.Domain.Entities.EventNotificationHistory> EventNotificationHistories => Set<LankaConnect.Products.LankaEvents.Domain.Entities.EventNotificationHistory>(); // Phase 6A.61: Event notification history tracking
-    public DbSet<EmailMetricRecord> EmailMetricRecords => Set<EmailMetricRecord>(); // Phase 6A.89: Email metrics persistence
-    public DbSet<EmailFailureDetail> EmailFailureDetails => Set<EmailFailureDetail>(); // Phase 6A.99: Email failure details persistence
+    public DbSet<Newsletter> Newsletters => Set<Newsletter>();
+    public DbSet<NewsletterEmailHistory> NewsletterEmailHistories => Set<NewsletterEmailHistory>();
+    public DbSet<EmailMetricRecord> EmailMetricRecords => Set<EmailMetricRecord>();
+    public DbSet<EmailFailureDetail> EmailFailureDetails => Set<EmailFailureDetail>();
+    public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup> EmailGroups => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup>();
 
-    // Analytics Entity Sets (Epic 2 Phase 3)
-    public DbSet<EventAnalytics> EventAnalytics => Set<EventAnalytics>();
-    public DbSet<EventViewRecord> EventViewRecords => Set<EventViewRecord>();
-
-    // W4.0b (2026-06-06): Notification DbSet + EF config moved to NotificationsDbContext
-    // owned by Modules.Notifications.Infrastructure. AppDbContext no longer maps the
-    // notifications table; NotificationRepository injects NotificationsDbContext directly.
-
-    // Sign-up Management Entity Sets (Phase 6A.16)
-    public DbSet<SignUpList> SignUpLists => Set<SignUpList>(); // Phase 6A.16: Required for cascade deletion
-    public DbSet<SignUpItem> SignUpItems => Set<SignUpItem>(); // Phase 6A.16: Required for cascade deletion
-    public DbSet<SignUpCommitment> SignUpCommitments => Set<SignUpCommitment>(); // Phase 6A.16: Cascade deletion
-
-    // Ticket Entity Sets
-    public DbSet<Ticket> Tickets => Set<Ticket>(); // Phase 6A.24: Event tickets with QR codes
-
-    // Phase 6A.148: refund approval workflow tables. RefundRequest is aggregate-internal
-    // but exposed as a DbSet so the organizer queue repository can use AsNoTracking
-    // projections without round-tripping through Registration.
-    public DbSet<RefundRequest> RefundRequests => Set<RefundRequest>();
-    public DbSet<RefundRequestLineItem> RefundRequestLineItems => Set<RefundRequestLineItem>();
-    public DbSet<TicketTier> TicketTiers => Set<TicketTier>(); // Multi-tier ticketing
-    public DbSet<TicketScanLog> TicketScanLogs => Set<TicketScanLog>(); // Phase 6A.141: paid-event check-in audit log
-    public DbSet<TierAssignment> TierAssignments => Set<TierAssignment>(); // Slice 4 Release N: polymorphic tier→zone/table mapping
-
-    // Venue Seating Entity Sets (Phase 2: Seat Booking)
-    public DbSet<VenueLayout> VenueLayouts => Set<VenueLayout>();
-    public DbSet<VenueZone> VenueZones => Set<VenueZone>();
-    public DbSet<VenueTable> VenueTables => Set<VenueTable>(); // Slice 2+3A
-    public DbSet<VenueDecoration> VenueDecorations => Set<VenueDecoration>(); // Slice 2+3A
-    public DbSet<Seat> Seats => Set<Seat>();
-    public DbSet<SeatHold> SeatHolds => Set<SeatHold>();
-    public DbSet<SeatReservation> SeatReservations => Set<SeatReservation>();
-
-    // Registration Addition Entity Sets (Add-Only Attendees Feature)
-    public DbSet<RegistrationAddition> RegistrationAdditions => Set<RegistrationAddition>(); // Delta payment for adding attendees
-    public DbSet<RegistrationPayment> RegistrationPayments => Set<RegistrationPayment>(); // Payment audit trail
-
-    // Donation Entity Set (Standalone Donation System)
-    public DbSet<Donation> Donations => Set<Donation>(); // Event donations with Stripe payment lifecycle
-
-    // Financial Feature Entity Sets (Collections, Sponsors, Add-ons)
-    public DbSet<Collection> Collections => Set<Collection>(); // Event fund contributions with Stripe payment lifecycle
-    public DbSet<Sponsor> Sponsors => Set<Sponsor>(); // Money (Stripe) or item-based sponsorships
-    public DbSet<AddOnDefinition> AddOnDefinitions => Set<AddOnDefinition>(); // Organizer-defined purchasable add-on items
-    public DbSet<AddOnPurchase> AddOnPurchases => Set<AddOnPurchase>(); // Add-on purchases with Stripe payment lifecycle
-    public DbSet<SponsorshipPackage> SponsorshipPackages => Set<SponsorshipPackage>(); // Phase 6A.156 — organizer-defined sponsorship tiers (Gold/Silver/Bronze)
-
-    // Badge Entity Sets (Phase 6A.25)
-    public DbSet<Badge> Badges => Set<Badge>(); // Phase 6A.25: Badge Management
-    public DbSet<EventBadge> EventBadges => Set<EventBadge>(); // Phase 6A.25: Event-Badge assignments
-
-    // Wave 5.4.d.2 (2026-06-22): EmailGroup moved to Communications.Domain;
-    // fully-qualified type ref keeps the DbSet on AppDbContext during the
-    // transitional window (W5.4 doesn't carve out CommunicationsDbContext yet).
-    public DbSet<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup> EmailGroups => Set<LankaConnect.Modules.Communications.Domain.Entities.EmailGroup>(); // Phase 6A.25: Email Groups Management
+    // Consult #20 (2026-07-10): Badge + EventBadge Ignore<>()d on AppDbContext (routed via
+    // LankaEventsDbContext instead). Existing AppDbContext callers migrated in ca5431d9 caller
+    // migration. BadgeSeeder + DbInitializer still take AppDbContext but Badge access must
+    // go through LankaEventsDbContext — routed via _lankaEventsContext at all call sites.
+    // Removed here to break EF's DbSet-convention discovery cascade.
 
     // Stripe Customer + Webhook Event DbSets removed Day 4 slot C sub-slice
     // 4C.d.vii (2026-07-06). Types live in Payments.Infrastructure.Entities;
@@ -192,33 +145,12 @@ public class AppDbContext : DbContext
         // This must be called before applying configurations
         modelBuilder.HasPostgresExtension("postgis");
 
-        // Wave 6.5.e (2026-07-03): The Event-family IEntityTypeConfiguration<T>
-        // classes physically relocated to LankaConnect.Products.LankaEvents.Infrastructure.
-        // AppDbContext cannot ProjectReference LankaEvents.Infrastructure (that would
-        // close the Wave 5 transitional-edge cycle: LankaEvents.Infrastructure already
-        // references LankaConnect.Infrastructure for AppDbContext + Repository<T>).
-        // Instead, load the assembly by name at OnModelCreating time — the assembly
-        // is guaranteed to be in the load closure of any host that starts AppDbContext
-        // because LankaConnect.API references LankaEvents.Api → LankaEvents.Infrastructure.
-        // Dual mapping is intentional and temporary per architect ruling §6.5.e — the
-        // moved configs run under BOTH DbContexts (this sweep, and LankaEventsDbContext's
-        // ApplyConfigurationsFromAssembly) so the 20 not-yet-cutover LankaEvents
-        // repositories continue to work through the transitional edge until Wave 6.5.f.
-        var lankaEventsInfrastructureAssembly = System.Reflection.Assembly.Load(
-            new System.Reflection.AssemblyName("LankaConnect.Products.LankaEvents.Infrastructure"));
-        modelBuilder.ApplyConfigurationsFromAssembly(lankaEventsInfrastructureAssembly);
-
-        // 4C.e (2026-07-08): UserConfiguration relocated to
-        // LankaConnect.Modules.Identity.Infrastructure.Data.Configurations per Consult
-        // #14 PASS B. Same Assembly.Load pattern as LankaEvents above — the module
-        // Infrastructure assembly is in the load closure because LankaConnect.API →
-        // Identity.Api → Identity.Infrastructure. Dual mapping is intentional and
-        // temporary; the ~18 callers touching AppDbContext.Users cut over site-by-site
-        // in sub-slice 4C.e.2, at which point the explicit ApplyConfiguration line for
-        // UserConfiguration can be dropped from this context.
-        var identityInfrastructureAssembly = System.Reflection.Assembly.Load(
-            new System.Reflection.AssemblyName("LankaConnect.Modules.Identity.Infrastructure"));
-        modelBuilder.ApplyConfigurationsFromAssembly(identityInfrastructureAssembly);
+        // Consult #20/22 (2026-07-10): Assembly.Load dual-mapping DELETED + module-owned
+        // DbSets removed. Belt-and-suspenders explicit Ignore<T>() for the module-owned
+        // types keeps them out of AppDbContext's model even if some future code path
+        // accidentally references them via reflection/nav discovery. Ownership matrix:
+        //   docs/architecture/appdbcontext-ownership-boundary.md
+        IgnoreModuleOwnedAggregates(modelBuilder);
 
         // Wave 6.5.f.5-hotfix (2026-07-04): EventEmailGroupLinkConfiguration relocated
         // to Products.LankaEvents.Infrastructure.Configurations; the ApplyConfigurationsFromAssembly
@@ -271,30 +203,10 @@ public class AppDbContext : DbContext
         // + AddOnPurchase configurations moved to LankaEvents.Infrastructure (registered
         // above via the assembly sweep).
 
-        // Badge entity configurations (Phase 6A.25)
-        modelBuilder.ApplyConfiguration(new BadgeConfiguration());
-        // Wave 6.5.f.5-hotfix (2026-07-04): EventBadgeConfiguration relocated
-        // to Products.LankaEvents.Infrastructure.Configurations; the sweep at line 203
-        // picks it up. Explicit ApplyConfiguration removed per architect ruling §2.2.
-
-        // Wave 6.5.f.5-hotfix2c (2026-07-04): explicit EventBadge → Badge FK override
-        // following the Rule 5i.2 pattern (shared/moved config generic; owning DbContext
-        // pins module-specific relationship semantics). Hotfix1 §2.2 deleted the
-        // HasOne(eb => eb.Badge) block from EventBadgeConfiguration to keep the moved
-        // config free of cross-module type references — correct for LankaEventsDbContext
-        // (Badge is Ignored there). Incorrect for AppDbContext: EF's RelationshipDiscovery
-        // convention still saw EventBadge.Badge navigation and inferred a Cascade FK,
-        // silently reversing the intentional Restrict on badges.event_badges. Physical
-        // Postgres has FK_event_badges_badges_BadgeId with Restrict since the original
-        // creation migration (20251211184730_AddEmailGroups.cs line 61). Restore it here
-        // explicitly. AppDbContext already references Badge and EventBadge — no new
-        // cross-module reference introduced.
-        // Ruling: docs/architect-consults/2026-07-04-wave-6-5-f-hotfix2c-appdbcontext-drift-ruling.md
-        modelBuilder.Entity<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge>()
-            .HasOne(eb => eb.Badge)
-            .WithMany()
-            .HasForeignKey(eb => eb.BadgeId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // Consult #20 (2026-07-10): Badge + EventBadge configurations DELETED from
+        // AppDbContext. Both types are now Ignore<>()d on this model — LankaEventsDbContext
+        // owns them (configs + FK Restrict semantic all defined in LankaEvents.Infrastructure/
+        // Configurations/BadgeConfiguration.cs + EventBadgeConfiguration.cs).
 
         // Wave 6.5.e: EventOrganizerContact + EventSlugAlias configurations moved to
         // LankaEvents.Infrastructure (registered above via the assembly sweep).
@@ -462,6 +374,74 @@ public class AppDbContext : DbContext
         }
     }
 
+    /// <summary>
+    /// Consult #20 (2026-07-10) — belt-and-suspenders explicit Ignore<T> for every module-owned
+    /// aggregate. DbSet declarations are already deleted; this method covers reflection/nav
+    /// discovery paths that would otherwise re-add these types via convention.
+    ///
+    /// Authoritative ownership matrix: docs/architecture/appdbcontext-ownership-boundary.md.
+    /// </summary>
+    private static void IgnoreModuleOwnedAggregates(ModelBuilder modelBuilder)
+    {
+        // IdentityDbContext-owned
+        modelBuilder.Ignore<LankaConnect.Modules.Identity.Domain.Entities.User>();
+        modelBuilder.Ignore<LankaConnect.Modules.Identity.Domain.ValueObjects.RefreshToken>();
+
+        // LankaEventsDbContext-owned
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Event>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Registration>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Sponsor>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.SponsorshipPackage>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.AddOnDefinition>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.AddOnPurchase>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Collection>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Donation>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.EventImage>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.EventVideo>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.EventTemplate>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.MetroArea>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.RegistrationAddition>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.RegistrationPayment>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Analytics.EventAnalytics>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Analytics.EventViewRecord>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Badges.Badge>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.EventEmailGroupLink>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.EventNotificationHistory>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.EventOrganizerContact>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.EventSlugAlias>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequest>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequestLineItem>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversion>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.RegistrationModeConversionRow>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.Seat>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.SeatHold>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.SeatReservation>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.SignUpCommitment>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.SignUpItem>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.SignUpList>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.Ticket>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.TicketScanLog>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.VenueDecoration>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.VenueLayout>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.VenueTable>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Entities.VenueZone>();
+
+        // CommunicationsDbContext-owned (migrated at 4C.c)
+        modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.Entities.EmailMessage>();
+        modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.Entities.EmailTemplate>();
+        modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.Entities.UserEmailPreferences>();
+
+        // Consult #20 (2026-07-10): VO types explicitly Ignored so EF's cross-entity nav discovery
+        // does not try to build them as entity types (they're properly configured as OwnsOne
+        // wrappers by their owning entities' EF configs).
+        modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.ValueObjects.Email>();
+        modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.ValueObjects.EmailSubject>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email>();
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.ValueObjects.PhoneNumber>();
+    }
+
     private static void ConfigureSchemas(ModelBuilder modelBuilder)
     {
         // Identity schema
@@ -600,40 +580,52 @@ public class AppDbContext : DbContext
         };
 
         // Wave 5.1.a-α.3 (2026-06-27): Event aggregate family moved to Products.LankaEvents.Domain.
-        // Sweep must walk that assembly too so its VOs (PassName, PassDescription, Money via
-        // [NotMapped] facades, etc.) are properly identified as ValueObjects and skipped from
-        // auto-discovery as entity types. Without this, EF Core 8 tries to bind them as
-        // shared-type entities and fails on private ctor / missing primary key.
+        // Consult #20 (2026-07-10): For the LankaEvents.Domain assembly, Ignore ALL types
+        // (both entities and VOs) — AppDbContext has NO OwnsOne configs for LankaEvents VOs
+        // anymore (they moved to LankaEvents.Infrastructure via Assembly.Load, now deleted).
+        // For the legacy LankaConnect.Domain assembly (which houses ForumTopic/Reply etc.
+        // and their VOs like ReplyContent), preserve the "VO skip" behavior so their OwnsOne
+        // configs work.
         var productsAssembly = typeof(LankaConnect.Products.LankaEvents.Domain.Entities.TicketTier).Assembly;
         var domainAssembly = typeof(LegacyBaseEntity).Assembly;
         var valueObjectType = typeof(ValueObject);
         var bbValueObjectType = typeof(LankaConnect.BuildingBlocks.Domain.ValueObject);
 
-        var allDomainTypes = domainAssembly.GetTypes()
-            .Concat(productsAssembly.GetTypes())
-            .Where(t => t.IsClass && !t.IsAbstract);
-
-        foreach (var type in allDomainTypes)
+        // Legacy LankaConnect.Domain — Ignore non-configured entities, but SKIP VOs so OwnsOne works.
+        foreach (var type in domainAssembly.GetTypes().Where(t => t.IsClass && !t.IsAbstract))
         {
-            // Skip value objects - they are configured via OwnsOne/OwnsMany in entity configurations
             if (valueObjectType.IsAssignableFrom(type) || bbValueObjectType.IsAssignableFrom(type))
-            {
                 continue;
-            }
-
-            // If it's not in our configured list and EF Core hasn't explicitly configured it, ignore it
             if (!configuredEntityTypes.Contains(type))
             {
-                try
-                {
-                    modelBuilder.Ignore(type);
-                }
-                catch
-                {
-                    // Ignore any types that can't be ignored (primitives, etc.)
-                }
+                try { modelBuilder.Ignore(type); }
+                catch { }
             }
         }
+
+        // LankaEvents.Domain — Ignore EVERYTHING (entities AND VOs). AppDbContext no longer
+        // owns any LankaEvents type; LankaEventsDbContext owns them exclusively.
+        foreach (var type in productsAssembly.GetTypes().Where(t => t.IsClass && !t.IsAbstract))
+        {
+            try { modelBuilder.Ignore(type); }
+            catch { }
+        }
+
+        // Identity.Domain — Ignore EVERYTHING (User + RefreshToken + CulturalInterest + Preference VOs).
+        // AppDbContext no longer owns any Identity type; IdentityDbContext owns them exclusively.
+        var identityAssembly = typeof(LankaConnect.Modules.Identity.Domain.Entities.User).Assembly;
+        foreach (var type in identityAssembly.GetTypes().Where(t => t.IsClass && !t.IsAbstract))
+        {
+            try { modelBuilder.Ignore(type); }
+            catch { }
+        }
+
+        // Communications.Domain — Ignore ONLY the module-owned entities/VOs (EmailMessage,
+        // EmailTemplate, UserEmailPreferences and their EmailSubject VO). AppDbContext STILL
+        // owns Newsletter/EmailGroup/etc. (OUT-OF-SCOPE per Consult #20/21) — DO NOT sweep
+        // the whole Communications.Domain assembly or those OwnsOne configs break.
+        modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.ValueObjects.Email>();
+        modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.ValueObjects.EmailSubject>();
     }
 
     private static void ConfigureValueObjectConversions(ModelBuilder modelBuilder)

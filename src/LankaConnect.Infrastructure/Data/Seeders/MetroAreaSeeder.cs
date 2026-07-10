@@ -19,10 +19,11 @@ public static class MetroAreaSeeder
     /// Seed metro areas data into database
     /// Phase 6A.70: Enhanced to add missing metro areas instead of skipping entirely
     /// </summary>
-    public static async Task SeedAsync(AppDbContext context)
+    // Consult #20/21 (2026-07-10): accept DbContext base — caller passes LankaEventsDbContext.
+    public static async Task SeedAsync(DbContext context)
     {
         // Phase 6A.70: Get existing metro area IDs to avoid duplicates
-        var existingIds = await context.MetroAreas
+        var existingIds = await context.Set<MetroArea>()
             .Select(m => m.Id)
             .ToListAsync();
 
@@ -1076,7 +1077,7 @@ public static class MetroAreaSeeder
 
         if (newMetroAreas.Any())
         {
-            await context.MetroAreas.AddRangeAsync(newMetroAreas);
+            await context.Set<MetroArea>().AddRangeAsync(newMetroAreas);
             await context.SaveChangesAsync();
 
             // Log how many new metro areas were added

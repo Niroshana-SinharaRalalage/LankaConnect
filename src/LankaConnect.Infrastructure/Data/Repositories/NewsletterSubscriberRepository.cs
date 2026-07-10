@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using LankaConnect.Infrastructure.Data;
+using LankaConnect.Products.LankaEvents.Domain;                                  // Consult #20/21: IMetroAreaRepository (MetroArea Ignore<>()d on AppDbContext)
 using Microsoft.Extensions.Logging;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Domain.Entities;
@@ -19,11 +20,16 @@ namespace LankaConnect.Infrastructure.Data.Repositories;
 public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, INewsletterSubscriberRepository
 {
     private readonly ILogger<NewsletterSubscriberRepository> _repoLogger;
+    // Consult #20/21 (2026-07-10): MetroArea is Ignore<>()d on AppDbContext; look it up
+    // via the LankaEvents-owned repository instead of raw DbSet access.
+    private readonly IMetroAreaRepository _metroAreaRepository;
 
     public NewsletterSubscriberRepository(
         AppDbContext context,
+        IMetroAreaRepository metroAreaRepository,
         ILogger<NewsletterSubscriberRepository> logger) : base(context)
     {
+        _metroAreaRepository = metroAreaRepository;
         _repoLogger = logger;
     }
 
@@ -436,22 +442,9 @@ public class NewsletterSubscriberRepository : Repository<NewsletterSubscriber>, 
 
                 List<Guid> allStateMetroAreaIds;
 
-                if (!string.IsNullOrEmpty(stateAbbreviation))
-                {
-                    // Match using normalized abbreviation - GET ALL metro areas, not just state-level
-                    allStateMetroAreaIds = await _context.MetroAreas
-                        .Where(m => m.State.ToLower() == stateAbbreviation.ToLower())
-                        .Select(m => m.Id)
-                        .ToListAsync(cancellationToken);
-                }
-                else
-                {
-                    // Fallback: try exact match for non-US states
-                    allStateMetroAreaIds = await _context.MetroAreas
-                        .Where(m => m.State.ToLower() == state.ToLower())
-                        .Select(m => m.Id)
-                        .ToListAsync(cancellationToken);
-                }
+                var lookupState = !string.IsNullOrEmpty(stateAbbreviation) ? stateAbbreviation : state;
+                var metroAreas = await _metroAreaRepository.GetMetroAreasInStateAsync(lookupState, cancellationToken);
+                allStateMetroAreaIds = metroAreas.Select(m => m.Id).ToList();
 
                 if (!allStateMetroAreaIds.Any())
                 {

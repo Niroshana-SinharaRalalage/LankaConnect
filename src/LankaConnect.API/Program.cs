@@ -359,6 +359,8 @@ try
                 var context = services.GetRequiredService<AppDbContext>();
                 // 4C.e.3 (2026-07-08): IdentityDbContext for Users seeding path.
                 var identityContext = services.GetRequiredService<LankaConnect.Modules.Identity.Infrastructure.Data.IdentityDbContext>();
+                // Consult #20/21 (2026-07-10): LankaEventsDbContext for MetroArea + EventTemplate seeding.
+                var lankaEventsContext = services.GetRequiredService<LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext>();
                 var logger = services.GetRequiredService<ILogger<Program>>();
 
                 logger.LogInformation("Applying database migrations...");
@@ -370,6 +372,7 @@ try
                 var dbInitializer = new LankaConnect.Host.AllInOne.Data.DbInitializer(
                     context,
                     identityContext,
+                    lankaEventsContext,
                     services.GetRequiredService<ILogger<LankaConnect.Host.AllInOne.Data.DbInitializer>>(),
                     services.GetRequiredService<IPasswordHashingService>());
                 await dbInitializer.SeedAsync();

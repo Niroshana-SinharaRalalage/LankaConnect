@@ -18,10 +18,11 @@ public static class BadgeSeeder
     /// Seed predefined badges into database
     /// Phase 6A.28: Changed to check only for system badges, so seeding works even if custom badges exist
     /// </summary>
-    public static async Task SeedAsync(AppDbContext context)
+    // Consult #20/21 (2026-07-10): accept DbContext base — caller passes LankaEventsDbContext.
+    public static async Task SeedAsync(DbContext context)
     {
         // Check if system badges already exist (don't skip if only custom badges exist)
-        if (await context.Badges.AnyAsync(b => b.IsSystem))
+        if (await context.Set<Badge>().AnyAsync(b => b.IsSystem))
         {
             return; // System badges already seeded
         }
@@ -128,7 +129,7 @@ public static class BadgeSeeder
             )
         };
 
-        await context.Badges.AddRangeAsync(badges);
+        await context.Set<Badge>().AddRangeAsync(badges);
         await context.SaveChangesAsync();
     }
 }

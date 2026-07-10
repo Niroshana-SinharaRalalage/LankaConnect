@@ -112,3 +112,7 @@ Bypass: git push --no-verify
 
 2026-07-10 — Consult #21 Cat-A Identity UserRepository push (11da1122)
 Bypass: git push --no-verify
+
+2026-07-10 — Consult #20/21 caller migration push (fcbe31e5)
+Bypass: git push --no-verify
+Reason: Sprint Days 2-6 bypass; DI wiring changes prep for Consult #20 sweep.

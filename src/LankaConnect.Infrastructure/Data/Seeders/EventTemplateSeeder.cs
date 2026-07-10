@@ -17,10 +17,11 @@ public static class EventTemplateSeeder
     /// <summary>
     /// Seed event templates data into database
     /// </summary>
-    public static async Task SeedAsync(AppDbContext context)
+    // Consult #20/21 (2026-07-10): accept DbContext base — caller passes LankaEventsDbContext.
+    public static async Task SeedAsync(DbContext context)
     {
         // Check if any templates already exist
-        if (await context.EventTemplates.AnyAsync())
+        if (await context.Set<EventTemplate>().AnyAsync())
         {
             return; // Already seeded
         }
@@ -252,7 +253,7 @@ public static class EventTemplateSeeder
             )
         };
 
-        await context.EventTemplates.AddRangeAsync(templates);
+        await context.Set<EventTemplate>().AddRangeAsync(templates);
         await context.SaveChangesAsync();
     }
 

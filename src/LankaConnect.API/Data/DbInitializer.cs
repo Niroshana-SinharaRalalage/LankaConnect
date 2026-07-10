@@ -4,6 +4,7 @@ using LankaConnect.Infrastructure.Data;                                         
 using LankaConnect.Infrastructure.Data.Seeders;                                  // MetroAreaSeeder, BadgeSeeder, EventSeeder (still legacy)
 using LankaConnect.Modules.Identity.Infrastructure.Data;                         // 4C.e.3: IdentityDbContext
 using LankaConnect.Modules.Identity.Infrastructure.Data.Seeders;                 // 4C.e.3: UserSeeder (moved)
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;                     // Consult #20/21: LankaEventsDbContext for LankaEvents seeders
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 // 4C.e.3 (2026-07-08): relocated from LankaConnect.Infrastructure to the
@@ -22,17 +23,23 @@ public class DbInitializer
     private readonly AppDbContext _context;
     // 4C.e.3: separate injection for Users seeding path (module DbContext).
     private readonly IdentityDbContext _identityContext;
+    // Consult #20/21 (2026-07-10): separate injection for LankaEvents seeding paths
+    // (MetroAreaSeeder, BadgeSeeder, EventTemplateSeeder) — those entities are
+    // Ignore<>()d on AppDbContext post-Consult-#20 sweep.
+    private readonly LankaEventsDbContext _lankaEventsContext;
     private readonly ILogger<DbInitializer> _logger;
     private readonly IPasswordHashingService _passwordHashingService;
 
     public DbInitializer(
         AppDbContext context,
         IdentityDbContext identityContext,
+        LankaEventsDbContext lankaEventsContext,
         ILogger<DbInitializer> logger,
         IPasswordHashingService passwordHashingService)
     {
         _context = context;
         _identityContext = identityContext;
+        _lankaEventsContext = lankaEventsContext;
         _logger = logger;
         _passwordHashingService = passwordHashingService;
     }
@@ -93,13 +100,13 @@ public class DbInitializer
     /// </summary>
     private async Task SeedMetroAreasAsync()
     {
-        var existingMetroAreasCount = await _context.MetroAreas.CountAsync();
+        var existingMetroAreasCount = await _lankaEventsContext.MetroAreas.CountAsync();
         _logger.LogInformation("Database currently contains {Count} metro areas. Checking for missing metros...", existingMetroAreasCount);
 
         // Phase 6A.70: Always call seeder - it handles incremental additions internally
-        await MetroAreaSeeder.SeedAsync(_context);
+        await MetroAreaSeeder.SeedAsync(_lankaEventsContext);
 
-        var finalCount = await _context.MetroAreas.CountAsync();
+        var finalCount = await _lankaEventsContext.MetroAreas.CountAsync();
         _logger.LogInformation("Metro area seeding complete. Total metros: {FinalCount} (added {Added})",
             finalCount, finalCount - existingMetroAreasCount);
     }
@@ -111,6 +118,7 @@ public class DbInitializer
     /// </summary>
     private async Task SeedBadgesAsync()
     {
+        // Badge stays on AppDbContext (Consult #20 OUT-OF-SCOPE — Badge DbSet not on LankaEventsDbContext).
         var existingSystemBadgesCount = await _context.Badges.CountAsync(b => b.IsSystem);
         if (existingSystemBadgesCount > 0)
         {
@@ -129,7 +137,7 @@ public class DbInitializer
     /// </summary>
     private async Task SeedEventsAsync()
     {
-        var existingEventsCount = await _context.Events.CountAsync();
+        var existingEventsCount = await _lankaEventsContext.Events.CountAsync();
         if (existingEventsCount > 0)
         {
             _logger.LogInformation("Database already contains {Count} events. Skipping seed.", existingEventsCount);
@@ -142,10 +150,10 @@ public class DbInitializer
         var seedEvents = EventSeeder.GetSeedEvents();
 
         // Add events to context
-        await _context.Events.AddRangeAsync(seedEvents);
+        await _lankaEventsContext.Events.AddRangeAsync(seedEvents);
 
         // Save changes
-        var savedCount = await _context.SaveChangesAsync();
+        var savedCount = await _lankaEventsContext.SaveChangesAsync();
 
         _logger.LogInformation("Successfully seeded {Count} events to the database.", savedCount);
     }
@@ -160,9 +168,9 @@ public class DbInitializer
             _logger.LogWarning("Clearing existing events...");
 
             // Remove all existing events
-            var existingEvents = await _context.Events.ToListAsync();
-            _context.Events.RemoveRange(existingEvents);
-            await _context.SaveChangesAsync();
+            var existingEvents = await _lankaEventsContext.Events.ToListAsync();
+            _lankaEventsContext.Events.RemoveRange(existingEvents);
+            await _lankaEventsContext.SaveChangesAsync();
 
             _logger.LogInformation("Cleared {Count} existing events.", existingEvents.Count);
 

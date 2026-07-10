@@ -7,6 +7,7 @@ using LankaConnect.Infrastructure.Data;                                         
 using LankaConnect.Infrastructure.Data.Seeders;                                  // MetroAreaSeeder, EventSeeder, EventTemplateSeeder (still legacy)
 using LankaConnect.Modules.Identity.Infrastructure.Data;                         // 4C.e.3: IdentityDbContext
 using LankaConnect.Modules.Identity.Infrastructure.Data.Seeders;                 // 4C.e.3: UserSeeder (moved)
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;                     // Consult #20/21: LankaEventsDbContext
 using LankaConnect.Host.AllInOne.Data;                                           // 4C.e.3: DbInitializer (moved to host)
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
@@ -24,9 +25,10 @@ public class AdminController : BaseController<AdminController>
 {
     private readonly AppDbContext _context;
     // 4C.e.3 (2026-07-08): IdentityDbContext for the DbInitializer instantiation.
-    // Existing `_context.Users.*` seeding-tool calls stay on AppDbContext until 4C.h
-    // per architect ruling Q2 Option B (dual-mapping keeps them functional).
     private readonly IdentityDbContext _identityContext;
+    // Consult #20/21 (2026-07-10): LankaEventsDbContext for seeder + Events/MetroAreas access
+    // (module-owned entities Ignore<>()d on AppDbContext post-sweep).
+    private readonly LankaEventsDbContext _lankaEventsContext;
     private readonly IPasswordHashingService _passwordHashingService;
     private readonly IWebHostEnvironment _environment;
     private readonly ILoggerFactory _loggerFactory;
@@ -37,6 +39,7 @@ public class AdminController : BaseController<AdminController>
         ILogger<AdminController> logger,
         AppDbContext context,
         IdentityDbContext identityContext,
+        LankaEventsDbContext lankaEventsContext,
         IPasswordHashingService passwordHashingService,
         IWebHostEnvironment environment,
         ILoggerFactory loggerFactory,
@@ -45,6 +48,7 @@ public class AdminController : BaseController<AdminController>
     {
         _context = context;
         _identityContext = identityContext;
+        _lankaEventsContext = lankaEventsContext;
         _passwordHashingService = passwordHashingService;
         _environment = environment;
         _loggerFactory = loggerFactory;
@@ -86,7 +90,7 @@ public class AdminController : BaseController<AdminController>
                 seedType);
 
             var dbInitializerLogger = _loggerFactory.CreateLogger<DbInitializer>();
-            var dbInitializer = new DbInitializer(_context, _identityContext, dbInitializerLogger, _passwordHashingService);
+            var dbInitializer = new DbInitializer(_context, _identityContext, _lankaEventsContext, dbInitializerLogger, _passwordHashingService);
 
             switch (seedType.ToLower())
             {
@@ -95,11 +99,11 @@ public class AdminController : BaseController<AdminController>
                     break;
                 case "users":
                     // Log user count BEFORE seeding
-                    var userCountBefore = await _context.Users.CountAsync();
+                    var userCountBefore = await _identityContext.Users.CountAsync();
                     Logger.LogInformation("User count BEFORE seeding: {UserCount}", userCountBefore);
 
                     // Check which admin users actually exist BEFORE deletion
-                    var allUsersBeforeDelete = await _context.Users.ToListAsync();
+                    var allUsersBeforeDelete = await _identityContext.Users.ToListAsync();
                     var requiredAdminEmails = new[]
                     {
                         "admin@lankaconnect.com",
@@ -124,7 +128,7 @@ public class AdminController : BaseController<AdminController>
                         {
                             // First, get all existing admin users - need to load them first due to EF Core translation limits
                             // Then filter in memory to ensure we get exact matches
-                            var allUsers = await _context.Users.ToListAsync();
+                            var allUsers = await _identityContext.Users.ToListAsync();
                             Logger.LogInformation("Loaded {Count} total users from database", allUsers.Count);
 
                             var adminEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -151,13 +155,13 @@ public class AdminController : BaseController<AdminController>
                                     adminUsers.Count,
                                     string.Join(", ", adminUsers.Select(u => u.Email.Value)));
 
-                                _context.Users.RemoveRange(adminUsers);
+                                _identityContext.Users.RemoveRange(adminUsers);
                                 var deleteResult = await _context.SaveChangesAsync();
                                 Logger.LogInformation("SaveChangesAsync returned {RowsAffected} rows affected", deleteResult);
                                 Logger.LogInformation("Successfully deleted {Count} admin users for re-seeding", adminUsers.Count);
 
                                 // Verify deletion actually occurred
-                                var usersAfterDelete = await _context.Users.CountAsync();
+                                var usersAfterDelete = await _identityContext.Users.CountAsync();
                                 Logger.LogInformation("User count immediately after deletion: {UserCount}", usersAfterDelete);
                             }
                             else
@@ -186,11 +190,11 @@ public class AdminController : BaseController<AdminController>
                     }
 
                     // Log user count AFTER seeding to verify persistence
-                    var userCountAfter = await _context.Users.CountAsync();
+                    var userCountAfter = await _identityContext.Users.CountAsync();
                     Logger.LogInformation("User count AFTER seeding: {UserCount}", userCountAfter);
 
                     // Check which admin users exist AFTER seeding
-                    var allUsersAfterSeed = await _context.Users.ToListAsync();
+                    var allUsersAfterSeed = await _identityContext.Users.ToListAsync();
                     var existingAdminEmailsAfterSeed = allUsersAfterSeed
                         .Select(u => u.Email.Value)
                         .Where(email => requiredAdminEmails.Contains(email))
@@ -205,15 +209,15 @@ public class AdminController : BaseController<AdminController>
                     }
                     break;
                 case "metroareas":
-                    await MetroAreaSeeder.SeedAsync(_context);
+                    await MetroAreaSeeder.SeedAsync(_lankaEventsContext);
                     break;
                 case "events":
                     var seedEvents = EventSeeder.GetSeedEvents();
-                    await _context.Events.AddRangeAsync(seedEvents);
+                    await _lankaEventsContext.Events.AddRangeAsync(seedEvents);
                     await _context.SaveChangesAsync();
                     break;
                 case "eventtemplates":
-                    await EventTemplateSeeder.SeedAsync(_context);
+                    await EventTemplateSeeder.SeedAsync(_lankaEventsContext);
                     break;
                 default:
                     return BadRequest(new
@@ -226,9 +230,9 @@ public class AdminController : BaseController<AdminController>
             Logger.LogInformation("Database seeding completed successfully for type: {SeedType}", seedType);
 
             // Include database counts in response for verification
-            var finalUserCount = await _context.Users.CountAsync();
-            var finalEventCount = await _context.Events.CountAsync();
-            var finalMetroAreaCount = await _context.MetroAreas.CountAsync();
+            var finalUserCount = await _identityContext.Users.CountAsync();
+            var finalEventCount = await _lankaEventsContext.Events.CountAsync();
+            var finalMetroAreaCount = await _lankaEventsContext.MetroAreas.CountAsync();
 
             return Ok(new
             {
@@ -283,7 +287,7 @@ public class AdminController : BaseController<AdminController>
             Logger.LogInformation("Starting admin password reset process...");
 
             // Load all users
-            var allUsers = await _context.Users.ToListAsync();
+            var allUsers = await _identityContext.Users.ToListAsync();
             Logger.LogInformation("Loaded {Count} users from database", allUsers.Count);
 
             // Define password mappings (passwords must meet validation: 8+ chars, upper+lower+digit+special, no sequential chars)
@@ -453,7 +457,7 @@ public class AdminController : BaseController<AdminController>
             // Check 7-day window (167-169 hours)
             var sevenDayStart = now.AddHours(167);
             var sevenDayEnd = now.AddHours(169);
-            var sevenDayEvents = await _context.Events
+            var sevenDayEvents = await _lankaEventsContext.Events
                 .AsNoTracking()
                 .Include(e => e.Registrations)
                 .Where(e => e.StartDate >= sevenDayStart && e.StartDate <= sevenDayEnd)
@@ -464,7 +468,7 @@ public class AdminController : BaseController<AdminController>
             // Check 2-day window (47-49 hours)
             var twoDayStart = now.AddHours(47);
             var twoDayEnd = now.AddHours(49);
-            var twoDayEvents = await _context.Events
+            var twoDayEvents = await _lankaEventsContext.Events
                 .AsNoTracking()
                 .Include(e => e.Registrations)
                 .Where(e => e.StartDate >= twoDayStart && e.StartDate <= twoDayEnd)
@@ -475,7 +479,7 @@ public class AdminController : BaseController<AdminController>
             // Check 1-day window (23-25 hours)
             var oneDayStart = now.AddHours(23);
             var oneDayEnd = now.AddHours(25);
-            var oneDayEvents = await _context.Events
+            var oneDayEvents = await _lankaEventsContext.Events
                 .AsNoTracking()
                 .Include(e => e.Registrations)
                 .Where(e => e.StartDate >= oneDayStart && e.StartDate <= oneDayEnd)
@@ -581,7 +585,7 @@ public class AdminController : BaseController<AdminController>
             }
 
             // Get the event with registrations
-            var @event = await _context.Events
+            var @event = await _lankaEventsContext.Events
                 .AsNoTracking()
                 .Include(e => e.Registrations)
                 .FirstOrDefaultAsync(e => e.Id == eventId);

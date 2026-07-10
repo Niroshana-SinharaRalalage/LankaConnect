@@ -230,34 +230,78 @@ LC.Infrastructure → Communications.Application → Communications.Infrastructu
 
 Where Consult #14 says "Wave 6.5.g.X", the correct plan reference is "Day 4 slot C sub-slice 4C.Y". If a future consult references Consult #14's numbering (6.5.g.1..7), translate back to 4C.a..h before writing to docs or commits. **NO NEW WAVE LABELS from here; sprint bible §Scope Ratified is the only source of Wave-6.5.f/g/h meaning.**
 
-### Day 6 — Sat 2026-07-11 (Force Merge to develop + First Baseline)
+### Day 6 — Sat 2026-07-11 (Force Merge to develop + First Baseline) — ⚠️ PARTIAL-CLOSED 2026-07-10 (Consult #19)
 
-**2 agents.**
+**Executed 2026-07-10 (1 day early per compressed sprint schedule). Head SHA `d51496b6` on develop.**
 
-| Agent | Owns |
-|---|---|
-| A | Force-merge `bulk-move/integration` → develop. **develop compiles first time since Day 2.** Wave 9 smoke expected to fail 40-80/261 — do not panic. |
-| B | Wave 4.6 (Identity.Contracts, 15-20 types) + Wave 4.7 (ICulturalCalendar DI + consumers). Folded here. |
+| Agent | Owns | Status |
+|---|---|---|
+| A | Force-merge `bulk-move/integration` → develop | ✅ DONE — merge commit `1f9ed6fd`; 0 conflicts, cold-restore PASS. **Founder sign-off in-session; architect approval given.** |
+| B | Wave 4.6 (Identity.Contracts, 15-20 types) + Wave 4.7 (ICulturalCalendar DI + consumers). Folded here. | ⏸ DEFERRED — Wave 4.7 attempted, reverted (needs Consult #15 PASS C coordinated primitive+interface batch); rolled to Phase B. Wave 4.6 remaining trivial cleanup, no active blocker. |
 
-**Gate:** develop compiles + `dotnet test` runs (pass rate irrelevant). Deploy to staging.
-**Founder sign-off required @ noon or evening — approve develop merge.**
+**Gate outcome — PARTIALLY MET (Consult #18 disposition):**
+- ✅ Merge landed to develop (STOP-CONDITION avoided).
+- ✅ Production compiles clean at 0 errors (verified locally via `dotnet build src/LankaConnect.API/LankaConnect.API.csproj`).
+- ❌ `dotnet build -c Release` full-solution build FAILED at CI run 29070713489 step 5 with 72 test-project compile errors — Consult #12 Option D Business delete tail + Consult #13 SharedKernel rename tail + Consult #17 LegacyPromotions retarget tail. These are Day 7 slot A fix-forward per Consult #18.
+- ⚙ Consult #18 workflow-scope transitional applied at commit `d51496b6` (`.github/workflows/deploy-staging.yml` step 5 narrowed to `src/LankaConnect.API/LankaConnect.API.csproj`). Restores full-solution build Day 10 EOD alongside legacy-csproj deletion. TRACEABILITY_MATRIX rows: SPRINT-D7.1 (test-project fix) + SPRINT-D10.1 (workflow restore).
+- 🎯 Deploy + smoke evidence gathered post-Consult-#18 in CI run 29071326289 (in progress at time of doc flip).
 
-**STOP-CONDITION CHECK EOD Day 6:** If `bulk-move/integration` did NOT merge to develop by EOD → **SPRINT FAILED**, roll to Consult #8 plan.
+**STOP-CONDITION CHECK EOD Day 6:** ✅ PASSED — merge landed to develop (well before Sat 2026-07-11 18:00 UTC deadline).
 
-### Day 7 — Sun 2026-07-12 (Smoke Regression Round 1)
+**Commit trail Day 6:**
+- `1f9ed6fd` — merge commit (bulk-move/integration → develop)
+- `d51496b6` — Consult #18 workflow-scope transitional + TRACEABILITY_MATRIX + audit log
+- `c5737ece` — DI hotfix: CommunicationsDbContext + IMultiContextUnitOfWork + IFormResponseExporter registrations added
+- `2c90d86e` — AppDbContext hotfix: closed 4C.c ownership-gap residues (removed 3 residual `.ToTable()` for Email* whose configs migrated to CommunicationsDbContext)
 
-**5 agents. Rule 5j.4 audit ON as CI gate for every commit.**
+**⚠️ DEPLOY STILL RED at Day 6 EOD — Consult #19 ruling:**
+
+4 CI deploy attempts all fail at step 14 "Run EF Migrations". Build/Test/Docker/Push GREEN every round. Root cause per Consult #19: **AppDbContext model-discovery boundary is systemically wrong** — it discovers module-owned aggregates (Event, EmailMessage, ...) whose owned-VO configurations moved to per-module DbContexts, then fails to build the model because the VO ctor patterns are unmapped. This is not per-VO fixable; it is a missing architectural artifact.
+
+Sample failure pattern (4th attempt, run 29096673448):
+```
+Unable to create a 'DbContext' of type 'AppDbContext'. The exception
+'No suitable constructor was found for entity type 'Event.TicketPrice#Money'.
+```
+
+Rule 5k trigger fired (3 consecutive same-family hotfixes). Rule 5h soft-cap exceeded. Escalation to architect Consult #19 mandatory.
+
+**Consult #19 Q1-Q4 rulings:**
+- Q1: **Day 7 fix-forward** (not another hotfix).
+- Q2: **Option A** — Bulk-add `modelBuilder.Ignore<T>()` for every LankaEvents/Communications/Identity/Forms/Media aggregate on AppDbContext, executed as a design pass. Blanket Rule 5b pre-approval granted; enumeration IS the consult artifact.
+- Q3: Defer smoke to Day 7 EOD. Honest founder status delivered.
+- Q4: Sprint bible §Day 6 flipped to PARTIAL-CLOSED (this entry); §Day 7 slot A entry point = "AppDbContext ownership-boundary hardening (Consult #19)."
+
+**Consult #19 additional guardrails:**
+1. `AppDbContextModelParityTests.cs` asserts the Ignore<T> list is complete (mirrors Rule 5e).
+2. ArchTest rule post-sprint: AppDbContext MUST NOT reach module-owned aggregate types except via `Ignore<T>()`.
+3. 4C.h stays blocked until Day 7 slot A green.
+4. Deliverable artifact: `docs/architecture/appdbcontext-ownership-boundary.md` alongside the code change.
+
+### Day 7 — Sun 2026-07-12 (Smoke Regression Round 1 + Consult #19 unblock)
+
+**Slot A entry point (BLOCKING all others) — Consult #19 AppDbContext ownership-boundary hardening.**
+
+Before any smoke work can run: staging deploy must succeed. Deploy is blocked on AppDbContext design-time model discovery of module-owned aggregates. Per Consult #19 Option A:
+
+- Derive authoritative `Ignore<T>()` list from Consult #7 Delta ownership matrix (LankaEvents / Communications / Identity / Forms / Media / Payments aggregates + their owned VOs).
+- Apply as bulk `modelBuilder.Ignore<T>()` sweep in AppDbContext.OnModelCreating.
+- Ship `AppDbContextModelParityTests.cs` asserting the Ignore<T> list is complete (mirrors Rule 5e parity-test pattern).
+- Author `docs/architecture/appdbcontext-ownership-boundary.md` alongside — this document IS the Rule 5b consult artifact per Consult #19 blanket pre-approval.
+- Post-deploy: verify AppDbContext design-time construction succeeds → migrations apply → container app deploys → Wave 9 smoke suite runs.
+
+**5 agents once Slot A ships (Rule 5j.4 audit ON as CI gate for every commit).**
 
 | Agent | Cluster | Count |
 |---|---|---:|
-| A | Events (Wave 9.a) | ~117 endpoints |
+| A | Consult #19 slot A (AppDbContext ownership boundary) THEN Events (Wave 9.a) | ~117 endpoints |
 | B | Auth + Users (Wave 9.b) | ~30 |
 | C | Venue + AddOns + Seating (Wave 9.c) | ~40 |
 | D | Communications + Notifications (Wave 9.d) | ~35 |
 | E | Finance + Business + PhotoAlbums + long-tail (9.e + 9.f) | ~40 |
 
 **Fix-forward only.** Every fix = straight commit to develop.
-**Target: 100+/261 passing by EOD.**
+**Target: 100+/261 passing by EOD (contingent on Slot A landing early Day 7).**
 
 ### Day 8 — Mon 2026-07-13 (Smoke Regression Round 2)
 

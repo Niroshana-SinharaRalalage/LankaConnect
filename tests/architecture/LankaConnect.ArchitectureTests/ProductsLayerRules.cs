@@ -191,12 +191,21 @@ public sealed class ProductsLayerRules
     /// every module by definition; the boundary applies to runtime code, not DI wiring.
     /// </para>
     /// </remarks>
-    [Fact(Skip = "Wave 6.5 target — 14 LankaConnect.Infrastructure services + handlers " +
-                 "directly reference Products.LankaEvents.Application. Cleanup via " +
-                 "integration events / outbox per blueprint §7.4 / D5. Coherent with Rule 9b " +
-                 "Payments deferral. Tracked: Wave 6.5.X.Y in MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md. " +
-                 "Un-skip when violations are resolved as part of Wave 6.5 Outbox cutover.")]
+    [Fact]
     [Trait("Category", "ArchTest")]
+    // Wave 6.5.h Day 5 (2026-07-10): UN-SKIPPED. The 14 flagged types (Export services,
+    // Ticket services, Payments webhook handlers, RefundReconciliationBackgroundService,
+    // SeatHoldCleanupService) either physically relocated to their correct owning module
+    // (CsvExportService + ExcelExportService → LankaEvents.Application/Common/Export/
+    // in Day 5 slot A; 4 Email repos → Communications.Infrastructure/Data/Repositories/;
+    // NewsletterRecipientService already in Communications.Infrastructure) OR had their
+    // consumed interfaces promoted to LE.Contracts.LegacyPromotions (Wave 6.5.f cycle-break
+    // + Wave 6.5.g refund + webhook interfaces). Grep verification:
+    // `grep -rn "using LankaConnect.Products.LankaEvents.Application"
+    //  src/LankaConnect.Infrastructure --include='*.cs' | grep -v bin/ | grep -v obj/`
+    // returns ZERO. Rule 9b (Payments) un-skipped in same slot with the same shape.
+    // Full integration-event dependency inversion (blueprint §7.4 / D5) remains Phase B
+    // work; the pragmatic Contracts-promotion path unblocks Day 6 develop-merge cleanly.
     public void Rule5_LankaConnect_Infrastructure_DoesNotReferenceProducts_Application_Or_Api()
     {
         var legacyInfrastructure = typeof(LankaConnect.Infrastructure.Data.AppDbContext).Assembly;

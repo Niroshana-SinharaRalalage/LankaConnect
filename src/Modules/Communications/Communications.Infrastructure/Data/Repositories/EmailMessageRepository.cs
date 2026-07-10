@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.Modules.Communications.Infrastructure.Data;
 using Microsoft.Extensions.Logging;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Enums;
@@ -10,7 +10,7 @@ using Serilog.Context;
 using System.Diagnostics;
 using DomainEmailMessage = LankaConnect.Modules.Communications.Domain.Entities.EmailMessage;
 
-using LankaConnect.Infrastructure.Data.Repositories; // 4C.h Day 5: Repository<T> base class
+using LankaConnect.Modules.Communications.Infrastructure.Common; // Consult #21 Cat-A: CommunicationsRepositoryBase
 namespace LankaConnect.Modules.Communications.Infrastructure.Data.Repositories; // Wave 6.5.f Day 5 slot A (2026-07-10): moved from LC.Infrastructure/Data/Repositories/ per architect — module Infrastructure owns its repos.
 
 /// <summary>
@@ -18,12 +18,12 @@ namespace LankaConnect.Modules.Communications.Infrastructure.Data.Repositories; 
 /// Follows TDD principles and integrates Result pattern for error handling
 /// Phase 6A.X: Enhanced with comprehensive observability logging
 /// </summary>
-public class EmailMessageRepository : Repository<DomainEmailMessage>, IEmailMessageRepository
+public class EmailMessageRepository : CommunicationsRepositoryBase<DomainEmailMessage>, IEmailMessageRepository
 {
     private readonly ILogger<EmailMessageRepository> _repoLogger;
 
     public EmailMessageRepository(
-        AppDbContext context,
+        CommunicationsDbContext context,
         ILogger<EmailMessageRepository> logger) : base(context)
     {
         _repoLogger = logger;

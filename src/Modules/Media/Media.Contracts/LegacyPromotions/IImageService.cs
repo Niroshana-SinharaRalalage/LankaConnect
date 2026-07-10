@@ -1,7 +1,7 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.BuildingBlocks.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Domain.Enums;
-namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+namespace LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5 (2026-07-10): promoted from Media.Application/Contracts/ per Consult #15 PASS C.
 
 /// <summary>
 /// Service for managing business images with Azure Blob Storage

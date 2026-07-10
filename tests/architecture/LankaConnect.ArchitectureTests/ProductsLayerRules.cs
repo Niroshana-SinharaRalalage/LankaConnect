@@ -503,6 +503,63 @@ public sealed class ProductsLayerRules
         AssertCompliant(result, "Products.LankaEvents.Infrastructure (non-baseline classes)");
     }
 
+    /// <summary>
+    /// Rule 14 (4C.h — 2026-07-10) — the legacy <c>IApplicationDbContext</c>
+    /// abstraction has been DELETED. No type in Products.LankaEvents.{Domain,
+    /// Application, Infrastructure, Contracts, Api} may re-introduce a
+    /// dependency on it (whether as a type reference or by re-declaring a
+    /// type with the same short name).
+    /// </summary>
+    /// <remarks>
+    /// Per Consult #14 PASS B: "New code MUST NOT inject IApplicationDbContext —
+    /// inject the correct module DbContext (LankaEventsDbContext,
+    /// IdentityDbContext, CommunicationsDbContext, AppDbContext for cross-cutting
+    /// ReferenceValue)."
+    /// <para>
+    /// The check is name-based (NetArchTest cannot check dependencies on a type
+    /// that no longer exists in the assembly graph), scanning every type's
+    /// full name for the substring <c>IApplicationDbContext</c>. Any hit is a
+    /// copy-paste from pre-4C.h codebases or a re-introduction attempt.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Rule14_Products_LankaEvents_DoesNotReintroduce_IApplicationDbContext()
+    {
+        var assemblies = new[]
+        {
+            DomainAssembly,
+            ApplicationAssembly,
+            InfrastructureAssembly,
+        };
+
+        var violators = new List<string>();
+        foreach (var assembly in assemblies)
+        {
+            foreach (var type in assembly.GetTypes())
+            {
+                if (type.FullName?.Contains("IApplicationDbContext", System.StringComparison.Ordinal) == true)
+                {
+                    violators.Add($"{type.FullName} (in {assembly.GetName().Name})");
+                }
+            }
+        }
+
+        if (violators.Count > 0)
+        {
+            Assert.Fail(
+                "4C.h forbidden-type rule violation: IApplicationDbContext was DELETED " +
+                "at 4C.h (2026-07-10). New Products.LankaEvents code re-introduced a " +
+                "type with the same name — likely a copy-paste from pre-4C.h search " +
+                "results.\n" +
+                $"Violators:\n  - {string.Join("\n  - ", violators)}\n" +
+                "Fix: inject the correct module DbContext per Consult #14 PASS B " +
+                "(LankaEventsDbContext for Event family, IdentityDbContext for User, " +
+                "CommunicationsDbContext for Email* + Newsletter*, AppDbContext for " +
+                "cross-cutting ReferenceValue).");
+        }
+    }
+
     // ---------- Helpers ----------
 
     private static void AssertCompliant(TestResult result, string assemblyName)

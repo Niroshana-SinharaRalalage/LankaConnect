@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Constants;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Modules.Communications.Application.Services;
+using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain;
 using LankaConnect.Modules.Communications.Domain.Entities;

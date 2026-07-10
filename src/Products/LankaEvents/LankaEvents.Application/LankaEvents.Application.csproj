@@ -53,6 +53,12 @@
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
+    <!-- Wave 6.5.f Day 5 slot A (2026-07-10): CsvExportService + ExcelExportService
+         relocated from LC.Infrastructure per architect Option C — pure DTO-in/byte-out
+         transformers with no EF touch belong in Application. Their transitive deps
+         (CsvHelper for RFC-4180 CSV, ClosedXML for .xlsx generation) move with them. -->
+    <PackageReference Include="CsvHelper" />
+    <PackageReference Include="ClosedXML" />
   </ItemGroup>
 
 </Project>

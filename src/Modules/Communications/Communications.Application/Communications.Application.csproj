@@ -19,6 +19,10 @@
          Contracts.LegacyPromotions). Handlers now inject CommunicationsDbContext
          directly. -->
     <ProjectReference Include="..\Communications.Infrastructure\Communications.Infrastructure.csproj" />
+    <!-- 4C.h Day 5 (2026-07-10): GetPublishedNewslettersQueryHandler needs
+         LankaEventsDbContext.MetroAreas (LankaEvents-owned; newsletter has
+         location-based targeting via MetroArea associations). -->
+    <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
     <!--
       W5.4.b TRANSITIONAL EDGE (2026-06-13). EmailGroupQueries wraps the
       existing IEmailGroupRepository which still lives in LankaConnect.Domain

@@ -4,6 +4,7 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
+using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5: IImageService promoted
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ClearSponsorshipPackageImage;
 
 /// <summary>

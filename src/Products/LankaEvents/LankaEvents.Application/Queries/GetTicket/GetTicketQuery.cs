@@ -8,6 +8,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 6.5.f (2026-07-09 Day 4): LankaEventsDbContext
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h Day 5: ITicketService promoted
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetTicket;
 
 /// <summary>

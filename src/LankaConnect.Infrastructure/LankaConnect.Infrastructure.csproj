@@ -35,10 +35,10 @@
          to the fully-qualified LankaConnect.Modules.Payments.Infrastructure
          namespace already resolving through Payments.Domain PR since the type
          lives adjacent. -->
-    <ProjectReference Include="..\Modules\Communications\Communications.Application\Communications.Application.csproj" />
+    <!-- Wave 6.5.f Day 5 slot A (2026-07-10): PR to Communications.Application DELETED. 4 Email repo IMPLS moved to Communications.Infrastructure/Data/Repositories/ in same commit; LC.Infrastructure has no remaining live usings of Communications.Application types. Breaks cycle Comm.App→Comm.Infra→LC.Infra→Comm.App. -->
     <ProjectReference Include="..\Modules\Identity\Identity.Contracts\Identity.Contracts.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
-    <ProjectReference Include="..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <!-- Wave 6.5.f Day 5 slot A (2026-07-10): PR to LankaEvents.Application DELETED. 2 Export services (CsvExportService + ExcelExportService) moved to LankaEvents.Application/Common/Export/ in same commit. Breaks cycle LE.App→LE.Infra→LC.Infra→LE.App. -->
 
     <!-- Wave 6.5.a (2026-07-03): outbox adapter classes (IntegrationEventOutbox, module-context
          registration extensions) live in this project because they bridge the LankaConnect.Application

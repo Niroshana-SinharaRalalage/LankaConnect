@@ -1,6 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
-namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+namespace LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h Day 5 (2026-07-10): promoted from LE.Application/Contracts/ per Consult #15 PASS C — cross-boundary interface + result record belongs in Contracts, not Application.
 
 /// <summary>
 /// Phase 6A.24: Orchestration service for ticket operations

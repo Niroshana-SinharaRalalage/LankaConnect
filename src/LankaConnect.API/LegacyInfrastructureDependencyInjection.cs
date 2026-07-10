@@ -38,17 +38,20 @@ using LankaConnect.Infrastructure.Data;                     // 4C.d.xiii: AppDbC
 using LankaConnect.Infrastructure.Data.Repositories;        // 4C.d.xiii: Repository<T> base + concrete repos
 using LankaConnect.Modules.Media.Infrastructure.Storage.Configuration;
 using LankaConnect.Modules.Media.Infrastructure.Storage.Services;
+using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5
 using LankaConnect.Infrastructure.Security;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Interfaces;
+using LankaConnect.Modules.Communications.Infrastructure.Data.Repositories; // 4C.h Day 5: Email repos moved here
 // 4C.d.xiii: `LankaConnect.Infrastructure.Services` has no direct .cs; all consumers use FQ.
 using LankaConnect.Modules.Communications.Application.BackgroundJobs;
 using LankaConnect.BuildingBlocks.Application.Common.Options;
 using LankaConnect.Modules.Communications.Contracts.Email.Extensions;
 using LankaConnect.Modules.Payments.Infrastructure.Configuration;
 using LankaConnect.Modules.Payments.Infrastructure.Services;
-using LankaConnect.Host.AllInOne.Services.Tickets;         // 4C.d.xiii: Tickets moved to LankaEvents.Infrastructure (namespace unchanged)
+using LankaConnect.Host.AllInOne.Services.Tickets;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h Day 5         // 4C.d.xiii: Tickets moved to LankaEvents.Infrastructure (namespace unchanged)
 using LankaConnect.Host.AllInOne.Services;                 // 4C.d.xiii: DatabaseSalesTaxService/RevenueCalculatorService/EmailUrlHelper/EmailEncryptionService in module Infrastructures
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
@@ -162,8 +165,12 @@ public static class InfrastructureDependencyInjection
         // JWT configuration will be added in the API layer
         // This keeps infrastructure layer independent of ASP.NET Core
         
-        // Register IApplicationDbContext interface
-        services.AddScoped<IApplicationDbContext>(provider => provider.GetService<AppDbContext>()!);
+        // 4C.h (2026-07-10 Day 5): IApplicationDbContext DI registration DELETED. The
+        // interface itself is gone; module DbContexts (LankaEventsDbContext, IdentityDbContext,
+        // CommunicationsDbContext, FormsDbContext, MediaDbContext, NotificationsDbContext)
+        // are registered by their respective module DI extensions. AppDbContext continues
+        // to be registered above for the transitional AppDbContext-anchored writes
+        // (ReferenceValue + operational tables).
 
         // Add Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -438,7 +445,7 @@ public static class InfrastructureDependencyInjection
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IEventNotificationRecipientService, LankaConnect.Products.LankaEvents.Application.Services.EventNotificationRecipientService>();
 
         // Phase 6A.74: Newsletter Recipient Service
-        services.AddScoped<LankaConnect.Modules.Communications.Application.Services.INewsletterRecipientService, LankaConnect.Host.AllInOne.Services.NewsletterRecipientService>();
+        services.AddScoped<LankaConnect.Modules.Communications.Contracts.LegacyPromotions.INewsletterRecipientService, LankaConnect.Host.AllInOne.Services.NewsletterRecipientService>();
 
         // Phase 6A.74 Part 13: Event-to-Metro Area Matcher for Newsletter Recipient Bucketing
         services.AddScoped<LankaConnect.Host.AllInOne.Services.EventMetroAreaMatcher>();
@@ -546,8 +553,8 @@ public static class InfrastructureDependencyInjection
         // + impl (Payments.Infrastructure).
 
         // Phase 6A.45: Export services for attendee management
-        services.AddScoped<IExcelExportService, LankaConnect.Host.AllInOne.Services.Export.ExcelExportService>();
-        services.AddScoped<ICsvExportService, LankaConnect.Host.AllInOne.Services.Export.CsvExportService>();
+        services.AddScoped<IExcelExportService, LankaConnect.Products.LankaEvents.Application.Common.Export.ExcelExportService>();
+        services.AddScoped<ICsvExportService, LankaConnect.Products.LankaEvents.Application.Common.Export.CsvExportService>();
         // W5.3.c1 (2026-06-28): TicketRepository registration moved to LankaEventsModule.
 
         // Phase 2: Venue Seating repositories

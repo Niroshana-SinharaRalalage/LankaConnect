@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Modules.Communications.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): CommunicationsDbContext
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // 4C.h Day 5: MetroAreas cross-module
 namespace LankaConnect.Modules.Communications.Application.Queries.GetNewsletterById;
 
 /// <summary>
@@ -22,17 +23,20 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
     private readonly INewsletterRepository _newsletterRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly CommunicationsDbContext _dbContext;
+    private readonly LankaEventsDbContext _eventsContext;
     private readonly ILogger<GetNewsletterByIdQueryHandler> _logger;
 
     public GetNewsletterByIdQueryHandler(
         INewsletterRepository newsletterRepository,
         ICurrentUserService currentUserService,
         CommunicationsDbContext dbContext,
+        LankaEventsDbContext eventsContext,
         ILogger<GetNewsletterByIdQueryHandler> logger)
     {
         _newsletterRepository = newsletterRepository;
         _currentUserService = currentUserService;
         _dbContext = dbContext;
+        _eventsContext = eventsContext;
         _logger = logger;
     }
 
@@ -121,7 +125,7 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
                 var metroAreaDtos = new List<MetroAreaSummaryDto>();
                 if (newsletter.MetroAreaIds.Any())
                 {
-                    metroAreaDtos = await _dbContext.MetroAreas
+                    metroAreaDtos = await _eventsContext.MetroAreas
                         .AsNoTracking()
                         .Where(m => newsletter.MetroAreaIds.Contains(m.Id))
                         .Select(m => new MetroAreaSummaryDto

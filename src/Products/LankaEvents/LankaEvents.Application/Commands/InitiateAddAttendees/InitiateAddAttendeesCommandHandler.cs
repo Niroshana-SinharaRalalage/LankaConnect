@@ -248,7 +248,7 @@ public class InitiateAddAttendeesCommandHandler
 
                 // Step 8: Save RegistrationAddition to database
                 await _additionRepository.AddAsync(addition, cancellationToken);
-                await _context.CommitAsync(cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

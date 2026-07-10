@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Serilog.Context;
 using LankaConnect.Modules.Communications.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): CommunicationsDbContext
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // 4C.h Day 5: MetroAreas cross-module
 namespace LankaConnect.Modules.Communications.Application.Queries.GetPublishedNewsletters;
 
 /// <summary>
@@ -24,17 +25,20 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
 {
     private readonly INewsletterRepository _newsletterRepository;
     private readonly CommunicationsDbContext _dbContext;
+    private readonly LankaEventsDbContext _eventsContext;
     private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.3
     private readonly ILogger<GetPublishedNewslettersQueryHandler> _logger;
 
     public GetPublishedNewslettersQueryHandler(
         INewsletterRepository newsletterRepository,
         CommunicationsDbContext dbContext,
+        LankaEventsDbContext eventsContext,
         IEmailGroupQueries emailGroupQueries, // Wave 5.4.d.3
         ILogger<GetPublishedNewslettersQueryHandler> logger)
     {
         _newsletterRepository = newsletterRepository;
         _dbContext = dbContext;
+        _eventsContext = eventsContext;
         _emailGroupQueries = emailGroupQueries;
         _logger = logger;
     }
@@ -108,7 +112,7 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
                 // Batch load metro area entities
                 var allMetroAreaIds = metroAreaJunction.Select(j => j.MetroAreaId).Distinct().ToList();
                 var metroAreaLookup = allMetroAreaIds.Any()
-                    ? (await _dbContext.MetroAreas
+                    ? (await _eventsContext.MetroAreas
                         .AsNoTracking()
                         .Where(m => allMetroAreaIds.Contains(m.Id))
                         .ToListAsync(cancellationToken))

@@ -1,17 +1,11 @@
 using ClosedXML.Excel;
 using LankaConnect.SharedKernel.Money;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Contracts;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h (2026-07-09 Day 4): ICsvExportService/IExcelExportService promoted
 using LankaConnect.Products.LankaEvents.Application.Common;
-namespace LankaConnect.Host.AllInOne.Services.Export;
+namespace LankaConnect.Products.LankaEvents.Application.Common.Export; // Wave 6.5.f Day 5 slot A (2026-07-10): moved from LC.Infrastructure/Services/Export/ per architect Option C — pure DTO-in/byte-out transformers belong in Application, not Infrastructure.
 
 /// <summary>
 /// Excel export service implementation using ClosedXML.

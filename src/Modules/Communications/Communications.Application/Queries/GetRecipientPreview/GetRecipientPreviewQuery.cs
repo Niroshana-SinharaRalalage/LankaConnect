@@ -1,5 +1,5 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Modules.Communications.Application.Common;
+using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5
 namespace LankaConnect.Modules.Communications.Application.Queries.GetRecipientPreview;
 
 /// <summary>

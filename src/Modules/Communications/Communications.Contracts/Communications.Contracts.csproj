@@ -23,6 +23,10 @@
          reference LankaEvents.Domain entities + Identity.Contracts. -->
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
     <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
+    <!-- 4C.h Day 5 (2026-07-10): SendEmailVerificationCommand promoted here consumes
+         ICommand<T> from BB.Application.Common.Interfaces. Contracts referencing
+         BB.Application is architecturally clean (BB layers are foundational). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
   </ItemGroup>
 
 </Project>

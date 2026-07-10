@@ -31,7 +31,13 @@ using LankaConnect.BuildingBlocks.Application.Common;
 
 namespace LankaConnect.Infrastructure.Data;
 
-public class AppDbContext : DbContext, IApplicationDbContext
+// 4C.h (2026-07-10 Day 5): IApplicationDbContext interface DELETED. AppDbContext no
+// longer implements a legacy marker — module DbContexts (LankaEventsDbContext,
+// IdentityDbContext, CommunicationsDbContext, FormsDbContext, MediaDbContext,
+// NotificationsDbContext) own their aggregates; AppDbContext hosts cross-cutting
+// ReferenceValue + operational tables + the still-transitional AppDbContext-anchored
+// writes until per-module migrations relocate them (post-sprint work).
+public class AppDbContext : DbContext
 {
     private readonly IPublisher _publisher;
     private readonly ILogger<AppDbContext> _logger;

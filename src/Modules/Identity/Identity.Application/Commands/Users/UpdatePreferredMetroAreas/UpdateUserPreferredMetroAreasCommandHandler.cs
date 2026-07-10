@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Modules.Identity.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): IdentityDbContext
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // 4C.h Day 5: LankaEventsDbContext for MetroAreas (cross-module)
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdatePreferredMetroAreas;
 
 /// <summary>
@@ -22,17 +23,20 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
 {
     private readonly IUserRepository _userRepository;
     private readonly IdentityDbContext _dbContext;
+    private readonly LankaEventsDbContext _eventsContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateUserPreferredMetroAreasCommandHandler> _logger;
 
     public UpdateUserPreferredMetroAreasCommandHandler(
         IUserRepository userRepository,
         IdentityDbContext dbContext,
+        LankaEventsDbContext eventsContext,
         IUnitOfWork unitOfWork,
         ILogger<UpdateUserPreferredMetroAreasCommandHandler> logger)
     {
         _userRepository = userRepository;
         _dbContext = dbContext;
+        _eventsContext = eventsContext;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -84,7 +88,7 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
                         string.Join(", ", command.MetroAreaIds));
 
                     // Load actual entities from database
-                    metroAreaEntities = await _dbContext.MetroAreas
+                    metroAreaEntities = await _eventsContext.MetroAreas
                         .Where(m => command.MetroAreaIds.Contains(m.Id))
                         .ToListAsync(cancellationToken);
 

@@ -75,7 +75,7 @@ public class CancelPendingAdditionCommandHandler
                 }
 
                 // Save changes
-                await _context.CommitAsync(cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

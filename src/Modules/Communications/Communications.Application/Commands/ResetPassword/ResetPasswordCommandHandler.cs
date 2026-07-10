@@ -6,6 +6,7 @@ using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Serilog.Context;
+using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5
 namespace LankaConnect.Modules.Communications.Application.Commands.ResetPassword;
 
 /// <summary>

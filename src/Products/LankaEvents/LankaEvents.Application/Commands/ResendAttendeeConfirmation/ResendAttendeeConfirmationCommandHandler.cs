@@ -8,6 +8,7 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.Extensions.Logging;
+using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h Day 5: ITicketService promoted
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ResendAttendeeConfirmation;
 
 /// <summary>

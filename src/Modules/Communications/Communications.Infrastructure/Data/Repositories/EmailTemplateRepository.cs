@@ -9,7 +9,8 @@ using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using System.Diagnostics;
 using Serilog.Context;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+using LankaConnect.Infrastructure.Data.Repositories; // 4C.h Day 5: Repository<T> base class
+namespace LankaConnect.Modules.Communications.Infrastructure.Data.Repositories; // Wave 6.5.f Day 5 slot A (2026-07-10): moved from LC.Infrastructure/Data/Repositories/ per architect — module Infrastructure owns its repos.
 
 /// <summary>
 /// Repository implementation for EmailTemplate entities with specialized template operations

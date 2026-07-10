@@ -1,6 +1,7 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5
 namespace LankaConnect.Modules.Media.Api.Controllers;
 
 /// <summary>

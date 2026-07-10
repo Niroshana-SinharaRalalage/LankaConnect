@@ -1003,7 +1003,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnFormsDomain()
     {
-        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.ICommand).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()
@@ -1035,7 +1035,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnCommunicationsDomain()
     {
-        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.ICommand).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()
@@ -1111,7 +1111,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnPaymentsDomain()
     {
-        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.ICommand).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()
@@ -1180,7 +1180,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnIdentityDomain()
     {
-        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.IApplicationDbContext).Assembly;
+        var assembly = typeof(LankaConnect.BuildingBlocks.Application.Common.Interfaces.ICommand).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()

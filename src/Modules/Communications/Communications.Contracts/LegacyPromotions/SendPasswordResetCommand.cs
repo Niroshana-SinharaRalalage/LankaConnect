@@ -1,6 +1,6 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
-namespace LankaConnect.Modules.Communications.Application.Commands.SendPasswordReset;
+namespace LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5: promoted per Consult #15 PASS C.
 
 /// <summary>
 /// Command to send password reset email to a user

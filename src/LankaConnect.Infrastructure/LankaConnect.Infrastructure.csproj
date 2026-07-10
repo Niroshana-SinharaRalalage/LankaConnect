@@ -96,6 +96,7 @@
 
   <!-- Phase 6A.24: Include email templates in publish output -->
   <ItemGroup>
+    <PackageReference Include="AutoMapper" VersionOverride="16.0.0" />
     <Content Include="Templates\Email\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

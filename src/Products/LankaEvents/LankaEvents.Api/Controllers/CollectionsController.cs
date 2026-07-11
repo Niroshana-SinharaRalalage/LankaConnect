@@ -168,7 +168,7 @@ public class CollectionsController : BaseController<CollectionsController>
         try
         {
             var eventResult = await Mediator.Send(new GetEventByIdQuery(eventId));
-            if (eventResult.IsFailure)
+            if (eventResult.IsFailure || eventResult.Value == null)
                 return NotFound(new { Error = "Event not found" });
 
             var eventDto = eventResult.Value!;
@@ -263,7 +263,7 @@ public class CollectionsController : BaseController<CollectionsController>
         var userId = User.GetUserId();
 
         var eventResult = await Mediator.Send(new GetEventByIdQuery(eventId));
-        if (eventResult.IsFailure)
+        if (eventResult.IsFailure || eventResult.Value == null)
         {
             Logger.LogWarning(
                 "Collections authorization failed: Event not found - EventId={EventId}, UserId={UserId}",

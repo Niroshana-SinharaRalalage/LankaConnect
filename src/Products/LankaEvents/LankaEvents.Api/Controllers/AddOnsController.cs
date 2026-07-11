@@ -476,7 +476,7 @@ public class AddOnsController : BaseController<AddOnsController>
         var userId = User.GetUserId();
 
         var eventResult = await Mediator.Send(new GetEventByIdQuery(eventId));
-        if (eventResult.IsFailure)
+        if (eventResult.IsFailure || eventResult.Value == null)
         {
             Logger.LogWarning(
                 "AddOns authorization failed: Event not found - EventId={EventId}, UserId={UserId}",

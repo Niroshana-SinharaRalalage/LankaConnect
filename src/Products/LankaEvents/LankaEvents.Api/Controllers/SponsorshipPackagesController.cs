@@ -322,7 +322,7 @@ public class SponsorshipPackagesController : BaseController<SponsorshipPackagesC
         var userId = User.GetUserId();
 
         var eventResult = await Mediator.Send(new GetEventByIdQuery(eventId));
-        if (eventResult.IsFailure)
+        if (eventResult.IsFailure || eventResult.Value == null)
         {
             Logger.LogWarning(
                 "SponsorshipPackages authorization failed: Event not found - EventId={EventId}, UserId={UserId}",

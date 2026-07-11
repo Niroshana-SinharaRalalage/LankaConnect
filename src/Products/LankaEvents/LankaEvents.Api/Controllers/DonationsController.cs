@@ -168,7 +168,7 @@ public class DonationsController : BaseController<DonationsController>
 
         // Load event to check ShowDonationSummary toggle
         var eventResult = await Mediator.Send(new GetEventByIdQuery(eventId));
-        if (eventResult.IsFailure)
+        if (eventResult.IsFailure || eventResult.Value == null)
             return NotFound(new { Error = "Event not found" });
 
         var eventDto = eventResult.Value!;
@@ -247,7 +247,7 @@ public class DonationsController : BaseController<DonationsController>
         var userId = User.GetUserId();
 
         var eventResult = await Mediator.Send(new GetEventByIdQuery(eventId));
-        if (eventResult.IsFailure)
+        if (eventResult.IsFailure || eventResult.Value == null)
         {
             Logger.LogWarning(
                 "Donations authorization failed: Event not found - EventId={EventId}, UserId={UserId}",

@@ -131,3 +131,7 @@ Reason: THIS commit has T5/S3/smoke annotations per §13 discipline. Bypass is
         commits (b45c5631/ce766e53/8473f4af/3848d8e9 etc.) that intentionally
         shipped without T-triggers per §0.7. Founder authorized Day 7 fix-forward
         via "Continue with Day 7. Consult the system-architect." No new debt added.
+
+2026-07-11 — Sprint-Day 7 hotfix UserConfiguration.ToTable (previous SHA blocking startup)
+Bypass: git push --no-verify
+Reason: Rolling window still catches Days 2-6 sprint-bypass commits; annotated properly.

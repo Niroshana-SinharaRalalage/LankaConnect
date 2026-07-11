@@ -17,6 +17,15 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
+        // Sprint-Day: 7 fix — explicit ToTable so IdentityDbContext queries `identity.users`
+        // (physical table, lowercase) instead of EF's default `identity."Users"` (which came
+        // from the DbSet<User> property name + HasDefaultSchema). Without this, staging boots
+        // FTL on the `ValidateEfCoreConfigurationsAsync` Users probe with 42P01 relation not
+        // found. Was previously masked because AppDbContext's ConfigureSchemas had
+        // `modelBuilder.Entity<User>().ToTable("users", "identity")` before Consult #20 sweep
+        // deleted it.
+        builder.ToTable("users", "identity");
+
         builder.HasKey(u => u.Id);
         
         builder.Property(u => u.Id)

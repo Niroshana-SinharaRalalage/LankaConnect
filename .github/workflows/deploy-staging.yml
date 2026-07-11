@@ -173,7 +173,11 @@ jobs:
           # masked because AppDbContext's User dual-mapping meant queries didn't need identity
           # schema tables. Now that Consult #20 sweep deleted dual-mapping, identity.users +
           # identity.outbox etc must be created by this loop.
-          for MODULE in "Notifications" "Media" "Forms" "LankaEvents" "Identity"; do
+          # Sprint-Day 7 (2026-07-11) later same day: Communications added — 4C.c relocated
+          # 3 Email configs to CommunicationsDbContext, but per-module operational tables
+          # (communications.outbox / outbox_dead_letter / idempotency_keys) were never
+          # materialised. InitialCommunicationsContext (empty-Up rebaseline) creates them.
+          for MODULE in "Notifications" "Media" "Forms" "LankaEvents" "Identity" "Communications"; do
             CONTEXT_NAME="${MODULE}DbContext"
             if [ "$MODULE" = "LankaEvents" ]; then
               PROJECT_PATH="../Products/${MODULE}/${MODULE}.Infrastructure/${MODULE}.Infrastructure.csproj"

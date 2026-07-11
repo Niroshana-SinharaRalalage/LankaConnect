@@ -16,6 +16,15 @@ public class EmailMessageConfiguration : IEntityTypeConfiguration<EmailMessage>
         builder.Property(e => e.Id)
             .ValueGeneratedNever();
 
+        // Sprint-Day 7 (2026-07-11) hotfix: RetryHistory + AuditTrail are in-memory-only
+        // debug convenience lists NEVER persisted (no column, no migration ever added). Under
+        // AppDbContext, discovery was masked by its reflection Ignore sweep. Per Consult #7
+        // Delta, CommunicationsDbContext applies configs cleanly with no ignore sweep, so EF
+        // Core 8 discovers these navs → auto-adds RetryAttempt / StateTransition → demands
+        // a PK on each. Ignore restores prior behavior (rehydrated fresh at read).
+        builder.Ignore(e => e.RetryHistory);
+        builder.Ignore(e => e.AuditTrail);
+
         // Configure FromEmail value object (OwnsOne pattern)
         // Note: No foreign key to Users table - loose coupling approach
         builder.OwnsOne(e => e.FromEmail, fromEmail =>

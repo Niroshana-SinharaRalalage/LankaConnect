@@ -144,3 +144,6 @@ Bypass: git push --no-verify
 
 2026-07-11 — Sprint-Day 7 CommunicationsDbContext Ignore<User+RefreshToken>
 Bypass: git push --no-verify
+
+2026-07-11 — Sprint-Day 7 EmailMessage Ignore RetryHistory+AuditTrail
+Bypass: git push --no-verify

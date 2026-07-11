@@ -168,7 +168,12 @@ jobs:
           # poll interval, and Event reads were 500-ing with DatabaseConfigurationError.
           # Note the DIFFERENT path shape: LankaEvents is a Product not a Module, so
           # it lives under `../Products/LankaEvents/` not `../Modules/`.
-          for MODULE in "Notifications" "Media" "Forms" "LankaEvents"; do
+          # Sprint-Day 7 (2026-07-11): Identity added — 4C.e IdentityDbContext + module outbox
+          # needed the 20260709010338_InitialIdentityContext migration applied. Was previously
+          # masked because AppDbContext's User dual-mapping meant queries didn't need identity
+          # schema tables. Now that Consult #20 sweep deleted dual-mapping, identity.users +
+          # identity.outbox etc must be created by this loop.
+          for MODULE in "Notifications" "Media" "Forms" "LankaEvents" "Identity"; do
             CONTEXT_NAME="${MODULE}DbContext"
             if [ "$MODULE" = "LankaEvents" ]; then
               PROJECT_PATH="../Products/${MODULE}/${MODULE}.Infrastructure/${MODULE}.Infrastructure.csproj"

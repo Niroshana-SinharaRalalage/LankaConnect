@@ -135,3 +135,6 @@ Reason: THIS commit has T5/S3/smoke annotations per §13 discipline. Bypass is
 2026-07-11 — Sprint-Day 7 hotfix UserConfiguration.ToTable (previous SHA blocking startup)
 Bypass: git push --no-verify
 Reason: Rolling window still catches Days 2-6 sprint-bypass commits; annotated properly.
+
+2026-07-11 — Sprint-Day 7 CI migration loop identity add (continued hotfix)
+Bypass: git push --no-verify

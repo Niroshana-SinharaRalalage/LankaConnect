@@ -71,6 +71,16 @@ public sealed class CommunicationsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new DeadLetterMessageConfiguration());
         modelBuilder.ApplyConfiguration(new IdempotencyKeyConfiguration());
 
+        // Sprint-Day 7 (2026-07-11) hotfix: UserEmailPreferencesConfiguration declares
+        // HasOne<User>().WithMany() to establish the FK column. When run under
+        // CommunicationsDbContext (which does NOT own the Identity module), EF Core 8
+        // pulls in User + all its owned graph (RefreshToken, CulturalInterest, ...) and
+        // fails to map them. Ignore keeps the FK column (UserId) scalar; cross-module
+        // hydration routes through IIdentityQueries per Blueprint §7.8. Mirrors
+        // LankaEventsDbContext.Ignore<User>() + Ignore<RefreshToken>() pattern.
+        modelBuilder.Ignore<LankaConnect.Modules.Identity.Domain.Entities.User>();
+        modelBuilder.Ignore<LankaConnect.Modules.Identity.Domain.ValueObjects.RefreshToken>();
+
         base.OnModelCreating(modelBuilder);
     }
 }

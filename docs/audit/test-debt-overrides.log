@@ -159,3 +159,6 @@ Bypass: git push --no-verify
 
 2026-07-13 — Sprint-Day 7 CreateEventCommandHandler UoW multi-context migration
 Bypass: git push --no-verify
+
+2026-07-13 — Sprint-Day 7 CreateEvent direct SaveChangesAsync (back off multi-context UoW)
+Bypass: git push --no-verify

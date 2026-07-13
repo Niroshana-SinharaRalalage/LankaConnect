@@ -19,9 +19,8 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 {
     private readonly IEventRepository _eventRepository;
     private readonly IIdentityQueries _identityQueries;
-    private readonly IMultiContextUnitOfWork _unitOfWork; // Sprint-Day 7 (2026-07-13): Wave 6.5.f multi-context commit
     private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.1
-    private readonly LankaEventsDbContext _dbContext; // Wave 6.5.f (2026-07-09 Day 4): module DbContext for multi-context commit path
+    private readonly LankaEventsDbContext _dbContext; // Wave 6.5.f (2026-07-09 Day 4): module DbContext for module-owned persistence
     private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
     private readonly ITimeZoneLookupService _timeZoneLookupService; // Issue #55: Timezone lookup
     private readonly ILogger<CreateEventCommandHandler> _logger;
@@ -29,7 +28,6 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
         IIdentityQueries identityQueries,
-        IMultiContextUnitOfWork unitOfWork, // Sprint-Day 7 (2026-07-13): Wave 6.5.f multi-context commit
         IEmailGroupQueries emailGroupQueries, // Wave 5.4.d.1
         LankaEventsDbContext dbContext, // Phase 6A.32: ChangeTracker API — Wave 6.5.f (2026-07-09) LankaEventsDbContext
         IRevenueCalculatorService revenueCalculatorService, // Phase 6A.X: Revenue breakdown
@@ -38,7 +36,6 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
     {
         _eventRepository = eventRepository;
         _identityQueries = identityQueries;
-        _unitOfWork = unitOfWork;
         _emailGroupQueries = emailGroupQueries;
         _dbContext = dbContext; // Phase 6A.32: ChangeTracker API — Wave 6.5.f (2026-07-09) LankaEventsDbContext
         _revenueCalculatorService = revenueCalculatorService; // Phase 6A.X: Revenue breakdown
@@ -696,13 +693,27 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                     // No manual EF Core state manipulation needed - repository pattern handles it
                     await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
 
-                    // Sprint-Day 7 (2026-07-13) hotfix: multi-context commit path enrols
-                    // LankaEventsDbContext so the Event aggregate (which lives on
-                    // LankaEventsDbContext post-Consult #20 sweep) actually persists.
-                    // Prior single-arg CommitAsync only flushed AppDbContext and silently
+                    // Sprint-Day 7 (2026-07-13) hotfix: save directly on LankaEventsDbContext.
+                    // The Event aggregate lives on LankaEventsDbContext post-Consult #20 sweep
+                    // (AppDbContext no longer maps Event). Prior code called
+                    // `IUnitOfWork.CommitAsync(ct)` which only flushed AppDbContext and silently
                     // committed 0 changes — POST /api/Events returned the aggregate Id
-                    // (assigned in domain ctor) but no row was ever written to Postgres.
-                    await _unitOfWork.CommitAsync(new Microsoft.EntityFrameworkCore.DbContext[] { _dbContext }, cancellationToken);
+                    // (assigned in domain ctor) but no row was written to Postgres.
+                    //
+                    // First attempt used `IMultiContextUnitOfWork.CommitAsync(new[] { _dbContext }, ct)`
+                    // but Wave 6.5.a's multi-context path relies on
+                    // `moduleContext.Database.UseTransactionAsync(...)` which requires both
+                    // contexts to share a single Npgsql connection. AppDbContext + module
+                    // DbContexts pull separate connections from the pool → "The specified
+                    // transaction is not associated with the current connection." Fixing that
+                    // properly needs a scoped shared-connection wiring (out of scope for Day 7).
+                    //
+                    // Direct SaveChangesAsync is the narrowest correct call: Event owns its own
+                    // DbContext, so a per-context save is equivalent to what the multi-context
+                    // path would do without cross-connection coordination. Domain-event dispatch
+                    // gap noted as debt — Wave 6.5.f follow-up must wire a module-level
+                    // OnSaveChanges interceptor per Wave 6.5.b-d design.
+                    await _dbContext.SaveChangesAsync(cancellationToken);
 
                     stopwatch.Stop();
 

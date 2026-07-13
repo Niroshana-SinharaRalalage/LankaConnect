@@ -19,7 +19,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 {
     private readonly IEventRepository _eventRepository;
     private readonly IIdentityQueries _identityQueries;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMultiContextUnitOfWork _unitOfWork; // Sprint-Day 7 (2026-07-13): Wave 6.5.f multi-context commit
     private readonly IEmailGroupQueries _emailGroupQueries; // Wave 5.4.d.1
     private readonly LankaEventsDbContext _dbContext; // Wave 6.5.f (2026-07-09 Day 4): module DbContext for multi-context commit path
     private readonly IRevenueCalculatorService _revenueCalculatorService; // Phase 6A.X: Revenue breakdown
@@ -29,7 +29,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
         IIdentityQueries identityQueries,
-        IUnitOfWork unitOfWork,
+        IMultiContextUnitOfWork unitOfWork, // Sprint-Day 7 (2026-07-13): Wave 6.5.f multi-context commit
         IEmailGroupQueries emailGroupQueries, // Wave 5.4.d.1
         LankaEventsDbContext dbContext, // Phase 6A.32: ChangeTracker API — Wave 6.5.f (2026-07-09) LankaEventsDbContext
         IRevenueCalculatorService revenueCalculatorService, // Phase 6A.X: Revenue breakdown
@@ -696,8 +696,13 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                     // No manual EF Core state manipulation needed - repository pattern handles it
                     await _eventRepository.AddAsync(eventResult.Value, cancellationToken);
 
-                    // Commit changes (EF Core now detects changes via ChangeTracker)
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    // Sprint-Day 7 (2026-07-13) hotfix: multi-context commit path enrols
+                    // LankaEventsDbContext so the Event aggregate (which lives on
+                    // LankaEventsDbContext post-Consult #20 sweep) actually persists.
+                    // Prior single-arg CommitAsync only flushed AppDbContext and silently
+                    // committed 0 changes — POST /api/Events returned the aggregate Id
+                    // (assigned in domain ctor) but no row was ever written to Postgres.
+                    await _unitOfWork.CommitAsync(new Microsoft.EntityFrameworkCore.DbContext[] { _dbContext }, cancellationToken);
 
                     stopwatch.Stop();
 

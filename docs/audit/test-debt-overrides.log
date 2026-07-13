@@ -156,3 +156,6 @@ Bypass: git push --no-verify
 
 2026-07-13 — Sprint-Day 7 UserRepository shadow-nav conditional Include
 Bypass: git push --no-verify
+
+2026-07-13 — Sprint-Day 7 CreateEventCommandHandler UoW multi-context migration
+Bypass: git push --no-verify

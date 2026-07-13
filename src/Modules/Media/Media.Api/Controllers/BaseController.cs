@@ -11,6 +11,13 @@ namespace LankaConnect.Host.AllInOne.Controllers;
 // both copies (Media.Api's and LankaConnect.API's). Namespace preserved so
 // PhotoAlbumsController's `BaseController<PhotoAlbumsController>` reference
 // resolves without file rewrite.
+// Sprint-Day 7 (2026-07-11) hotfix: restore [ApiController]/[Route]/[Produces]
+// class-level attributes that were dropped during 4C.d.vi local-copy extraction.
+// Without these, every derived controller registered as GET/POST at ROOT path
+// (no /api/{controller} prefix) — /api/PhotoAlbums returned 404 on staging.
+[ApiController]
+[Route("api/[controller]")]
+[Produces("application/json")]
 public abstract class BaseController<T> : ControllerBase where T : class
 {
     protected readonly IMediator Mediator;

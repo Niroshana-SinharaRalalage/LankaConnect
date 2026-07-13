@@ -47,20 +47,36 @@ public class UserRepository : IdentityRepositoryBase<User>, IUserRepository
 
             try
             {
-                var user = await _dbSet
+                // Sprint-Day 7 (2026-07-11) hotfix: guard the metro-area shadow-nav Include on
+                // whether the current DbContext has the navigation mapped. Under AppDbContext
+                // (which owns both User + MetroArea) the shadow nav exists and we do the
+                // Include + post-load sync as before. Under IdentityDbContext (which
+                // Ignore<MetroArea>()s per Blueprint §7.8 cross-module hydration rule), the
+                // shadow nav is not mapped; unconditional Include throws
+                // InvalidIncludePathError at query time, which broke POST /api/Events.
+                var userEntityType = _context.Model.FindEntityType(typeof(User));
+                var hasMetroAreaShadowNav = userEntityType?.FindSkipNavigation("_preferredMetroAreaEntities") != null
+                                          || userEntityType?.FindNavigation("_preferredMetroAreaEntities") != null;
+
+                IQueryable<User> query = _dbSet
                     .AsSplitQuery()
                     .Include(u => u.CulturalInterests)
                     .Include(u => u.Languages)
-                    .Include(u => u.ExternalLogins)
+                    .Include(u => u.ExternalLogins);
+
+                if (hasMetroAreaShadowNav)
+                {
                     // CRITICAL FIX Phase 6A.9: Load shadow navigation for metro areas many-to-many per ADR-009
                     // This populates _preferredMetroAreaEntities so EF Core can track changes to junction table
-                    .Include("_preferredMetroAreaEntities")  // String-based for shadow property
-                    .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+                    query = query.Include("_preferredMetroAreaEntities");
+                }
+
+                var user = await query.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
                 int metroAreaCount = 0;
                 // Phase 6A.9 FIX: Sync loaded shadow navigation entities to domain's metro area ID list
                 // This bridges the gap between EF Core's entity references and domain's business logic IDs
-                if (user != null)
+                if (user != null && hasMetroAreaShadowNav)
                 {
                     // Access the shadow navigation using EF Core's Entry API
                     var metroAreasCollection = _context.Entry(user).Collection("_preferredMetroAreaEntities");

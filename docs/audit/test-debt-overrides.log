@@ -165,3 +165,6 @@ Bypass: git push --no-verify
 
 2026-07-14 — Sprint-Day 7 batch (Consult #25 attack a+d): HeadCount jsonb + Comm model + Newsletter/User cross-module + AutoMapper
 Bypass: git push --no-verify
+
+2026-07-14 — Sprint-Day 7 Currency JsonConverter (Consult #25 attack c)
+Bypass: git push --no-verify

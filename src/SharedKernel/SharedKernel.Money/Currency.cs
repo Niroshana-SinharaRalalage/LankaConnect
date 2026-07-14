@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.SharedKernel.Money;
@@ -23,6 +24,7 @@ namespace LankaConnect.SharedKernel.Money;
 /// (0 digits) and BHD (3 digits) demand explicit handling.
 /// </para>
 /// </remarks>
+[JsonConverter(typeof(CurrencyJsonConverter))] // Sprint-Day 7 (2026-07-14, Consult #25 (c)): emit ISO 4217 code, not full object
 public sealed class Currency : ValueObject
 {
     /// <summary>ISO 4217 three-letter uppercase code (e.g. <c>"USD"</c>).</summary>

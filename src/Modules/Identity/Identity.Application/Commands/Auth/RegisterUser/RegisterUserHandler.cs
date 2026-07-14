@@ -221,10 +221,17 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
                         }
                     }
 
-                    // Phase 6A.53: Email verification is sent automatically via domain event
-                    // When CommitAsync() is called, it dispatches MemberVerificationRequestedEvent
-                    // which triggers MemberVerificationRequestedEventHandler to send the email
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    // Sprint-Day 9 (2026-07-14) hotfix: swap IUnitOfWork.CommitAsync (which fires
+                    // on AppDbContext, committing 0 changes for User) for direct
+                    // _identityDbContext.SaveChangesAsync. Same split-brain as CreateEvent handler
+                    // resolved 07-13 — User is tracked by IdentityDbContext via UserRepository,
+                    // so SaveChanges must fire on that context. Consult #25 Q6 blanket approval
+                    // for single-context handlers applies here.
+                    // Phase 6A.53 note: MemberVerificationRequestedEvent dispatch was on
+                    // AppDbContext.CommitAsync; now dropped on the floor pending Day 8 per-module
+                    // SaveChangesInterceptor debt (Consult #25 Q2). Email verification cascade
+                    // temporarily broken; acceptable per Consult #25 blanket condition #2.
+                    await _identityDbContext.SaveChangesAsync(cancellationToken);
 
                     // Sprint-Day 7 (2026-07-14) hotfix: persist user_preferred_metro_areas junction
                     // rows via raw SQL. IdentityDbContext Ignores<MetroArea> + Ignores the shadow

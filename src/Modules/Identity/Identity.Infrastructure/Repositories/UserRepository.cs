@@ -344,26 +344,16 @@ public class UserRepository : IdentityRepositoryBase<User>, IUserRepository
                 // Call base implementation to add entity to DbSet
                 await base.AddAsync(entity, cancellationToken);
 
-                // Sync metro areas from domain list to shadow navigation for persistence
-                // This bridges the gap between domain's List<Guid> and EF Core's ICollection<MetroArea>
-                if (entity.PreferredMetroAreaIds.Any())
-                {
-                    // Load the MetroArea entities from the database based on the domain's ID list
-                    var metroAreaEntities = await _context.Set<LankaConnect.Products.LankaEvents.Domain.MetroArea>()
-                        .Where(m => entity.PreferredMetroAreaIds.Contains(m.Id))
-                        .ToListAsync(cancellationToken);
-
-                    _repoLogger.LogDebug(
-                        "AddAsync: Loaded {MetroAreaEntityCount} metro area entities for syncing",
-                        metroAreaEntities.Count);
-
-                    // Access shadow navigation using EF Core's Entry API
-                    var metroAreasCollection = _context.Entry(entity).Collection("_preferredMetroAreaEntities");
-
-                    // Set the loaded entities into the shadow navigation
-                    // EF Core will detect this and create rows in user_preferred_metro_areas junction table
-                    metroAreasCollection.CurrentValue = metroAreaEntities;
-                }
+                // Sprint-Day 7 (2026-07-14) hotfix: legacy sync block DELETED. MetroArea is
+                // Ignored on IdentityDbContext + the shadow-nav `_preferredMetroAreaEntities`
+                // is Ignored on the User entity (see IdentityDbContext.OnModelCreating), so
+                // `_context.Set<MetroArea>()` and `_context.Entry(entity).Collection(...)`
+                // both throw here. Junction-row persistence for register moves to a raw-SQL
+                // insert in RegisterUserHandler (see UpdateUserPreferredMetroAreasCommandHandler
+                // for the write-path pattern established today).
+                _repoLogger.LogDebug(
+                    "AddAsync: Skipped shadow-nav sync — junction rows written by RegisterUserHandler raw-SQL insert. MetroAreaCount={Count}",
+                    entity.PreferredMetroAreaIds.Count);
 
                 stopwatch.Stop();
 

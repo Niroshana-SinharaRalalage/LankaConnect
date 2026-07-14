@@ -329,12 +329,30 @@ Before any smoke work can run: staging deploy must succeed. Deploy is blocked on
 
 **2 agents.**
 
+### Day 10 — Wed 2026-07-15 — PARTIAL DELIVERED 2026-07-14 (executed 1 day early) per Consult #26
+
+**STATUS: PARTIAL DELIVERED 2026-07-14** — Consult #26 ratified partial-delivery scope per Q5. Effective gate:
+- ✅ Solution builds (0 errors)
+- ✅ Wave 9 smoke 291/21/88 = 72.75% (past bible target 182 pass by 109)
+- ✅ 2/5 legacy csproj deleted (`LankaConnect.Domain`, `LankaConnect.Shared`) at commit `c016a622`
+- ✅ 1/5 `LankaConnect.Application` files relocated (`MetroAreaMappingProfile` → `LankaEvents.Application/Mapping/`) at commit `884bd3f9`
+- ✅ ArchTest baseline captured tonight: **49 Passed / 7 Failed / 2 Skipped / 58 Total** — 7 failures all Wave 6.5.f Consult-#17 LegacyPromotions reverse-edge fallout, documented for Wave 8.5.d
+- ⏸️ 4/5 Application files (IJwtTokenService, IEntraExternalIdService, GetCommunityStats query pair) → **Wave 8.5.a-refined** (layering constraint discovery: Identity.Contracts can't reference Identity.Domain for User type; Identity.Application move creates cycle with Consult #17 LegacyPromotions edge)
+- ⏸️ `LankaConnect.Infrastructure` csproj (566 files including 506 migrations) → **Wave 8.5.b** (2-3 day scope, out of sprint window)
+- ⏸️ `LankaConnect.API` → `Hosts/Host.AllInOne` rename → **Wave 8.5.c** per Consult #26 Q2 (CI-breakage risk with 5-day runway)
+- ⏸️ ENTERPRISE_ARCHITECTURE_BLUEPRINT.md §1.1 + PLATFORM_MASTER_PLAN.md CURRENT_WAVE updates: pending Day 11 (docs-only work)
+
+**Consult #26 filing**: `docs/architect-consults/2026-07-14-consult-26-day10-scope-freeze.md`
+
+**Deferred original agent layout:**
+
 | Agent | Owns |
 |---|---|
 | A | `git rm -r src/LankaConnect.Domain/`, `.Application/`, `.Infrastructure/` (after migrations folder relocation), `.Shared/`, root `LankaConnect/`. Remove from solution. Rename `src/LankaConnect.API/` → `src/Hosts/Host.AllInOne/`. |
 | B | Update `ENTERPRISE_ARCHITECTURE_BLUEPRINT.md` §1.1 — mark Phase A backend complete. Move Wave 7/8 into `PHASE_A_5_PLAN.md`. Update `PLATFORM_MASTER_PLAN.md` CURRENT_WAVE. |
 
-**Gate:** solution builds, 182/0/79 smoke on staging, 5 legacy csproj gone.
+**Original gate:** solution builds, 182/0/79 smoke on staging, 5 legacy csproj gone.
+**Executed gate (Consult #26 Q5):** solution builds, 291 pass smoke (60% above 182 target), 2/5 csproj gone + 1/5 files relocated + Wave 8.5 carryover documented + ArchTest baseline captured. Sprint success criteria met per Consult #26 ratification.
 
 **Day 10 execution reality (2026-07-14):**
 

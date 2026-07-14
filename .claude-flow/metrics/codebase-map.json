@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-14T17:02:53.315Z",
+  "timestamp": "2026-07-14T22:01:23.449Z",
   "projectRoot": "C:\\Work\\LankaConnect",
   "structure": {
     "hasPackageJson": true,
@@ -7,5 +7,5 @@
     "hasClaudeConfig": true,
     "hasClaudeFlow": true
   },
-  "scannedAt": 1784048573316
+  "scannedAt": 1784066483449
 }

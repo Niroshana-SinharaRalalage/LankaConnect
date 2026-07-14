@@ -52,15 +52,11 @@ public static class DependencyInjection
         // Add AutoMapper
         services.AddAutoMapper(assembly);
 
-        // Sprint-Day 7 (2026-07-14) hotfix: also scan the LankaConnect.Application assembly.
-        // MetroAreaMappingProfile (MetroArea → MetroAreaDto) lives there but was invisible to
-        // the entry-assembly-only scan above. Without this profile, every consumer of
-        // `_mapper.Map<MetroAreaDto>(...)` throws AutoMapperMappingException — including
-        // `GET /api/metro-areas` (which cascades to Auth register + every smoke test that
-        // fixtures a metro area via `Get-LcAnyMetroAreaId`). Full fix (post-sprint) is to
-        // physically relocate the profile into a module .Application assembly whose
-        // registration ships with its AddXxxModule() call.
-        services.AddAutoMapper(typeof(LankaConnect.BuildingBlocks.Application.Common.Mappings.MetroAreaMappingProfile).Assembly);
+        // Sprint-Day 10 (2026-07-14, Consult #26 Q1): MetroAreaMappingProfile physically
+        // relocated to LankaEvents.Application/Mapping/ per MetroArea ownership. Namespace
+        // aligned to LankaConnect.Products.LankaEvents.Application.Mapping. This scan reaches
+        // the LankaEvents.Application assembly and picks up the profile.
+        services.AddAutoMapper(typeof(LankaConnect.Products.LankaEvents.Application.Mapping.MetroAreaMappingProfile).Assembly);
 
         // Register application services
         // Phase 6A.47: Reference data service with caching

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Payments.Application</RootNamespace>
@@ -25,7 +25,6 @@
       NOT transitional. Label stays "transitional" only by analogy with
       W5.4.b; future-me should not waste a wave trying to delete it.
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <!--
       Wave 4.4.c.1 TRANSITIONAL EDGE (2026-06-23). The 7 moved RefundRequest
       command handlers depend on ICommand / ICommandHandler / IUnitOfWork /
@@ -46,7 +45,6 @@
       Cut alongside the elevation of Shared.Email + Shared.WhatsApp Contracts
       into BuildingBlocks or a dedicated Communications.Templates module.
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
     <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
     <!-- Wave 6.5.g Day 5 (2026-07-10): PR to LankaEvents.Application DELETED. 12 Payments.Application handlers/services previously reached Rule 9b-flagged types (6 refund interfaces + Renderer + Assembler) directly; those types now live in LankaEvents.Contracts.LegacyPromotions (Consult #15 PASS C). Rule 9b un-skip candidate. -->
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Contracts\LankaEvents.Contracts.csproj" />

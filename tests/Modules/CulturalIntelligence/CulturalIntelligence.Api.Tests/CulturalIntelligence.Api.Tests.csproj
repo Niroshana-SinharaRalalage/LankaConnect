@@ -25,7 +25,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Modules\CulturalIntelligence\CulturalIntelligence.Api\CulturalIntelligence.Api.csproj" />
     <ProjectReference Include="..\..\..\..\src\Modules\CulturalIntelligence\CulturalIntelligence.Infrastructure\CulturalIntelligence.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\..\src\LankaConnect.Domain\LankaConnect.Domain.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Identity.Application</RootNamespace>
@@ -17,7 +17,6 @@
       Identity.Application transitionally references LankaConnect.Domain.
       Cut at 4.6.d.2.
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <!--
       Wave 4.6.b TRANSITIONAL EDGE (2026-06-24). IIdentityCommands adapter
       depends on IPasswordHashingService (stays in LankaConnect.Application.
@@ -28,28 +27,28 @@
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
     <ProjectReference Include="..\Identity.Domain\Identity.Domain.csproj" />
     <!-- Wave 6.5.f mirror (2026-07-09 Day 4): clean-direction PR to
-         Identity.Infrastructure after the Infra→App reverse edge was found
+         Identity.Infrastructure after the Infraâ†’App reverse edge was found
          false + dropped. Enables handlers to inject IdentityDbContext directly. -->
     <ProjectReference Include="..\Identity.Infrastructure\Identity.Infrastructure.csproj" />
     <!-- Wave 6.5.c: NotificationsDbContext type reference needed by the 3 handlers
          (AdminUpgradeUser, ApproveRoleUpgrade, RejectRoleUpgrade) that call
          _unitOfWork.CommitAsync(new DbContext[] { _notificationsContext }, ct).
-         Transitional cross-module edge — inversion to integration-event pattern
+         Transitional cross-module edge â€” inversion to integration-event pattern
          (Identity publishes RoleUpgradeApproved event; Notifications subscribes)
          is a follow-up beyond Wave 6.5. -->
     <ProjectReference Include="..\..\Notifications\Notifications.Infrastructure\Notifications.Infrastructure.csproj" />
     <!-- 4C.h Day 5 (2026-07-10): IImageService promoted to Media.Contracts.LegacyPromotions
-         per Consult #15 PASS C — DeleteProfilePhoto + UploadProfilePhoto handlers consume it. -->
+         per Consult #15 PASS C â€” DeleteProfilePhoto + UploadProfilePhoto handlers consume it. -->
     <ProjectReference Include="..\..\Media\Media.Contracts\Media.Contracts.csproj" />
     <!-- 4C.h Day 5 (2026-07-10): SendEmailVerificationCommand promoted to
-         Communications.Contracts.LegacyPromotions — RegisterUserHandler dispatches it. -->
+         Communications.Contracts.LegacyPromotions â€” RegisterUserHandler dispatches it. -->
     <ProjectReference Include="..\..\Communications\Communications.Contracts\Communications.Contracts.csproj" />
     <!-- Day 4 slot C sub-slice 4C.d.xii (2026-07-08): Email + PhoneNumber VO
          stubs live in LankaEvents.Domain.ValueObjects/ContactInfoPrimitives.cs
          (transitional; post-sprint promote to SharedKernel.ContactInfo). -->
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
     <!-- 4C.h Day 5 (2026-07-10): UpdateUserPreferredMetroAreas needs LankaEventsDbContext.
-         MetroAreas (LankaEvents-owned) — cross-module DbContext injection for the
+         MetroAreas (LankaEvents-owned) â€” cross-module DbContext injection for the
          transitional shadow-navigation load per Consult #16 Option C. -->
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
   </ItemGroup>

@@ -1,13 +1,13 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Notifications.Api</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Notifications.Api</AssemblyName>
-    <Description>Notifications module — Api layer. ASP.NET Core controllers + NotificationsModule DI extension (AddNotificationsModule). Composes Domain/Application/Infrastructure + BuildingBlocks.Web cross-cutting concerns. Hosted inside Host.AllInOne in Phase A; split out to its own deployable in Phase B (per ADR-002).</Description>
+    <Description>Notifications module â€” Api layer. ASP.NET Core controllers + NotificationsModule DI extension (AddNotificationsModule). Composes Domain/Application/Infrastructure + BuildingBlocks.Web cross-cutting concerns. Hosted inside Host.AllInOne in Phase A; split out to its own deployable in Phase B (per ADR-002).</Description>
   </PropertyGroup>
 
   <!--
-    W3.1 SKELETON (2026-06-02). Empty shell — NotificationsController + NotificationsModule.AddNotificationsModule extension move in W3.6.
+    W3.1 SKELETON (2026-06-02). Empty shell â€” NotificationsController + NotificationsModule.AddNotificationsModule extension move in W3.6.
   -->
 
   <ItemGroup>
@@ -39,9 +39,8 @@
        assembly (handlers return the legacy Result type). Cut alongside the
        BuildingBlocks elevation pass that promotes Result<T> to
        BuildingBlocks.Domain. The corresponding ArchTest rule already permits
-       this edge for Notifications.Domain → LankaConnect.Domain. -->
+       this edge for Notifications.Domain â†’ LankaConnect.Domain. -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
   </ItemGroup>
 
 </Project>

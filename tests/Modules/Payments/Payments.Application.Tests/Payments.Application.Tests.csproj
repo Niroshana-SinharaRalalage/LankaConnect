@@ -30,13 +30,11 @@
     <!-- Wave 4.4.b (2026-06-23): RefundRequest + IRefundRequestRepository still live in
          LankaConnect.Domain per architect Risk #1 Option A ruling (permanently). Needed
          for Mock<IRefundRequestRepository> + RefundRequest.CreatePending() in test setup. -->
-    <ProjectReference Include="..\..\..\..\src\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <!-- Wave 4.4.c.3 (2026-06-23): the moved RefundLifecycleEmailHandlerTests +
          PaymentCompletedEventHandlerTests need LankaConnect.Application (for IFormQueries
          test fixtures + IRefundExecutionService Mock<>) + LankaConnect.Shared (Email contracts)
          + Forms.Contracts (for IFormQueries mock injection). Mirrors W5.4.c.1 test rig. -->
     <ProjectReference Include="..\..\..\..\src\LankaConnect.Application\LankaConnect.Application.csproj" />
-    <ProjectReference Include="..\..\..\..\src\LankaConnect.Shared\LankaConnect.Shared.csproj" />
     <ProjectReference Include="..\..\..\..\src\Modules\Forms\Forms.Contracts\Forms.Contracts.csproj" />
     <!-- Wave 4.4.c.3 (2026-06-23): RefundLifecycleEmailHandlerTests + PaymentCompletedEventHandlerTests
          import Forms.Domain types (EventForm, FormResponse, FormQuestion enums, FormResponseRepository

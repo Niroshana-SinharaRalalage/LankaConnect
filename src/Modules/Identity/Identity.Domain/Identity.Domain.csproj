@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Identity.Domain</RootNamespace>
@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
@@ -15,7 +14,7 @@
   <ItemGroup>
     <!-- Wave 4.7.e: UserRepository in Identity.Infrastructure calls
          internal User.SyncPreferredMetroAreaIdsFromEntities(). Same boundary
-         relationship the legacy LankaConnect.Domain → LankaConnect.Infrastructure
+         relationship the legacy LankaConnect.Domain â†’ LankaConnect.Infrastructure
          had pre-extraction. -->
     <InternalsVisibleTo Include="LankaConnect.Modules.Identity.Infrastructure" />
   </ItemGroup>

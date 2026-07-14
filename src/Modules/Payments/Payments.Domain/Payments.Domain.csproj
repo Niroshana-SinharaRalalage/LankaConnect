@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Payments.Domain</RootNamespace>
@@ -16,7 +16,6 @@
       LankaConnect.Domain edge is the PERMANENT structural compromise.
       Mirrors the W5.4.d.2 Communications.Domain -> LankaConnect.Domain edge.
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
     <!-- Sprint Day 5 Consult #13.3: same-shape mechanical additions. -->
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />

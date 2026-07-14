@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Communications.Domain</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Communications.Domain</AssemblyName>
-    <Description>Communications module — Domain layer. Aggregates, entities, value objects, domain events, repository interfaces. Per ADR-002 module boundary: depends only on BuildingBlocks.Domain; no LankaConnect.Application/Infrastructure/Modules.* references.</Description>
+    <Description>Communications module â€” Domain layer. Aggregates, entities, value objects, domain events, repository interfaces. Per ADR-002 module boundary: depends only on BuildingBlocks.Domain; no LankaConnect.Application/Infrastructure/Modules.* references.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,7 +16,6 @@
       W4.3 Forms.Domain rationale (rebase to direct BB.Entity Guid + IAuditable
       deferred to a future cross-cutting cleanup wave).
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
     <!-- Sprint Day 5 (2026-07-06) Consult #13.3: Communications.Domain consumes
          GeographicRegion/CulturalBackground/CulturalEventType/ReligiousContext/

@@ -6642,3 +6642,24 @@ Wave 6.5.f Modules-Domain cutover reached its atomic boundary. All 9 Domain proj
 
 **Sprint STOP-CONDITION check EOD Day 6:** ✅ NOT FIRED — merge landed on develop well before deadline.
 **Sprint bible §Day 6 GATE:** ⚠️ PARTIAL — compile+test+docker green; deploy red on ownership boundary; Day 7 slot A closes.
+
+---
+
+## 2026-07-10 (Sprint Day 5) — Azure cost right-sizing (LankaConnect footprint) — INFRA, not code/schema
+
+**Context:** June invoice $531 pretax; investigation showed 67% ($356) is a *separate* product (vrbook staging over-provisioned) sharing the subscription. Measured LankaConnect actual = ~$175/mo (prod $117 / of which Azure Container Apps $103, staging $56, insights $1.6). Architect reviewed + approved a LankaConnect-only downgrade plan (System Architect consult, final sign-off this session). Founder authorized executing all items now (overriding the Day-7 timing deferral).
+
+**Executed (all read-verified pre-flight, then applied):**
+1. **api-prod resource resize** — `lankaconnect-api-prod` 1.0 vCPU/2Gi → **0.5 vCPU/1Gi**, minReplicas kept at 2 (HA preserved). Justified by 7-day utilization: CPU max 0.016 vCPU (<1%), mem max 604 MiB (fits 1Gi w/ ~40% headroom). Container Apps bills *allocated* always-on replicas, not usage — hence the $103 line. Est. saving ~$37/mo.
+   - Revision: `lankaconnect-api-prod--0000047` (old, 1.0/2Gi) → `lankaconnect-api-prod--0000048` (new, 0.5/1Gi). New rev Active/100%/Healthy/2 replicas running.
+   - Smoke (S1 + health): `GET /health` → 200, `GET /api/health` → 200; revision healthState Healthy, no OOM/restart on new revision.
+   - **ROLLBACK:** `az containerapp update -n lankaconnect-api-prod -g lankaconnect-prod --cpu 1.0 --memory 2.0Gi` (or reactivate revision `--0000047`). Watch memory ~15–30 min under real traffic.
+2. **staging apps scale-to-zero** — `lankaconnect-api-staging` + `lankaconnect-ui-staging` minReplicas 1 → **0** (auto-wake on HTTP, ~15s cold start). Est. saving ~$27/mo. NOTE: may add cold-start latency to `deploy-staging.yml` smoke; warm the app (curl /health) before smoke if a false-negative appears.
+3. **Orphan Log Analytics cleanup** — deleted `lankaconnect-staging-logs` + `workspace-lankaconnectstagingXKMq` (both 0 GB ingest over 7d, unreferenced by prod env `3e91…` or staging env `oue8`/`dc92…`). Soft-delete = 14-day recoverable. Est. saving ~$5/mo.
+4. **Key Vault** — NO-OP. Both `lankaconnect-*-kv` already Standard SKU (the invoice "Key Vault Premium" line was not LankaConnect's).
+
+**No-change (already at floor):** ui-prod (right-sized, 1.18 GiB mem), prod-db + staging-db (B1ms floor; Burstable tier NOT reserved-capacity eligible so no reservation lever), both Basic ACRs, storage (LRS).
+
+**Rule 5-series / T-triggers:** N/A — infra revision only, no `src/` / migration / EF config change (architect-confirmed). Gated by prod S1 smoke above instead of Rule 5c staging-smoke.
+
+**Outcome:** LankaConnect ~$175 → ~$105–110/mo projected. Real bill fix remains vrbook (separate product, out of scope here).

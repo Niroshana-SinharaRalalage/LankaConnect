@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.CulturalIntelligence.Infrastructure</RootNamespace>
     <AssemblyName>LankaConnect.Modules.CulturalIntelligence.Infrastructure</AssemblyName>
-    <Description>CulturalIntelligence module — Infrastructure layer. Concrete StubCulturalCalendar + future Google Calendar / Hindu/Buddhist festival data adapters. Per architect W4.7 transitional ruling 2026-06-06: ICulturalCalendar interface remains in LankaConnect.Domain.Events.Services until Wave 5 Products carve-out (EventRecommendationEngine depends on it); module Infrastructure ProjectReference's legacy Domain for the contract.</Description>
+    <Description>CulturalIntelligence module â€” Infrastructure layer. Concrete StubCulturalCalendar + future Google Calendar / Hindu/Buddhist festival data adapters. Per architect W4.7 transitional ruling 2026-06-06: ICulturalCalendar interface remains in LankaConnect.Domain.Events.Services until Wave 5 Products carve-out (EventRecommendationEngine depends on it); module Infrastructure ProjectReference's legacy Domain for the contract.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,7 +17,6 @@
       carves out Events into Products/LankaEvents, the interface stays in legacy
       Domain.Events.Services and this module Infrastructure references it.
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Cultural\SharedKernel.Cultural.csproj" />
     <ProjectReference Include="..\..\Identity\Identity.Domain\Identity.Domain.csproj" />
   </ItemGroup>

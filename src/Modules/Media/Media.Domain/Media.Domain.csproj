@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Media.Domain</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Media.Domain</AssemblyName>
-    <Description>Media module — Domain layer. PhotoAlbum aggregate + AlbumPhoto + album status / media type enums + domain events. Per ADR-002: depends on BuildingBlocks.* + (transitional W4.2) LankaConnect.Domain for LegacyBaseEntity + Result.</Description>
+    <Description>Media module â€” Domain layer. PhotoAlbum aggregate + AlbumPhoto + album status / media type enums + domain events. Per ADR-002: depends on BuildingBlocks.* + (transitional W4.2) LankaConnect.Domain for LegacyBaseEntity + Result.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,11 +12,10 @@
     <!--
       W4.2 TRANSITIONAL EDGE (2026-06-06): PhotoAlbum + AlbumPhoto still extend
       LankaConnect.Domain.Common.LegacyBaseEntity and use Result<T> from the legacy
-      Domain assembly. Architect ruling 2026-06-06 accepted this pragmatic edge —
+      Domain assembly. Architect ruling 2026-06-06 accepted this pragmatic edge â€”
       the rebase to direct BB.Entity<Guid> + IAuditable (W3A pattern) is deferred
       to W4.8 Cross-cutting cleanup alongside the LegacyBaseEntity retirement.
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
 

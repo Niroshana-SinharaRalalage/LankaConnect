@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Identity.Infrastructure</RootNamespace>
@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Wave 6.5.f mirror (2026-07-09 Day 4): reverse-direction PR to Identity.Application DELETED. Identity.Infrastructure has zero usings of Identity.Application types — the reverse edge was false. Removal opens Identity.Application → Identity.Infrastructure clean-direction (matches Forms/LankaEvents/Communications). -->
+    <!-- Wave 6.5.f mirror (2026-07-09 Day 4): reverse-direction PR to Identity.Application DELETED. Identity.Infrastructure has zero usings of Identity.Application types â€” the reverse edge was false. Removal opens Identity.Application â†’ Identity.Infrastructure clean-direction (matches Forms/LankaEvents/Communications). -->
     <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
     <!--
       Wave 4.6.c.5 TRANSITIONAL EDGES (2026-06-24). The 4 moved security
@@ -22,8 +22,6 @@
     -->
     <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
     <ProjectReference Include="..\..\..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
-    <ProjectReference Include="..\..\..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
     <ProjectReference Include="..\Identity.Domain\Identity.Domain.csproj" />
     <!-- 4C.d.xiv (2026-07-08): UserRepository consumes Email VO stub that
          lives in LankaEvents.Domain.ValueObjects (transitional per 4C.a). -->

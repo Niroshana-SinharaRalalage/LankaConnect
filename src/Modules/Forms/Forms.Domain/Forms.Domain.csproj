@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Forms.Domain</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Forms.Domain</AssemblyName>
-    <Description>Forms module — Domain layer. EventForm aggregate + FormQuestion + FormResponse + FormAnswer entities + form-related enums + repository interfaces. Per ADR-002: depends on BuildingBlocks.* + (transitional W4.3) LankaConnect.Domain for LegacyBaseEntity + Result.</Description>
+    <Description>Forms module â€” Domain layer. EventForm aggregate + FormQuestion + FormResponse + FormAnswer entities + form-related enums + repository interfaces. Per ADR-002: depends on BuildingBlocks.* + (transitional W4.3) LankaConnect.Domain for LegacyBaseEntity + Result.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,10 +12,9 @@
     <!--
       W4.3 TRANSITIONAL EDGE (2026-06-06): EventForm + FormQuestion + FormResponse + FormAnswer
       still extend LankaConnect.Domain.Common.LegacyBaseEntity and use Result<T> from the legacy
-      Domain assembly. Architect ruling 2026-06-06 accepted this pragmatic edge — rebase to
+      Domain assembly. Architect ruling 2026-06-06 accepted this pragmatic edge â€” rebase to
       direct BB.Entity<Guid> + IAuditable (W3A pattern) deferred to W4.8 Cross-cutting cleanup.
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
 

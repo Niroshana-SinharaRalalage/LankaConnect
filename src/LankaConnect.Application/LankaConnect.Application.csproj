@@ -1,8 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
-    <ProjectReference Include="..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
     <!-- W3.2 (2026-06-02) — Notification + INotificationRepository moved out of legacy LankaConnect.Domain.Notifications. -->
     <ProjectReference Include="..\Modules\Notifications\Notifications.Domain\Notifications.Domain.csproj" />
     <!-- W4.2 (2026-06-06) — PhotoAlbum + AlbumPhoto + IPhotoAlbumRepository moved out of legacy LankaConnect.Domain.Events. -->

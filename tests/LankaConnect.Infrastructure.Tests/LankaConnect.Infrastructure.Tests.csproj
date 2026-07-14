@@ -33,7 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\..\src\LankaConnect.Application\LankaConnect.Application.csproj" />
     <ProjectReference Include="..\..\src\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
     <ProjectReference Include="..\LankaConnect.TestUtilities\LankaConnect.TestUtilities.csproj" />

@@ -26,6 +26,10 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
     private readonly IEventRepository _eventRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly CommunicationsDbContext _dbContext;
+    // Sprint-Day 7 (2026-07-14) hotfix: cross-module MetroArea lookups route through
+    // LankaEventsDbContext (owns MetroArea per Consult #7 Delta). Prior code hit
+    // `_dbContext.Set<MetroArea>()` on CommunicationsDbContext which doesn't model MetroArea.
+    private readonly LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext _eventsContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateNewsletterCommandHandler> _logger;
 
@@ -35,6 +39,7 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
         IEventRepository eventRepository,
         ICurrentUserService currentUserService,
         CommunicationsDbContext dbContext,
+        LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext eventsContext,
         IUnitOfWork unitOfWork,
         ILogger<CreateNewsletterCommandHandler> logger)
     {
@@ -43,6 +48,7 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
         _eventRepository = eventRepository;
         _currentUserService = currentUserService;
         _dbContext = dbContext;
+        _eventsContext = eventsContext;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -227,10 +233,8 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
 
                     try
                     {
-                        var dbContext = _dbContext as DbContext
-                            ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
-
-                        var allMetroAreaIds = await dbContext.Set<MetroArea>()
+                        // Sprint-Day 7 hotfix: MetroArea is LankaEvents-owned; route through _eventsContext.
+                        var allMetroAreaIds = await _eventsContext.MetroAreas
                             .Where(m => m.IsActive)
                             .Select(m => m.Id)
                             .ToListAsync(cancellationToken);
@@ -261,10 +265,8 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
 
                     try
                     {
-                        var dbContext = _dbContext as DbContext
-                            ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
-
-                        var allMetroAreaIds = await dbContext.Set<MetroArea>()
+                        // Sprint-Day 7 hotfix: MetroArea is LankaEvents-owned; route through _eventsContext.
+                        var allMetroAreaIds = await _eventsContext.MetroAreas
                             .Where(m => m.IsActive)
                             .Select(m => m.Id)
                             .ToListAsync(cancellationToken);

@@ -307,9 +307,21 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         // Phase 7E: Composite head-count breakdown (Total + Demographics? + TierCounts?).
         // Stored as flat JSONB string via custom converter — NOT OwnsOne(...).ToJson() (Phase 6A.130 trap).
         // Deep-copy ValueComparer protects against the Phase 6A.129 mutate-in-place snapshot trap.
+        //
+        // Sprint-Day 7 (2026-07-13) hotfix: DROPPED explicit HasColumnType("jsonb"). EF Core 8
+        // changed how `HasColumnType("jsonb") + HasConversion<string>` combine — the newer
+        // JsonConvertedValueReaderWriter positions Utf8JsonReader at the jsonb root token and
+        // calls GetString() expecting a JSON string literal. Historical rows stored the
+        // HeadCountBreakdown JSON as an *object* (writer emitted `{"total":10,...}`; Postgres
+        // parsed and stored as jsonb object). Reading fails with "Cannot get token type
+        // 'Number'/'Object' as string" → EventRepository.GetByOrganizerAsync throws → every
+        // GET /api/Events, GET /api/Events/my-events, GET /api/Events?category=* returns 400.
+        //
+        // Fix: let EF treat this as a regular string column. Npgsql handles the implicit
+        // text ↔ jsonb cast at both directions. Physical column type on the DB stays jsonb
+        // (existing rows and future writes both work). Zero migration needed.
         builder.Property(r => r.HeadCount)
             .HasColumnName("head_count")
-            .HasColumnType("jsonb")
             .HasConversion(HeadCountConverter)
             .Metadata.SetValueComparer(HeadCountComparer);
 

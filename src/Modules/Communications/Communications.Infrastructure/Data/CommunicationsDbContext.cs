@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Infrastructure.Idempotency;
 using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Configurations; // Sprint-Day 7: Newsletter+EmailGroup configs live in legacy Infrastructure (Day 10 relocation)
 using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Infrastructure.Configurations;
@@ -45,6 +46,17 @@ public sealed class CommunicationsDbContext : DbContext
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<UserEmailPreferences> UserEmailPreferences => Set<UserEmailPreferences>();
 
+    // Sprint-Day 7 (2026-07-14) hotfix: Newsletter + EmailGroup aggregates surfaced on
+    // CommunicationsDbContext to unblock the 4 Newsletter handlers that inject this
+    // context and call Set<Newsletter>()/Set<EmailGroup>()/Set<NewsletterEmailHistory>()/
+    // Set<NewsletterEmailGroupLink>()/Set<NewsletterMetroAreaLink>(). Physical tables
+    // already exist under AppDbContext (dual-mapping accepted for sprint; Consult #20
+    // Ignore sweep on AppDbContext is Day 8+ debt).
+    public DbSet<Newsletter> Newsletters => Set<Newsletter>();
+    public DbSet<NewsletterEmailHistory> NewsletterEmailHistories => Set<NewsletterEmailHistory>();
+    public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
+    public DbSet<EmailGroup> EmailGroups => Set<EmailGroup>();
+
     /// <summary>Per-module outbox table (<c>communications.outbox</c>).</summary>
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
 
@@ -65,6 +77,17 @@ public sealed class CommunicationsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new EmailMessageConfiguration());
         modelBuilder.ApplyConfiguration(new EmailTemplateConfiguration());
         modelBuilder.ApplyConfiguration(new UserEmailPreferencesConfiguration());
+
+        // Sprint-Day 7 (2026-07-14) hotfix: Newsletter + EmailGroup configs applied here so
+        // handlers injecting CommunicationsDbContext can Set<T>() on them. Configs still
+        // physically live in `src/LankaConnect.Infrastructure/Data/Configurations/` — Day 10
+        // relocation debt (Rule 5j full audit deferred to config-move commit).
+        modelBuilder.ApplyConfiguration(new NewsletterConfiguration());
+        modelBuilder.ApplyConfiguration(new NewsletterEmailGroupLinkConfiguration());
+        modelBuilder.ApplyConfiguration(new NewsletterMetroAreaLinkConfiguration());
+        modelBuilder.ApplyConfiguration(new NewsletterEmailHistoryConfiguration());
+        modelBuilder.ApplyConfiguration(new NewsletterSubscriberConfiguration());
+        modelBuilder.ApplyConfiguration(new EmailGroupConfiguration());
 
         // Per-module operational tables.
         modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());

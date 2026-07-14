@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Modules.Identity.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): IdentityDbContext
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Sprint-Day 7 hotfix: LankaEventsDbContext for MetroArea reads
 namespace LankaConnect.Modules.Identity.Application.Queries.Users.GetUserPreferredMetroAreas;
 
 /// <summary>
@@ -22,17 +23,23 @@ public class GetUserPreferredMetroAreasQueryHandler : IQueryHandler<GetUserPrefe
 {
     private readonly IUserRepository _userRepository;
     private readonly IdentityDbContext _dbContext;
+    // Sprint-Day 7 (2026-07-14) hotfix: cross-module MetroArea reads route through
+    // LankaEventsDbContext. IdentityDbContext Ignores<MetroArea> per Blueprint §7.8
+    // so shadow-nav LoadAsync throws at runtime — use scalar-list hydration instead.
+    private readonly LankaEventsDbContext _eventsContext;
     private readonly IMapper _mapper;
     private readonly ILogger<GetUserPreferredMetroAreasQueryHandler> _logger;
 
     public GetUserPreferredMetroAreasQueryHandler(
         IUserRepository userRepository,
         IdentityDbContext dbContext,
+        LankaEventsDbContext eventsContext,
         IMapper mapper,
         ILogger<GetUserPreferredMetroAreasQueryHandler> logger)
     {
         _userRepository = userRepository;
         _dbContext = dbContext;
+        _eventsContext = eventsContext;
         _mapper = mapper;
         _logger = logger;
     }
@@ -78,18 +85,18 @@ public class GetUserPreferredMetroAreasQueryHandler : IQueryHandler<GetUserPrefe
                     return Result<IReadOnlyList<MetroAreaDto>>.Failure("User not found");
                 }
 
-                // Phase 6A.9 FIX: Access shadow navigation directly using EF.Property<>
-                // The domain's _preferredMetroAreaIds collection is not synchronized on load
-                // Infrastructure layer manages shadow navigation per ADR-009
-                var efDbContext = _dbContext
-                    ;
-
-                // Load shadow navigation if not already tracked
-                var metroAreasCollection = efDbContext.Entry(user).Collection("_preferredMetroAreaEntities");
-                await metroAreasCollection.LoadAsync(cancellationToken);
-
-                var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<LankaConnect.Products.LankaEvents.Domain.MetroArea>
-                    ?? new List<LankaConnect.Products.LankaEvents.Domain.MetroArea>();
+                // Sprint-Day 7 (2026-07-14) hotfix: replaced shadow-nav LoadAsync (which throws
+                // under IdentityDbContext because MetroArea is Ignored per Blueprint §7.8) with
+                // scalar-list hydration. Read User.PreferredMetroAreaIds (populated from the
+                // junction table via UserRepository.GetByIdAsync's guarded shadow-nav load, when
+                // AppDbContext model exposes it), then fetch full MetroArea entities via
+                // LankaEventsDbContext (the owning context).
+                var preferredIds = user.PreferredMetroAreaIds?.ToList() ?? new List<Guid>();
+                var currentMetroAreas = preferredIds.Any()
+                    ? await _eventsContext.MetroAreas
+                        .Where(m => preferredIds.Contains(m.Id))
+                        .ToListAsync(cancellationToken)
+                    : new List<LankaConnect.Products.LankaEvents.Domain.MetroArea>();
 
                 // If user has no preferred metro areas, return empty list
                 if (!currentMetroAreas.Any())

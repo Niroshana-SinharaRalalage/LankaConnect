@@ -28,6 +28,9 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITypedEmailService _typedEmailService;
     private readonly CommunicationsDbContext _dbContext;
+    // Sprint-Day 7 (2026-07-14) hotfix: MetroArea is LankaEvents-owned per Consult #7 Delta;
+    // must route through LankaEventsDbContext, not CommunicationsDbContext.
+    private readonly LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext _eventsContext;
     private readonly ILogger<SubscribeToNewsletterCommandHandler> _logger;
     private readonly IConfiguration _configuration;
 
@@ -36,6 +39,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
         IUnitOfWork unitOfWork,
         ITypedEmailService typedEmailService,
         CommunicationsDbContext dbContext,
+        LankaConnect.Products.LankaEvents.Infrastructure.Data.LankaEventsDbContext eventsContext,
         ILogger<SubscribeToNewsletterCommandHandler> logger,
         IConfiguration configuration)
     {
@@ -43,6 +47,7 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
         _unitOfWork = unitOfWork;
         _typedEmailService = typedEmailService;
         _dbContext = dbContext;
+        _eventsContext = eventsContext;
         _logger = logger;
         _configuration = configuration;
     }
@@ -73,10 +78,8 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
 
             try
             {
-                var dbContext = _dbContext as DbContext
-                    ?? throw new InvalidOperationException("DbContext must be EF Core DbContext");
-
-                var allMetroAreaIds = await dbContext.Set<MetroArea>()
+                // Sprint-Day 7 hotfix: MetroArea is LankaEvents-owned; route through _eventsContext.
+                var allMetroAreaIds = await _eventsContext.MetroAreas
                     .Where(m => m.IsActive)
                     .Select(m => m.Id)
                     .ToListAsync(cancellationToken);

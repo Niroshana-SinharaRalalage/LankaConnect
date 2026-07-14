@@ -140,42 +140,35 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
                     "UpdatePreferredMetroAreas: Domain method succeeded - UserId={UserId}",
                     user.Id);
 
-                // CRITICAL FIX Phase 6A.9: Use EF Core ChangeTracker API to update shadow navigation
-                // We cannot modify shadow navigation from domain layer - must use EF Core's API
-                // This is the CORRECT way to handle many-to-many with shadow properties per ADR-009
-                // Cast to AppDbContext to access Entry() method (infrastructure layer detail)
-                var dbContext = _dbContext
-                    ;
-
+                // Sprint-Day 7 (2026-07-14) hotfix: replaced shadow-nav ChangeTracker write path
+                // (which throws under IdentityDbContext because MetroArea is Ignored per Blueprint
+                // §7.8) with direct raw-SQL junction upsert. The junction table
+                // `identity.user_preferred_metro_areas` is owned by IdentityDbContext + declared
+                // in UserConfiguration; writing to it via ExecuteSqlRaw sidesteps the shadow-nav
+                // requirement while preserving atomicity within the User update transaction.
                 _logger.LogInformation(
-                    "UpdatePreferredMetroAreas: Using EF Core ChangeTracker API to update shadow navigation - UserId={UserId}",
-                    user.Id);
+                    "UpdatePreferredMetroAreas: Rewriting junction rows via raw SQL - UserId={UserId}, NewCount={NewCount}",
+                    user.Id, metroAreaEntities.Count);
 
-                var metroAreasCollection = dbContext.Entry(user).Collection("_preferredMetroAreaEntities");
-                await metroAreasCollection.LoadAsync(cancellationToken);  // Ensure tracked
+                // Delete existing junction rows for this user.
+                await _dbContext.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM identity.user_preferred_metro_areas WHERE user_id = {0}",
+                    new object[] { user.Id },
+                    cancellationToken);
 
-                var currentMetroAreas = metroAreasCollection.CurrentValue as ICollection<LankaConnect.Products.LankaEvents.Domain.MetroArea>
-                    ?? new List<LankaConnect.Products.LankaEvents.Domain.MetroArea>();
-
-                _logger.LogInformation(
-                    "UpdatePreferredMetroAreas: Shadow navigation loaded - CurrentCount={CurrentCount}",
-                    currentMetroAreas.Count);
-
-                // Clear existing and add new entities using EF Core's tracked collection
-                currentMetroAreas.Clear();
-
+                // Insert new rows (one per requested metro area).
                 foreach (var metroArea in metroAreaEntities)
                 {
-                    currentMetroAreas.Add(metroArea);
+                    await _dbContext.Database.ExecuteSqlRawAsync(
+                        "INSERT INTO identity.user_preferred_metro_areas (user_id, metro_area_id) VALUES ({0}, {1})",
+                        new object[] { user.Id, metroArea.Id },
+                        cancellationToken);
                 }
 
-                _logger.LogInformation(
-                    "UpdatePreferredMetroAreas: Shadow navigation updated - NewCount={NewCount}",
-                    currentMetroAreas.Count);
-
-                // Save changes - EF Core now detects changes via ChangeTracker
+                // Persist the domain-side _preferredMetroAreaIds list (already updated by
+                // user.UpdatePreferredMetroAreas above) — SaveChanges dispatches domain events.
                 _userRepository.Update(user);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

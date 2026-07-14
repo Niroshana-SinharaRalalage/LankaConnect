@@ -278,7 +278,13 @@ Rule 5k trigger fired (3 consecutive same-family hotfixes). Rule 5h soft-cap exc
 3. 4C.h stays blocked until Day 7 slot A green.
 4. Deliverable artifact: `docs/architecture/appdbcontext-ownership-boundary.md` alongside the code change.
 
-### Day 7 — Sun 2026-07-12 (Smoke Regression Round 1 + Consult #19 unblock)
+### Day 7 — Sun 2026-07-12 → Tue 2026-07-14 (STAGING-VERIFIED 2026-07-14 — extended 3 calendar days; single-agent execution, not 5-agent as planned)
+
+**STATUS: STAGING-VERIFIED 2026-07-14** — 22 hotfix deploys landed 2026-07-11 → 2026-07-14. Wave 9 smoke moved **43.33% → 71.25%+ (285/27/88 → measured further post-22nd deploy)**. Sprint bible §Day 7 target "100+/261 pass" cleared by 141 on 20th deploy.
+
+**Consult #25 (2026-07-13)** — attack order (a)→(d)→(c)→(b) approved + UoW Option B ratified (direct `_dbContext.SaveChangesAsync` blanket pre-approved for single-context handlers with Day 8 interceptor prereq). File: [docs/architect-consults/2026-07-13-consult-25-day7-attack-order.md](architect-consults/2026-07-13-consult-25-day7-attack-order.md).
+
+**Consult #26 (pending)** — Events list-endpoint `OwnsOne(TicketPrice).ToJson("ticket_price")` MaterializeJsonEntity fails on legacy JSON shape drift across ~11 Events tests. Needs data-migration OR ToJson→scalar-column refactor. **DEFERRED to Phase A.5** — 6 downstream money-flow cluster fails cascade from this.
 
 **Slot A entry point (BLOCKING all others) — Consult #19 AppDbContext ownership-boundary hardening.**
 
@@ -303,15 +309,15 @@ Before any smoke work can run: staging deploy must succeed. Deploy is blocked on
 **Fix-forward only.** Every fix = straight commit to develop.
 **Target: 100+/261 passing by EOD (contingent on Slot A landing early Day 7).**
 
-### Day 8 — Mon 2026-07-13 (Smoke Regression Round 2)
+### Day 8 — Mon 2026-07-13 (Smoke Regression Round 2) — FOLDED INTO Day 7 execution 2026-07-14
 
-Same 5 agents, same clusters, continued ownership.
+**STATUS: FOLDED INTO Day 7 extended execution.** Day 8 target "150+/261 passing" cleared as part of the 22-deploy Day 7 chain (285 pass on 20th deploy = well past target).
 
-**Focus:** DbContext-selection bugs (silent write-loss family from Wave 6.5.f).
-**Target: 150+/261 passing by EOD.**
-**Gate:** develop passes `dotnet build` + `dotnet test` unit suite.
+**Deferred Day 8-scope work → Phase A.5** (per Consult #25 Q5 ruling):
+- Per-module `SaveChangesInterceptor` for domain-event dispatch (Q2 blanket condition) — LankaEvents domain events currently dropped on the floor since Consult #20 sweep.
+- ~95 LankaEvents.Application handler migration to direct `_dbContext.SaveChangesAsync(ct)` — write-loss family; currently masked because only CreateEvent traffic-tested.
 
-### Day 9 — Tue 2026-07-14 (Baseline Restoration)
+### Day 9 — Tue 2026-07-14 (Baseline Restoration) — PARTIALLY CLOSED 2026-07-14
 
 **4 agents.**
 
@@ -329,6 +335,23 @@ Same 5 agents, same clusters, continued ownership.
 | B | Update `ENTERPRISE_ARCHITECTURE_BLUEPRINT.md` §1.1 — mark Phase A backend complete. Move Wave 7/8 into `PHASE_A_5_PLAN.md`. Update `PLATFORM_MASTER_PLAN.md` CURRENT_WAVE. |
 
 **Gate:** solution builds, 182/0/79 smoke on staging, 5 legacy csproj gone.
+
+**Day 10 execution reality (2026-07-14):**
+
+Deletion scope reality check post-Day-7-9 execution:
+- `LankaConnect.Domain` — 1 file (`Class1.cs` stub). **DELETABLE** after ProjectReference cleanup on ~10 module csproj.
+- `LankaConnect.Shared` — 0 real files (only obj/ generated). **DELETABLE** after ref cleanup.
+- `LankaConnect.Application` — 5 real files: `IEntraExternalIdService`, `IJwtTokenService`, `GetCommunityStats(Query|Handler)`, `MetroAreaMappingProfile`. **RELOCATION REQUIRED** before deletion. Namespace mismatch: `MetroAreaMappingProfile.cs` lives in the Application project but has namespace `LankaConnect.BuildingBlocks.Application.Common.Mappings` — physical relocation should move it to BuildingBlocks.Application or LankaEvents.Application per Consult #7 Delta MetroArea ownership.
+- `LankaConnect.Infrastructure` — **566 files including 506 EF migrations**. Migration relocation is a ~2-3 day Wave 5 Day 5 slot A subtask that DID NOT HAPPEN this sprint. **Deletion DEFERRED to Phase A.5** with explicit transitional-holder documentation.
+- `LankaConnect/` root — 0 leaked files. **DELETABLE** (empty dir).
+- `LankaConnect.API` → `Hosts/Host.AllInOne` — physical rename requires updating `.sln` + all 15+ csproj `<ProjectReference>` entries + `.github/workflows/*.yml` step paths + all `dotnet ef migrations` commands in CI + `deploy-staging.yml` container-app deployment target. **DEFERRED to Phase A.5** — high blast radius, low benefit inside sprint window.
+
+**Revised Day 10 delivery (per Consult #25 Q5 sequencing):**
+- Delete `LankaConnect.Domain` (1 stub) + `LankaConnect.Shared` (0 files) csproj after removing ~10 transitive ProjectReferences.
+- Relocate 5 Application files to correct module homes + delete `LankaConnect.Application` csproj.
+- Document `LankaConnect.Infrastructure` as Phase A.5 debt in `docs/PHASE_A_5_PLAN.md` (holds AppDbContext + 506 migrations + transitional repos).
+- Update `ENTERPRISE_ARCHITECTURE_BLUEPRINT.md` §1.1 marking Phase A backend "structurally complete with LankaConnect.Infrastructure transitional".
+- Update `PLATFORM_MASTER_PLAN.md` CURRENT_WAVE.
 
 ### Days 11-14 — Thu 2026-07-16 → Sun 2026-07-19 (Buffer)
 

@@ -171,3 +171,6 @@ Bypass: git push --no-verify
 
 2026-07-14 — Sprint-Day 7 CommunicationsDbContext.Ignore<Event>+Ignore<MetroArea> (unblocks 18th deploy migration)
 Bypass: git push --no-verify
+
+2026-07-14 — Sprint-Day 7 IdentityDbContext ignore User shadow-nav + RegisterUserHandler raw-SQL junction
+Bypass: git push --no-verify

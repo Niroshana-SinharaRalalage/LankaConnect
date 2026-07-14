@@ -13,6 +13,8 @@ using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
+using LankaConnect.Modules.Identity.Infrastructure.Data; // Sprint-Day 7 hotfix: IdentityDbContext for raw-SQL junction insert
+using Microsoft.EntityFrameworkCore; // Sprint-Day 7 hotfix: ExecuteSqlRawAsync
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 
 public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<RegisterUserResponse>>
@@ -20,6 +22,10 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
     private readonly LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository _userRepository;
     private readonly IPasswordHashingService _passwordHashingService;
     private readonly LankaConnect.BuildingBlocks.Domain.IUnitOfWork _unitOfWork;
+    // Sprint-Day 7 (2026-07-14) hotfix: needed for raw-SQL junction insert to
+    // identity.user_preferred_metro_areas since the shadow-nav is Ignored on IdentityDbContext
+    // (see UpdateUserPreferredMetroAreasCommandHandler for the write-path pattern established today).
+    private readonly IdentityDbContext _identityDbContext;
     private readonly ILogger<RegisterUserHandler> _logger;
     private readonly IMediator _mediator;
     private readonly IUserWhatsAppPreferencesRepository _whatsAppPreferencesRepository;
@@ -28,6 +34,7 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
         IUserRepository userRepository,
         IPasswordHashingService passwordHashingService,
         LankaConnect.BuildingBlocks.Domain.IUnitOfWork unitOfWork,
+        IdentityDbContext identityDbContext,
         ILogger<RegisterUserHandler> logger,
         IMediator mediator,
         IUserWhatsAppPreferencesRepository whatsAppPreferencesRepository)
@@ -35,6 +42,7 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
         _userRepository = userRepository;
         _passwordHashingService = passwordHashingService;
         _unitOfWork = unitOfWork;
+        _identityDbContext = identityDbContext;
         _logger = logger;
         _mediator = mediator;
         _whatsAppPreferencesRepository = whatsAppPreferencesRepository;
@@ -217,6 +225,24 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
                     // When CommitAsync() is called, it dispatches MemberVerificationRequestedEvent
                     // which triggers MemberVerificationRequestedEventHandler to send the email
                     await _unitOfWork.CommitAsync(cancellationToken);
+
+                    // Sprint-Day 7 (2026-07-14) hotfix: persist user_preferred_metro_areas junction
+                    // rows via raw SQL. IdentityDbContext Ignores<MetroArea> + Ignores the shadow
+                    // nav on User, so EF's Add(user) doesn't insert the junction automatically.
+                    // Same pattern as UpdateUserPreferredMetroAreasCommandHandler landed today.
+                    if (request.PreferredMetroAreaIds != null && request.PreferredMetroAreaIds.Count > 0)
+                    {
+                        foreach (var metroAreaId in request.PreferredMetroAreaIds)
+                        {
+                            await _identityDbContext.Database.ExecuteSqlRawAsync(
+                                "INSERT INTO identity.user_preferred_metro_areas (user_id, metro_area_id) VALUES ({0}, {1}) ON CONFLICT DO NOTHING",
+                                new object[] { user.Id, metroAreaId },
+                                cancellationToken);
+                        }
+                        _logger.LogInformation(
+                            "RegisterUser: junction rows inserted - UserId={UserId}, Count={Count}",
+                            user.Id, request.PreferredMetroAreaIds.Count);
+                    }
 
                     stopwatch.Stop();
 

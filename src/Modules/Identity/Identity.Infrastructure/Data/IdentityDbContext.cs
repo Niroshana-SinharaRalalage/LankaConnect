@@ -73,6 +73,17 @@ public sealed class IdentityDbContext : DbContext
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(IdentityDbContext).Assembly);
 
+        // Sprint-Day 7 (2026-07-14) hotfix: UserConfiguration declares HasMany<MetroArea>("_preferredMetroAreaEntities")
+        // to create the junction navigation. Under IdentityDbContext (which Ignore<MetroArea>()s below),
+        // the shadow-nav is still registered but its target is gone → `_dbSet.AddAsync(user)` on a NEW user
+        // throws "Cannot create a DbSet for 'MetroArea' because this type is not included in the model".
+        // Blocked POST /api/Auth/register + downstream 7 AdminUsers throwaway-user creation.
+        // Fix: explicitly Ignore the shadow nav here. Persistence of user_preferred_metro_areas rows
+        // for register moves to a raw-SQL insert in RegisterUserHandler (same pattern as
+        // UpdateUserPreferredMetroAreasCommandHandler landed today).
+        modelBuilder.Entity<LankaConnect.Modules.Identity.Domain.Entities.User>()
+            .Ignore("_preferredMetroAreaEntities");
+
         // Module-owned operational tables. Rule 5i.2: shared BuildingBlocks configs
         // (OutboxMessageConfiguration, DeadLetterMessageConfiguration,
         // IdempotencyKeyConfiguration) use single-arg .ToTable(name); owning

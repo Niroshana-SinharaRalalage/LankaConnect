@@ -168,3 +168,6 @@ Bypass: git push --no-verify
 
 2026-07-14 — Sprint-Day 7 Currency JsonConverter (Consult #25 attack c)
 Bypass: git push --no-verify
+
+2026-07-14 — Sprint-Day 7 CommunicationsDbContext.Ignore<Event>+Ignore<MetroArea> (unblocks 18th deploy migration)
+Bypass: git push --no-verify

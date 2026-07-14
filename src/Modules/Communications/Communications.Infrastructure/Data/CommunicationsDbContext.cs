@@ -104,6 +104,19 @@ public sealed class CommunicationsDbContext : DbContext
         modelBuilder.Ignore<LankaConnect.Modules.Identity.Domain.Entities.User>();
         modelBuilder.Ignore<LankaConnect.Modules.Identity.Domain.ValueObjects.RefreshToken>();
 
+        // Sprint-Day 7 (2026-07-14) hotfix batch: NewsletterConfiguration line 157 also
+        // declares `HasOne<Event>()` to establish the nullable event_id FK. When the
+        // Newsletter aggregate was registered here (this same commit, above), EF Core 8
+        // pulled Event into the model and failed to bind EventDescription VO ctor. Same
+        // shape as the User+RefreshToken Ignore above. Event is LankaEvents-owned per
+        // Consult #7 Delta; keep the FK column scalar and route cross-module reads via
+        // IEventQueries per Blueprint §7.8.
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.Event>();
+        // MetroArea is only referenced via NewsletterMetroAreaLink (junction CLR entity)
+        // whose FK is scalar Guid — Ignore MetroArea so the junction-nav-to-MetroArea
+        // walk doesn't cascade into MetroArea's own VO graph.
+        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.MetroArea>();
+
         base.OnModelCreating(modelBuilder);
     }
 }

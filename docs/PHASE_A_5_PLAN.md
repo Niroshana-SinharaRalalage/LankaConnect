@@ -151,7 +151,45 @@ Businesses aggregate was DELETED at Wave 6.5 per Consult #12 Option D (LankaBusi
 
 Wave 9 smoke reports 1 PhotoAlbums fail (`albums :: create album` POST 400) but body not captured in report. Patch smoke to log `$r.Body` on 400 responses, re-run to reveal specific error, then fix. Low priority.
 
+## Phase B Kick-Off Ruling (Consult #27 Q5, 2026-07-15)
+
+**Phase B (6 upcoming product modules — LankaTemples / LankaBusiness / LankaHomes / LankaMart / LankaSeyla / LankaNivasa) is UNBLOCKED for scaffolding immediately** upon Phase A close (2026-07-15). Full new-product Domain / Application work is gated per below.
+
+**GREEN — start immediately per module:**
+- `Products/<ProductName>/{Product}.Domain/` — csproj shell + `AssemblyMarker.cs` + empty aggregate placeholders
+- `Products/<ProductName>/{Product}.Application/` — csproj shell + `AssemblyMarker.cs`
+- `Products/<ProductName>/{Product}.Infrastructure/` — csproj shell + `AssemblyMarker.cs` + module DbContext skeleton with empty `OnModelCreating`
+- `Products/<ProductName>/{Product}.Contracts/` — csproj shell
+- `Products/<ProductName>/{Product}.Api/` — csproj shell + minimal controller returning HTTP 501 Not Implemented
+- ArchTest rule additions in `tests/architecture/LankaConnect.ArchitectureTests/LayeringRules.cs` for the new module boundaries (same pattern as existing Modules_* rules)
+- Solution + csproj ProjectReference wiring
+- Feature-flag entries in `docs/feature-flags.md` for the new products' rollout
+
+**RED — blocked until specific Wave 8.5 items land:**
+
+| Phase B work | Blocked on |
+|---|---|
+| Any handler using multi-context UoW (write across product boundaries) | **Wave 8.5.f** (per-module SaveChangesInterceptor) + **Wave 8.5.h** (shared-connection MultiContextUoW) |
+| Any handler with JSON-column value objects | **Wave 8.5.j** (ToJson data-drift resolution + ADR standardization on ToJson vs scalar-columns) |
+| Copy-paste patterning from `LankaConnect.Infrastructure/` (repos, services) | **Wave 8.5.b** (566-file dismantle) so new modules don't inherit dead transitional code |
+| Cross-product read via legacy Application interfaces | **Wave 8.5.a-refined** (User → Guid API reshape) — apply same discipline to any Phase-B interface with cross-module Domain type |
+
+**Gate phrase for founder briefings:**
+> Phase B scaffolding starts immediately; the first cross-module write handler lands only after Wave 8.5.f + 8.5.h close.
+
+**Priority order for Wave 8.5 to unblock Phase B fastest:**
+1. **8.5.f** (~4 hrs) + **8.5.h** (~2-3 days) — unblock cross-module writes. Highest-leverage.
+2. **8.5.b** (~2-3 days) — unblock clean-slate copy-paste patterns.
+3. **8.5.j** (~1-2 days) — unblock JSON-VO handlers.
+4. **8.5.a-refined + 8.5.c + 8.5.d + 8.5.e + 8.5.g + 8.5.i + 8.5.k + 8.5.l** — parallelizable cleanup.
+
+Product-order for Phase B module launches (recommended):
+1. LankaTemples (Consult #7 Delta identified as simplest — read-heavy directory + calendar)
+2. LankaBusiness (previously deleted; re-surface per Consult #12 Option D)
+3. LankaHomes / LankaMart / LankaSeyla / LankaNivasa — parallelizable per available capacity
+
 ## Change Log
 
 - 2026-07-04: Created as part of sprint Day 1 doc surgery (pulled forward to Day 0.5).
 - 2026-07-14: Wave 8.5 section added — captures all sprint-deferred debt (Days 4-10 discovery). 12 items 8.5.a through 8.5.l covering ~2-3 weeks of Phase A.5 work.
+- 2026-07-15: Phase B Kick-Off Ruling section added per Consult #27 Q5. Scaffolding UNBLOCKED with named gates for cross-write / JSON-VO / copy-paste / cross-module-read work. Phase A CLOSED at head `f3033074` tag `phase-a-close`. Phase A.5 kicks off 2026-07-20.

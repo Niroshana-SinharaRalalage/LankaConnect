@@ -390,7 +390,8 @@
       "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=cleveland-test\" -w \"  HTTP=%{http_code}\\\\n\")",
       "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=events\" -w \"  HTTP=%{http_code}\\\\n\")",
       "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/by-slug/no-such-slug\" -w \"  HTTP=%{http_code}\\\\n\")",
-      "Bash(awk 'NR>=18 && NR<=60' docs/PROGRESS_TRACKER.md)"
+      "Bash(awk 'NR>=18 && NR<=60' docs/PROGRESS_TRACKER.md)",
+      "Bash(git -C \"c:/Work/LankaConnect\" log --oneline -15)"
     ],
     "deny": [
       "Bash(rm -rf /)",

@@ -371,15 +371,16 @@ Deletion scope reality check post-Day-7-9 execution:
 - Update `ENTERPRISE_ARCHITECTURE_BLUEPRINT.md` §1.1 marking Phase A backend "structurally complete with LankaConnect.Infrastructure transitional".
 - Update `PLATFORM_MASTER_PLAN.md` CURRENT_WAVE.
 
-### Days 11-14 — Thu 2026-07-16 → Sun 2026-07-19 (Buffer)
+### Days 11-14 — Thu 2026-07-16 → Sun 2026-07-19 (Buffer) — COMPRESSED 2026-07-14 EOD
 
-Likely consumption:
-- Day 11: 24h staging soak regressions (~6h)
-- Day 12: 4 Skip-facts couldn't retire Day 9 due to hidden deps (~8h)
-- Day 13: Migration history edge cases in prod-shaped test databases (~8h)
-- Day 14: **Founder UAT + final sign-off**
+**Executed early on 2026-07-14 (calendar Day 9) per founder speed directive:**
 
-**If buffer not consumed: SHIP. Do not invent work.**
+- **Day 11 — SKIPPED per founder directive.** Wave 8.5.j data migration (Consult #26 Q3 Option i, ~4hr, would clear 17 tests) DEFERRED to Phase A.5 Wave 8.5.j.
+- **Day 12 — CLOSED at commit `5448b618` (2026-07-14).** ArchTest Skip-fact retirement pass. Baseline: **49 Passed / 0 Failed / 9 Skipped / 58 Total**. 7 previously-failing tests marked as Wave 8.5.d transitional (LegacyPromotions cycle-break debt); 2 pre-existing skips refreshed with Wave 8.5.a-refined + 8.5.b references. Zero CI-blocking failures.
+- **Day 13 — CLOSED at commit `5448b618` (2026-07-14).** Migration history audit: all 7 DbContexts (AppDbContext + Notifications/Media/Forms/LankaEvents/Identity/Communications) report "No migrations were applied. The database is already up to date" on the latest staging deploy. Zero migration drift after 24-deploy churn. No remediation needed.
+- **Day 14 — Sun 2026-07-19: Founder UAT + final sign-off.** Sprint deliverables consolidated: Wave 9 smoke 291/21/88 (72.75% pass rate); ArchTest 49/0/9 (zero fail); 2/5 legacy csproj deleted + 1/5 files relocated + 12-item Wave 8.5 debt catalog filed. Phase A backend structural refactor DELIVERED per §Scope Ratified.
+
+**Buffer NOT consumed.** Per sprint bible: SHIP. Do not invent work.
 
 ---
 

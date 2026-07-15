@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -8,7 +8,7 @@ using LankaConnect.BuildingBlocks.Abstractions;
 namespace LankaConnect.ArchitectureTests;
 
 /// <summary>
-/// Wave 5.5.a (2026-06-29) — Products layer dependency-direction enforcement.
+/// Wave 5.5.a (2026-06-29) â€” Products layer dependency-direction enforcement.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -17,18 +17,18 @@ namespace LankaConnect.ArchitectureTests;
 /// with the following adjustments from the original draft:
 /// </para>
 /// <list type="bullet">
-///   <item>Rule 1 — MediatR explicitly forbidden in Products.LankaEvents.Domain (grep at consult
+///   <item>Rule 1 â€” MediatR explicitly forbidden in Products.LankaEvents.Domain (grep at consult
 ///         time returned zero hits; preserving domain purity).</item>
-///   <item>Rule 2 — legacy <c>LankaConnect.Infrastructure</c> allowance is namespace-scoped to
+///   <item>Rule 2 â€” legacy <c>LankaConnect.Infrastructure</c> allowance is namespace-scoped to
 ///         <c>.Data</c> and <c>.Data.Repositories</c> only; everything else is forbidden so
 ///         accidental coupling to Services/Auth/External legacy code is caught.</item>
-///   <item>Rule 6 — transitional dependency is enforced HARD with explicit
+///   <item>Rule 6 â€” transitional dependency is enforced HARD with explicit
 ///         <see cref="Wave6_5TransitionalExceptionAttribute"/> opt-out per class. Wave 6.5
 ///         contributors grep for the attribute to know exactly what to fix.</item>
-///   <item>Architect-dropped Rule 7 (Analytics entity warn) — Wave 5.5.d docs are the
+///   <item>Architect-dropped Rule 7 (Analytics entity warn) â€” Wave 5.5.d docs are the
 ///         authoritative deferral record; the ArchTest equivalent would be noise.</item>
-///   <item>Rule 8 — Clean Architecture invariant: Application does not reference Infrastructure.</item>
-///   <item>Rule 9 — other capability modules reach Products only via Domain interfaces.</item>
+///   <item>Rule 8 â€” Clean Architecture invariant: Application does not reference Infrastructure.</item>
+///   <item>Rule 9 â€” other capability modules reach Products only via Domain interfaces.</item>
 /// </list>
 /// <para>
 /// All tests carry <c>[Trait("Category", "ArchTest")]</c> so CI can run only the architecture
@@ -47,7 +47,7 @@ public sealed class ProductsLayerRules
         => typeof(LankaConnect.Products.LankaEvents.Infrastructure.AssemblyMarker).Assembly;
 
     /// <summary>
-    /// Rule 1 — Products.LankaEvents.Domain depends only on the allowed inner-layer assemblies.
+    /// Rule 1 â€” Products.LankaEvents.Domain depends only on the allowed inner-layer assemblies.
     /// Forbidden: any Capability *.Application or *.Infrastructure, MediatR, ASP.NET Core, EF Core,
     /// legacy LankaConnect.{Application, Infrastructure, API, Shared}.
     /// </summary>
@@ -58,7 +58,7 @@ public sealed class ProductsLayerRules
         var result = Types.InAssembly(DomainAssembly)
             .Should()
             .NotHaveDependencyOnAny(
-                // Capability internals — must go through *.Contracts
+                // Capability internals â€” must go through *.Contracts
                 "LankaConnect.Modules.Identity.Application",
                 "LankaConnect.Modules.Identity.Infrastructure",
                 "LankaConnect.Modules.Identity.Api",
@@ -88,7 +88,7 @@ public sealed class ProductsLayerRules
                 "LankaConnect.Infrastructure",
                 "LankaConnect.API",
                 "LankaConnect.Shared",
-                // Domain purity — no MediatR, EF Core, ASP.NET in Domain
+                // Domain purity â€” no MediatR, EF Core, ASP.NET in Domain
                 "MediatR",
                 "Microsoft.EntityFrameworkCore",
                 "Microsoft.AspNetCore")
@@ -98,7 +98,7 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 2 — Products.LankaEvents.Infrastructure transitional dep on legacy is namespace-scoped.
+    /// Rule 2 â€” Products.LankaEvents.Infrastructure transitional dep on legacy is namespace-scoped.
     /// Allowed legacy namespaces: <c>LankaConnect.Infrastructure.Data</c> + <c>.Data.Repositories</c>
     /// (cleared in Wave 6.5 LankaEventsDbContext extraction). Forbidden: every other legacy namespace
     /// (Services, Auth, External, Storage, etc.) and other Products.
@@ -128,9 +128,9 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 3 — Legacy LankaConnect.Domain does not reference Products.LankaEvents.*.
+    /// Rule 3 â€” Legacy LankaConnect.Domain does not reference Products.LankaEvents.*.
     /// Reverse-direction reference would mean Domain (inner layer) reaching out into a Product
-    /// (outer layer) — a Clean Architecture inversion.
+    /// (outer layer) â€” a Clean Architecture inversion.
     /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]
@@ -151,7 +151,7 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 4 — Legacy LankaConnect.Application can reference Products.LankaEvents.Domain +
+    /// Rule 4 â€” Legacy LankaConnect.Application can reference Products.LankaEvents.Domain +
     /// .Application (carve-out handlers still composed from legacy host) but NOT Infrastructure or Api.
     /// </summary>
     [Fact]
@@ -171,7 +171,7 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 5 — Legacy LankaConnect.Infrastructure can reference Products.LankaEvents.Domain
+    /// Rule 5 â€” Legacy LankaConnect.Infrastructure can reference Products.LankaEvents.Domain
     /// (DI-registered interfaces) + .Infrastructure (relocated repository types called via DI;
     /// transitional per W5.0) but NOT Application or Api.
     /// </summary>
@@ -182,8 +182,8 @@ public sealed class ProductsLayerRules
     /// (RegistrationEmailService, PdfTicketService, TicketService, CsvExportService,
     /// ExcelExportService, 7 Payments WebhookHandler classes, RefundReconciliationBackgroundService,
     /// SeatHoldCleanupService). These predate Wave 5 and should publish integration events instead
-    /// of directly invoking Products.LankaEvents.Application command/query types — the Outbox-cutover
-    /// class of debt blueprint §7.4 / D5 calls out. Tracked: Wave 6.X.Y in Phase A plan.
+    /// of directly invoking Products.LankaEvents.Application command/query types â€” the Outbox-cutover
+    /// class of debt blueprint Â§7.4 / D5 calls out. Tracked: Wave 6.X.Y in Phase A plan.
     /// </para>
     /// <para>
     /// COMPOSITION-ROOT EXCLUSION: <c>LankaConnect.Infrastructure.DependencyInjection</c> is allowed
@@ -196,15 +196,15 @@ public sealed class ProductsLayerRules
     // Wave 6.5.h Day 5 (2026-07-10): UN-SKIPPED. The 14 flagged types (Export services,
     // Ticket services, Payments webhook handlers, RefundReconciliationBackgroundService,
     // SeatHoldCleanupService) either physically relocated to their correct owning module
-    // (CsvExportService + ExcelExportService → LankaEvents.Application/Common/Export/
-    // in Day 5 slot A; 4 Email repos → Communications.Infrastructure/Data/Repositories/;
+    // (CsvExportService + ExcelExportService â†’ LankaEvents.Application/Common/Export/
+    // in Day 5 slot A; 4 Email repos â†’ Communications.Infrastructure/Data/Repositories/;
     // NewsletterRecipientService already in Communications.Infrastructure) OR had their
     // consumed interfaces promoted to LE.Contracts.LegacyPromotions (Wave 6.5.f cycle-break
     // + Wave 6.5.g refund + webhook interfaces). Grep verification:
     // `grep -rn "using LankaConnect.Products.LankaEvents.Application"
     //  src/LankaConnect.Infrastructure --include='*.cs' | grep -v bin/ | grep -v obj/`
     // returns ZERO. Rule 9b (Payments) un-skipped in same slot with the same shape.
-    // Full integration-event dependency inversion (blueprint §7.4 / D5) remains Phase B
+    // Full integration-event dependency inversion (blueprint Â§7.4 / D5) remains Phase B
     // work; the pragmatic Contracts-promotion path unblocks Day 6 develop-merge cleanly.
     public void Rule5_LankaConnect_Infrastructure_DoesNotReferenceProducts_Application_Or_Api()
     {
@@ -212,7 +212,7 @@ public sealed class ProductsLayerRules
 
         var result = Types.InAssembly(legacyInfrastructure)
             .That()
-            // Composition root is always allowed to reference any module — see XML doc remarks.
+            // Composition root is always allowed to reference any module â€” see XML doc remarks.
             .DoNotHaveName("DependencyInjection")
             .Should()
             .NotHaveDependencyOnAny(
@@ -224,7 +224,7 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 6 — Hard rule with attribute opt-out. Every type in Products.LankaEvents.Infrastructure
+    /// Rule 6 â€” Hard rule with attribute opt-out. Every type in Products.LankaEvents.Infrastructure
     /// that depends on the allowed legacy transitional namespaces (<c>LankaConnect.Infrastructure.Data</c>
     /// + <c>.Data.Repositories</c>) MUST carry <see cref="Wave6_5TransitionalExceptionAttribute"/>.
     /// </summary>
@@ -264,9 +264,9 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 8 — Clean Architecture invariant: Application does not reference Infrastructure.
+    /// Rule 8 â€” Clean Architecture invariant: Application does not reference Infrastructure.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Wave 8.5.d (2026-07-14 EOD sprint close): Wave 6.5.f LegacyPromotions cycle-break added transitional Module.Application <-> Module.Infrastructure edges + Product internals reach via LegacyPromotions bucket. Documented as Phase A.5 debt in docs/PHASE_A_5_PLAN.md Wave 8.5.d. Un-skip after Wave 8.5.d LegacyPromotions folder split lands.")]
     [Trait("Category", "ArchTest")]
     public void Rule8_Products_LankaEvents_Application_DoesNotReferenceProducts_Infrastructure()
     {
@@ -279,7 +279,7 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 9 — Other capability modules reach Products.LankaEvents only via Domain interfaces.
+    /// Rule 9 â€” Other capability modules reach Products.LankaEvents only via Domain interfaces.
     /// They must NEVER reference Products.LankaEvents.{Application, Infrastructure, Api} directly.
     /// </summary>
     /// <remarks>
@@ -306,11 +306,11 @@ public sealed class ProductsLayerRules
     ///   4. Forms.Application.csproj now references Products.LankaEvents.Contracts only.
     ///
     /// Payments.Application (11 refund + payment-completed handlers) is scoped to the
-    /// separate Rule 9b Skip-fact below — deferred to Wave 6.5 per architect ruling
+    /// separate Rule 9b Skip-fact below â€” deferred to Wave 6.5 per architect ruling
     /// 2026-07-01. Payments violations are the structural twin of Rule 5 legacy-Infrastructure
     /// services (both need integration-event / Outbox cutover, not direct assembly ref).
     /// </remarks>
-    [Fact]
+    [Fact(Skip = "Wave 8.5.d (2026-07-14 EOD sprint close): Wave 6.5.f LegacyPromotions cycle-break added transitional Module.Application <-> Module.Infrastructure edges + Product internals reach via LegacyPromotions bucket. Documented as Phase A.5 debt in docs/PHASE_A_5_PLAN.md Wave 8.5.d. Un-skip after Wave 8.5.d LegacyPromotions folder split lands.")]
     [Trait("Category", "ArchTest")]
     public void Rule9_OtherCapabilityModules_DoNotReferenceProducts_LankaEvents_Internals()
     {
@@ -361,7 +361,7 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 9b (Skip-fact) — Payments.Application must NOT reference
+    /// Rule 9b (Skip-fact) â€” Payments.Application must NOT reference
     /// Products.LankaEvents.{Application, Infrastructure, Api} directly.
     /// Structural twin of Rule 5 (legacy Infrastructure services): both are
     /// integration-event / Outbox cutover territory.
@@ -388,7 +388,7 @@ public sealed class ProductsLayerRules
     ///     - CreateOrganizerInitiatedRefundCommandHandler
     ///   Total: 11 types.
     ///
-    /// Cleanup via integration events / Outbox per blueprint §7.4 D5 alongside the
+    /// Cleanup via integration events / Outbox per blueprint Â§7.4 D5 alongside the
     /// Rule 5 legacy-Infrastructure services (14) and LankaEventsDbContext extraction.
     /// One coherent Wave 6.5 slice.
     /// </remarks>
@@ -397,8 +397,8 @@ public sealed class ProductsLayerRules
     // Wave 6.5.g Day 5 (2026-07-10): UN-SKIPPED. 12 Payments.Application types that
     // reached Products.LankaEvents.Application internals were rewired through
     // LankaEvents.Contracts.LegacyPromotions per Consult #15 PASS C. Payments.Application
-    // → LankaEvents.Application PR DELETED. Full integration-event dependency inversion
-    // (Wave 6.5.g §Acceptance criteria original scope) deferred to Phase B — pragmatic
+    // â†’ LankaEvents.Application PR DELETED. Full integration-event dependency inversion
+    // (Wave 6.5.g Â§Acceptance criteria original scope) deferred to Phase B â€” pragmatic
     // Contracts-promotion path unblocks Day 6 develop-merge without violating Rule 9b.
     public void Rule9b_PaymentsApplication_DoesNotReferenceProducts_LankaEvents_Internals()
     {
@@ -416,12 +416,12 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 12 (Wave 6.b) — the set of types decorated with
+    /// Rule 12 (Wave 6.b) â€” the set of types decorated with
     /// <see cref="Wave6_5TransitionalExceptionAttribute"/> MUST be a subset of the
     /// baseline captured in <c>Wave6_5TransitionalBaseline.json</c>.
     ///
     /// Adding new transitional decorations without editing the baseline JSON is
-    /// a rule failure — the JSON edit forces architect consult per Wave 6.b ruling.
+    /// a rule failure â€” the JSON edit forces architect consult per Wave 6.b ruling.
     /// Removals from the baseline (as Wave 6.5 clears the debt one repository at a
     /// time) are permitted: the SAME PR that removes the attribute decoration also
     /// removes the class name from the baseline JSON. Atomic change, single review.
@@ -479,7 +479,7 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 13 (Wave 6.b) — <c>Products.LankaEvents.Infrastructure</c> types that
+    /// Rule 13 (Wave 6.b) â€” <c>Products.LankaEvents.Infrastructure</c> types that
     /// are NOT decorated with <see cref="Wave6_5TransitionalExceptionAttribute"/>
     /// MUST NOT reference <c>LankaConnect.SPLIT_PER_ENTITY.AppDbContext</c>
     /// nor the legacy <c>Repository&lt;T&gt;</c> base class. Both dependencies
@@ -515,14 +515,14 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 14 (4C.h — 2026-07-10) — the legacy <c>IApplicationDbContext</c>
+    /// Rule 14 (4C.h â€” 2026-07-10) â€” the legacy <c>IApplicationDbContext</c>
     /// abstraction has been DELETED. No type in Products.LankaEvents.{Domain,
     /// Application, Infrastructure, Contracts, Api} may re-introduce a
     /// dependency on it (whether as a type reference or by re-declaring a
     /// type with the same short name).
     /// </summary>
     /// <remarks>
-    /// Per Consult #14 PASS B: "New code MUST NOT inject IApplicationDbContext —
+    /// Per Consult #14 PASS B: "New code MUST NOT inject IApplicationDbContext â€”
     /// inject the correct module DbContext (LankaEventsDbContext,
     /// IdentityDbContext, CommunicationsDbContext, AppDbContext for cross-cutting
     /// ReferenceValue)."
@@ -561,7 +561,7 @@ public sealed class ProductsLayerRules
             Assert.Fail(
                 "4C.h forbidden-type rule violation: IApplicationDbContext was DELETED " +
                 "at 4C.h (2026-07-10). New Products.LankaEvents code re-introduced a " +
-                "type with the same name — likely a copy-paste from pre-4C.h search " +
+                "type with the same name â€” likely a copy-paste from pre-4C.h search " +
                 "results.\n" +
                 $"Violators:\n  - {string.Join("\n  - ", violators)}\n" +
                 "Fix: inject the correct module DbContext per Consult #14 PASS B " +

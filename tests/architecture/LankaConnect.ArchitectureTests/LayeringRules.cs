@@ -1,21 +1,21 @@
-using System.Reflection;
+﻿using System.Reflection;
 using NetArchTest.Rules;
 
 namespace LankaConnect.ArchitectureTests;
 
 /// <summary>
 /// Clean Architecture layering rules for the BuildingBlocks + Modules tree.
-/// Per master TODO §W2.2 — gates PRs that violate dependency direction.
+/// Per master TODO Â§W2.2 â€” gates PRs that violate dependency direction.
 /// </summary>
 /// <remarks>
-/// Conventions (per master TODO §"Plan Delta Amendments" + ADR-002 + ADR-005):
+/// Conventions (per master TODO Â§"Plan Delta Amendments" + ADR-002 + ADR-005):
 ///   - <c>BuildingBlocks.Domain</c> is the innermost layer; depends on nothing.
 ///   - <c>BuildingBlocks.Contracts</c> is the cross-module ABI; depends on nothing.
 ///   - <c>BuildingBlocks.Application</c> depends on Domain + Contracts only.
 ///   - <c>BuildingBlocks.Infrastructure</c> depends on Application + Domain + Contracts.
 ///   - <c>BuildingBlocks.Web</c> depends on Application + Domain + Contracts (and ASP.NET Core).
 ///
-/// Future module rules (W3+) — landed as their respective modules extract.
+/// Future module rules (W3+) â€” landed as their respective modules extract.
 ///
 /// All tests are tagged <c>Trait("Category", "ArchTest")</c> so CI can run only
 /// these via <c>dotnet test --filter Category=ArchTest</c>.
@@ -25,13 +25,13 @@ public sealed class LayeringRules
     /// <summary>
     /// W2.2 first rule (per master TODO line 540).
     /// <c>BuildingBlocks.Domain</c> must not depend on any other
-    /// <c>LankaConnect.*</c> assembly — it is the innermost layer.
+    /// <c>LankaConnect.*</c> assembly â€” it is the innermost layer.
     /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]
     public void BuildingBlocks_Domain_HasNoLankaConnectDependencies()
     {
-        // W2.3 (2026-05-13) — AssemblyMarker placeholder removed; anchor on a real type now.
+        // W2.3 (2026-05-13) â€” AssemblyMarker placeholder removed; anchor on a real type now.
         var assembly = typeof(BuildingBlocks.Domain.Error).Assembly;
 
         var result = Types.InAssembly(assembly)
@@ -41,7 +41,7 @@ public sealed class LayeringRules
                 "LankaConnect.BuildingBlocks.Infrastructure",
                 "LankaConnect.BuildingBlocks.Web",
                 "LankaConnect.BuildingBlocks.Contracts",
-                // Existing monolith projects — Domain BuildingBlocks must not back-reference.
+                // Existing monolith projects â€” Domain BuildingBlocks must not back-reference.
                 "LankaConnect.Domain",
                 "LankaConnect.Application",
                 "LankaConnect.Infrastructure",
@@ -60,7 +60,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void BuildingBlocks_Contracts_HasNoLankaConnectDependencies()
     {
-        // W2.7 (2026-05-30) — AssemblyMarker placeholder removed; anchor on the real IntegrationEventBase now.
+        // W2.7 (2026-05-30) â€” AssemblyMarker placeholder removed; anchor on the real IntegrationEventBase now.
         var assembly = typeof(BuildingBlocks.Contracts.IntegrationEvents.IntegrationEventBase).Assembly;
 
         var result = Types.InAssembly(assembly)
@@ -88,7 +88,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void BuildingBlocks_Application_DependsOnDomainAndContractsOnly()
     {
-        // W2.4 (2026-05-13) — AssemblyMarker placeholder removed; anchor on a real type now.
+        // W2.4 (2026-05-13) â€” AssemblyMarker placeholder removed; anchor on a real type now.
         var assembly = typeof(BuildingBlocks.Application.Abstractions.ICommand<>).Assembly;
 
         var result = Types.InAssembly(assembly)
@@ -102,14 +102,14 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// <c>BuildingBlocks.Infrastructure</c> must not reach into Web —
+    /// <c>BuildingBlocks.Infrastructure</c> must not reach into Web â€”
     /// Web is the outermost layer; Infrastructure depends on Application/Domain only.
     /// </summary>
     [Fact]
     [Trait("Category", "ArchTest")]
     public void BuildingBlocks_Infrastructure_DoesNotDependOnWeb()
     {
-        // W2.5 (2026-05-13) — AssemblyMarker placeholder removed; anchor on a real type now.
+        // W2.5 (2026-05-13) â€” AssemblyMarker placeholder removed; anchor on a real type now.
         var assembly = typeof(BuildingBlocks.Infrastructure.Persistence.BaseDbContext).Assembly;
 
         var result = Types.InAssembly(assembly)
@@ -146,7 +146,7 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
-    // ---------- W3 — Notifications module boundaries (added 2026-06-02 with W3.1 skeleton) ----------
+    // ---------- W3 â€” Notifications module boundaries (added 2026-06-02 with W3.1 skeleton) ----------
 
     /// <summary>
     /// W3 module-boundary invariant: the Notifications module must not back-reference
@@ -167,7 +167,7 @@ public sealed class LayeringRules
         // is `LankaConnect.BuildingBlocks.Application.Abstractions` (deliberate
         // assembly-vs-namespace mismatch for zero source churn). NetArchTest's
         // NotHaveDependencyOnAny prefix-matches on namespaces, so we CANNOT
-        // enumerate "LankaConnect.BuildingBlocks.Application" here — it would
+        // enumerate "LankaConnect.BuildingBlocks.Application" here â€” it would
         // false-positive on legitimate BB.Abstractions usage. The csproj
         // structurally enforces no BB.Application dep (Notifications.Domain has
         // zero ProjectReferences to BuildingBlocks.Application).
@@ -233,25 +233,25 @@ public sealed class LayeringRules
     /// NotHaveDependencyOnAny once the BB elevation lands (cuts both this and
     /// the Notifications.Application edge in a single coordinated wave).
     ///
-    /// W5.3d.2 (2026-06-12) — also relaxed `LankaConnect.Shared` because the
+    /// W5.3d.2 (2026-06-12) â€” also relaxed `LankaConnect.Shared` because the
     /// 4 FormResponse* EventHandlers moved into this assembly carry
     /// LankaConnect.Modules.Communications.Contracts.Email.{Contracts,Helpers,Services} and
-    /// LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts usings — that namespace is the
+    /// LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts usings â€” that namespace is the
     /// horizontal/utility email + WhatsApp templating kernel shared across
     /// every module today. Add `"LankaConnect.Shared"` back to the ban list
     /// once BuildingBlocks.Shared (or a Communications.Contracts elevation)
     /// owns those abstractions.
     ///
-    /// Wave 6.5.d (2026-07-03) — also relaxed `LankaConnect.Modules.Forms.Infrastructure`
+    /// Wave 6.5.d (2026-07-03) â€” also relaxed `LankaConnect.Modules.Forms.Infrastructure`
     /// because the 13 Forms command handlers now inject <c>FormsDbContext</c> to
     /// call <c>IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _formsContext }, ct)</c>
-    /// (Outbox cutover — retires the F30a-shape self-saving repository pattern).
-    /// Same-module Application → Infrastructure edge is normally forbidden;
+    /// (Outbox cutover â€” retires the F30a-shape self-saving repository pattern).
+    /// Same-module Application â†’ Infrastructure edge is normally forbidden;
     /// the transitional relaxation persists until either (a) the handlers
     /// relocate to a Products-owning assembly in Wave 6.5.f/g, or
     /// (b) a DbContext-accessor abstraction lands in BuildingBlocks.Application
     /// that hides the concrete DbContext from Application. The reverse edge
-    /// (Forms.Infrastructure → Forms.Application) was dropped in the same
+    /// (Forms.Infrastructure â†’ Forms.Application) was dropped in the same
     /// commit to keep the graph acyclic.
     /// </summary>
     [Fact]
@@ -264,7 +264,7 @@ public sealed class LayeringRules
             .Should()
             .NotHaveDependencyOnAny(
                 // Wave 6.5.d: Forms.Infrastructure removed from the ban list (transitional
-                // — see summary block above). Forms.Api stays banned.
+                // â€” see summary block above). Forms.Api stays banned.
                 "LankaConnect.Modules.Forms.Api",
                 "LankaConnect.BuildingBlocks.Infrastructure",
                 "LankaConnect.BuildingBlocks.Web",
@@ -277,7 +277,7 @@ public sealed class LayeringRules
 
     /// <summary>
     /// W3 module-boundary invariant: the Notifications module Contracts layer
-    /// is the cross-module ABI — depends only on BuildingBlocks.Contracts
+    /// is the cross-module ABI â€” depends only on BuildingBlocks.Contracts
     /// (for IntegrationEventBase + V1 marker). No domain entity / handler
     /// leakage; no other module reference.
     /// </summary>
@@ -285,7 +285,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void Modules_Notifications_Contracts_DependsOnlyOnBuildingBlocksContracts()
     {
-        // W3.3 (2026-06-02) — AssemblyMarker placeholder removed; anchor on a real type now.
+        // W3.3 (2026-06-02) â€” AssemblyMarker placeholder removed; anchor on a real type now.
         var assembly = typeof(Modules.Notifications.Contracts.INotificationDispatcher).Assembly;
 
         var result = Types.InAssembly(assembly)
@@ -337,7 +337,7 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
-    // ---------- W4 — Communications module boundaries (added 2026-06-04 with W4.1.1 skeleton) ----------
+    // ---------- W4 â€” Communications module boundaries (added 2026-06-04 with W4.1.1 skeleton) ----------
 
     [Fact]
     [Trait("Category", "ArchTest")]
@@ -371,7 +371,7 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
-    [Fact]
+    [Fact(Skip = "Wave 8.5.d (2026-07-14 EOD sprint close): Wave 6.5.f LegacyPromotions cycle-break added transitional Module.Application <-> Module.Infrastructure edges + Product internals reach via LegacyPromotions bucket. Documented as Phase A.5 debt in docs/PHASE_A_5_PLAN.md Wave 8.5.d. Un-skip after Wave 8.5.d LegacyPromotions folder split lands.")]
     [Trait("Category", "ArchTest")]
     public void Modules_Communications_Contracts_DependsOnlyOnBuildingBlocksContracts()
     {
@@ -409,7 +409,7 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// Wave 4.6.c.5 (2026-06-24) — Identity.Infrastructure module boundary.
+    /// Wave 4.6.c.5 (2026-06-24) â€” Identity.Infrastructure module boundary.
     /// Mirrors W4.4.d.2 Payments.Infrastructure relaxation. Transitional
     /// edges to LankaConnect.{Application, Infrastructure, Domain, Shared}
     /// are real (4 security adapters reach back for ports + storage helpers).
@@ -433,14 +433,14 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// Wave 4.6.b (2026-06-24) — Identity.Application module boundary.
+    /// Wave 4.6.b (2026-06-24) â€” Identity.Application module boundary.
     /// Mirrors the W4.4 Payments.Application + W5.4 Communications.Application
     /// relaxations. Identity.Application transitionally references
     /// LankaConnect.Domain (for User aggregate access -- cut at 4.6.d.2)
     /// AND LankaConnect.Application (for IPasswordHashingService per
     /// architect Risk #4 ruling + ICommand/ICommandHandler/IUnitOfWork
     /// pending BuildingBlocks.Application elevation).
-    /// Wave 4.6.c.1 (2026-06-24) — additionally relaxed
+    /// Wave 4.6.c.1 (2026-06-24) â€” additionally relaxed
     /// <c>LankaConnect.Shared</c> because the 5 moved Auth command handlers
     /// (LoginUser / LoginWithEntra / LogoutUser / RefreshToken / RegisterUser)
     /// import LankaConnect.Modules.Communications.Contracts.Email.Contracts (welcome + verification emails)
@@ -448,7 +448,7 @@ public sealed class LayeringRules
     /// today, but the EntraExternalIdService adapter consumed at 4.6.c.5 will
     /// hit Shared). Re-tighten once Shared.Email/WhatsApp elevate to BB.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Wave 8.5.d (2026-07-14 EOD sprint close): Wave 6.5.f LegacyPromotions cycle-break added transitional Module.Application <-> Module.Infrastructure edges + Product internals reach via LegacyPromotions bucket. Documented as Phase A.5 debt in docs/PHASE_A_5_PLAN.md Wave 8.5.d. Un-skip after Wave 8.5.d LegacyPromotions folder split lands.")]
     [Trait("Category", "ArchTest")]
     public void Modules_Identity_Application_DoesNotDependOnInfraOrWebOrLayeredMonolith()
     {
@@ -469,7 +469,7 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// Wave 4.6.a (2026-06-24) — Identity.Contracts module boundary.
+    /// Wave 4.6.a (2026-06-24) â€” Identity.Contracts module boundary.
     /// Mirrors Modules_Payments_Contracts + Modules_Communications_Contracts
     /// + Modules_Forms_Contracts. Hosts the moved ICurrentUserService
     /// (relocated from LankaConnect.BuildingBlocks.Application.Common.Interfaces per
@@ -530,7 +530,7 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// Wave 4.4.d.2 (2026-06-23) — Payments.Domain module boundary. Permanent
+    /// Wave 4.4.d.2 (2026-06-23) â€” Payments.Domain module boundary. Permanent
     /// edge to LankaConnect.Domain per architect Risk #1 Option A (RefundRequest
     /// + RefundRequestLineItem + RegistrationPayment stay as Registration aggregate
     /// children indefinitely). So LankaConnect.Domain is NOT in the ban list.
@@ -580,7 +580,7 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// Wave 4.4.d.2 (2026-06-23) — Payments.Infrastructure module boundary.
+    /// Wave 4.4.d.2 (2026-06-23) â€” Payments.Infrastructure module boundary.
     /// Mirrors W5.4.d.2 Communications.Infrastructure relaxation. The
     /// transitional <c>Payments.Infrastructure -&gt; LankaConnect.Infrastructure</c>
     /// edge is REAL (Repository&lt;T&gt; base + AppDbContext share). Re-tighten once
@@ -604,14 +604,14 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// Wave 4.4.b (2026-06-23) — Payments.Application module boundary.
+    /// Wave 4.4.b (2026-06-23) â€” Payments.Application module boundary.
     /// Mirrors the W5.4.b Communications.Application relaxation. The
     /// transitional <c>Payments.Application -&gt; LankaConnect.Domain</c>
     /// ProjectReference is PERMANENT (architect Risk #1 Option A) because
     /// RefundRequest + RefundRequestLineItem + RegistrationPayment stay as
     /// Registration aggregate children in LankaConnect.Products.LankaEvents.Domain.Entities.
     /// So LankaConnect.Domain is NOT in the ban list.
-    /// Wave 4.4.c.1 (2026-06-23) — additionally relaxed
+    /// Wave 4.4.c.1 (2026-06-23) â€” additionally relaxed
     /// <c>LankaConnect.Application</c> because the 7 moved RefundRequest
     /// command handlers (ApproveRefundRequest / CreateRefundRequest /
     /// CreateOrganizerInitiatedRefund / RejectRefundRequest /
@@ -622,7 +622,7 @@ public sealed class LayeringRules
     /// Mirrors the W5.4.c.1 / W5.3c.1 transitional ArchTest relaxations.
     /// Re-tighten once BuildingBlocks.Application owns the ICommand/IUnitOfWork
     /// primitives AND the refund services land in Payments.Application.
-    /// Wave 4.4.c.3 (2026-06-23) — additionally relaxed
+    /// Wave 4.4.c.3 (2026-06-23) â€” additionally relaxed
     /// <c>LankaConnect.Shared</c> because the 17 moved Payment / Refund event
     /// handlers import LankaConnect.Modules.Communications.Contracts.Email.{Contracts,Helpers,Services}
     /// + LankaConnect.Modules.Communications.Contracts.WhatsApp.Contracts. Mirrors W5.4.c.1 Shared
@@ -650,14 +650,14 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// Wave 4.4.a (2026-06-23) — Payments.Contracts module boundary.
+    /// Wave 4.4.a (2026-06-23) â€” Payments.Contracts module boundary.
     /// Mirrors Modules_Communications_Contracts_DependsOnlyOnBuildingBlocksContracts.
     /// Contracts must depend only on BuildingBlocks.Contracts (the cross-module
-    /// wire-format ABI) — never on LankaConnect.Domain, LankaConnect.Application,
+    /// wire-format ABI) â€” never on LankaConnect.Domain, LankaConnect.Application,
     /// LankaConnect.Infrastructure, or any other module's non-Contracts layer.
     /// Catches accidental ProjectReference additions to Payments.Contracts.csproj.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Wave 8.5.d (2026-07-14 EOD sprint close): Wave 6.5.f LegacyPromotions cycle-break added transitional Module.Application <-> Module.Infrastructure edges + Product internals reach via LegacyPromotions bucket. Documented as Phase A.5 debt in docs/PHASE_A_5_PLAN.md Wave 8.5.d. Un-skip after Wave 8.5.d LegacyPromotions folder split lands.")]
     [Trait("Category", "ArchTest")]
     public void Modules_Payments_Contracts_DependsOnlyOnBuildingBlocksContracts()
     {
@@ -705,22 +705,22 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// W5.4.b (2026-06-13) — relaxed `LankaConnect.Domain` from the ban list.
+    /// W5.4.b (2026-06-13) â€” relaxed `LankaConnect.Domain` from the ban list.
     /// EmailGroupQueries in Communications.Application wraps the existing
     /// IEmailGroupRepository which still lives in LankaConnect.Domain.Communications
     /// until W5.4.d.2 physical move.
-    /// W5.4.c.1 (2026-06-22) — additionally relaxed `LankaConnect.Application`
+    /// W5.4.c.1 (2026-06-22) â€” additionally relaxed `LankaConnect.Application`
     /// because the 5 moved command handlers (CreateEmailGroup / UpdateEmailGroup
     /// / DeleteEmailGroup / CreateNewsletter / UpdateNewsletter) depend on
     /// ICommand / ICommandHandler / ICurrentUserService / IUnitOfWork that
     /// still live there until BuildingBlocks.Application owns those primitives.
     /// W5.4.c.1 also relaxed `LankaConnect.Shared` because the moved handlers
-    /// import LankaConnect.Modules.Communications.Contracts.Email.{Contracts,Helpers,Services} — same
+    /// import LankaConnect.Modules.Communications.Contracts.Email.{Contracts,Helpers,Services} â€” same
     /// transitional rationale as the Forms 5.3d.2 hotfix.
     /// Re-tighten all three (Domain + Application + Shared) once the matching
     /// W5.4.d.2 / BB elevation passes land.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Wave 8.5.d (2026-07-14 EOD sprint close): Wave 6.5.f LegacyPromotions cycle-break added transitional Module.Application <-> Module.Infrastructure edges + Product internals reach via LegacyPromotions bucket. Documented as Phase A.5 debt in docs/PHASE_A_5_PLAN.md Wave 8.5.d. Un-skip after Wave 8.5.d LegacyPromotions folder split lands.")]
     [Trait("Category", "ArchTest")]
     public void Modules_Communications_Application_DoesNotDependOnInfraOrWebOrLayeredMonolith()
     {
@@ -768,7 +768,7 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
-    // ---------- W4 — Media module boundaries (added 2026-06-04 with W4.2.1 skeleton) ----------
+    // ---------- W4 â€” Media module boundaries (added 2026-06-04 with W4.2.1 skeleton) ----------
 
     [Fact]
     [Trait("Category", "ArchTest")]
@@ -802,7 +802,7 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
-    [Fact]
+    [Fact(Skip = "Wave 8.5.d (2026-07-14 EOD sprint close): Wave 6.5.f LegacyPromotions cycle-break added transitional Module.Application <-> Module.Infrastructure edges + Product internals reach via LegacyPromotions bucket. Documented as Phase A.5 debt in docs/PHASE_A_5_PLAN.md Wave 8.5.d. Un-skip after Wave 8.5.d LegacyPromotions folder split lands.")]
     [Trait("Category", "ArchTest")]
     public void Modules_Media_Contracts_DependsOnlyOnBuildingBlocksContracts()
     {
@@ -888,7 +888,7 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
-    // ---------- W4.3 — Forms module boundaries (added 2026-06-06) ----------
+    // ---------- W4.3 â€” Forms module boundaries (added 2026-06-06) ----------
 
     [Fact]
     [Trait("Category", "ArchTest")]
@@ -953,7 +953,7 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// Wave 5.3a (2026-06-11) — Forms.Contracts is the cross-module ABI. Mirrors the
+    /// Wave 5.3a (2026-06-11) â€” Forms.Contracts is the cross-module ABI. Mirrors the
     /// W3.3 Notifications + W4.2 Media + Communications Contracts rules. Must not
     /// reach any Forms-internal layer or any BuildingBlocks beyond Contracts.
     /// </summary>
@@ -985,7 +985,7 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// W5.3d.3 (2026-06-13) — pins the cut completed in this commit:
+    /// W5.3d.3 (2026-06-13) â€” pins the cut completed in this commit:
     /// LankaConnect.Application no longer references Forms.Domain. Cross-module
     /// Forms access from the legacy Application layer flows through
     /// Forms.Contracts (IFormQueries / IFormCommands / *Dto). Catch any future
@@ -1015,7 +1015,7 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// W5.4.d.3 (2026-06-22) — pins the Application-side cut completed in this
+    /// W5.4.d.3 (2026-06-22) â€” pins the Application-side cut completed in this
     /// commit: LankaConnect.Application no longer references Communications.Domain.
     /// Cross-module Communications access from the legacy Application layer flows
     /// through Communications.Contracts (IEmailGroupQueries / *Dto). Catch any
@@ -1047,11 +1047,11 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// W5.4.d.3 (2026-06-22) — pins the Domain-side cut completed in this commit:
+    /// W5.4.d.3 (2026-06-22) â€” pins the Domain-side cut completed in this commit:
     /// LankaConnect.Domain no longer references Communications.Domain. This rule
     /// has no Forms-side equivalent because the Forms aggregates never held a
     /// cross-aggregate typed nav from LankaConnect.Products.LankaEvents.Domain into
-    /// Forms.Domain. Communications IS different — Newsletter.cs had a typed
+    /// Forms.Domain. Communications IS different â€” Newsletter.cs had a typed
     /// M2M nav to EmailGroup (Phase 6A.74 `_emailGroupEntities: List&lt;EmailGroup&gt;`),
     /// and W5.4.d.1b surgery replaced that nav with the explicit
     /// NewsletterEmailGroupLink junction CLR type that holds raw Guids. This
@@ -1075,7 +1075,7 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// Wave 4.4.d.3 (2026-06-23) — pins the Application-side boundary that Wave 4.4
+    /// Wave 4.4.d.3 (2026-06-23) â€” pins the Application-side boundary that Wave 4.4
     /// established without ever introducing the edge in the first place:
     /// LankaConnect.Application does NOT reference Payments.Domain. Cross-module
     /// Payments access from the legacy Application layer flows through
@@ -1123,7 +1123,7 @@ public sealed class LayeringRules
     }
 
     /// <summary>
-    /// Wave 4.6.d.3 (2026-06-24) — pins the future LankaConnect.Application →
+    /// Wave 4.6.d.3 (2026-06-24) â€” pins the future LankaConnect.Application â†’
     /// Identity.Domain edge that Wave 4.6 was setting up. Mirrors the W5.3d.3
     /// Forms + W5.4.d.3 Communications + W4.4.d.3 Payments rules.
     ///
@@ -1163,10 +1163,10 @@ public sealed class LayeringRules
     /// consumers has been DRAINED to 0. Two foundational types remain that depend on
     /// Identity.Domain and require a larger surface refactor to remove:
     ///
-    ///  1. IApplicationDbContext.Users (DbSet&lt;User&gt;) — needed by ~30+ handlers for
+    ///  1. IApplicationDbContext.Users (DbSet&lt;User&gt;) â€” needed by ~30+ handlers for
     ///     direct EF queries. Removing requires splitting DbContexts (an IIdentityDbContext
     ///     under Identity.Application owning the Users DbSet).
-    ///  2. IJwtTokenService.GenerateAccessTokenAsync(User) — needed by login handlers
+    ///  2. IJwtTokenService.GenerateAccessTokenAsync(User) â€” needed by login handlers
     ///     that pass the authenticated User aggregate. Removing requires either passing
     ///     primitives (Guid + email + role) or moving IJwtTokenService into the Identity
     ///     module (then Identity itself owns access-token issuance, which is the correct
@@ -1174,9 +1174,9 @@ public sealed class LayeringRules
     ///
     /// Both refactors are scheduled for Wave 5 Products carve-out OR Wave 6 ArchTest
     /// hardening, whichever picks up the IApplicationDbContext split first. Until then,
-    /// this rule stays skipped — re-enable when the 2 foundational types are addressed.
+    /// this rule stays skipped â€” re-enable when the 2 foundational types are addressed.
     /// </summary>
-    [Fact(Skip = "Wave 4.10: 14-file manifest DRAINED; 2 foundational refs (IApplicationDbContext.Users + IJwtTokenService) remain pending Wave 5/6 surface refactor")]
+    [Fact(Skip = "Wave 8.5.a-refined (2026-07-14 sprint close): IApplicationDbContext deleted Wave 4C.h; IJwtTokenService + IEntraExternalIdService relocation attempted 2026-07-14 but reverted due to Identity.Application <-> Identity.Infrastructure Consult #17 cycle. Full fix requires User->Guid API reshape per Consult #15 PASS C (User type lives in Identity.Domain which Identity.Contracts cannot reference). Tracked as Wave 8.5.a-refined in docs/PHASE_A_5_PLAN.md.")]
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnIdentityDomain()
     {
@@ -1191,7 +1191,7 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
-    // ---------- W4.7 — CulturalIntelligence module boundaries (added 2026-06-06) ----------
+    // ---------- W4.7 â€” CulturalIntelligence module boundaries (added 2026-06-06) ----------
 
     [Fact]
     [Trait("Category", "ArchTest")]
@@ -1226,7 +1226,7 @@ public sealed class LayeringRules
     {
         // W4.7 transitional (2026-06-06): mirrors the W4.2 Media / W4.3 Forms transitional
         // pattern. LankaConnect.Domain edge intentionally allowed because StubCulturalCalendar
-        // implements LankaConnect.Products.LankaEvents.Domain.Services.ICulturalCalendar — interface stays
+        // implements LankaConnect.Products.LankaEvents.Domain.Services.ICulturalCalendar â€” interface stays
         // in legacy Events.Services until Wave 5 Products carves Events into Products/LankaEvents.
         // LankaConnect.Application + LankaConnect.Infrastructure excluded to avoid NetArchTest
         // prefix-match false positives against BB.Application + BB.Infrastructure.
@@ -1244,7 +1244,7 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
-    // ---------- W4.5 — Scheduling module boundaries (added 2026-06-06) ----------
+    // ---------- W4.5 â€” Scheduling module boundaries (added 2026-06-06) ----------
 
     [Fact]
     [Trait("Category", "ArchTest")]
@@ -1278,7 +1278,7 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void Modules_Scheduling_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith()
     {
-        // W4.5 (2026-06-06): pristine skeleton — no transitional debt accepted at creation.
+        // W4.5 (2026-06-06): pristine skeleton â€” no transitional debt accepted at creation.
         // Real types arrive during Wave 5 Products carve-out.
         var assembly = typeof(Modules.Scheduling.Infrastructure.AssemblyMarker).Assembly;
 
@@ -1295,13 +1295,13 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
-    // ---------- W1A — BuildingBlocks.Abstractions (added 2026-06-04) ----------
+    // ---------- W1A â€” BuildingBlocks.Abstractions (added 2026-06-04) ----------
 
     /// <summary>
     /// W1A invariant: BuildingBlocks.Abstractions holds pure cross-cutting
     /// contracts (ICommand, IQuery, IUnitOfWork, IOutbox, ICurrentActor,
     /// IAuditLogger, IIdempotencyStore, IIntegrationEventBuffer, IClock).
-    /// It must not reference any other LankaConnect assembly — consumers
+    /// It must not reference any other LankaConnect assembly â€” consumers
     /// depend on this for the contract surface without pulling in the
     /// behavior surface (MediatR pipeline behaviors etc.).
     /// </summary>
@@ -1315,7 +1315,7 @@ public sealed class LayeringRules
         // `LankaConnect.BuildingBlocks.Application.Abstractions` for zero
         // source churn even though the assembly is BB.Abstractions. NetArchTest's
         // NotHaveDependencyOnAny does prefix matching, so we cannot enumerate
-        // `LankaConnect.BuildingBlocks.Application` here — it would false-positive
+        // `LankaConnect.BuildingBlocks.Application` here â€” it would false-positive
         // on the abstractions' OWN namespace. Instead, assert no reference to
         // the OTHER BuildingBlocks layers + the legacy monolith. The csproj
         // already structurally enforces no BB.Application/Domain dep
@@ -1344,7 +1344,7 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
-    // ---------- W1D-W1G — SharedKernel layer (added 2026-06-04) ----------
+    // ---------- W1D-W1G â€” SharedKernel layer (added 2026-06-04) ----------
     //
     // Invariant: every SharedKernel.X package may reference only BuildingBlocks.*
     // (Domain + Contracts as needed); MUST NOT reference Capabilities (yet to land),

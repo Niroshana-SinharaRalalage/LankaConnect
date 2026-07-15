@@ -33,12 +33,13 @@ public sealed class SnapshotDriftRules
     /// AppDbContext migration.
     /// </summary>
     [Fact(Skip =
-        "Asserts a state Phase 3 has not yet established. Currently the legacy " +
-        "AppDbContext snapshot still references LankaConnect.Modules.Media.* and " +
-        "LankaConnect.Modules.Forms.* entities (drift left over from W4.2 + W4.3 " +
-        "extractions). Remove this Skip the moment Phase 3 ships the snapshot-sync " +
-        "migration that prunes those entries. From that point forward, this test " +
-        "fails the build on any new module-entity leak into the legacy snapshot.")]
+        "Wave 8.5.b (2026-07-14 sprint close): AppDbContext snapshot references 39 " +
+        "LankaConnect.Modules.* entity types (12+ Communications, plus Media/Forms " +
+        "drift). Fix requires empty-Up() snapshot-sync migration + manually-pruned " +
+        "Designer.cs + ModelSnapshot.cs entries — this is Wave 8.5.b LankaConnect." +
+        "Infrastructure dismantle prerequisite (~2-3 days). Currently only migrations " +
+        "history file lives in Infrastructure; the snapshot cannot be pruned until " +
+        "the 506-migration relocation lands per Wave 8.5.b in docs/PHASE_A_5_PLAN.md.")]
     [Trait("Category", "ArchTest")]
     public void AppDbContextSnapshot_DoesNotReferenceAnyModulesEntity()
     {

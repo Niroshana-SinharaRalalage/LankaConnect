@@ -51,6 +51,10 @@
     <ProjectReference Include="..\Modules\Identity\Identity.Api\Identity.Api.csproj" />
     <ProjectReference Include="..\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
     <ProjectReference Include="..\Products\LankaEvents\LankaEvents.Api\LankaEvents.Api.csproj" />
+    <!-- Phase B scaffolding (2026-07-15, Consult #27 Q5): LankaTemples product shell.
+         Controllers return HTTP 501 until Wave 8.5.f + 8.5.h close and handler
+         authoring begins per PHASE_A_5_PLAN.md Phase B Kick-Off Ruling. -->
+    <ProjectReference Include="..\Products\LankaTemples\LankaTemples.Api\LankaTemples.Api.csproj" />
   </ItemGroup>
 
   <!-- Phase 6A.34: Link Infrastructure email templates to API publish output -->

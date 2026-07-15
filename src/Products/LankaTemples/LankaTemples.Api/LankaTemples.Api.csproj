@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Products.LankaTemples.Api</RootNamespace>
+    <AssemblyName>LankaConnect.Products.LankaTemples.Api</AssemblyName>
+    <Description>LankaTemples product — Api layer. Controllers + composition-root DI extension. Phase B scaffolding per Consult #27 Q5 (2026-07-15). Follows LankaEvents.Api ProjectReference shape.</Description>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LankaTemples.Application\LankaTemples.Application.csproj" />
+    <ProjectReference Include="..\LankaTemples.Contracts\LankaTemples.Contracts.csproj" />
+    <ProjectReference Include="..\LankaTemples.Infrastructure\LankaTemples.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Mvc" />
+    <Using Include="Microsoft.Extensions.Logging" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+  </ItemGroup>
+
+</Project>

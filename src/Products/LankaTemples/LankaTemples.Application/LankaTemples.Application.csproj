@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Products.LankaTemples.Application</RootNamespace>
+    <AssemblyName>LankaConnect.Products.LankaTemples.Application</AssemblyName>
+    <Description>LankaTemples product — Application layer. Command/query handlers, application services. Phase B scaffolding per Consult #27 Q5 (2026-07-15).</Description>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LankaTemples.Domain\LankaTemples.Domain.csproj" />
+    <ProjectReference Include="..\LankaTemples.Contracts\LankaTemples.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+</Project>

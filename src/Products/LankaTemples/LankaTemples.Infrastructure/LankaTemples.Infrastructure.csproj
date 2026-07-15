@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Products.LankaTemples.Infrastructure</RootNamespace>
+    <AssemblyName>LankaConnect.Products.LankaTemples.Infrastructure</AssemblyName>
+    <Description>LankaTemples product — Infrastructure layer. Repositories, LankaTemplesDbContext, EF configurations, per-module outbox. Phase B scaffolding per Consult #27 Q5 (2026-07-15).</Description>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LankaTemples.Application\LankaTemples.Application.csproj" />
+    <ProjectReference Include="..\LankaTemples.Domain\LankaTemples.Domain.csproj" />
+    <ProjectReference Include="..\LankaTemples.Contracts\LankaTemples.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>

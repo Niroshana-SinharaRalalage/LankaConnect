@@ -4,6 +4,8 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.PublishEvent;
@@ -12,18 +14,23 @@ public class PublishEventCommandHandler : ICommandHandler<PublishEventCommand>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IVenueLayoutRepository _venueLayoutRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    // Wave 8.5.g (2026-07-15): direct-SaveChanges pattern per Consult #25 Q6 blanket
+    // + Wave 8.5.f interceptor now dispatches domain events for us. IUnitOfWork.CommitAsync
+    // fires on AppDbContext (0 changes — Event lives on LankaEventsDbContext) so publish
+    // returned 200 but Status stayed 0. Same split-brain as CreateEventCommandHandler
+    // resolved at sprint 17th deploy.
+    private readonly LankaEventsDbContext _dbContext;
     private readonly ILogger<PublishEventCommandHandler> _logger;
 
     public PublishEventCommandHandler(
         IEventRepository eventRepository,
         IVenueLayoutRepository venueLayoutRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<PublishEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _venueLayoutRepository = venueLayoutRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -108,8 +115,12 @@ public class PublishEventCommandHandler : ICommandHandler<PublishEventCommand>
                     return publishResult;
                 }
 
-                // Save changes (EF Core tracks changes automatically)
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // Wave 8.5.g direct-SaveChanges: _unitOfWork.CommitAsync fires on AppDbContext
+                // which has 0 changes (Event is tracked by LankaEventsDbContext post-Consult #20
+                // sweep). Route directly so status transition actually persists. Wave 8.5.f
+                // interceptor on LankaEventsDbContext dispatches EventPublishedIntegrationEvent
+                // + related domain events raised inside event.Publish().
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

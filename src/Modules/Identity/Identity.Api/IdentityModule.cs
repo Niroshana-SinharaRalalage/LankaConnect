@@ -47,7 +47,13 @@ public static class IdentityModule
             ?? throw new InvalidOperationException(
                 "ConnectionStrings:DefaultConnection is required to register IdentityDbContext.");
 
-        services.AddDbContext<IdentityDbContext>(options =>
+        // Wave 8.5.f (2026-07-15, Consult #25 Q2 prereq): per-module SaveChangesInterceptor
+        // dispatches domain events raised on User/UserWhatsAppPreferences aggregates that
+        // would otherwise be dropped when handlers use direct `_identityDbContext.SaveChangesAsync`
+        // (e.g. RegisterUserHandler + UpdateUserPreferredMetroAreasCommandHandler post-sprint).
+        services.AddScoped<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>();
+
+        services.AddDbContext<IdentityDbContext>((sp, options) =>
         {
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
@@ -59,6 +65,7 @@ public static class IdentityModule
                     errorCodesToAdd: null);
                 npgsqlOptions.CommandTimeout(30);
             });
+            options.AddInterceptors(sp.GetRequiredService<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>());
         }, ServiceLifetime.Scoped);
 
         // 4C.e: per-module outbox wire-up (mirrors MediaModule 6.5.b canary).

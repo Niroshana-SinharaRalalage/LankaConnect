@@ -189,7 +189,13 @@ public static class LankaEventsModule
         // does not exist on NpgsqlDataSourceBuilder in Npgsql 8.
         var dataSource = dataSourceBuilder.Build();
 
-        services.AddDbContext<LankaEventsDbContext>(options =>
+        // Wave 8.5.f (2026-07-15, Consult #25 Q2 prereq): per-module SaveChangesInterceptor
+        // dispatches domain events raised on Event/Registration/TicketTier/etc aggregates
+        // that would otherwise be dropped when handlers use direct `_dbContext.SaveChangesAsync`
+        // instead of routing through AppDbContext.CommitAsync.
+        services.AddScoped<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>();
+
+        services.AddDbContext<LankaEventsDbContext>((sp, options) =>
         {
             options.UseNpgsql(dataSource, npgsqlOptions =>
             {
@@ -202,6 +208,7 @@ public static class LankaEventsModule
                     errorCodesToAdd: null);
                 npgsqlOptions.CommandTimeout(30);
             });
+            options.AddInterceptors(sp.GetRequiredService<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>());
         }, ServiceLifetime.Scoped);
 
         // Wave 6.5.e: per-product outbox wiring (producer scoped +

@@ -48,7 +48,13 @@ public static class CommunicationsModule
             ?? throw new InvalidOperationException(
                 "ConnectionStrings:DefaultConnection is required to register CommunicationsDbContext.");
 
-        services.AddDbContext<CommunicationsDbContext>(options =>
+        // Wave 8.5.f (2026-07-15, Consult #25 Q2 prereq): per-module SaveChangesInterceptor
+        // dispatches domain events raised on Newsletter/EmailMessage/etc aggregates that
+        // would otherwise be dropped when handlers use direct `_communicationsDbContext.SaveChangesAsync`
+        // (CreateNewsletterCommandHandler + SubscribeToNewsletterCommandHandler post-sprint).
+        services.AddScoped<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>();
+
+        services.AddDbContext<CommunicationsDbContext>((sp, options) =>
         {
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
@@ -60,6 +66,7 @@ public static class CommunicationsModule
                     errorCodesToAdd: null);
                 npgsqlOptions.CommandTimeout(30);
             });
+            options.AddInterceptors(sp.GetRequiredService<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>());
         }, ServiceLifetime.Scoped);
 
         // Per-module outbox (mirrors IdentityModule 4C.e + MediaModule 6.5.b canary).

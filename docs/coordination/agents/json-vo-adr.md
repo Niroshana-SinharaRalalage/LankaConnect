@@ -150,4 +150,19 @@ Probe script: `scratchpad/probe_json_columns.py` — psycopg2 + Key Vault DATABA
 
 **Verdict for Part C:** NO additional shape drift found on staging as of 2026-07-16. Defensive migration NOT authored. ADR §Impact records "audit found no additional drift; no defensive migration required this pass."
 
+### 2026-07-16 — Part A ADR authored + commit
+
+- **ADR file:** `docs/architecture/decisions/ADR-007-json-column-value-objects.md` (5 sections + audit tables + follow-up register).
+- **Commit:** `bffbb357` on `develop` — "Wave 8.5.j — ADR-007 JSON-column value objects (Consult #28 Q2.c)"
+- **Push:** pushed to origin/develop (verified `git rev-parse origin/develop == bffbb357`… now `496b6ec9` after Agent-SkipAudit push landed).
+- **Part C:** skipped per task-brief rule (no drift found).
+
+**Deliverables summary:**
+1. Part A (ADR authoring) — DONE. `docs/architecture/decisions/ADR-007-json-column-value-objects.md` authored with founder-readable prose, 3-option decision matrix, and per-column ruling for all 12 live ToJson mappings.
+2. Part B (OwnsOne+ToJson audit) — DONE. 12 columns catalogued. Staging probe on 9 non-Currency columns confirmed 0 drift rows. Latent trap flagged: `attendee_info` (0 rows today; will drift if Mode-A anonymous registration is re-enabled without Email/Phone converters).
+3. Part C (defensive migration) — SKIPPED per brief; no additional drift found.
+
+STATUS: COMPLETE
+
+
 

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using LankaConnect.SharedKernel.Money;
 using System.Linq;
 using LankaConnect.Modules.Forms.Contracts;
@@ -14,6 +14,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5: refund interfaces promoted
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CancelRsvp;
 
 public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, CancelRsvpResult>
@@ -28,6 +30,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
     private readonly ISponsorRepository _sponsorRepository;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<CancelRsvpCommandHandler> _logger;
     // Phase 6A.148: Refund approval workflow integration
     private readonly LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketRepository _ticketRepository;
@@ -46,6 +49,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
         ISponsorRepository sponsorRepository,
         IStripePaymentService stripePaymentService,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<CancelRsvpCommandHandler> logger,
         // Phase 6A.148: Refund approval workflow integration
         LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketRepository ticketRepository,
@@ -62,6 +66,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
         _sponsorRepository = sponsorRepository;
         _stripePaymentService = stripePaymentService;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
         _ticketRepository = ticketRepository;
         _addOnPurchaseRepository = addOnPurchaseRepository;
@@ -158,7 +163,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                 }
 
                 // =====================================================================
-                // Phase 6A.148 — paid-cancel + refund-request compound flow (NEW path)
+                // Phase 6A.148 â€” paid-cancel + refund-request compound flow (NEW path)
                 //
                 // When BOTH conditions hold:
                 //   (a) the approval workflow feature flag is ON
@@ -235,7 +240,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                     // raises FormResponseDeletedEvent per response before delete (mirrors the
                     // pre-5.3d in-line loop) so the cancellation email + WhatsApp pipeline still
                     // fires. Atomicity: the call self-saves on FormsDbContext (W4.3 / ADR-010)
-                    // — a partial failure surfaces as the existing warning collection and the
+                    // â€” a partial failure surfaces as the existing warning collection and the
                     // outer try/catch records it without blocking the cancel.
                     bool? formResponsesDeleted = null;
                     int? formResponsesDeletedCount = null;
@@ -593,7 +598,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                     }
 
                     // Save changes
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
 
                     stopwatch.Stop();
 
@@ -632,7 +637,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
     }
 
     // ====================================================================================
-    // Phase 6A.148 — paid-cancel + refund-request compound flow.
+    // Phase 6A.148 â€” paid-cancel + refund-request compound flow.
     //
     // Cancels the registration immediately (releases the seat) AND atomically creates a
     // Pending RefundRequest with the four bucket selections as line items. NO Stripe call.
@@ -659,7 +664,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
 
             try
             {
-                // Scan guard — block attendee-initiated refund if any ticket is already
+                // Scan guard â€” block attendee-initiated refund if any ticket is already
                 // scanned/validated (architect rule #2). Organizer-initiated override is
                 // handled by a different endpoint, not this handler.
                 var anyTicketsScanned = await _ticketRepository
@@ -668,7 +673,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "[6A.148] HandlePaidCancelViaApprovalWorkflow REJECTED: ticket scanned — RegId={RegId}",
+                        "[6A.148] HandlePaidCancelViaApprovalWorkflow REJECTED: ticket scanned â€” RegId={RegId}",
                         registration.Id);
                     return Result<CancelRsvpResult>.Failure(
                         "Cannot cancel and refund: one or more tickets have been scanned and used. " +
@@ -695,7 +700,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                     {
                         // Phase 6A.148.c (D5 fix): legacy-registration fallback. Some pre-
                         // Add-Only-Attendees registrations have NO row in registration_payments
-                        // — their Stripe charge lives on Registration.StripePaymentIntentId
+                        // â€” their Stripe charge lives on Registration.StripePaymentIntentId
                         // directly. Without this fallback, GetInitialPaymentAsync returns null
                         // and the Ticket bucket silently drops from the refund request even
                         // though the attendee checked it. Mirrors the dispatch-time fallback
@@ -793,7 +798,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                         lineItems: lineItems);
                     if (rrResult.IsFailure)
                     {
-                        // CreateRefundRequest failed AFTER Cancel() succeeded — bad. Roll back
+                        // CreateRefundRequest failed AFTER Cancel() succeeded â€” bad. Roll back
                         // by returning failure and letting the DbContext drop pending changes.
                         // (UnitOfWork hasn't committed yet, so no DB state has changed.)
                         stopwatch.Stop();
@@ -809,7 +814,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                 @event.RaiseRegistrationCancelledEvent(request.UserId);
                 _registrationRepository.Update(registration);
                 _eventRepository.Update(@event);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
                 _logger.LogInformation(

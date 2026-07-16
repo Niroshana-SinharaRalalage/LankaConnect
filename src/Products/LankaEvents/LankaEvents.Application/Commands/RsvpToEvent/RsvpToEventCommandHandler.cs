@@ -9,6 +9,8 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
@@ -26,6 +28,11 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
     private readonly ICollectionRepository _collectionRepository;
     private readonly ISponsorRepository _sponsorRepository;
     private readonly IUnitOfWork _unitOfWork;
+    // Wave 8.5.g (2026-07-15): direct-SaveChanges pattern per Consult #25 Q6 blanket.
+    // _unitOfWork.CommitAsync fires on AppDbContext = 0 changes (Registration + Event live on
+    // LankaEventsDbContext post-Consult #20 sweep). Same split-brain fixed for CreateEvent
+    // (17th deploy) and PublishEvent (27th deploy). Wave 8.5.f interceptor dispatches events.
+    private readonly LankaEventsDbContext _dbContext;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     // Phase 7E.3b (architect edit #2): Mode-B paid checkout shared between auth + anon handlers.
@@ -43,6 +50,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         ICollectionRepository collectionRepository,
         ISponsorRepository sponsorRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
         LankaConnect.Products.LankaEvents.Application.Services.IRegistrationCheckoutService checkoutService,
@@ -56,6 +64,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         _collectionRepository = collectionRepository;
         _sponsorRepository = sponsorRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
         _checkoutService = checkoutService;
@@ -897,7 +906,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             }
 
             // Save changes with checkout session ID
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
             // Return checkout URL for frontend to redirect
             return Result<string?>.Success(checkoutResult.Value.CheckoutUrl);
@@ -938,7 +947,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                         donationCheckoutResult.Value.ExpiresAt);
 
                     await _donationRepository.AddAsync(bundledDonation, cancellationToken);
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                     _logger.LogInformation(
                         "HandleMultiAttendeeRsvp: Free event + donation checkout created - DonationId={DonationId}",
@@ -961,7 +970,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         }
 
         // Free event - save and return null (no payment needed)
-        await _unitOfWork.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
         return Result<string?>.Success(null);
     }
 
@@ -1191,7 +1200,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         _eventRepository.Update(@event);
 
         // Save changes (EF Core tracks changes automatically)
-        await _unitOfWork.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
         // Legacy format always returns null (no payment support)
         return Result<string?>.Success(null);
@@ -1326,11 +1335,11 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             if (checkoutResult.IsFailure)
                 return Result<string?>.Failure(checkoutResult.Error);
 
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
             return Result<string?>.Success(checkoutResult.Value);
         }
 
-        await _unitOfWork.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
         return Result<string?>.Success(null);
     }
 }

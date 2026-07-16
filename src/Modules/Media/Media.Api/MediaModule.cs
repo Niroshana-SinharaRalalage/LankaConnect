@@ -34,7 +34,17 @@ public static class MediaModule
             ?? throw new InvalidOperationException(
                 "ConnectionStrings:DefaultConnection is required to register MediaDbContext.");
 
-        services.AddDbContext<MediaDbContext>(options =>
+        // Wave 8.5.f continuation (2026-07-16, Consult #28 R1): per-module
+        // SaveChangesInterceptor dispatches domain events raised on PhotoAlbum
+        // aggregates that would otherwise be dropped when handlers use
+        // IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _mediaContext }, ct)
+        // — that path calls _mediaContext.SaveChangesAsync directly (UnitOfWork.cs:106)
+        // which bypasses AppDbContext.CommitAsync dispatch. Unblocks PhotoAlbums
+        // Wave 9 dispatch-gap fails (9 handlers under Commands/PhotoAlbums/*).
+        // Mirrors commit 1212d994 (LankaEvents/Identity/Communications wiring).
+        services.AddScoped<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>();
+
+        services.AddDbContext<MediaDbContext>((sp, options) =>
         {
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
@@ -46,6 +56,7 @@ public static class MediaModule
                     errorCodesToAdd: null);
                 npgsqlOptions.CommandTimeout(30);
             });
+            options.AddInterceptors(sp.GetRequiredService<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>());
         }, ServiceLifetime.Scoped);
 
         services.AddScoped<IPhotoAlbumRepository, PhotoAlbumRepository>();

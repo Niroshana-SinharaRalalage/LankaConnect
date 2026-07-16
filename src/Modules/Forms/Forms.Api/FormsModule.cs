@@ -42,7 +42,15 @@ public static class FormsModule
         dataSourceBuilder.EnableDynamicJson();
         var dataSource = dataSourceBuilder.Build();
 
-        services.AddDbContext<FormsDbContext>(options =>
+        // Wave 8.5.f continuation (2026-07-16, Consult #28 R1): per-module
+        // SaveChangesInterceptor dispatches domain events raised on Form /
+        // FormResponse aggregates that would otherwise be dropped when handlers
+        // use IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _formsContext }, ct)
+        // or direct _formsDbContext.SaveChangesAsync. Mirrors commit 1212d994
+        // (LankaEvents/Identity/Communications wiring).
+        services.AddScoped<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>();
+
+        services.AddDbContext<FormsDbContext>((sp, options) =>
         {
             options.UseNpgsql(dataSource, npgsqlOptions =>
             {
@@ -54,6 +62,7 @@ public static class FormsModule
                     errorCodesToAdd: null);
                 npgsqlOptions.CommandTimeout(30);
             });
+            options.AddInterceptors(sp.GetRequiredService<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>());
         }, ServiceLifetime.Scoped);
 
         services.AddScoped<IFormRepository, FormRepository>();

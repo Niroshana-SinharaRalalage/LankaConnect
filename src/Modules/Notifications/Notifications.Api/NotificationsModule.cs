@@ -61,7 +61,15 @@ public static class NotificationsModule
             ?? throw new InvalidOperationException(
                 "ConnectionStrings:DefaultConnection is required to register NotificationsDbContext.");
 
-        services.AddDbContext<NotificationsDbContext>(options =>
+        // Wave 8.5.f continuation (2026-07-16, Consult #28 R1): per-module
+        // SaveChangesInterceptor dispatches domain events raised on Notification
+        // aggregates that would otherwise be dropped when handlers use
+        // IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _notificationsContext }, ct)
+        // or direct _notificationsDbContext.SaveChangesAsync. Mirrors commit
+        // 1212d994 (LankaEvents/Identity/Communications wiring).
+        services.AddScoped<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>();
+
+        services.AddDbContext<NotificationsDbContext>((sp, options) =>
         {
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
@@ -73,6 +81,7 @@ public static class NotificationsModule
                     errorCodesToAdd: null);
                 npgsqlOptions.CommandTimeout(30);
             });
+            options.AddInterceptors(sp.GetRequiredService<LankaConnect.BuildingBlocks.Infrastructure.Persistence.DomainEventSaveChangesInterceptor>());
         }, ServiceLifetime.Scoped);
 
         services.AddScoped<INotificationRepository, NotificationRepository>();

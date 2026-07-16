@@ -109,3 +109,12 @@ Net immediate: **−3 SKIPs** (78 → 75). Combined with Agent-Businesses's `Smo
 ### Recommendation to Tech Lead
 - Agent-ResidualFails scope must include the ~7 *silent* fixture failures (add-on definition, off-platform sponsor, venue table/decoration, badges, forms) in addition to the 13 residual FAILs, to hit the < 20 SKIP gate.
 
+### Commit + push evidence
+
+- Commit: `1ffee920` on `develop` — `Wave 9 SKIP audit — 3 tests un-skipped; 75 remain`
+- Pushed to `origin/develop` (pre-push hook: OK, 1/2 untested-in-24h counter — mechanical test-script refactor, no runtime code touched)
+- New Wave 9 SKIP count (expected next run): **75** (78 − 3)
+- Post Agent-Businesses + Agent-ResidualFails: **≈ 11-14** (below 20 gate)
+
+STATUS: COMPLETE
+

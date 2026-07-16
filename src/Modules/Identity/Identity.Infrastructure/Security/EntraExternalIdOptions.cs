@@ -1,4 +1,6 @@
-namespace LankaConnect.Infrastructure.Security;
+// Wave 8.5.b Part 5 (2026-07-16): relocated from LankaConnect.Infrastructure/Security/
+// to Identity.Infrastructure/Security/ per DBCONTEXT_OWNERSHIP_MATRIX (Identity/Auth concern).
+namespace LankaConnect.Modules.Identity.Infrastructure.Security;
 
 /// <summary>
 /// Configuration options for Microsoft Entra External ID integration

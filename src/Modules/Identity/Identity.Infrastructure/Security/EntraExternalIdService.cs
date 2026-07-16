@@ -1,4 +1,6 @@
-using LankaConnect.Infrastructure.Security; // W4.6.c.5: EntraExternalIdOptions stays in legacy
+// Wave 8.5.b Part 5 (2026-07-16): EntraExternalIdOptions relocated INTO this
+// namespace; the cross-project `using LankaConnect.Infrastructure.Security;`
+// line that lived here is no longer needed.
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging;

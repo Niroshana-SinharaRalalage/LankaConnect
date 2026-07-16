@@ -39,7 +39,7 @@ using LankaConnect.Infrastructure.Data.Repositories;        // 4C.d.xiii: Reposi
 using LankaConnect.Modules.Media.Infrastructure.Storage.Configuration;
 using LankaConnect.Modules.Media.Infrastructure.Storage.Services;
 using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5
-using LankaConnect.Infrastructure.Security;
+using LankaConnect.Modules.Identity.Infrastructure.Security; // Wave 8.5.b Part 5 (2026-07-16): EntraExternalIdOptions + TokenConfiguration relocated here from LC.Infra
 using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Interfaces;
@@ -359,9 +359,10 @@ public static class InfrastructureDependencyInjection
         // (IJwtTokenService, IPasswordHashingService, ICurrentUserService,
         // IEntraExternalIdService) relocated to PaymentsModule-style
         // IdentityModule.AddIdentityModule alongside the adapter file moves
-        // into Identity.Infrastructure.Security. ITokenConfiguration stays
-        // here (no file move; lives in LankaConnect.Infrastructure.Security
-        // root + has no Identity-specific surface).
+        // into Identity.Infrastructure.Security.
+        // Wave 8.5.b Part 5 (2026-07-16): ITokenConfiguration impl +
+        // EntraExternalIdOptions relocated to Identity.Infrastructure.Security
+        // alongside the sibling adapters (LC.Infra progressive dismantle).
         services.AddScoped<ITokenConfiguration, TokenConfiguration>();
 
         services.Configure<EntraExternalIdOptions>(configuration.GetSection(EntraExternalIdOptions.SectionName));

@@ -94,13 +94,11 @@
     <InternalsVisibleTo Include="LankaConnect.Infrastructure.Tests" />
   </ItemGroup>
 
-  <!-- Phase 6A.24: Include email templates in publish output -->
-  <ItemGroup>
-    <Content Include="Templates\Email\**\*.*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-  </ItemGroup>
+  <!-- Wave 8.5.b Part 5 (2026-07-16): Templates\Email\ Content include removed here.
+       The 9 template files relocated to Communications.Infrastructure/Templates/Email/
+       and the equivalent Content include now lives on that csproj — the templates
+       still land at the runtime path "{output}/Templates/Email/**" that
+       RazorEmailTemplateService reads (EmailSettings.TemplateBasePath = "Templates/Email"). -->
 
   <!-- Phase 7C.2 recovery: ship authoritative pre-damage signup/volunteer commitment
        email template bodies as embedded resources so the recovery migration can UPDATE

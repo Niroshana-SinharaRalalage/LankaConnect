@@ -38,4 +38,15 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
+  <!-- Wave 8.5.b Part 5 (2026-07-16): email templates relocated from
+       LankaConnect.Infrastructure/Templates/Email/. Copy-to-output preserves
+       the runtime path "{output}/Templates/Email/**" that RazorEmailTemplateService
+       reads via EmailSettings.TemplateBasePath = "Templates/Email". -->
+  <ItemGroup>
+    <Content Include="Templates\Email\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

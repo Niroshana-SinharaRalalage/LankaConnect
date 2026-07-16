@@ -1,16 +1,16 @@
 <#
 .SYNOPSIS
-  Finance + Business fixture builders for Wave 9.h. Each fixture creates a real
-  staging artifact tagged with the current run tag so it cascades through
-  Remove-LcFixturesByTag (for event-scoped fixtures) or its own cleanup
-  (for top-level Business).
+  Finance fixture builders for Wave 9.h. Each fixture creates a real staging
+  artifact tagged with the current run tag so it cascades through
+  Remove-LcFixturesByTag (for event-scoped fixtures) or its own cleanup.
 
 .DESCRIPTION
   Per Wave 9.h.1 architect ruling: every destructive smoke endpoint that can be
   tested via real fixture creation MUST be. "Destructive" is not a valid SKIP
   reason. This module wires up: Sponsor (money/item), Donation, Collection,
   AddOn definition, SponsorshipPackage, VenueLayout, PhotoAlbum, Newsletter,
-  Business, Badge.
+  Badge. (Wave 8.5.k 2026-07-16: Business fixtures removed alongside Businesses
+  controller retirement per founder direction.)
 
   Event-scoped fixtures cascade-delete with the parent event (Remove-LcFixturesByTag
   already handles this). Top-level Business + Badge get dedicated cleanup helpers.
@@ -359,63 +359,9 @@ function New-LcTaggedNewsletter {
 
 # Top-level fixtures (NOT cascade-cleaned; need own teardown)
 
-function New-LcTaggedBusiness {
-    [CmdletBinding()]
-    param(
-        [string]$Tag = $(Get-LcCurrentRunTag),
-        [string]$OwnerId = $(Get-LcUserId)
-    )
-    $body = @{
-        name          = "$Tag SmokeBusiness"
-        description   = 'Auto-created by Wave 9.h smoke. Safe to delete.'
-        contactPhone  = '+15555550200'
-        contactEmail  = (Get-LcFixtureEmail -Slug 'business' -Suffix $Tag)
-        website       = 'https://example.test'
-        address       = '200 Main St'
-        city          = 'Boston'
-        province      = 'Massachusetts'
-        postalCode    = '02110'
-        latitude      = 42.36
-        longitude     = -71.06
-        category      = 'Restaurant'
-        ownerId       = $OwnerId
-        categories    = @('Restaurant')
-        tags          = @('smoke', '9h')
-    }
-    $r = Invoke-LcPost -Path '/api/Businesses' -Body $body
-    # Response body: { businessId } (not { id })
-    $bizId = if ($r.Body.businessId) { $r.Body.businessId } elseif ($r.Body.id) { $r.Body.id } elseif ($r.Body -is [string]) { $r.Body.Trim('"') } else { $null }
-    return [pscustomobject]@{
-        Success = $r.Success
-        StatusCode = $r.StatusCode
-        Body = $r.Body
-        BusinessId = $bizId
-        Tag = $Tag
-        Error = if ($r.Success) { $null } else { "HTTP $($r.StatusCode): $($r.Error)" }
-    }
-}
-
-function Remove-LcBusinessesByTag {
-    [CmdletBinding()]
-    param([string]$Tag = $(Get-LcCurrentRunTag))
-    if (-not $Tag) { throw 'Remove-LcBusinessesByTag: no tag' }
-
-    # Search for tagged businesses
-    $r = Invoke-LcGet -Path "/api/Businesses/search?query=$([uri]::EscapeDataString($Tag))"
-    if (-not $r.Success) {
-        return [pscustomobject]@{ Found = 0; Deleted = 0; Failed = 0; Tag = $Tag; Error = "search failed: HTTP $($r.StatusCode)" }
-    }
-    $items = if ($r.Body.items) { $r.Body.items } else { $r.Body }
-    $tagged = @($items | Where-Object { $_.name -and $_.name.StartsWith($Tag) })
-
-    $deleted = 0
-    $failed = 0
-    foreach ($b in $tagged) {
-        $d = Invoke-LcDelete -Path "/api/Businesses/$($b.id)"
-        if ($d.Success -or $d.StatusCode -eq 204) { $deleted++ } else { $failed++ }
-    }
-    return [pscustomobject]@{ Found = $tagged.Count; Deleted = $deleted; Failed = $failed; Tag = $Tag; Error = $null }
-}
+# Wave 8.5.k (2026-07-16): New-LcTaggedBusiness + Remove-LcBusinessesByTag were removed
+# when the Businesses controller was retired per founder direction. Restore alongside
+# the LankaBusiness product re-add in Phase B.
 
 Export-ModuleMember -Function `
     Enable-LcEventFinanceConfigs, `
@@ -423,5 +369,4 @@ Export-ModuleMember -Function `
     New-LcTaggedDonation, New-LcTaggedCollection, `
     New-LcTaggedAddOnDefinition, New-LcTaggedSponsorshipPackage, `
     New-LcTaggedPhotoAlbum, New-LcTaggedNewsletter, `
-    New-LcTaggedBusiness, Remove-LcBusinessesByTag, `
     New-LcTaggedVenueLayout, Remove-LcVenueLayoutById

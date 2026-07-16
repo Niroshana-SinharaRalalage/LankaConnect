@@ -33,7 +33,7 @@ public abstract class DockerComposeTestBase : IAsyncLifetime
 
     // Repository instances for tests
     protected IUserRepository UserRepository { get; private set; } = null!;
-    protected IBusinessRepository BusinessRepository { get; private set; } = null!;
+    // Wave 8.5.k (2026-07-16): BusinessRepository removed alongside Businesses controller retirement.
     protected IEventRepository EventRepository { get; private set; } = null!;
     protected IRegistrationRepository RegistrationRepository { get; private set; } = null!;
     protected IForumTopicRepository ForumTopicRepository { get; private set; } = null!;
@@ -115,7 +115,7 @@ public abstract class DockerComposeTestBase : IAsyncLifetime
 
         // Initialize repositories
         UserRepository = TestScope.ServiceProvider.GetRequiredService<IUserRepository>();
-        BusinessRepository = TestScope.ServiceProvider.GetRequiredService<IBusinessRepository>();
+        // Wave 8.5.k (2026-07-16): BusinessRepository resolution removed alongside Businesses controller retirement.
         EventRepository = TestScope.ServiceProvider.GetRequiredService<IEventRepository>();
         RegistrationRepository = TestScope.ServiceProvider.GetRequiredService<IRegistrationRepository>();
         ForumTopicRepository = TestScope.ServiceProvider.GetRequiredService<IForumTopicRepository>();

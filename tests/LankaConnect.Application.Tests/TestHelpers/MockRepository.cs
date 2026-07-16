@@ -1,24 +1,23 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
-using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Tests.TestHelpers;
 
+// Wave 8.5.k (2026-07-16): CreateBusinessRepository removed alongside Businesses
+// controller retirement per founder direction. Restore alongside LankaBusiness
+// product re-add in Phase B.
 public static class MockRepository
 {
     public static Mock<IUserRepository> CreateUserRepository()
     {
         var mock = new Mock<IUserRepository>();
-        
+
         // Default setup for common operations
         mock.Setup(x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-            
+
         mock.Setup(x => x.ExistsWithEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
@@ -28,29 +27,10 @@ public static class MockRepository
         return mock;
     }
 
-    public static Mock<IBusinessRepository> CreateBusinessRepository()
-    {
-        var mock = new Mock<IBusinessRepository>();
-        
-        mock.Setup(x => x.AddAsync(It.IsAny<Business>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-            
-        mock.Setup(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Business?)null);
-
-        // Update method is void, not async Task
-        mock.Setup(x => x.Update(It.IsAny<Business>()));
-
-        mock.Setup(x => x.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        return mock;
-    }
-
     public static Mock<IUnitOfWork> CreateUnitOfWork()
     {
         var mock = new Mock<IUnitOfWork>();
-        
+
         mock.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 

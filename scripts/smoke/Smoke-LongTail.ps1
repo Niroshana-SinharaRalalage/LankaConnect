@@ -275,12 +275,10 @@ function Test-Contact {
     }
 }
 
-function Test-WhatsAppWebhook {
-    param($Report)
-    # Wave 9.h.10.4: this stub is superseded by dedicated Smoke-WhatsAppWebhookController.
-    # Skip here so we don't double-count.
-    Add-LcResult -Report $Report -Status SKIP -Section 'whatsapp-webhook' -TestName 'webhook receivers (covered by dedicated smoke)' -Endpoint 'POST /api/webhooks/whatsapp/*' -SkipReason 'moved to Smoke-WhatsAppWebhookController.ps1 (Wave 9.h.10.4)'
-}
+# Wave 8.5 Agent-SkipAudit 2026-07-16: Test-WhatsAppWebhook stub removed.
+# The whatsapp-webhook receivers are covered by the dedicated Smoke-WhatsAppWebhookController.ps1
+# script (Wave 9.h.10.4). Keeping this stub only emitted a noisy SKIP without adding coverage.
+# Deleted per RECOVERABLE-obsolete category.
 
 function Test-Email {
     param($Report)
@@ -327,7 +325,7 @@ function Invoke-LongTailSmoke {
         @{ Name = 'photo-albums';      Func = { Test-PhotoAlbums -Report $report } }
         @{ Name = 'badges';            Func = { Test-Badges -Report $report } }
         @{ Name = 'contact';           Func = { Test-Contact -Report $report } }
-        @{ Name = 'whatsapp-webhook';  Func = { Test-WhatsAppWebhook -Report $report } }
+        # 'whatsapp-webhook' stub removed 2026-07-16 (Agent-SkipAudit) — coverage in Smoke-WhatsAppWebhookController.ps1
         @{ Name = 'email';             Func = { Test-Email -Report $report } }
     )
     $sectionsToRun = if ($Only.Count -gt 0) { $allSections | Where-Object { $Only -contains $_.Name } } else { $allSections }

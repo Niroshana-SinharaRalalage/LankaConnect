@@ -462,8 +462,9 @@ function Test-EventsOrganizerContactFlow {
             if ($r.StatusCode -ge 500) { throw "5xx: $($r.StatusCode)" }
             if ($r.StatusCode -ge 400) { throw "$($r.StatusCode): $($r.Body | ConvertTo-Json -Compress -Depth 3)" }
         }
-        Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'update organizer contact' -Endpoint 'PATCH /api/Events/{id}/organizer-contacts/{contactId}' -SkipReason 'no single-contact PATCH endpoint; batch PUT is the only mutator'
-        Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'delete organizer contact' -Endpoint 'DELETE /api/Events/{id}/organizer-contacts/{contactId}' -SkipReason 'no single-contact DELETE endpoint; batch PUT is the only mutator'
+        # Wave 8.5 Agent-SkipAudit 2026-07-16: removed obsolete per-contact PATCH/DELETE SKIPs.
+        # These endpoints do not exist in the API (batch PUT /organizer-contact is the only mutator, tested above).
+        # The tests were assertions against non-existent endpoints; not "deferred work", just noise. Deleted per RECOVERABLE-obsolete category.
     } else {
         Add-LcResult -Report $Report -Status SKIP -Section 'organizer-contacts' -TestName 'organizer contacts CRUD' -Endpoint '...' -SkipReason 'fixture event create failed'
     }

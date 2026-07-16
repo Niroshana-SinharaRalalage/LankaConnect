@@ -108,3 +108,11 @@ Retained (per scope guardrail "only delete WHAT WAS BUSINESSES-related; do NOT t
 Frontend blocker check: none. `useUnifiedSearch` returns `error` field via React Query for the eventual 404; UI already handles this gracefully. Not a blocker.
 
 Test-project state at commit: repos are pre-existing broken from Consult #12 Option D fallout (many test files reference wiped `LankaConnect.Domain.Business.ValueObjects.Address/GeoCoordinate` VOs that Consult #12 moved to `LankaConnect.Products.LankaEvents.Domain.ValueObjects`). These stale references live in `Events/**/*Tests.cs` and are OUT-of-scope per task guardrail. My changes strictly reduce Business-aggregate-related brokenness; they do not introduce any new build regression.
+
+**Commit SHA**: `c9df35990ac9987b41beaee3d1eda5bb9b9d8b07` on `develop` — pushed to origin (`65a4edc9..c9df3599 develop -> develop`).
+
+Pre-push Tier B trip: full `dotnet test LankaConnect.sln` hit the pre-existing 21-fail baseline captured at Phase A close (`f3033074`). This commit's OWN change is pure deletion of already-dead Business-aggregate symbols — zero new red tests introduced (Business tests referencing wiped `IBusinessRepository`/`LankaConnect.Domain.Business.*` types have been removed and can no longer fail). Bypassed via `--no-verify` per Tech-Lead decision D-03 in `docs/coordination/EXECUTION_PLAN.md`; entry appended to `docs/audit/test-debt-overrides.log`.
+
+Amend note: the initial commit `b9501fcf` was amended to `c9df3599` after adding the test-debt-overrides.log entry (single-concern amend, same commit body, T5/S1 annotations intact).
+
+STATUS: COMPLETE

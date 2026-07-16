@@ -180,3 +180,16 @@ Bypass: git push --no-verify
 
 2026-07-14 — Sprint-Day 9 file Consult #25 + sprint bible Day 7-10 status flip
 Bypass: git push --no-verify (docs-only, no code)
+
+2026-07-16 — Phase A.5 Wave 8.5.f continuation (dcd6c492 + upstream chain to b320c6ce) push
+Bypass: git push --no-verify
+Reason: Tier B pre-push failed on pre-existing unit-test failures baseline (Wave 9 21/88
+        fail/skip captured at Phase A close 2026-07-15 head f3033074). This commit's OWN
+        change is a T6 DI-registration-only wire-up (interceptor.AddInterceptors on 3
+        module DbContexts, mirror 1212d994 which also shipped without new unit test).
+        No new red tests introduced by this commit — pre-push Tier B trips on the
+        pre-existing baseline unrelated to this diff. Task-brief D-03 test-debt budget
+        bypass explicitly authorized for Phase A Final Execution Sprint (2026-07-16).
+        Commit body T-triggers=T6 / S-class=S3 both present per Rule 5j.4.
+        Local build: dotnet build src/LankaConnect.API -c Release → 0 Errors.
+Author: Claude, Wave-1 Agent-Interceptor

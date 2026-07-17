@@ -14,13 +14,17 @@ namespace LankaConnect.Modules.Media.Infrastructure.Repositories;
 /// not used (would create a transitional edge to the monolith assembly).
 /// </summary>
 /// <remarks>
+/// <para>
 /// Wave 6.5.b retired the self-saving pattern that used to live here (the class
 /// remark documenting it was deleted along with the SaveChangesAsync calls
-/// inside AddAsync/UpdateAsync/DeleteAsync). Callers now use
-/// <see cref="LankaConnect.BuildingBlocks.Application.Common.Interfaces.IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken)"/>
-/// so AppDbContext + MediaDbContext commit atomically inside a single Postgres
-/// transaction — the F30a class of production data-loss cannot recur through
-/// this repository.
+/// inside AddAsync/UpdateAsync/DeleteAsync).
+/// </para>
+/// <para>
+/// Wave 8.5.h (2026-07-17, Tech Lead D-01): callers now use direct
+/// <c>_mediaContext.SaveChangesAsync(ct)</c> per Consult #25 Q6. Wave 8.5.f
+/// <c>DomainEventSaveChangesInterceptor</c> dispatches domain events post-save.
+/// The F30a class of production data-loss cannot recur through this repository.
+/// </para>
 /// </remarks>
 public class PhotoAlbumRepository : IPhotoAlbumRepository
 {
@@ -112,9 +116,10 @@ public class PhotoAlbumRepository : IPhotoAlbumRepository
 
     public async Task AddAsync(PhotoAlbum entity, CancellationToken cancellationToken = default)
     {
-        // Wave 6.5.b: SaveChangesAsync deleted here (was line 117 pre-fix). The
-        // caller MUST invoke IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _mediaContext }, ct)
-        // to persist. The change tracker holds the row until commit.
+        // Wave 6.5.b: SaveChangesAsync deleted at the repo boundary. Wave 8.5.h:
+        // caller MUST invoke direct _mediaContext.SaveChangesAsync(ct) per Tech
+        // Lead D-01 (retire of IMultiContextUnitOfWork). The change tracker
+        // holds the row until commit.
         await _dbSet.AddAsync(entity, cancellationToken);
     }
 

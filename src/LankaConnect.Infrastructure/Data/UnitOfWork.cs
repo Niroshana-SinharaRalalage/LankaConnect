@@ -30,133 +30,18 @@ public class UnitOfWork : IUnitOfWork, IMultiContextUnitOfWork
         }
     }
 
-    /// <summary>
-    /// Wave 6.5.a: multi-context atomic commit. Opens ONE transaction on
-    /// <see cref="AppDbContext"/>, enrolls each module context via
-    /// <c>Database.UseTransaction</c>, saves each in order, then commits.
-    /// Any throw between saves rolls back all enrolled contexts.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Retires the "self-saving repository" pattern (ADR-006 transitional).
-    /// See F30a (commit <c>f0b684a0</c>) for the production data-loss failure
-    /// that motivated this API. See ADR-005 for the rejection of
-    /// <c>System.Transactions.TransactionScope</c>.
-    /// </para>
-    /// <para>
-    /// <b>Domain event dispatch</b>: <see cref="AppDbContext.CommitAsync"/>
-    /// dispatches domain events on entities tracked by <see cref="AppDbContext"/>
-    /// after its own <c>SaveChangesAsync</c>. Module contexts do NOT dispatch
-    /// domain events on their own tracked entities in this overload — that
-    /// coordination is deferred to per-module <c>OnSaveChanges</c> interceptors
-    /// authored during Wave 6.5.b-d migrations. This overload's responsibility
-    /// is atomicity of PERSISTENCE across contexts; dispatch is a module concern.
-    /// </para>
-    /// <para>
-    /// <b>Zero-context call</b>: passing an empty <paramref name="moduleContexts"/>
-    /// array is equivalent to <see cref="CommitAsync(CancellationToken)"/> — the
-    /// single-context call site continues to work for handlers not yet migrated.
-    /// </para>
-    /// </remarks>
-    public async Task<int> CommitAsync(DbContext[] moduleContexts, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(moduleContexts);
-
-        // Fast path: no module contexts — behave like the single-context overload.
-        if (moduleContexts.Length == 0)
-        {
-            return await CommitAsync(cancellationToken);
-        }
-
-        using (LogContext.PushProperty("Operation", "CommitMultiContext"))
-        {
-            _logger.Information(
-                "[Wave 6.5.a] Multi-context CommitAsync starting: {ModuleContextCount} module context(s) enrolled",
-                moduleContexts.Length);
-
-            // Open a transaction on AppDbContext and enroll each module context.
-            // If AppDbContext already has an ambient transaction (e.g. from
-            // BeginTransactionAsync above), reuse it; otherwise open one.
-            var ownedTransaction = _transaction is null;
-            var transaction = _transaction ?? await _context.Database.BeginTransactionAsync(cancellationToken);
-
-            try
-            {
-                // Enroll each module context in the AppDbContext transaction.
-                // context.Database.UseTransaction is the supported Npgsql pattern
-                // for cross-DbContext atomicity within a single connection.
-                foreach (var moduleContext in moduleContexts)
-                {
-                    ArgumentNullException.ThrowIfNull(moduleContext);
-                    await moduleContext.Database.UseTransactionAsync(
-                        transaction.GetDbTransaction(),
-                        cancellationToken);
-                }
-
-                // Save AppDbContext first — its CommitAsync dispatches domain
-                // events for entities tracked there.
-                var appChanges = await _context.CommitAsync(cancellationToken);
-
-                // Save each module context in order. Module contexts' own
-                // domain-event dispatch is deferred to their per-module
-                // interceptors (Wave 6.5.b-d).
-                int totalChanges = appChanges;
-                foreach (var moduleContext in moduleContexts)
-                {
-                    var moduleChanges = await moduleContext.SaveChangesAsync(cancellationToken);
-                    totalChanges += moduleChanges;
-
-                    _logger.Debug(
-                        "[Wave 6.5.a] Module context {ContextType} saved {ChangeCount} changes",
-                        moduleContext.GetType().Name,
-                        moduleChanges);
-                }
-
-                // Commit only if we opened the transaction here. If the caller
-                // wrapped this in BeginTransactionAsync/CommitTransactionAsync
-                // themselves, they own the commit.
-                if (ownedTransaction)
-                {
-                    await transaction.CommitAsync(cancellationToken);
-                }
-
-                _logger.Information(
-                    "[Wave 6.5.a] Multi-context CommitAsync completed: {TotalChanges} total changes across {ContextCount} context(s)",
-                    totalChanges,
-                    moduleContexts.Length + 1);
-
-                return totalChanges;
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(
-                    ex,
-                    "[Wave 6.5.a] Multi-context CommitAsync FAILED; rolling back {ContextCount} context(s)",
-                    moduleContexts.Length + 1);
-
-                if (ownedTransaction)
-                {
-                    try
-                    {
-                        await transaction.RollbackAsync(cancellationToken);
-                    }
-                    catch (Exception rollbackEx)
-                    {
-                        _logger.Error(rollbackEx, "[Wave 6.5.a] Rollback itself failed");
-                    }
-                }
-
-                throw;
-            }
-            finally
-            {
-                if (ownedTransaction)
-                {
-                    await transaction.DisposeAsync();
-                }
-            }
-        }
-    }
+    // Wave 8.5.h (2026-07-17): CommitAsync(DbContext[]) impl retired per Tech Lead D-01.
+    // The shared-connection Database.UseTransactionAsync pattern raised
+    // "The specified transaction is not associated with the current connection."
+    // at runtime whenever AppDbContext + a module DbContext drew separate
+    // Npgsql connections. Fixing that properly required 1-2 days scoped
+    // shared-connection wiring; retire took ~2 hours by refactoring the 16
+    // live callers to direct per-context SaveChangesAsync + Wave 8.5.f
+    // DomainEventSaveChangesInterceptor. See
+    // src/BuildingBlocks/BuildingBlocks.Infrastructure/Abstractions/IMultiContextUnitOfWork.cs
+    // for the marker interface docstring and Consult #25 Q6 blanket approval.
+    // ArchTest Rule15_UnitOfWork_DoesNotReintroduce_MultiContextCommitAsync
+    // guards against regression.
 
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {

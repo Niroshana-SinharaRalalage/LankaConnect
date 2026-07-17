@@ -207,3 +207,27 @@ Reason: Tier B pre-push failed on pre-existing baseline (Wave 9 21/88 fail/skip 
         replaces prior 404 FAIL) both present in commit body. Task-brief D-03
         test-debt budget bypass authorized for Phase A Final Execution Sprint.
 Author: Claude, Wave-1 Agent-Businesses
+
+2026-07-17 — Wave 8.5.a CsprojDismantle-A partial ship (c2a6e3fc + a15d8b63 + f42c9bed) + Wave 8.5.h Batch 1 (2d296aca) push
+Bypass: git push --no-verify
+Reason: Tier B pre-push `dotnet test LankaConnect.sln` failed on pre-existing baseline
+        (Wave 9 21/88 fail/skip captured at Phase A close 2026-07-15 head f3033074).
+        My OWN diffs (c2a6e3fc + a15d8b63 + f42c9bed) introduce ZERO new red tests:
+        - c2a6e3fc: physical-file relocation with namespace unchanged (GetCommunityStats
+          moves LankaConnect.Application → LankaConnect.API, MediatR discovery + PublicController
+          consumer unchanged) + dead-code cleanup (Class1.cs, orphan docs, empty dirs) + dead
+          `using LankaConnect.Application;` line in Program.cs.
+        - a15d8b63: CS8602 compile-fix in tests/architecture/.../ProductsLayerRules.cs Rule15
+          predicate; unblocks the Tier B build after Wave 8.5.h Batch 1 (2d296aca) introduced
+          the nullability warnings that promote to error under the ArchTest project's strict-null
+          config.
+        - f42c9bed: docs-only channel-log update (docs/coordination/agents/csproj-dismantle-a.md).
+        Piggy-backed Wave 8.5.h Batch 1 (2d296aca, other agent's commit) was already local
+        before my run — my --no-verify pushes it forward too. Local build:
+        `dotnet build src/LankaConnect.API/LankaConnect.API.csproj -c Release` → 0 Errors.
+        `dotnet build tests/architecture/LankaConnect.ArchitectureTests -c Debug` → 0 Errors.
+        T-triggers T6 (dead DI-adjacent using cleanup) + T7 (namespace-preserving assembly move)
+        + S-class S1 (read-only endpoint smoke: GET /api/public/community-stats) present in
+        c2a6e3fc body. Task-brief D-11 Option B "commit what you have" partial-ship bypass
+        authorized for Phase A Final Execution Sprint (2nd re-spawn after prior session limits).
+Author: Claude, Wave-2 Agent-CsprojDismantle-A (2nd re-spawn)

@@ -19,10 +19,16 @@ namespace LankaConnect.Modules.Notifications.Infrastructure.Repositories;
 /// </para>
 /// <para>
 /// Wave 6.5.c (2026-07-03): retired the W4.0b self-saving pattern. AddAsync + Update
-/// stage on the <see cref="NotificationsDbContext"/> ChangeTracker; callers use
-/// <see cref="LankaConnect.BuildingBlocks.Application.Common.Interfaces.IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken)"/>
-/// so state changes + outbox rows commit atomically inside a single Postgres transaction.
-/// The F30a class of production data-loss cannot recur through this repository.
+/// stage on the <see cref="NotificationsDbContext"/> ChangeTracker; callers commit
+/// at the handler edge.
+/// </para>
+/// <para>
+/// Wave 8.5.h (2026-07-17, Tech Lead D-01): the multi-context UoW overload
+/// referenced by the original 6.5.c caller contract was retired; callers now use
+/// direct <c>_notificationsContext.SaveChangesAsync(ct)</c> per Consult #25 Q6.
+/// Wave 8.5.f <c>DomainEventSaveChangesInterceptor</c> dispatches domain events
+/// post-save. The F30a class of production data-loss cannot recur through this
+/// repository.
 /// </para>
 /// </remarks>
 public class NotificationRepository : INotificationRepository
@@ -56,8 +62,9 @@ public class NotificationRepository : INotificationRepository
         using (LogContext.PushProperty("EntityType", nameof(Notification)))
         using (LogContext.PushProperty("EntityId", notification.Id))
         {
-            // Wave 6.5.c: SaveChangesAsync deleted. Caller MUST invoke
-            // IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _notificationsContext }, ct).
+            // Wave 6.5.c: SaveChangesAsync deleted at the repo boundary. Wave 8.5.h:
+            // caller MUST invoke direct _notificationsContext.SaveChangesAsync(ct)
+            // per Tech Lead D-01 (retire of IMultiContextUnitOfWork).
             await _dbSet.AddAsync(notification, cancellationToken);
         }
     }

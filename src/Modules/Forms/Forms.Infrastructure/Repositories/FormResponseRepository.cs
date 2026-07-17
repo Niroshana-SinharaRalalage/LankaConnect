@@ -13,12 +13,17 @@ namespace LankaConnect.Modules.Forms.Infrastructure.Repositories;
 /// extraction — injects <see cref="FormsDbContext"/>.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Wave 6.5.d (2026-07-03): retired the W4.0b self-saving pattern. AddAsync +
 /// UpdateAsync + DeleteAsync stage on the <see cref="FormsDbContext"/> ChangeTracker;
-/// callers use
-/// <see cref="LankaConnect.BuildingBlocks.Application.Common.Interfaces.IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken)"/>
-/// so state changes + outbox rows commit atomically inside a single Postgres transaction.
+/// callers commit at the handler edge.
+/// </para>
+/// <para>
+/// Wave 8.5.h (2026-07-17, Tech Lead D-01): callers now use direct
+/// <c>_formsContext.SaveChangesAsync(ct)</c> per Consult #25 Q6. Wave 8.5.f
+/// <c>DomainEventSaveChangesInterceptor</c> dispatches domain events post-save.
 /// The F30a class of production data-loss cannot recur through this repository.
+/// </para>
 /// </remarks>
 public class FormResponseRepository : IFormResponseRepository
 {
@@ -130,8 +135,9 @@ public class FormResponseRepository : IFormResponseRepository
 
     public async Task AddAsync(FormResponse entity, CancellationToken cancellationToken = default)
     {
-        // Wave 6.5.d: SaveChangesAsync deleted. Caller MUST invoke
-        // IMultiContextUnitOfWork.CommitAsync(new DbContext[] { _formsContext }, ct).
+        // Wave 6.5.d: SaveChangesAsync deleted at the repo boundary. Wave 8.5.h:
+        // caller MUST invoke direct _formsContext.SaveChangesAsync(ct) per
+        // Tech Lead D-01 (retire of IMultiContextUnitOfWork).
         await _dbSet.AddAsync(entity, cancellationToken);
     }
 

@@ -1,54 +1,46 @@
 using LankaConnect.BuildingBlocks.Domain;
-using Microsoft.EntityFrameworkCore;
 namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 /// <summary>
-/// Wave 6.5.a: extends the legacy <see cref="IUnitOfWork"/> with a multi-context
-/// overload so a handler can atomically commit changes across
-/// <see cref="AppDbContext"/> AND one or more per-module DbContexts (e.g.
-/// <c>MediaDbContext</c>, <c>NotificationsDbContext</c>, <c>FormsDbContext</c>).
+/// Marker interface preserved for DI-resolution compatibility. All methods
+/// have been retired.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Retires the "self-saving repository" pattern documented in ADR-006 and
-/// implemented as a stop-gap in NotificationRepository, PhotoAlbumRepository,
-/// FormRepository, and FormResponseRepository. Those repos call
-/// <c>_context.SaveChangesAsync()</c> internally because the legacy
-/// <see cref="IUnitOfWork.CommitAsync"/> only saves <see cref="AppDbContext"/>.
-/// F30a (Wave 9.h.10.6 commit <c>f0b684a0</c>) proved the pattern silently
-/// corrupts data when handlers forget the self-save — the entire PhotoAlbums
-/// feature was data-losing in production since the Wave 4.2 MediaDbContext
-/// extraction.
+/// <b>Retired 2026-07-17 (Wave 8.5.h, Tech Lead D-01)</b> — the
+/// <c>CommitAsync(DbContext[], CancellationToken)</c> overload was removed
+/// because its shared-connection <c>Database.UseTransactionAsync</c> pattern
+/// silently emitted "The specified transaction is not associated with the
+/// current connection." at runtime when AppDbContext + a module DbContext
+/// drew separate physical connections from the Npgsql pool. Fixing that
+/// properly required scoped shared-connection wiring (1-2 days engineering);
+/// retirement took ~2 hours by refactoring the 16 live callers to per-context
+/// direct <c>SaveChangesAsync</c> plus the per-module
+/// <c>DomainEventSaveChangesInterceptor</c> (Wave 8.5.f) for domain-event
+/// dispatch.
 /// </para>
 /// <para>
-/// The overload opens ONE transaction on <see cref="AppDbContext"/>, enrolls
-/// each module context via <c>Database.UseTransaction</c>, calls
-/// <c>SaveChangesAsync</c> on each in order, dispatches domain events across
-/// ALL enrolled contexts, then commits. If any step throws, all changes roll
-/// back atomically. <c>System.Transactions.TransactionScope</c> is explicitly
-/// rejected per ADR-005 (Npgsql doesn't support DTC cleanly).
+/// <b>Do NOT re-add methods here.</b> Cross-context propagation should route
+/// through integration events (contracts + outbox) — see
+/// <c>IIntegrationEventOutbox&lt;TDbContext&gt;</c> and Consult #25 Q6 blanket
+/// approval of direct-SaveChanges. If a Phase B product surfaces a truly
+/// atomic cross-context write that a saga cannot decompose, escalate to
+/// architect for saga-log infrastructure — do NOT re-introduce a multi-context
+/// commit shim.
 /// </para>
 /// <para>
-/// Handlers that need multi-context atomicity inject
-/// <see cref="IMultiContextUnitOfWork"/> instead of the single-context
-/// <see cref="IUnitOfWork"/>. Existing handlers depending on the legacy
-/// interface continue to work unchanged.
+/// The type itself is preserved (not deleted) so the DI registration in
+/// <c>LankaConnect.API.LegacyInfrastructureDependencyInjection</c> and any
+/// pre-existing <c>&lt;see cref&gt;</c> references in module repositories
+/// continue to resolve. See
+/// <c>docs/architecture/DBCONTEXT_OWNERSHIP_MATRIX.md</c> for the
+/// per-module DbContext ownership rules.
 /// </para>
 /// </remarks>
 public interface IMultiContextUnitOfWork : IUnitOfWork
 {
-    /// <summary>
-    /// Commits a set of module DbContexts atomically alongside
-    /// <see cref="AppDbContext"/>. Domain events raised on entities tracked by
-    /// any enrolled context dispatch through MediatR AFTER the transaction
-    /// commits successfully.
-    /// </summary>
-    /// <param name="moduleContexts">Zero or more per-module DbContexts to
-    /// enroll in the transaction. May be empty (equivalent to
-    /// <see cref="IUnitOfWork.CommitAsync"/> semantics but with a single call
-    /// site for both patterns).</param>
-    /// <param name="cancellationToken">Standard cancellation token; a throw
-    /// mid-commit rolls back all enrolled contexts.</param>
-    /// <returns>Total change count summed across all committed contexts.</returns>
-    Task<int> CommitAsync(DbContext[] moduleContexts, CancellationToken cancellationToken = default);
+    // Wave 8.5.h (2026-07-17): CommitAsync(DbContext[]) method retired per
+    // Tech Lead D-01. See remarks above. ArchTest rule
+    // Rule15_UnitOfWork_DoesNotReintroduce_MultiContextCommitAsync guards
+    // against regression.
 }

@@ -2,6 +2,8 @@ using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.DeleteSponsorshipPackage;
@@ -16,15 +18,18 @@ public class DeleteSponsorshipPackageCommandHandler : ICommandHandler<DeleteSpon
 {
     private readonly ISponsorshipPackageRepository _packageRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<DeleteSponsorshipPackageCommandHandler> _logger;
 
     public DeleteSponsorshipPackageCommandHandler(
         ISponsorshipPackageRepository packageRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<DeleteSponsorshipPackageCommandHandler> logger)
     {
         _packageRepository = packageRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -64,7 +69,7 @@ public class DeleteSponsorshipPackageCommandHandler : ICommandHandler<DeleteSpon
                             return Result.Failure(deactivateResult.Error);
 
                         _packageRepository.Update(package);
-                        await _unitOfWork.CommitAsync(cancellationToken);
+                        await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
                     }
 
                     stopwatch.Stop();
@@ -77,7 +82,7 @@ public class DeleteSponsorshipPackageCommandHandler : ICommandHandler<DeleteSpon
 
                 // Hard delete — safe because no sponsor row references this package.
                 _packageRepository.Remove(package);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 stopwatch.Stop();
                 _logger.LogInformation(

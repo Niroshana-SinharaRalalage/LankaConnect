@@ -6,6 +6,8 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreateSponsorshipPackage;
@@ -24,17 +26,20 @@ public class CreateSponsorshipPackageCommandHandler : ICommandHandler<CreateSpon
     private readonly IEventRepository _eventRepository;
     private readonly ISponsorshipPackageRepository _packageRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<CreateSponsorshipPackageCommandHandler> _logger;
 
     public CreateSponsorshipPackageCommandHandler(
         IEventRepository eventRepository,
         ISponsorshipPackageRepository packageRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<CreateSponsorshipPackageCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _packageRepository = packageRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -86,7 +91,7 @@ public class CreateSponsorshipPackageCommandHandler : ICommandHandler<CreateSpon
 
                 // 4. Persist
                 await _packageRepository.AddAsync(package, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 stopwatch.Stop();
 

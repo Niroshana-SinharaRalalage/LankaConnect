@@ -7,6 +7,8 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreateCollection;
@@ -21,6 +23,7 @@ public class CreateCollectionCommandHandler : ICommandHandler<CreateCollectionCo
     private readonly IEventRepository _eventRepository;
     private readonly ICollectionRepository _collectionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly ILogger<CreateCollectionCommandHandler> _logger;
@@ -29,6 +32,7 @@ public class CreateCollectionCommandHandler : ICommandHandler<CreateCollectionCo
         IEventRepository eventRepository,
         ICollectionRepository collectionRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
         ILogger<CreateCollectionCommandHandler> logger)
@@ -36,6 +40,7 @@ public class CreateCollectionCommandHandler : ICommandHandler<CreateCollectionCo
         _eventRepository = eventRepository;
         _collectionRepository = collectionRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
         _logger = logger;
@@ -167,7 +172,7 @@ public class CreateCollectionCommandHandler : ICommandHandler<CreateCollectionCo
 
                 // 10. Save collection
                 await _collectionRepository.AddAsync(collection, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 stopwatch.Stop();
 

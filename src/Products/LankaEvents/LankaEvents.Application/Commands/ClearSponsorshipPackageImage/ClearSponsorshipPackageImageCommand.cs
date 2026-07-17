@@ -1,7 +1,9 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using MediatR;
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5: IImageService promoted
@@ -24,17 +26,20 @@ public class ClearSponsorshipPackageImageCommandHandler : IRequestHandler<ClearS
     private readonly ISponsorshipPackageRepository _packageRepository;
     private readonly IImageService _imageService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<ClearSponsorshipPackageImageCommandHandler> _logger;
 
     public ClearSponsorshipPackageImageCommandHandler(
         ISponsorshipPackageRepository packageRepository,
         IImageService imageService,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<ClearSponsorshipPackageImageCommandHandler> logger)
     {
         _packageRepository = packageRepository;
         _imageService = imageService;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -65,7 +70,7 @@ public class ClearSponsorshipPackageImageCommandHandler : IRequestHandler<ClearS
                     return Result.Failure(clearResult.Errors);
 
                 _packageRepository.Update(package);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 // Best-effort blob delete after commit
                 if (!string.IsNullOrEmpty(oldImageUrl))

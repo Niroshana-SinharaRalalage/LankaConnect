@@ -4,6 +4,8 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g direct-SaveChanges
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateSignUpItem;
@@ -19,16 +21,16 @@ namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateSignUpIte
 public class UpdateSignUpItemCommandHandler : ICommandHandler<UpdateSignUpItemCommand>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<UpdateSignUpItemCommandHandler> _logger;
 
     public UpdateSignUpItemCommandHandler(
         IEventRepository eventRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<UpdateSignUpItemCommandHandler> logger)
     {
         _eventRepository = eventRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -144,7 +146,7 @@ public class UpdateSignUpItemCommandHandler : ICommandHandler<UpdateSignUpItemCo
                         "UpdateSignUpItem: Domain method succeeded - SignUpItemId={SignUpItemId}, ItemType={ItemType}, NewDescription={NewDescription}",
                         signUpItem.Id, signUpItem.ItemType, request.ItemDescription);
 
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
 
                     stopwatch.Stop();
                     _logger.LogInformation(

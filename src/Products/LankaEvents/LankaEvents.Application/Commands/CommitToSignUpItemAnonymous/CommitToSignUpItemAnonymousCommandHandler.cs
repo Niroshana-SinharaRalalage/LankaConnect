@@ -263,8 +263,8 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                     "CommitToSignUpItemAnonymous: Commitment operation succeeded - CommitmentId={CommitmentId}",
                     commitmentId);
 
-                // Step 9: Commit changes
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // Step 9: Wave 8.5.g direct-SaveChanges — same-context write via already-injected LankaEventsDbContext
+                await _context.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

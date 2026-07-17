@@ -167,8 +167,8 @@ public class AddOpenSignUpItemAnonymousCommandHandler : ICommandHandler<AddOpenS
                     "AddOpenSignUpItemAnonymous: Domain method succeeded - ItemId={ItemId}, ItemName={ItemName}",
                     itemResult.Value.Id, request.ItemName);
 
-                // Step 8: Commit changes
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // Step 8: Wave 8.5.g direct-SaveChanges — same-context write via already-injected LankaEventsDbContext
+                await _context.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

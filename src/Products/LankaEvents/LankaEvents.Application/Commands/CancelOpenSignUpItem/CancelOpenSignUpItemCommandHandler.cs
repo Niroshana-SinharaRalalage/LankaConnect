@@ -4,6 +4,8 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g direct-SaveChanges
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CancelOpenSignUpItem;
@@ -14,16 +16,16 @@ namespace LankaConnect.Products.LankaEvents.Application.Commands.CancelOpenSignU
 public class CancelOpenSignUpItemCommandHandler : ICommandHandler<CancelOpenSignUpItemCommand>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<CancelOpenSignUpItemCommandHandler> _logger;
 
     public CancelOpenSignUpItemCommandHandler(
         IEventRepository eventRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<CancelOpenSignUpItemCommandHandler> logger)
     {
         _eventRepository = eventRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -179,8 +181,8 @@ public class CancelOpenSignUpItemCommandHandler : ICommandHandler<CancelOpenSign
                     "CancelOpenSignUpItem: Item removed successfully - ItemId={ItemId}",
                     request.ItemId);
 
-                // Commit changes
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // Wave 8.5.g direct-SaveChanges
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

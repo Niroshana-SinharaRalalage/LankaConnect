@@ -3,7 +3,9 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using MediatR;
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5: IImageService promoted
@@ -35,17 +37,20 @@ public class SetSponsorImageCommandHandler
     private readonly ISponsorRepository _sponsorRepository;
     private readonly IImageService _imageService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<SetSponsorImageCommandHandler> _logger;
 
     public SetSponsorImageCommandHandler(
         ISponsorRepository sponsorRepository,
         IImageService imageService,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<SetSponsorImageCommandHandler> logger)
     {
         _sponsorRepository = sponsorRepository;
         _imageService = imageService;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -114,7 +119,7 @@ public class SetSponsorImageCommandHandler
                     return Result<SetSponsorImageResult>.Failure(setResult.Errors);
                 }
 
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 // 6. Best-effort delete old blob after commit. Failure is logged but
                 //    non-fatal — new image is in place; stale blob is a forensic gap.

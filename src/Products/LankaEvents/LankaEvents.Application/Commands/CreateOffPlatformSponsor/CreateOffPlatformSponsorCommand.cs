@@ -6,7 +6,9 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using MediatR;
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5: IImageService promoted
@@ -59,6 +61,7 @@ public class CreateOffPlatformSponsorCommandHandler
     private readonly IEventRepository _eventRepository;
     private readonly IImageService _imageService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<CreateOffPlatformSponsorCommandHandler> _logger;
 
     public CreateOffPlatformSponsorCommandHandler(
@@ -66,12 +69,14 @@ public class CreateOffPlatformSponsorCommandHandler
         IEventRepository eventRepository,
         IImageService imageService,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<CreateOffPlatformSponsorCommandHandler> logger)
     {
         _sponsorRepository = sponsorRepository;
         _eventRepository = eventRepository;
         _imageService = imageService;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -187,7 +192,7 @@ public class CreateOffPlatformSponsorCommandHandler
                 // 4. Persist (single transaction via UnitOfWork — the Sponsor was created
                 //    in memory and is being added to the context here).
                 await _sponsorRepository.AddAsync(sponsor, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 _logger.LogInformation(
                     "CreateOffPlatformSponsor SUCCESS: SponsorId={SponsorId}, ImageUrl={ImageUrl}",

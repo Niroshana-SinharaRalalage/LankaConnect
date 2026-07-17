@@ -6,6 +6,8 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ApplyTemplateToEvent;
 
@@ -20,6 +22,7 @@ public class ApplyTemplateToEventCommandHandler
     private readonly IVenueLayoutRepository _venueLayoutRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILayoutMetrics _metrics;
     private readonly ILogger<ApplyTemplateToEventCommandHandler> _logger;
 
@@ -27,12 +30,14 @@ public class ApplyTemplateToEventCommandHandler
         IVenueLayoutRepository venueLayoutRepository,
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILayoutMetrics metrics,
         ILogger<ApplyTemplateToEventCommandHandler> logger)
     {
         _venueLayoutRepository = venueLayoutRepository;
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _metrics = metrics;
         _logger = logger;
     }
@@ -164,7 +169,7 @@ public class ApplyTemplateToEventCommandHandler
                 return Result<VenueLayoutDto>.Failure(enableResult.Error);
             }
 
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
         }
         catch (Exception ex)
         {

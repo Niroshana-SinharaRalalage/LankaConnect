@@ -3,6 +3,8 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AdminApproval;
@@ -11,15 +13,18 @@ public class ApproveEventCommandHandler : ICommandHandler<ApproveEventCommand>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<ApproveEventCommandHandler> _logger;
 
     public ApproveEventCommandHandler(
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<ApproveEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -73,8 +78,8 @@ public class ApproveEventCommandHandler : ICommandHandler<ApproveEventCommand>
                     "ApproveEvent: Domain method succeeded - EventId={EventId}, NewStatus={Status}",
                     @event.Id, @event.Status);
 
-                // Save changes (EF Core tracks changes automatically)
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // Save changes (Wave 8.5.g: direct SaveChanges on LankaEventsDbContext)
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

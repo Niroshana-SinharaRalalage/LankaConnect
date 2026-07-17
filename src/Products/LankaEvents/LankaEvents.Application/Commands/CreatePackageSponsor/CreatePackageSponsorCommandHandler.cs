@@ -7,6 +7,8 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreatePackageSponsor;
@@ -41,6 +43,7 @@ public class CreatePackageSponsorCommandHandler : ICommandHandler<CreatePackageS
     private readonly ISponsorshipPackageRepository _packageRepository;
     private readonly ISponsorRepository _sponsorRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly ILogger<CreatePackageSponsorCommandHandler> _logger;
@@ -50,6 +53,7 @@ public class CreatePackageSponsorCommandHandler : ICommandHandler<CreatePackageS
         ISponsorshipPackageRepository packageRepository,
         ISponsorRepository sponsorRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
         ILogger<CreatePackageSponsorCommandHandler> logger)
@@ -58,6 +62,7 @@ public class CreatePackageSponsorCommandHandler : ICommandHandler<CreatePackageS
         _packageRepository = packageRepository;
         _sponsorRepository = sponsorRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
         _logger = logger;
@@ -167,7 +172,7 @@ public class CreatePackageSponsorCommandHandler : ICommandHandler<CreatePackageS
                         Money.Zero(package.Price.Currency));
 
                     await _sponsorRepository.AddAsync(sponsor, cancellationToken);
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                     stopwatch.Stop();
 
@@ -273,7 +278,7 @@ public class CreatePackageSponsorCommandHandler : ICommandHandler<CreatePackageS
 
                 // 10. Save sponsor + commit
                 await _sponsorRepository.AddAsync(sponsor, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 stopwatch.Stop();
 

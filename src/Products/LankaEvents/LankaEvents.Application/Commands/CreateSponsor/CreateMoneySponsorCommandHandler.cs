@@ -7,6 +7,8 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreateSponsor;
@@ -21,6 +23,7 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
     private readonly IEventRepository _eventRepository;
     private readonly ISponsorRepository _sponsorRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly ILogger<CreateMoneySponsorCommandHandler> _logger;
@@ -29,6 +32,7 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
         IEventRepository eventRepository,
         ISponsorRepository sponsorRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
         ILogger<CreateMoneySponsorCommandHandler> logger)
@@ -36,6 +40,7 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
         _eventRepository = eventRepository;
         _sponsorRepository = sponsorRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
         _logger = logger;
@@ -172,7 +177,7 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
 
                 // 10. Save sponsor
                 await _sponsorRepository.AddAsync(sponsor, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 stopwatch.Stop();
 

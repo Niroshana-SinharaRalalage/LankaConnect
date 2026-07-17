@@ -4,6 +4,8 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateRegistrationDetails;
@@ -16,15 +18,18 @@ public class UpdateRegistrationDetailsCommandHandler : ICommandHandler<UpdateReg
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<UpdateRegistrationDetailsCommandHandler> _logger;
 
     public UpdateRegistrationDetailsCommandHandler(
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<UpdateRegistrationDetailsCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -123,8 +128,8 @@ public class UpdateRegistrationDetailsCommandHandler : ICommandHandler<UpdateReg
                     "UpdateRegistrationDetails: Domain method succeeded - EventId={EventId}, UserId={UserId}",
                     @event.Id, request.UserId);
 
-                // Commit changes
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // Commit changes (Wave 8.5.g: direct SaveChanges on LankaEventsDbContext)
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

@@ -146,7 +146,7 @@ public class InitiateAddHeadCountCommandHandler
 
                 // 7. Persist the addition row first so the FK in the Stripe metadata is valid.
                 await _additionRepository.AddAsync(addition, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
                 _logger.LogInformation(
                     "[7F-D] Addition created — AdditionId={AdditionId} DeltaTotal={Delta} AdditionalAmount={Amount} {Currency}",
@@ -167,12 +167,12 @@ public class InitiateAddHeadCountCommandHandler
                     {
                         addition.MarkAsFailed();
                         _additionRepository.Update(addition);
-                        await _unitOfWork.CommitAsync(cancellationToken);
+                        await _context.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
                         return Ok(InitiateAddAttendeesResult.Failed(mergeResult.Error));
                     }
                     addition.MarkAsMerged();
                     _additionRepository.Update(addition);
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    await _context.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
                     return Ok(InitiateAddAttendeesResult.Successful(
                         addition.Id, checkoutSessionId: "free-no-stripe", checkoutUrl: "",
@@ -206,7 +206,7 @@ public class InitiateAddHeadCountCommandHandler
 
                 addition.SetStripeCheckoutSession(checkoutResult.Value.SessionId, checkoutResult.Value.ExpiresAt);
                 _additionRepository.Update(addition);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
                 stopwatch.Stop();
                 _logger.LogInformation(

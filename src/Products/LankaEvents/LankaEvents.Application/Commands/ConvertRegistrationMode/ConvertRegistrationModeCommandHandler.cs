@@ -133,7 +133,7 @@ public class ConvertRegistrationModeCommandHandler
                         fromMode, request.TargetMode,
                         startedAt, completedAt, report, cancellationToken);
 
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    await _db.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
                     _logger.LogInformation(
                         "[7F-B] ConvertRegistrationMode COMMITTED — EventId={EventId} Migrated={Migrated} Skipped={Skipped} AggregateId={AggregateId}",
                         request.EventId, report.Migrated.Count, report.Skipped.Count, aggregateId);

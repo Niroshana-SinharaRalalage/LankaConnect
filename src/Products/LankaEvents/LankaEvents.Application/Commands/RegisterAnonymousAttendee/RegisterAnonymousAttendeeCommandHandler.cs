@@ -12,6 +12,8 @@ using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
 using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.RegisterAnonymousAttendee;
@@ -28,6 +30,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
     private readonly IEventRepository _eventRepository;
     private readonly IDonationRepository _donationRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly IIdentityQueries _identityQueries;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
@@ -47,6 +50,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         IEventRepository eventRepository,
         IDonationRepository donationRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         IIdentityQueries identityQueries,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
@@ -62,6 +66,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         _eventRepository = eventRepository;
         _donationRepository = donationRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _identityQueries = identityQueries;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
@@ -897,7 +902,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             }
 
             // Save changes with checkout session ID
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
             stopwatch.Stop();
 
@@ -947,7 +952,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                         donationCheckoutResult.Value.ExpiresAt);
 
                     await _donationRepository.AddAsync(bundledDonation, cancellationToken);
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
                     stopwatch.Stop();
 
@@ -967,7 +972,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         }
 
         // FREE event - save and return null (no payment needed)
-        await _unitOfWork.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
         stopwatch.Stop();
 
@@ -1315,7 +1320,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 return Result<string?>.Failure(setSessionResult.Error);
 
             // Save changes with checkout session ID
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
             stopwatch.Stop();
 
@@ -1328,7 +1333,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         }
 
         // FREE event - save and return null (no payment needed)
-        await _unitOfWork.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
         stopwatch.Stop();
 
@@ -1460,11 +1465,11 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             if (checkoutResult.IsFailure)
                 return Result<string?>.Failure(checkoutResult.Error);
 
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
             return Result<string?>.Success(checkoutResult.Value);
         }
 
-        await _unitOfWork.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
         return Result<string?>.Success(null);
     }
 }

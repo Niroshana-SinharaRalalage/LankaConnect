@@ -4,6 +4,7 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g direct-SaveChanges
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateLayout;
@@ -18,18 +19,18 @@ public class UpdateLayoutCommandHandler : ICommandHandler<UpdateLayoutCommand>
 {
     private readonly ILayoutAuthorizationService _authorizationService;
     private readonly IVenueLayoutRepository _layoutRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<UpdateLayoutCommandHandler> _logger;
 
     public UpdateLayoutCommandHandler(
         ILayoutAuthorizationService authorizationService,
         IVenueLayoutRepository layoutRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<UpdateLayoutCommandHandler> logger)
     {
         _authorizationService = authorizationService;
         _layoutRepository = layoutRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -85,7 +86,7 @@ public class UpdateLayoutCommandHandler : ICommandHandler<UpdateLayoutCommand>
 
         try
         {
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException ex)
         {

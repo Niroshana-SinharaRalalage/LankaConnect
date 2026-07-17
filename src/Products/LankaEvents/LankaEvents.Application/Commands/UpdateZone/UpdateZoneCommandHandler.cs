@@ -4,6 +4,7 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g direct-SaveChanges
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateZone;
@@ -18,7 +19,7 @@ public class UpdateZoneCommandHandler : ICommandHandler<UpdateZoneCommand>
     private readonly ILayoutAuthorizationService _authorizationService;
     private readonly IStructuralEditGuard _structuralGuard;
     private readonly IVenueLayoutRepository _layoutRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILayoutMetrics _metrics;
     private readonly ILogger<UpdateZoneCommandHandler> _logger;
 
@@ -26,14 +27,14 @@ public class UpdateZoneCommandHandler : ICommandHandler<UpdateZoneCommand>
         ILayoutAuthorizationService authorizationService,
         IStructuralEditGuard structuralGuard,
         IVenueLayoutRepository layoutRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILayoutMetrics metrics,
         ILogger<UpdateZoneCommandHandler> logger)
     {
         _authorizationService = authorizationService;
         _structuralGuard = structuralGuard;
         _layoutRepository = layoutRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _metrics = metrics;
         _logger = logger;
     }
@@ -132,7 +133,7 @@ public class UpdateZoneCommandHandler : ICommandHandler<UpdateZoneCommand>
 
         try
         {
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException ex)
         {

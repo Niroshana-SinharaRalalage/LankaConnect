@@ -5,6 +5,7 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g direct-SaveChanges
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.DeleteLayout;
@@ -21,7 +22,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
     private readonly IStructuralEditGuard _structuralGuard;
     private readonly IVenueLayoutRepository _layoutRepository;
     private readonly IEventRepository _eventRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILayoutMetrics _metrics;
     private readonly ILogger<DeleteLayoutCommandHandler> _logger;
 
@@ -30,7 +31,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
         IStructuralEditGuard structuralGuard,
         IVenueLayoutRepository layoutRepository,
         IEventRepository eventRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILayoutMetrics metrics,
         ILogger<DeleteLayoutCommandHandler> logger)
     {
@@ -38,7 +39,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
         _structuralGuard = structuralGuard;
         _layoutRepository = layoutRepository;
         _eventRepository = eventRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _metrics = metrics;
         _logger = logger;
     }
@@ -143,7 +144,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
 
         try
         {
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException ex)
         {

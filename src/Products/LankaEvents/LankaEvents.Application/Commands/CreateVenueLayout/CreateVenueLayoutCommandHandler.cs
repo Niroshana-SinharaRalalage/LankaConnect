@@ -5,24 +5,26 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g direct-SaveChanges
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreateVenueLayout;
 
 public class CreateVenueLayoutCommandHandler : ICommandHandler<CreateVenueLayoutCommand, VenueLayoutDto>
 {
     private readonly IVenueLayoutRepository _venueLayoutRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILayoutMetrics _metrics;
     private readonly ILogger<CreateVenueLayoutCommandHandler> _logger;
 
     public CreateVenueLayoutCommandHandler(
         IVenueLayoutRepository venueLayoutRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILayoutMetrics metrics,
         ILogger<CreateVenueLayoutCommandHandler> logger)
     {
         _venueLayoutRepository = venueLayoutRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _metrics = metrics;
         _logger = logger;
     }
@@ -62,7 +64,7 @@ public class CreateVenueLayoutCommandHandler : ICommandHandler<CreateVenueLayout
         // canonical mapping path. Presets (Slice 6) and canvas editor (Slice 8) will call it.
 
         await _venueLayoutRepository.AddAsync(layout, cancellationToken);
-        await _unitOfWork.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Venue layout created: LayoutId={LayoutId}, Zones={ZoneCount}",

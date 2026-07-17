@@ -4,6 +4,8 @@ using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g direct-SaveChanges
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.SaveLayoutAsTemplate;
 
@@ -29,20 +31,20 @@ public class SaveLayoutAsTemplateCommandHandler
 {
     private readonly ILayoutAuthorizationService _authorizationService;
     private readonly IVenueLayoutRepository _venueLayoutRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILayoutMetrics _metrics;
     private readonly ILogger<SaveLayoutAsTemplateCommandHandler> _logger;
 
     public SaveLayoutAsTemplateCommandHandler(
         ILayoutAuthorizationService authorizationService,
         IVenueLayoutRepository venueLayoutRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILayoutMetrics metrics,
         ILogger<SaveLayoutAsTemplateCommandHandler> logger)
     {
         _authorizationService = authorizationService;
         _venueLayoutRepository = venueLayoutRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _metrics = metrics;
         _logger = logger;
     }
@@ -111,7 +113,7 @@ public class SaveLayoutAsTemplateCommandHandler
         try
         {
             await _venueLayoutRepository.AddAsync(clone, cancellationToken);
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
         catch (Exception ex)
         {

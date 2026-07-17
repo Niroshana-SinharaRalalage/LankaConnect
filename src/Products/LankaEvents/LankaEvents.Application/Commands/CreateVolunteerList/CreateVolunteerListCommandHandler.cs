@@ -4,6 +4,8 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g direct-SaveChanges
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CreateVolunteerList;
@@ -16,16 +18,16 @@ namespace LankaConnect.Products.LankaEvents.Application.Commands.CreateVolunteer
 public class CreateVolunteerListCommandHandler : ICommandHandler<CreateVolunteerListCommand, Guid>
 {
     private readonly IEventRepository _eventRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<CreateVolunteerListCommandHandler> _logger;
 
     public CreateVolunteerListCommandHandler(
         IEventRepository eventRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<CreateVolunteerListCommandHandler> logger)
     {
         _eventRepository = eventRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -84,7 +86,7 @@ public class CreateVolunteerListCommandHandler : ICommandHandler<CreateVolunteer
                     return Result<Guid>.Failure(addResult.Error);
                 }
 
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
                 _logger.LogInformation(

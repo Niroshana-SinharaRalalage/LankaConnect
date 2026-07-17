@@ -3,6 +3,7 @@ using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g direct-SaveChanges
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateTable;
@@ -18,7 +19,7 @@ public class UpdateTableCommandHandler : ICommandHandler<UpdateTableCommand>
     private readonly ILayoutAuthorizationService _authorizationService;
     private readonly IStructuralEditGuard _structuralGuard;
     private readonly IVenueLayoutRepository _layoutRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILayoutMetrics _metrics;
     private readonly ILogger<UpdateTableCommandHandler> _logger;
 
@@ -26,14 +27,14 @@ public class UpdateTableCommandHandler : ICommandHandler<UpdateTableCommand>
         ILayoutAuthorizationService authorizationService,
         IStructuralEditGuard structuralGuard,
         IVenueLayoutRepository layoutRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILayoutMetrics metrics,
         ILogger<UpdateTableCommandHandler> logger)
     {
         _authorizationService = authorizationService;
         _structuralGuard = structuralGuard;
         _layoutRepository = layoutRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _metrics = metrics;
         _logger = logger;
     }
@@ -124,7 +125,7 @@ public class UpdateTableCommandHandler : ICommandHandler<UpdateTableCommand>
 
         try
         {
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException ex)
         {

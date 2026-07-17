@@ -3,6 +3,7 @@ using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g direct-SaveChanges
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AddDecoration;
@@ -17,18 +18,18 @@ public class AddDecorationCommandHandler : ICommandHandler<AddDecorationCommand,
 {
     private readonly ILayoutAuthorizationService _authorizationService;
     private readonly IVenueLayoutRepository _layoutRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<AddDecorationCommandHandler> _logger;
 
     public AddDecorationCommandHandler(
         ILayoutAuthorizationService authorizationService,
         IVenueLayoutRepository layoutRepository,
-        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<AddDecorationCommandHandler> logger)
     {
         _authorizationService = authorizationService;
         _layoutRepository = layoutRepository;
-        _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -78,7 +79,7 @@ public class AddDecorationCommandHandler : ICommandHandler<AddDecorationCommand,
 
         try
         {
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException ex)
         {

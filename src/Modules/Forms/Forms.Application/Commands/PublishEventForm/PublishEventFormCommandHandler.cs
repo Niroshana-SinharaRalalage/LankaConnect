@@ -17,18 +17,15 @@ namespace LankaConnect.Modules.Forms.Application.Commands.PublishEventForm;
 public class PublishEventFormCommandHandler : ICommandHandler<PublishEventFormCommand>
 {
     private readonly IFormRepository _eventFormRepository;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly FormsDbContext _formsContext;
     private readonly ILogger<PublishEventFormCommandHandler> _logger;
 
     public PublishEventFormCommandHandler(
         IFormRepository eventFormRepository,
-        IMultiContextUnitOfWork unitOfWork,
         FormsDbContext formsContext,
         ILogger<PublishEventFormCommandHandler> logger)
     {
         _eventFormRepository = eventFormRepository;
-        _unitOfWork = unitOfWork;
         _formsContext = formsContext;
         _logger = logger;
     }
@@ -79,14 +76,11 @@ public class PublishEventFormCommandHandler : ICommandHandler<PublishEventFormCo
                     return publishResult;
                 }
 
-                // Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
-                // TODO Wave 6.5.d-followup: emit FormPublishedIntegrationEventV1 via the
-                // outbox (Forms.Contracts wire ABI). Deferred from this slice so 6.5.d
-                // ships as a pure self-save retirement + multi-context UoW migration;
-                // integration-event contracts land in a follow-up alongside their
-                // downstream consumer.
+                // Wave 8.5.h (D-01): direct-SaveChanges per Consult #25 Q6.
+                // Wave 8.5.f DomainEventSaveChangesInterceptor dispatches raised events
+                // post-save. Prior IMultiContextUnitOfWork call retired 2026-07-17.
                 await _eventFormRepository.UpdateAsync(form, cancellationToken);
-                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
+                await _formsContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

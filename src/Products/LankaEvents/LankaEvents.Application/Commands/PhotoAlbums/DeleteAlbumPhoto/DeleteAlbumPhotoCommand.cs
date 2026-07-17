@@ -28,20 +28,17 @@ public class DeleteAlbumPhotoCommandHandler : ICommandHandler<DeleteAlbumPhotoCo
 {
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
     private readonly IAlbumImageService _albumImageService;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly MediaDbContext _mediaContext;
     private readonly ILogger<DeleteAlbumPhotoCommandHandler> _logger;
 
     public DeleteAlbumPhotoCommandHandler(
         IPhotoAlbumRepository photoAlbumRepository,
         IAlbumImageService albumImageService,
-        IMultiContextUnitOfWork unitOfWork,
         MediaDbContext mediaContext,
         ILogger<DeleteAlbumPhotoCommandHandler> logger)
     {
         _photoAlbumRepository = photoAlbumRepository;
         _albumImageService = albumImageService;
-        _unitOfWork = unitOfWork;
         _mediaContext = mediaContext;
         _logger = logger;
     }

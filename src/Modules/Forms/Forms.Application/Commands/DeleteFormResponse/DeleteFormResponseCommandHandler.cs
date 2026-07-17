@@ -29,18 +29,15 @@ namespace LankaConnect.Modules.Forms.Application.Commands.DeleteFormResponse;
 public class DeleteFormResponseCommandHandler : ICommandHandler<DeleteFormResponseCommand>
 {
     private readonly IFormResponseRepository _formResponseRepository;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly FormsDbContext _formsContext;
     private readonly ILogger<DeleteFormResponseCommandHandler> _logger;
 
     public DeleteFormResponseCommandHandler(
         IFormResponseRepository formResponseRepository,
-        IMultiContextUnitOfWork unitOfWork,
         FormsDbContext formsContext,
         ILogger<DeleteFormResponseCommandHandler> logger)
     {
         _formResponseRepository = formResponseRepository;
-        _unitOfWork = unitOfWork;
         _formsContext = formsContext;
         _logger = logger;
     }
@@ -158,9 +155,9 @@ public class DeleteFormResponseCommandHandler : ICommandHandler<DeleteFormRespon
                 // Hard delete (GDPR compliant - users control their data)
                 await _formResponseRepository.DeleteAsync(response, cancellationToken);
 
-                // Commit transaction (cascade delete will remove FormAnswers via EF Core configuration).
-                // Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
-                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
+                // Wave 8.5.h (D-01): direct-SaveChanges per Consult #25 Q6.
+                // Cascade delete removes FormAnswers via EF Core configuration.
+                await _formsContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

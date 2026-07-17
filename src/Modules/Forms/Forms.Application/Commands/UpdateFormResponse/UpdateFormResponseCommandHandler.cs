@@ -22,7 +22,6 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
     private readonly IFormRepository _eventFormRepository;
     private readonly IFormResponseRepository _formResponseRepository;
     private readonly IEventRepository _eventRepository; // Phase 6A.114: Added for performance optimization
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly FormsDbContext _formsContext;
     private readonly ILogger<UpdateFormResponseCommandHandler> _logger;
 
@@ -30,14 +29,12 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
         IFormRepository eventFormRepository,
         IFormResponseRepository formResponseRepository,
         IEventRepository eventRepository, // Phase 6A.114: Added for performance optimization
-        IMultiContextUnitOfWork unitOfWork,
         FormsDbContext formsContext,
         ILogger<UpdateFormResponseCommandHandler> logger)
     {
         _eventFormRepository = eventFormRepository;
         _formResponseRepository = formResponseRepository;
         _eventRepository = eventRepository; // Phase 6A.114: Added for performance optimization
-        _unitOfWork = unitOfWork;
         _formsContext = formsContext;
         _logger = logger;
     }
@@ -284,9 +281,9 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
                         request.ResponseId, form.Id, @event.Id);
                 }
 
-                // Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
+                // Wave 8.5.h (D-01): direct-SaveChanges per Consult #25 Q6.
                 await _formResponseRepository.UpdateAsync(response, cancellationToken);
-                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
+                await _formsContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

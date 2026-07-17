@@ -5,6 +5,7 @@ using System.Text.Json;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Identity.Infrastructure.Data;
 using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Modules.Notifications.Domain.Enums;
 using LankaConnect.Modules.Notifications.Infrastructure.Data;
@@ -36,7 +37,7 @@ public class AdminUpgradeUserCommandHandler : ICommandHandler<AdminUpgradeUserCo
     private readonly ICurrentUserService _currentUserService;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationUrlsService _urlsService;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly IdentityDbContext _identityContext;
     private readonly NotificationsDbContext _notificationsContext;
     private readonly ILogger<AdminUpgradeUserCommandHandler> _logger;
 
@@ -47,7 +48,7 @@ public class AdminUpgradeUserCommandHandler : ICommandHandler<AdminUpgradeUserCo
         ICurrentUserService currentUserService,
         ITypedEmailService typedEmailService,
         IApplicationUrlsService urlsService,
-        IMultiContextUnitOfWork unitOfWork,
+        IdentityDbContext identityContext,
         NotificationsDbContext notificationsContext,
         ILogger<AdminUpgradeUserCommandHandler> logger)
     {
@@ -57,7 +58,7 @@ public class AdminUpgradeUserCommandHandler : ICommandHandler<AdminUpgradeUserCo
         _currentUserService = currentUserService;
         _typedEmailService = typedEmailService;
         _urlsService = urlsService;
-        _unitOfWork = unitOfWork;
+        _identityContext = identityContext;
         _notificationsContext = notificationsContext;
         _logger = logger;
     }
@@ -183,12 +184,18 @@ public class AdminUpgradeUserCommandHandler : ICommandHandler<AdminUpgradeUserCo
 
                 await _auditLogRepository.AddAsync(auditLog, cancellationToken);
 
-                // 7. Wave 6.5.c: atomic multi-context commit across AppDbContext (audit log)
-                //    + NotificationsDbContext (in-app notification). Replaces the pre-6.5.c
-                //    single-context CommitAsync that only saved AppDbContext (the notification
-                //    was self-saved inside AddAsync, making the audit + notification a two-writer
-                //    non-atomic pair — a real ordering bug that Wave 6.5.c retires permanently).
-                await _unitOfWork.CommitAsync(new DbContext[] { _notificationsContext }, cancellationToken);
+                // 7. Wave 8.5.h (D-01): retire IMultiContextUnitOfWork.CommitAsync(DbContext[]).
+                //    Per-context direct SaveChanges per Consult #25 Q6. Pre-retire the multi-
+                //    context UoW routed AppDbContext.CommitAsync (audit-log context) + the
+                //    NotificationsDbContext explicitly, but silently DROPPED targetUser changes
+                //    because User is tracked by IdentityDbContext (moved there in 4C.e, Consult
+                //    #16). This mirrors the split-brain fixes shipped for CreateEventCommandHandler
+                //    (Sprint-Day 7) and RegisterUserHandler (Sprint-Day 9). Domain-event dispatch
+                //    continues via the per-module DomainEventSaveChangesInterceptor wired on all
+                //    three contexts (Wave 8.5.f).
+                await _identityContext.SaveChangesAsync(cancellationToken);
+                await _auditLogRepository.SaveChangesAsync(cancellationToken);
+                await _notificationsContext.SaveChangesAsync(cancellationToken);
 
                 // 8. Send approval email (fail-silent: do not roll back the role change)
                 await SendOrganizerApprovalEmailAsync(targetUser, cancellationToken);

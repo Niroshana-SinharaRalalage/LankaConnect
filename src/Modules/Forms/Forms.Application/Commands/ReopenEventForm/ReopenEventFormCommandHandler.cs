@@ -17,18 +17,15 @@ namespace LankaConnect.Modules.Forms.Application.Commands.ReopenEventForm;
 public class ReopenEventFormCommandHandler : ICommandHandler<ReopenEventFormCommand>
 {
     private readonly IFormRepository _eventFormRepository;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly FormsDbContext _formsContext;
     private readonly ILogger<ReopenEventFormCommandHandler> _logger;
 
     public ReopenEventFormCommandHandler(
         IFormRepository eventFormRepository,
-        IMultiContextUnitOfWork unitOfWork,
         FormsDbContext formsContext,
         ILogger<ReopenEventFormCommandHandler> logger)
     {
         _eventFormRepository = eventFormRepository;
-        _unitOfWork = unitOfWork;
         _formsContext = formsContext;
         _logger = logger;
     }
@@ -79,9 +76,9 @@ public class ReopenEventFormCommandHandler : ICommandHandler<ReopenEventFormComm
                     return reopenResult;
                 }
 
-                // Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
+                // Wave 8.5.h (D-01): direct-SaveChanges per Consult #25 Q6.
                 await _eventFormRepository.UpdateAsync(form, cancellationToken);
-                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
+                await _formsContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

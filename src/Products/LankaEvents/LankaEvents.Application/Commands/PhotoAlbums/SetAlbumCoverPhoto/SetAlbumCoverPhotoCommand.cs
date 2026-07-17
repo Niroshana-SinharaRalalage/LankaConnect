@@ -26,18 +26,15 @@ public record SetAlbumCoverPhotoCommand(
 public class SetAlbumCoverPhotoCommandHandler : ICommandHandler<SetAlbumCoverPhotoCommand>
 {
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly MediaDbContext _mediaContext;
     private readonly ILogger<SetAlbumCoverPhotoCommandHandler> _logger;
 
     public SetAlbumCoverPhotoCommandHandler(
         IPhotoAlbumRepository photoAlbumRepository,
-        IMultiContextUnitOfWork unitOfWork,
         MediaDbContext mediaContext,
         ILogger<SetAlbumCoverPhotoCommandHandler> logger)
     {
         _photoAlbumRepository = photoAlbumRepository;
-        _unitOfWork = unitOfWork;
         _mediaContext = mediaContext;
         _logger = logger;
     }

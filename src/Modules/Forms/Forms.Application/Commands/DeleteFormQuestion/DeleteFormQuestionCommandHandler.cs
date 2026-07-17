@@ -17,18 +17,15 @@ namespace LankaConnect.Modules.Forms.Application.Commands.DeleteFormQuestion;
 public class DeleteFormQuestionCommandHandler : ICommandHandler<DeleteFormQuestionCommand>
 {
     private readonly IFormRepository _eventFormRepository;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly FormsDbContext _formsContext;
     private readonly ILogger<DeleteFormQuestionCommandHandler> _logger;
 
     public DeleteFormQuestionCommandHandler(
         IFormRepository eventFormRepository,
-        IMultiContextUnitOfWork unitOfWork,
         FormsDbContext formsContext,
         ILogger<DeleteFormQuestionCommandHandler> logger)
     {
         _eventFormRepository = eventFormRepository;
-        _unitOfWork = unitOfWork;
         _formsContext = formsContext;
         _logger = logger;
     }
@@ -80,9 +77,9 @@ public class DeleteFormQuestionCommandHandler : ICommandHandler<DeleteFormQuesti
                     return removeResult;
                 }
 
-                // Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
+                // Wave 8.5.h (D-01): direct-SaveChanges per Consult #25 Q6.
                 await _eventFormRepository.UpdateAsync(form, cancellationToken);
-                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
+                await _formsContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

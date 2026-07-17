@@ -22,20 +22,17 @@ public class CreateEventFormCommandHandler : ICommandHandler<CreateEventFormComm
 {
     private readonly IFormRepository _eventFormRepository;
     private readonly IEventRepository _eventRepository;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly FormsDbContext _formsContext;
     private readonly ILogger<CreateEventFormCommandHandler> _logger;
 
     public CreateEventFormCommandHandler(
         IFormRepository eventFormRepository,
         IEventRepository eventRepository,
-        IMultiContextUnitOfWork unitOfWork,
         FormsDbContext formsContext,
         ILogger<CreateEventFormCommandHandler> logger)
     {
         _eventFormRepository = eventFormRepository;
         _eventRepository = eventRepository;
-        _unitOfWork = unitOfWork;
         _formsContext = formsContext;
         _logger = logger;
     }
@@ -130,9 +127,9 @@ public class CreateEventFormCommandHandler : ICommandHandler<CreateEventFormComm
                     }
                 }
 
-                // Persist. Wave 6.5.d: multi-context commit (AppDbContext + FormsDbContext).
+                // Wave 8.5.h (D-01): direct-SaveChanges per Consult #25 Q6.
                 await _eventFormRepository.AddAsync(form, cancellationToken);
-                await _unitOfWork.CommitAsync(new DbContext[] { _formsContext }, cancellationToken);
+                await _formsContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

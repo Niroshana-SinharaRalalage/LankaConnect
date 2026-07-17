@@ -26,20 +26,17 @@ public record PublishPhotoAlbumCommand(
 public class PublishPhotoAlbumCommandHandler : ICommandHandler<PublishPhotoAlbumCommand>
 {
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly MediaDbContext _mediaContext;
     private readonly IIntegrationEventOutbox<MediaDbContext> _outbox;
     private readonly ILogger<PublishPhotoAlbumCommandHandler> _logger;
 
     public PublishPhotoAlbumCommandHandler(
         IPhotoAlbumRepository photoAlbumRepository,
-        IMultiContextUnitOfWork unitOfWork,
         MediaDbContext mediaContext,
         IIntegrationEventOutbox<MediaDbContext> outbox,
         ILogger<PublishPhotoAlbumCommandHandler> logger)
     {
         _photoAlbumRepository = photoAlbumRepository;
-        _unitOfWork = unitOfWork;
         _mediaContext = mediaContext;
         _outbox = outbox;
         _logger = logger;

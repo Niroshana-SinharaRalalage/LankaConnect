@@ -31,20 +31,17 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
 {
     private readonly IEventRepository _eventRepository;
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly MediaDbContext _mediaContext;
     private readonly ILogger<CreatePhotoAlbumCommandHandler> _logger;
 
     public CreatePhotoAlbumCommandHandler(
         IEventRepository eventRepository,
         IPhotoAlbumRepository photoAlbumRepository,
-        IMultiContextUnitOfWork unitOfWork,
         MediaDbContext mediaContext,
         ILogger<CreatePhotoAlbumCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _photoAlbumRepository = photoAlbumRepository;
-        _unitOfWork = unitOfWork;
         _mediaContext = mediaContext;
         _logger = logger;
     }

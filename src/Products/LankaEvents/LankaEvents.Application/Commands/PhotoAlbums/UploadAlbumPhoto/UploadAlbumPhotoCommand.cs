@@ -34,7 +34,6 @@ public class UploadAlbumPhotoCommandHandler : ICommandHandler<UploadAlbumPhotoCo
 {
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
     private readonly IAlbumImageService _albumImageService;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly MediaDbContext _mediaContext;
     private readonly IIntegrationEventOutbox<MediaDbContext> _outbox;
     private readonly ILogger<UploadAlbumPhotoCommandHandler> _logger;
@@ -42,14 +41,12 @@ public class UploadAlbumPhotoCommandHandler : ICommandHandler<UploadAlbumPhotoCo
     public UploadAlbumPhotoCommandHandler(
         IPhotoAlbumRepository photoAlbumRepository,
         IAlbumImageService albumImageService,
-        IMultiContextUnitOfWork unitOfWork,
         MediaDbContext mediaContext,
         IIntegrationEventOutbox<MediaDbContext> outbox,
         ILogger<UploadAlbumPhotoCommandHandler> logger)
     {
         _photoAlbumRepository = photoAlbumRepository;
         _albumImageService = albumImageService;
-        _unitOfWork = unitOfWork;
         _mediaContext = mediaContext;
         _outbox = outbox;
         _logger = logger;

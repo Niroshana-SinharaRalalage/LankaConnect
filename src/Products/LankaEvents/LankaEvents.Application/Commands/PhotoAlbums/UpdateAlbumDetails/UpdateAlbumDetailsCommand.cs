@@ -27,18 +27,15 @@ public record UpdateAlbumDetailsCommand(
 public class UpdateAlbumDetailsCommandHandler : ICommandHandler<UpdateAlbumDetailsCommand>
 {
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
     private readonly MediaDbContext _mediaContext;
     private readonly ILogger<UpdateAlbumDetailsCommandHandler> _logger;
 
     public UpdateAlbumDetailsCommandHandler(
         IPhotoAlbumRepository photoAlbumRepository,
-        IMultiContextUnitOfWork unitOfWork,
         MediaDbContext mediaContext,
         ILogger<UpdateAlbumDetailsCommandHandler> logger)
     {
         _photoAlbumRepository = photoAlbumRepository;
-        _unitOfWork = unitOfWork;
         _mediaContext = mediaContext;
         _logger = logger;
     }

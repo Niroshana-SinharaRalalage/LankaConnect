@@ -12,6 +12,7 @@ using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
+using LankaConnect.Modules.Identity.Infrastructure.Data;
 using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Modules.Notifications.Domain.Enums;
 using LankaConnect.Modules.Notifications.Infrastructure.Data;
@@ -38,7 +39,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
     private readonly ICurrentUserService _currentUserService;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IApplicationUrlsService _urlsService;
-    private readonly IMultiContextUnitOfWork _unitOfWork;
+    private readonly IdentityDbContext _identityContext;
     private readonly NotificationsDbContext _notificationsContext;
     private readonly ILogger<ApproveRoleUpgradeCommandHandler> _logger;
 
@@ -49,7 +50,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
         ICurrentUserService currentUserService,
         ITypedEmailService typedEmailService,
         IApplicationUrlsService urlsService,
-        IMultiContextUnitOfWork unitOfWork,
+        IdentityDbContext identityContext,
         NotificationsDbContext notificationsContext,
         ILogger<ApproveRoleUpgradeCommandHandler> logger)
     {
@@ -59,7 +60,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
         _currentUserService = currentUserService;
         _typedEmailService = typedEmailService;
         _urlsService = urlsService;
-        _unitOfWork = unitOfWork;
+        _identityContext = identityContext;
         _notificationsContext = notificationsContext;
         _logger = logger;
     }
@@ -182,8 +183,18 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
                     "ApproveRoleUpgrade: Admin audit log created - AdminUserId={AdminUserId}, TargetUserId={TargetUserId}",
                     _currentUserService.UserId, user.Id);
 
-                // Wave 6.5.c: atomic multi-context commit — AppDbContext + NotificationsDbContext.
-                await _unitOfWork.CommitAsync(new DbContext[] { _notificationsContext }, cancellationToken);
+                // Wave 8.5.h (D-01): retire IMultiContextUnitOfWork.CommitAsync(DbContext[]).
+                // Per-context direct SaveChanges per Consult #25 Q6. Pre-retire the multi-
+                // context UoW routed AppDbContext.CommitAsync (audit-log context) + the
+                // NotificationsDbContext explicitly, but silently DROPPED User changes
+                // because User is tracked by IdentityDbContext (moved there in 4C.e, Consult
+                // #16). This mirrors the split-brain fixes shipped for CreateEventCommandHandler
+                // (Sprint-Day 7) and RegisterUserHandler (Sprint-Day 9). Domain-event dispatch
+                // continues via the per-module DomainEventSaveChangesInterceptor wired on all
+                // three contexts (Wave 8.5.f).
+                await _identityContext.SaveChangesAsync(cancellationToken);
+                await _auditLogRepository.SaveChangesAsync(cancellationToken);
+                await _notificationsContext.SaveChangesAsync(cancellationToken);
 
                 // Phase 6A.75: Send email notification for EventOrganizer role approval
                 if (user.Role == UserRole.EventOrganizer)

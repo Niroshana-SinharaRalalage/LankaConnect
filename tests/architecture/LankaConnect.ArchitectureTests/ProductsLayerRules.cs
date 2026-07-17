@@ -571,6 +571,131 @@ public sealed class ProductsLayerRules
         }
     }
 
+    /// <summary>
+    /// Rule 15 (Wave 8.5.h — 2026-07-17, Tech Lead D-01) — the multi-context
+    /// atomic-commit shim <c>IMultiContextUnitOfWork.CommitAsync(DbContext[],
+    /// CancellationToken)</c> has been RETIRED. No type in the solution may
+    /// re-introduce a method with that exact signature.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The interface itself is preserved as an empty marker so DI registration
+    /// and pre-existing <c>&lt;see cref&gt;</c> references remain valid — but
+    /// the <c>CommitAsync(DbContext[], CancellationToken)</c> method has been
+    /// deleted from both the interface and the concrete <c>UnitOfWork</c>. The
+    /// method's shared-connection <c>Database.UseTransactionAsync</c> pattern
+    /// silently emitted "The specified transaction is not associated with the
+    /// current connection." at runtime whenever AppDbContext + a module
+    /// DbContext drew separate Npgsql connections. Consult #25 Q6 blanket-
+    /// approved single-context direct-<c>SaveChangesAsync</c>; the Wave 8.5.f
+    /// <c>DomainEventSaveChangesInterceptor</c> dispatches domain events
+    /// post-save on all module contexts.
+    /// </para>
+    /// <para>
+    /// The check is signature-based, scanning every public/non-public method on
+    /// every type in every LankaConnect assembly for the exact parameter shape
+    /// <c>(DbContext[], CancellationToken)</c> returning
+    /// <c>Task&lt;int&gt;</c>. Any hit is a regression — usually a Phase B
+    /// agent re-introducing the shim to solve a cross-context write that
+    /// should have been decomposed via an integration event + outbox.
+    /// </para>
+    /// <para>
+    /// Fix: use per-context direct <c>SaveChangesAsync</c> plus, if cross-
+    /// context propagation is required, publish an
+    /// <c>IIntegrationEventOutbox&lt;TDbContext&gt;</c> event that the
+    /// downstream module subscribes to. If a truly atomic cross-context write
+    /// is genuinely required, escalate to architect for saga-log
+    /// infrastructure — do NOT re-introduce this method.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Rule15_UnitOfWork_DoesNotReintroduce_MultiContextCommitAsync()
+    {
+        // Wave 8.5.a follow-up (2026-07-17 CsprojDismantle-A): compile-fix for
+        // the two CS8602 nullability warnings introduced by Wave 8.5.h Batch 1
+        // (commit 2d296aca) that block Tier B pre-push. `.Name?.StartsWith == true`
+        // does not narrow the compiler's nullable state on the subsequent
+        // .Contains(...) calls in the same predicate. Snapshot Name to a local
+        // and null-check before the two Contains(...) calls.
+        var lankaConnectAssemblies = System.AppDomain.CurrentDomain.GetAssemblies()
+            .Where(a =>
+            {
+                var name = a.GetName().Name;
+                return name is not null
+                    && name.StartsWith("LankaConnect.", System.StringComparison.Ordinal)
+                    && !name.Contains("ArchitectureTests", System.StringComparison.Ordinal)
+                    && !name.Contains("Tests", System.StringComparison.Ordinal);
+            })
+            .ToArray();
+
+        var violators = new List<string>();
+        foreach (var assembly in lankaConnectAssemblies)
+        {
+            Type[] types;
+            try
+            {
+                types = assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException tle)
+            {
+                types = tle.Types.Where(t => t != null).Select(t => t!).ToArray();
+            }
+
+            foreach (var type in types)
+            {
+                if (type == null) continue;
+
+                MethodInfo[] methods;
+                try
+                {
+                    methods = type.GetMethods(
+                        BindingFlags.Public | BindingFlags.NonPublic |
+                        BindingFlags.Instance | BindingFlags.Static |
+                        BindingFlags.DeclaredOnly);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                foreach (var method in methods)
+                {
+                    if (!string.Equals(method.Name, "CommitAsync", System.StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    var parameters = method.GetParameters();
+                    if (parameters.Length != 2)
+                    {
+                        continue;
+                    }
+
+                    if (parameters[0].ParameterType == typeof(Microsoft.EntityFrameworkCore.DbContext[])
+                        && parameters[1].ParameterType == typeof(CancellationToken))
+                    {
+                        violators.Add($"{type.FullName}.{method.Name} in {assembly.GetName().Name}");
+                    }
+                }
+            }
+        }
+
+        if (violators.Count > 0)
+        {
+            Assert.Fail(
+                "Wave 8.5.h forbidden-signature rule violation: " +
+                "IMultiContextUnitOfWork.CommitAsync(DbContext[], CancellationToken) " +
+                "was RETIRED at Wave 8.5.h (2026-07-17, Tech Lead D-01). " +
+                "A method with that exact signature has been re-introduced.\n" +
+                $"Violators:\n  - {string.Join("\n  - ", violators)}\n" +
+                "Fix: use per-context direct SaveChangesAsync per Consult #25 Q6, " +
+                "plus IIntegrationEventOutbox<TDbContext> for cross-module propagation. " +
+                "See src/BuildingBlocks/BuildingBlocks.Infrastructure/Abstractions/IMultiContextUnitOfWork.cs " +
+                "remarks for the retirement rationale + escalation path.");
+        }
+    }
+
     // ---------- Helpers ----------
 
     private static void AssertCompliant(TestResult result, string assemblyName)

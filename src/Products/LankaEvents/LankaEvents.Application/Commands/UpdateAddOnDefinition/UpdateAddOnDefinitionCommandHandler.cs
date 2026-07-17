@@ -6,6 +6,8 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.UpdateAddOnDefinition;
@@ -20,17 +22,20 @@ public class UpdateAddOnDefinitionCommandHandler : ICommandHandler<UpdateAddOnDe
     private readonly IEventRepository _eventRepository;
     private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<UpdateAddOnDefinitionCommandHandler> _logger;
 
     public UpdateAddOnDefinitionCommandHandler(
         IEventRepository eventRepository,
         IAddOnDefinitionRepository addOnDefinitionRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<UpdateAddOnDefinitionCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _addOnDefinitionRepository = addOnDefinitionRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -91,7 +96,7 @@ public class UpdateAddOnDefinitionCommandHandler : ICommandHandler<UpdateAddOnDe
                 }
 
                 // 6. Save + commit
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 stopwatch.Stop();
 

@@ -7,6 +7,8 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.PurchaseAddOn;
@@ -25,6 +27,7 @@ public class PurchaseAddOnCommandHandler : ICommandHandler<PurchaseAddOnCommand,
     private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
     private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly ILogger<PurchaseAddOnCommandHandler> _logger;
@@ -34,6 +37,7 @@ public class PurchaseAddOnCommandHandler : ICommandHandler<PurchaseAddOnCommand,
         IAddOnDefinitionRepository addOnDefinitionRepository,
         IAddOnPurchaseRepository addOnPurchaseRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
         ILogger<PurchaseAddOnCommandHandler> logger)
@@ -42,6 +46,7 @@ public class PurchaseAddOnCommandHandler : ICommandHandler<PurchaseAddOnCommand,
         _addOnDefinitionRepository = addOnDefinitionRepository;
         _addOnPurchaseRepository = addOnPurchaseRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
         _logger = logger;
@@ -169,7 +174,7 @@ public class PurchaseAddOnCommandHandler : ICommandHandler<PurchaseAddOnCommand,
                         Money.Zero(unitPrice.Currency));
 
                     await _addOnPurchaseRepository.AddAsync(purchase, cancellationToken);
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                     stopwatch.Stop();
 
@@ -267,7 +272,7 @@ public class PurchaseAddOnCommandHandler : ICommandHandler<PurchaseAddOnCommand,
 
                 // 11. Save purchase
                 await _addOnPurchaseRepository.AddAsync(purchase, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 stopwatch.Stop();
 

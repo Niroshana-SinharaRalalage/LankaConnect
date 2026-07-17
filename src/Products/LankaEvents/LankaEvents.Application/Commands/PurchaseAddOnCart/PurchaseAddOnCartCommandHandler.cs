@@ -6,6 +6,8 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.PurchaseAddOnCart;
@@ -25,6 +27,7 @@ public class PurchaseAddOnCartCommandHandler : ICommandHandler<PurchaseAddOnCart
     private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
     private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly ILogger<PurchaseAddOnCartCommandHandler> _logger;
@@ -34,6 +37,7 @@ public class PurchaseAddOnCartCommandHandler : ICommandHandler<PurchaseAddOnCart
         IAddOnDefinitionRepository addOnDefinitionRepository,
         IAddOnPurchaseRepository addOnPurchaseRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
         ILogger<PurchaseAddOnCartCommandHandler> logger)
@@ -42,6 +46,7 @@ public class PurchaseAddOnCartCommandHandler : ICommandHandler<PurchaseAddOnCart
         _addOnDefinitionRepository = addOnDefinitionRepository;
         _addOnPurchaseRepository = addOnPurchaseRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
         _logger = logger;
@@ -209,7 +214,7 @@ public class PurchaseAddOnCartCommandHandler : ICommandHandler<PurchaseAddOnCart
                     foreach (var fp in freePurchases)
                         await _addOnPurchaseRepository.AddAsync(fp, cancellationToken);
 
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                     stopwatch.Stop();
                     _logger.LogInformation(
@@ -298,7 +303,7 @@ public class PurchaseAddOnCartCommandHandler : ICommandHandler<PurchaseAddOnCart
                 foreach (var pp in paidPurchases)
                     await _addOnPurchaseRepository.AddAsync(pp, cancellationToken);
 
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 stopwatch.Stop();
 

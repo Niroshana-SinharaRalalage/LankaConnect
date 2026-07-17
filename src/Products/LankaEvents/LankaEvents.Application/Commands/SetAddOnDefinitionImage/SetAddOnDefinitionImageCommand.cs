@@ -1,7 +1,9 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using MediatR;
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5: IImageService promoted
@@ -30,17 +32,20 @@ public class SetAddOnDefinitionImageCommandHandler
     private readonly IAddOnDefinitionRepository _definitionRepository;
     private readonly IImageService _imageService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<SetAddOnDefinitionImageCommandHandler> _logger;
 
     public SetAddOnDefinitionImageCommandHandler(
         IAddOnDefinitionRepository definitionRepository,
         IImageService imageService,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<SetAddOnDefinitionImageCommandHandler> logger)
     {
         _definitionRepository = definitionRepository;
         _imageService = imageService;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -108,7 +113,7 @@ public class SetAddOnDefinitionImageCommandHandler
                     return Result<SetAddOnDefinitionImageResult>.Failure(setResult.Errors);
                 }
 
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g: direct-SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
 
                 // 5. Best-effort delete the old blob AFTER successful commit. If delete
                 // fails we log + swallow — the door doesn't close on a stale blob.

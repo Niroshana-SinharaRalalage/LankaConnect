@@ -115,3 +115,91 @@ Cross-module comment/docstring/csproj references (not live callers) — leave th
 
 Beginning refactor.
 
+### Part 2 — Per-caller refactor summary
+
+**Landed commit `2d296aca` (Wave 8.5.h Batch 1)**:
+- **13 Forms handlers** (Case A) — single-line site swap
+  `_unitOfWork.CommitAsync(new DbContext[] { _formsContext }, ct)` →
+  `_formsContext.SaveChangesAsync(ct)` + dead `IMultiContextUnitOfWork`
+  injection removed from each ctor/field.
+- **3 Identity handlers** (Case B → treated as B.1) — split into 3 sequential
+  direct SaveChanges:
+  1. `_identityContext.SaveChangesAsync(ct)` — new injection; fixes the
+     latent User-persistence bug documented in the caller-analysis above.
+  2. `_auditLogRepository.SaveChangesAsync(ct)` — routes to AppDbContext via
+     the existing repo helper (dispatches AppDbContext domain events).
+  3. `_notificationsContext.SaveChangesAsync(ct)` — direct call.
+  `RejectRoleUpgrade` skips step 2 (no audit log write in that handler).
+- **Dead injection cleanup for 9 PhotoAlbum handlers** — HandlerMigration-C
+  Batch 3 (commit `1c927152`) had migrated the SaveChanges call to direct
+  `_mediaContext.SaveChangesAsync` but left the `IMultiContextUnitOfWork`
+  field/ctor dangling. Removed the unused injection from all 9 handlers.
+
+Build verification: Forms.Application + Identity.Application + LankaEvents.Application
+all built green post-refactor (0 errors; pre-existing vuln warnings unchanged).
+
+### Part 3 — Interface + impl deletion + ArchTest rule
+
+**Landed commit `b1173d21`** (Wave 8.5.h Batch 2 changes, absorbed into
+concurrent CsprojDismantle-A agent's docs commit — content is correct but
+the commit message reads "docs: audit test-debt-overrides log" rather than a
+Wave 8.5.h Batch 2 heading due to shared-working-tree squash):
+- **Interface** (`IMultiContextUnitOfWork.cs`) — deleted
+  `CommitAsync(DbContext[], CancellationToken)` method. Interface preserved
+  as an EMPTY MARKER so DI registration in
+  `LegacyInfrastructureDependencyInjection.cs` + pre-existing
+  `<see cref>` references from module repositories continue to resolve.
+  XML doc rewritten with retirement rationale + Consult #25 Q6 blanket-
+  approval + Phase B escalation path.
+- **Impl** (`UnitOfWork.cs`) — deleted the 99-line
+  `CommitAsync(DbContext[])` method. `UnitOfWork` continues to implement
+  `IMultiContextUnitOfWork` (marker) — `IUnitOfWork.CommitAsync(ct)` single-
+  context overload still ships. Retirement note inline where the deleted
+  method was.
+- **4 repository doc/comment updates** — surgical text rewrites removing
+  now-invalid method-level `<see cref>` references and updating the caller
+  contract to point to direct `SaveChangesAsync`:
+  - `Modules/Notifications/Notifications.Infrastructure/Repositories/NotificationRepository.cs`
+  - `Modules/Media/Media.Infrastructure/Repositories/PhotoAlbumRepository.cs`
+  - `Modules/Forms/Forms.Infrastructure/Repositories/FormRepository.cs`
+  - `Modules/Forms/Forms.Infrastructure/Repositories/FormResponseRepository.cs`
+
+**Landed commit `a15d8b63`** (Wave 8.5.a follow-up — CS8602 compile-fix on the
+ArchTest predicate; Rule 15 body itself was drafted by this agent and got
+picked up + fixed by the concurrent CsprojDismantle-A agent):
+- **ArchTest Rule 15** (`ProductsLayerRules.cs` +125 lines) —
+  `Rule15_UnitOfWork_DoesNotReintroduce_MultiContextCommitAsync` scans every
+  LankaConnect assembly for any method named `CommitAsync` with signature
+  `(DbContext[], CancellationToken)` and fails loud on any hit. Phase B
+  agent regression guard.
+
+### Summary
+
+- **Callers refactored:** 16 (13 Forms + 3 Identity) — all `new DbContext[] {...}`
+  form eliminated.
+- **Dead injection sweep:** 9 PhotoAlbum handlers cleaned.
+- **Interface method deleted; interface preserved as marker.**
+- **Impl method deleted from `UnitOfWork`.**
+- **4 repository XML `<see cref>` refs + inline comments updated to direct-
+  SaveChanges pattern.**
+- **ArchTest Rule 15 landed as the Phase B regression guard.**
+- **Latent split-brain bug fixed as a side effect** — the 3 Identity handlers
+  (`ApproveRoleUpgrade`, `AdminUpgradeUser`, `RejectRoleUpgrade`) were
+  silently dropping User changes because User is tracked by IdentityDbContext
+  (moved there in 4C.e per Consult #16) but the multi-context array only
+  contained `_notificationsContext`. Same shape as `CreateEventCommandHandler`
+  (Sprint-Day 7) and `RegisterUserHandler` (Sprint-Day 9) fixes.
+
+**Commit chain landing this work:**
+- `2d296aca` — Wave 8.5.h Batch 1 (25-file handler refactor + PhotoAlbum
+  dead-injection cleanup).
+- `a15d8b63` — ArchTest Rule 15 landed (piggy-backed on concurrent
+  CsprojDismantle-A agent's CS8602 fix commit).
+- `b1173d21` — Wave 8.5.h Batch 2 (interface method deletion, impl deletion,
+  4 repo doc updates) — piggy-backed on concurrent docs commit.
+
+Push to `develop`: `b1173d21` is on `origin/develop` (verified via
+`git log HEAD..origin/develop` empty).
+
+STATUS: COMPLETE
+

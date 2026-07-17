@@ -3,7 +3,13 @@ using LankaConnect.Modules.Identity.Contracts;                   // 4C.e.3: IIde
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using MediatR;
+
 namespace LankaConnect.Host.AllInOne.Dashboard.Queries.GetCommunityStats;
+
+// Wave 8.5.a (2026-07-17, Consult #26 Q1 hint "fold into Host"). Relocated from
+// legacy src/LankaConnect.Application/Dashboard/Queries/GetCommunityStats/ as
+// part of LankaConnect.Application csproj dismantle. See GetCommunityStatsQuery
+// header comment for the rationale.
 
 /// <summary>
 /// Phase 6A.69: Handler for GetCommunityStatsQuery

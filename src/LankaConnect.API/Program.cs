@@ -4,7 +4,9 @@ using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.API.Infrastructure;
 using LankaConnect.API.Filters;
-using LankaConnect.Application;
+// Wave 8.5.a (2026-07-17): dead `using LankaConnect.Application;` removed
+// alongside Class1.cs deletion. AddApplication/AddInfrastructure DI extension
+// methods live in namespace `LankaConnect.Host.AllInOne` (see using below).
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 using LankaConnect.Products.LankaEvents.Application.Badges.BackgroundJobs;

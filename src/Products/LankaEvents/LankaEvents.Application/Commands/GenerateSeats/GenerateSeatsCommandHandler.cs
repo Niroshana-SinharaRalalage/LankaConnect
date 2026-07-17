@@ -3,6 +3,8 @@ using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.GenerateSeats;
 
@@ -10,15 +12,18 @@ public class GenerateSeatsCommandHandler : ICommandHandler<GenerateSeatsCommand,
 {
     private readonly IVenueLayoutRepository _venueLayoutRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<GenerateSeatsCommandHandler> _logger;
 
     public GenerateSeatsCommandHandler(
         IVenueLayoutRepository venueLayoutRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<GenerateSeatsCommandHandler> logger)
     {
         _venueLayoutRepository = venueLayoutRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -56,7 +61,7 @@ public class GenerateSeatsCommandHandler : ICommandHandler<GenerateSeatsCommand,
             return Result<VenueLayoutDto>.Failure(result.Error);
 
         _venueLayoutRepository.Update(layout);
-        await _unitOfWork.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
         var zone = layout.GetZone(request.ZoneId);
         _logger.LogInformation(

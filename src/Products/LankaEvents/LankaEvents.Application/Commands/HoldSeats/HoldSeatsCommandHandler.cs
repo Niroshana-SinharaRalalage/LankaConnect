@@ -5,6 +5,8 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.HoldSeats;
 
@@ -14,6 +16,7 @@ public class HoldSeatsCommandHandler : ICommandHandler<HoldSeatsCommand, HoldSea
     private readonly ISeatReservationRepository _seatReservationRepository;
     private readonly IVenueLayoutRepository _venueLayoutRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ISeatHoldMetrics _seatHoldMetrics;
     private readonly ILogger<HoldSeatsCommandHandler> _logger;
 
@@ -22,6 +25,7 @@ public class HoldSeatsCommandHandler : ICommandHandler<HoldSeatsCommand, HoldSea
         ISeatReservationRepository seatReservationRepository,
         IVenueLayoutRepository venueLayoutRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ISeatHoldMetrics seatHoldMetrics,
         ILogger<HoldSeatsCommandHandler> logger)
     {
@@ -29,6 +33,7 @@ public class HoldSeatsCommandHandler : ICommandHandler<HoldSeatsCommand, HoldSea
         _seatReservationRepository = seatReservationRepository;
         _venueLayoutRepository = venueLayoutRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _seatHoldMetrics = seatHoldMetrics;
         _logger = logger;
     }
@@ -93,7 +98,7 @@ public class HoldSeatsCommandHandler : ICommandHandler<HoldSeatsCommand, HoldSea
         }
 
         await _seatHoldRepository.AddRangeAsync(holds, cancellationToken);
-        await _unitOfWork.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
         var expiresAt = holds.First().ExpiresAt;
 

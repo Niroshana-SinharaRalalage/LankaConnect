@@ -5,6 +5,8 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AddTicketTier;
@@ -13,15 +15,18 @@ public class AddTicketTierCommandHandler : ICommandHandler<AddTicketTierCommand,
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<AddTicketTierCommandHandler> _logger;
 
     public AddTicketTierCommandHandler(
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<AddTicketTierCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -92,7 +97,7 @@ public class AddTicketTierCommandHandler : ICommandHandler<AddTicketTierCommand,
                     return Result<Guid>.Failure(tierResult.Error);
                 }
 
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
                 stopwatch.Stop();
                 _logger.LogInformation(

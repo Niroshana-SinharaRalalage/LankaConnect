@@ -7,6 +7,8 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ScanTicket;
@@ -40,6 +42,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
     private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
     private readonly ITicketSignatureService _signatureService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<ScanTicketCommandHandler> _logger;
 
     public ScanTicketCommandHandler(
@@ -51,6 +54,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
         IAddOnDefinitionRepository addOnDefinitionRepository,
         ITicketSignatureService signatureService,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<ScanTicketCommandHandler> logger)
     {
         _ticketRepository = ticketRepository;
@@ -61,6 +65,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
         _addOnDefinitionRepository = addOnDefinitionRepository;
         _signatureService = signatureService;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -310,7 +315,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         entryMethod, usedPreviousKey,
                         command.ClientIp, command.UserAgent);
                     await _scanLogRepository.AddAsync(acceptedAudit, cancellationToken);
-                    await _unitOfWork.CommitAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
                 }
                 catch (Exception auditEx)
                 {
@@ -602,7 +607,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                 clientIp: command.ClientIp,
                 userAgent: command.UserAgent);
             await _scanLogRepository.AddAsync(audit, cancellationToken);
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
         }
         catch (Exception ex)
         {

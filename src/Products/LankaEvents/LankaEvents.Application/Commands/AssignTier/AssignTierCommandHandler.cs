@@ -5,6 +5,7 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AssignTier;
@@ -27,6 +28,7 @@ public class AssignTierCommandHandler : ICommandHandler<AssignTierCommand>
     private readonly IVenueLayoutRepository _layoutRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<AssignTierCommandHandler> _logger;
 
     public AssignTierCommandHandler(
@@ -34,12 +36,14 @@ public class AssignTierCommandHandler : ICommandHandler<AssignTierCommand>
         IVenueLayoutRepository layoutRepository,
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<AssignTierCommandHandler> logger)
     {
         _authorizationService = authorizationService;
         _layoutRepository = layoutRepository;
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -100,7 +104,7 @@ public class AssignTierCommandHandler : ICommandHandler<AssignTierCommand>
 
         try
         {
-            await _unitOfWork.CommitAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
         }
         catch (DbUpdateConcurrencyException ex)
         {

@@ -3,6 +3,8 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ScanTicket;
@@ -19,17 +21,20 @@ public class UnmarkScannedCommandHandler : ICommandHandler<UnmarkScannedCommand,
     private readonly ITicketRepository _ticketRepository;
     private readonly ITicketScanLogRepository _scanLogRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<UnmarkScannedCommandHandler> _logger;
 
     public UnmarkScannedCommandHandler(
         ITicketRepository ticketRepository,
         ITicketScanLogRepository scanLogRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<UnmarkScannedCommandHandler> logger)
     {
         _ticketRepository = ticketRepository;
         _scanLogRepository = scanLogRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -84,7 +89,7 @@ public class UnmarkScannedCommandHandler : ICommandHandler<UnmarkScannedCommand,
                     userAgent: command.UserAgent);
                 await _scanLogRepository.AddAsync(auditLog, cancellationToken);
 
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
                 sw.Stop();
                 var now = DateTime.UtcNow;

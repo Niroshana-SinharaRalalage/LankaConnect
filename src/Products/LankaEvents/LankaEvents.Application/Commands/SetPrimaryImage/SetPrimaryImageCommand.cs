@@ -2,7 +2,9 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using MediatR;
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 namespace LankaConnect.Products.LankaEvents.Application.Commands.SetPrimaryImage;
 
 /// <summary>
@@ -19,13 +21,16 @@ public class SetPrimaryImageCommandHandler : IRequestHandler<SetPrimaryImageComm
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
 
     public SetPrimaryImageCommandHandler(
         IEventRepository eventRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext)
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
     }
 
     public async Task<Result> Handle(SetPrimaryImageCommand request, CancellationToken cancellationToken)
@@ -43,16 +48,16 @@ public class SetPrimaryImageCommandHandler : IRequestHandler<SetPrimaryImageComm
             if (!unmarkResult.IsSuccess)
                 return unmarkResult;
 
-            // Save the unmark operation first to ensure database has no primary
-            await _unitOfWork.CommitAsync(cancellationToken);
+            // Save the unmark operation first to ensure database has no primary (Wave 8.5.g: direct SaveChanges)
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             // Phase 2: Mark new primary
             var markResult = @event.MarkImageAsPrimary(request.ImageId);
             if (!markResult.IsSuccess)
                 return markResult;
 
-            // Save the mark operation
-            await _unitOfWork.CommitAsync(cancellationToken);
+            // Save the mark operation (Wave 8.5.g: direct SaveChanges)
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             return Result.Success();
         }

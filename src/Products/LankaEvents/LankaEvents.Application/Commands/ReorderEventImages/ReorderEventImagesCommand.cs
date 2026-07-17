@@ -3,7 +3,9 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using MediatR;
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 namespace LankaConnect.Products.LankaEvents.Application.Commands.ReorderEventImages;
 
 /// <summary>
@@ -39,13 +41,16 @@ public class ReorderEventImagesCommandHandler : IRequestHandler<ReorderEventImag
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
 
     public ReorderEventImagesCommandHandler(
         IEventRepository eventRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext)
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
     }
 
     public async Task<Result> Handle(ReorderEventImagesCommand request, CancellationToken cancellationToken)
@@ -60,8 +65,8 @@ public class ReorderEventImagesCommandHandler : IRequestHandler<ReorderEventImag
         if (!reorderResult.IsSuccess)
             return reorderResult;
 
-        // 3. Save changes
-        await _unitOfWork.CommitAsync(cancellationToken);
+        // 3. Save changes (Wave 8.5.g: direct SaveChanges on LankaEventsDbContext)
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

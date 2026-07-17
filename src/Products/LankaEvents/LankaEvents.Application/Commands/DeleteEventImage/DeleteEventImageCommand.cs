@@ -2,7 +2,9 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using MediatR;
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 namespace LankaConnect.Products.LankaEvents.Application.Commands.DeleteEventImage;
 
 /// <summary>
@@ -19,13 +21,16 @@ public class DeleteEventImageCommandHandler : IRequestHandler<DeleteEventImageCo
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
 
     public DeleteEventImageCommandHandler(
         IEventRepository eventRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext)
     {
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
     }
 
     public async Task<Result> Handle(DeleteEventImageCommand request, CancellationToken cancellationToken)
@@ -40,8 +45,8 @@ public class DeleteEventImageCommandHandler : IRequestHandler<DeleteEventImageCo
         if (!removeResult.IsSuccess)
             return removeResult;
 
-        // 3. Save changes (event handler will delete blob)
-        await _unitOfWork.CommitAsync(cancellationToken);
+        // 3. Save changes (Wave 8.5.g: direct SaveChanges on LankaEventsDbContext)
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

@@ -2,7 +2,9 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using MediatR;
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5: IImageService promoted
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AddImageToEvent;
 
@@ -22,15 +24,18 @@ public class AddImageToEventCommandHandler : IRequestHandler<AddImageToEventComm
     private readonly IEventRepository _eventRepository;
     private readonly IImageService _imageService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
 
     public AddImageToEventCommandHandler(
         IEventRepository eventRepository,
         IImageService _imageService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext)
     {
         _eventRepository = eventRepository;
         this._imageService = _imageService;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
     }
 
     public async Task<Result<EventImage>> Handle(AddImageToEventCommand request, CancellationToken cancellationToken)
@@ -64,8 +69,8 @@ public class AddImageToEventCommandHandler : IRequestHandler<AddImageToEventComm
             return Result<EventImage>.Failure(addImageResult.Errors);
         }
 
-        // 5. Save changes
-        await _unitOfWork.CommitAsync(cancellationToken);
+        // 5. Save changes (Wave 8.5.g: direct SaveChanges on LankaEventsDbContext)
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Result<EventImage>.Success(addImageResult.Value);
     }

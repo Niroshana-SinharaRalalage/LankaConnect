@@ -750,8 +750,9 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         }
 
                 // Save changes (EF Core now detects changes via ChangeTracker)
+                // Wave 8.5.g: direct SaveChanges on LankaEventsDbContext (was IUnitOfWork = 0 changes on AppDbContext)
                 _eventRepository.Update(@event);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

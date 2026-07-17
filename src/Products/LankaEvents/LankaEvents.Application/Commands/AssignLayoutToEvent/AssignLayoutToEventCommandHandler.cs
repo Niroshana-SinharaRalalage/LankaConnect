@@ -4,6 +4,8 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.AssignLayoutToEvent;
 
@@ -12,17 +14,20 @@ public class AssignLayoutToEventCommandHandler : ICommandHandler<AssignLayoutToE
     private readonly IEventRepository _eventRepository;
     private readonly IVenueLayoutRepository _venueLayoutRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<AssignLayoutToEventCommandHandler> _logger;
 
     public AssignLayoutToEventCommandHandler(
         IEventRepository eventRepository,
         IVenueLayoutRepository venueLayoutRepository,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<AssignLayoutToEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _venueLayoutRepository = venueLayoutRepository;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -64,7 +69,7 @@ public class AssignLayoutToEventCommandHandler : ICommandHandler<AssignLayoutToE
             return layoutResult;
 
         _venueLayoutRepository.Update(layout);
-        await _unitOfWork.CommitAsync(cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken); // Wave 8.5.g direct-SaveChanges
 
         _logger.LogInformation(
             "Layout assigned to event: EventId={EventId}, LayoutId={LayoutId}, TotalCapacity={Capacity}",

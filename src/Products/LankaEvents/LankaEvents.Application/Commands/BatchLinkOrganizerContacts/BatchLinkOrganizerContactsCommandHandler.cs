@@ -5,6 +5,8 @@ using LankaConnect.BuildingBlocks.Application.Common.Options;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog.Context;
@@ -20,6 +22,7 @@ public class BatchLinkOrganizerContactsCommandHandler : ICommandHandler<BatchLin
     private readonly IIdentityQueries _identityQueries;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly EventSettings _eventSettings;
     private readonly ILogger<BatchLinkOrganizerContactsCommandHandler> _logger;
 
@@ -28,6 +31,7 @@ public class BatchLinkOrganizerContactsCommandHandler : ICommandHandler<BatchLin
         IIdentityQueries identityQueries,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         IOptions<EventSettings> eventSettings,
         ILogger<BatchLinkOrganizerContactsCommandHandler> logger)
     {
@@ -35,6 +39,7 @@ public class BatchLinkOrganizerContactsCommandHandler : ICommandHandler<BatchLin
         _identityQueries = identityQueries;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _eventSettings = eventSettings.Value;
         _logger = logger;
     }
@@ -107,8 +112,8 @@ public class BatchLinkOrganizerContactsCommandHandler : ICommandHandler<BatchLin
                 if (linkResult.IsFailure)
                     return linkResult;
 
-                // 7. Persist
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // 7. Persist (Wave 8.5.g: direct SaveChanges on LankaEventsDbContext)
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

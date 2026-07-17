@@ -11,7 +11,9 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
+using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using MediatR;
+using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 namespace LankaConnect.Products.LankaEvents.Application.Commands.SendEventNotification;
@@ -29,6 +31,7 @@ public class SendEventNotificationCommandHandler : IRequestHandler<SendEventNoti
     private readonly IEventNotificationHistoryRepository _historyRepository;
     private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly LankaEventsDbContext _dbContext; // Wave 8.5.g direct-SaveChanges
     private readonly ILogger<SendEventNotificationCommandHandler> _logger;
 
     public SendEventNotificationCommandHandler(
@@ -37,6 +40,7 @@ public class SendEventNotificationCommandHandler : IRequestHandler<SendEventNoti
         IEventNotificationHistoryRepository historyRepository,
         IBackgroundJobClient backgroundJobClient,
         IUnitOfWork unitOfWork,
+        LankaEventsDbContext dbContext,
         ILogger<SendEventNotificationCommandHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -44,6 +48,7 @@ public class SendEventNotificationCommandHandler : IRequestHandler<SendEventNoti
         _historyRepository = historyRepository;
         _backgroundJobClient = backgroundJobClient;
         _unitOfWork = unitOfWork;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -120,7 +125,8 @@ public class SendEventNotificationCommandHandler : IRequestHandler<SendEventNoti
                 }
 
                 var history = await _historyRepository.AddAsync(historyResult.Value, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
+                // Wave 8.5.g: direct SaveChanges on LankaEventsDbContext (EventNotificationHistory lives here)
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 _logger.LogInformation(
                     "SendEventNotification: History record created - HistoryId={HistoryId}, EventId={EventId}",

@@ -102,10 +102,9 @@ public class PublishPhotoAlbumCommandHandler : ICommandHandler<PublishPhotoAlbum
                     AlbumName: album.Name,
                     PublishedByUserId: request.UserId), cancellationToken);
 
-                // 5. Atomic multi-context commit: AppDbContext (domain event dispatch) +
-                //    MediaDbContext (album Status flip + outbox row) in ONE Postgres transaction.
-                //    F30a workaround (repo.UpdateAsync + single-context CommitAsync) deleted here.
-                await _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, cancellationToken);
+                // 5. Wave 8.5.g direct-SaveChanges on MediaDbContext.
+                //    Wave 8.5.f interceptor dispatches domain events (album Published + outbox row) atomically.
+                await _mediaContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

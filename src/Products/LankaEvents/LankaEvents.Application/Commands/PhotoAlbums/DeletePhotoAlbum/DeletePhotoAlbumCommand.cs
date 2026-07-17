@@ -83,11 +83,10 @@ public class DeletePhotoAlbumCommandHandler : ICommandHandler<DeletePhotoAlbumCo
                 }
             }
 
-            // Wave 6.5.b: Delete + atomic multi-context commit. Repository DeleteAsync no
-            // longer self-saves — the ChangeTracker holds the Removed entity until the
-            // multi-context commit persists the delete atomically with AppDbContext.
+            // Wave 8.5.g direct-SaveChanges on MediaDbContext (Wave 8.5.f interceptor dispatches domain events).
+            // Repository DeleteAsync marks entity Removed; ChangeTracker persists via SaveChangesAsync below.
             await _photoAlbumRepository.DeleteAsync(album, cancellationToken);
-            await _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, cancellationToken);
+            await _mediaContext.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation(
                 "Photo album {AlbumId} deleted successfully with {PhotoCount} photos cleaned up",

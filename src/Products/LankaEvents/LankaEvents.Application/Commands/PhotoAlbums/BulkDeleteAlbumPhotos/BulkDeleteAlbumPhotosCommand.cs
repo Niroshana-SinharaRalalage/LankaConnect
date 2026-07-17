@@ -101,8 +101,8 @@ public class BulkDeleteAlbumPhotosCommandHandler : ICommandHandler<BulkDeleteAlb
                         blobFailures, request.AlbumId);
                 }
 
-                // Wave 6.5.b: atomic multi-context commit. Replaces the F30a workaround.
-                await _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, cancellationToken);
+                // Wave 8.5.g direct-SaveChanges on MediaDbContext (Wave 8.5.f interceptor dispatches domain events)
+                await _mediaContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

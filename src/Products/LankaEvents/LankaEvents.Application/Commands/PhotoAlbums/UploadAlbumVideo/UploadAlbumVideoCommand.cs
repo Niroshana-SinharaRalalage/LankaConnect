@@ -158,8 +158,7 @@ public class UploadAlbumVideoCommandHandler : ICommandHandler<UploadAlbumVideoCo
                     return Result<AlbumPhotoDto>.Failure(addVideoResult.Errors);
                 }
 
-                // 6. Wave 6.5.b: enqueue V1 integration event + atomic multi-context commit.
-                //    Replaces the F30a workaround (repo.UpdateAsync + single-context CommitAsync).
+                // 6. Wave 8.5.g direct-SaveChanges on MediaDbContext (Wave 8.5.f interceptor dispatches domain events).
                 var uploadedVideo = addVideoResult.Value;
                 await _outbox.EnqueueAsync(new PhotoUploadedToAlbumIntegrationEventV1(
                     AlbumId: album.Id,
@@ -167,7 +166,7 @@ public class UploadAlbumVideoCommandHandler : ICommandHandler<UploadAlbumVideoCo
                     OwningEventId: album.EventId,
                     UploaderUserId: request.UploaderId,
                     IsVideo: true), cancellationToken);
-                await _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, cancellationToken);
+                await _mediaContext.SaveChangesAsync(cancellationToken);
 
                 var video = uploadedVideo;
                 stopwatch.Stop();

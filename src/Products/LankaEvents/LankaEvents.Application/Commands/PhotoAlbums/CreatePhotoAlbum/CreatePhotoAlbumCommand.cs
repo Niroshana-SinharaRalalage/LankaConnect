@@ -132,7 +132,8 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
                 //    self-saves — the ChangeTracker holds the row until the multi-context commit
                 //    persists it alongside AppDbContext state atomically.
                 await _photoAlbumRepository.AddAsync(album, cancellationToken);
-                await _unitOfWork.CommitAsync(new DbContext[] { _mediaContext }, cancellationToken);
+                // Wave 8.5.g direct-SaveChanges on MediaDbContext (Wave 8.5.f interceptor dispatches domain events)
+                await _mediaContext.SaveChangesAsync(cancellationToken);
 
                 stopwatch.Stop();
 

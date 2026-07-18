@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Identity.Contracts.DTOs;
+using LankaConnect.Modules.Identity.Contracts.Services;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -79,7 +81,7 @@ public class LoginWithEntraCommandHandlerTests
         _mockUserRepository.Setup(r => r.GetByExternalProviderIdAsync(entraUserInfo.ObjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingUser);
 
-        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(existingUser))
+        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(It.Is<AccessTokenClaims>(c => c.UserId == existingUser.Id)))
             .ReturnsAsync(Result<string>.Success("access-token"));
 
         _mockJwtTokenService.Setup(j => j.GenerateRefreshTokenAsync())
@@ -128,7 +130,7 @@ public class LoginWithEntraCommandHandlerTests
         _mockUserRepository.Setup(r => r.ExistsWithEmailAsync(It.IsAny<Email>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(It.IsAny<User>()))
+        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(It.IsAny<AccessTokenClaims>()))
             .ReturnsAsync(Result<string>.Success("access-token"));
 
         _mockJwtTokenService.Setup(j => j.GenerateRefreshTokenAsync())
@@ -249,7 +251,7 @@ public class LoginWithEntraCommandHandlerTests
         _mockUserRepository.Setup(r => r.GetByExternalProviderIdAsync(entraUserInfo.ObjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingUser);
 
-        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(existingUser))
+        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(It.Is<AccessTokenClaims>(c => c.UserId == existingUser.Id)))
             .ReturnsAsync(Result<string>.Success("access-token"));
 
         _mockJwtTokenService.Setup(j => j.GenerateRefreshTokenAsync())
@@ -300,7 +302,7 @@ public class LoginWithEntraCommandHandlerTests
         _mockUserRepository.Setup(r => r.GetByExternalProviderIdAsync(entraUserInfo.ObjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingUser);
 
-        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(existingUser))
+        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(It.Is<AccessTokenClaims>(c => c.UserId == existingUser.Id)))
             .ReturnsAsync(Result<string>.Success("access-token"));
 
         _mockJwtTokenService.Setup(j => j.GenerateRefreshTokenAsync())

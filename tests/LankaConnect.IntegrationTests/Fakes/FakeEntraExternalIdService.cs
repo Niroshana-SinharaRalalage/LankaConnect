@@ -1,5 +1,5 @@
-using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Identity.Contracts.Services;
 
 namespace LankaConnect.IntegrationTests.Fakes;
 

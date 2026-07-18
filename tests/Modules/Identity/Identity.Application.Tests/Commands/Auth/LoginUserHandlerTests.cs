@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Identity.Contracts.DTOs;
+using LankaConnect.Modules.Identity.Contracts.Services;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -69,7 +71,7 @@ public class LoginUserHandlerTests
         _mockPasswordHashingService.Setup(p => p.VerifyPassword(request.Password, _testUser.PasswordHash!))
                                   .Returns(Result<bool>.Success(true));
 
-        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(_testUser))
+        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(It.Is<AccessTokenClaims>(c => c.UserId == _testUser.Id)))
                            .ReturnsAsync(Result<string>.Success("access-token"));
 
         _mockJwtTokenService.Setup(j => j.GenerateRefreshTokenAsync())
@@ -258,7 +260,7 @@ public class LoginUserHandlerTests
         _mockPasswordHashingService.Setup(p => p.VerifyPassword(request.Password, _testUser.PasswordHash!))
                                   .Returns(Result<bool>.Success(true));
 
-        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(_testUser))
+        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(It.Is<AccessTokenClaims>(c => c.UserId == _testUser.Id)))
                            .ReturnsAsync(Result<string>.Failure("Token generation failed"));
 
         // Act
@@ -282,7 +284,7 @@ public class LoginUserHandlerTests
         _mockPasswordHashingService.Setup(p => p.VerifyPassword(request.Password, _testUser.PasswordHash!))
                                   .Returns(Result<bool>.Success(true));
 
-        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(_testUser))
+        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(It.Is<AccessTokenClaims>(c => c.UserId == _testUser.Id)))
                            .ReturnsAsync(Result<string>.Success("access-token"));
 
         _mockJwtTokenService.Setup(j => j.GenerateRefreshTokenAsync())
@@ -310,7 +312,7 @@ public class LoginUserHandlerTests
         _mockPasswordHashingService.Setup(p => p.VerifyPassword(request.Password, _testUser.PasswordHash!))
                                   .Returns(Result<bool>.Success(true));
 
-        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(_testUser))
+        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(It.Is<AccessTokenClaims>(c => c.UserId == _testUser.Id)))
                            .ReturnsAsync(Result<string>.Success("access-token"));
 
         _mockJwtTokenService.Setup(j => j.GenerateRefreshTokenAsync())
@@ -358,7 +360,7 @@ public class LoginUserHandlerTests
         _mockPasswordHashingService.Setup(p => p.VerifyPassword(request.Password, _testUser.PasswordHash!))
                                   .Returns(Result<bool>.Success(true));
 
-        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(_testUser))
+        _mockJwtTokenService.Setup(j => j.GenerateAccessTokenAsync(It.Is<AccessTokenClaims>(c => c.UserId == _testUser.Id)))
                            .ReturnsAsync(Result<string>.Success("access-token"));
 
         _mockJwtTokenService.Setup(j => j.GenerateRefreshTokenAsync())

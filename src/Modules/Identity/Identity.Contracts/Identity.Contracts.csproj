@@ -8,6 +8,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <!-- Wave 8.5.a Part 1 (2026-07-17, D-12 Option b): IJwtTokenService +
+         IEntraExternalIdService relocated here from LankaConnect.Application;
+         both return Result<T> / Result from BuildingBlocks.Domain. Mirrors
+         Communications.Contracts / Media.Contracts / Payments.Contracts. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
   </ItemGroup>
 
 </Project>

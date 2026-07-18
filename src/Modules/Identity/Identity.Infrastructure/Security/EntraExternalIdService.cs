@@ -8,8 +8,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
-using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Identity.Contracts.Services;
 
 namespace LankaConnect.Modules.Identity.Infrastructure.Security;
 

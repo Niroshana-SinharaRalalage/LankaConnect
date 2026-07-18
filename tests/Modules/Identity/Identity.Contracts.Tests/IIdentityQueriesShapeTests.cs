@@ -135,8 +135,11 @@ public sealed class IIdentityQueriesShapeTests
     public void ICurrentUserService_LivesIn_Identity_Contracts_Namespace()
     {
         // W4.6.a architect Risk #2 Option C ruling: ICurrentUserService moves
-        // to Identity.Contracts; IJwtTokenService stays in legacy
-        // LankaConnect.BuildingBlocks.Application.Common.Interfaces (signature takes User type).
+        // to Identity.Contracts.
+        // Wave 8.5.a Part 1 (2026-07-17, D-12 Option b): IJwtTokenService +
+        // IEntraExternalIdService now also live in Identity.Contracts.Services
+        // after the User→AccessTokenClaims DTO reshape closed the Contracts↔
+        // Domain leak that Risk #2 Option C originally deferred.
         typeof(ICurrentUserService).Namespace.Should().Be("LankaConnect.Modules.Identity.Contracts");
     }
 }

@@ -1,8 +1,13 @@
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Modules.Identity.Domain.Events;
-namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+
+namespace LankaConnect.Modules.Identity.Contracts.Services;
+
+// Wave 8.5.a Part 1 (2026-07-17): Relocated from
+// LankaConnect.BuildingBlocks.Application.Common.Interfaces per Tech Lead D-12.
+// This service has no Identity.Domain dependency — its DTOs (EntraTokenClaims,
+// EntraUserInfo) live in this file. The 3 unused Identity.Domain usings
+// (Entities/DomainEvents/Events) were stale from the pre-relocation namespace
+// and are dropped as part of the move.
 
 /// <summary>
 /// Service interface for Microsoft Entra External ID authentication and token validation

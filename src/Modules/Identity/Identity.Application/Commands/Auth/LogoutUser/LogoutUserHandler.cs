@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Identity.Contracts.Services;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;

@@ -5,6 +5,9 @@ using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Identity.Contracts;
+using LankaConnect.Modules.Identity.Contracts.DTOs;
+using LankaConnect.Modules.Identity.Contracts.Services;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -208,8 +211,20 @@ public class LoginWithEntraCommandHandler : IRequestHandler<LoginWithEntraComman
                     // Add UserId to LogContext now that we have it
                     using (LogContext.PushProperty("UserId", user.Id))
                     {
-                        // 5. Generate JWT tokens
-                        var accessTokenResult = await _jwtTokenService.GenerateAccessTokenAsync(user);
+                        // 5. Generate JWT tokens — Wave 8.5.a Part 1 (2026-07-17, D-12 Option b):
+                        // construct Contracts-layer AccessTokenClaims DTO from the loaded User
+                        // aggregate so IJwtTokenService no longer sees Identity.Domain.User.
+                        var accessTokenClaims = new AccessTokenClaims(
+                            UserId: user.Id,
+                            Email: user.Email.Value,
+                            FirstName: user.FirstName,
+                            LastName: user.LastName,
+                            Role: (UserRoleDto)(byte)user.Role,
+                            IsActive: user.IsActive,
+                            IsEmailVerified: user.IsEmailVerified,
+                            PhoneNumber: user.PhoneNumber?.Value);
+
+                        var accessTokenResult = await _jwtTokenService.GenerateAccessTokenAsync(accessTokenClaims);
                         if (accessTokenResult.IsFailure)
                         {
                             stopwatch.Stop();

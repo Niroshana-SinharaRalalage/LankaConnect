@@ -5,6 +5,9 @@ using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Identity.Contracts;
+using LankaConnect.Modules.Identity.Contracts.DTOs;
+using LankaConnect.Modules.Identity.Contracts.Services;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -142,8 +145,20 @@ public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<LoginUs
                     return Result<LoginUserResponse>.Failure("Email address must be verified before logging in");
                 }
 
-                // Generate tokens
-                var accessTokenResult = await _jwtTokenService.GenerateAccessTokenAsync(user);
+                // Generate tokens — Wave 8.5.a Part 1 (2026-07-17, D-12 Option b):
+                // construct Contracts-layer AccessTokenClaims DTO from the loaded User
+                // aggregate so IJwtTokenService no longer sees Identity.Domain.User.
+                var accessTokenClaims = new AccessTokenClaims(
+                    UserId: user.Id,
+                    Email: user.Email.Value,
+                    FirstName: user.FirstName,
+                    LastName: user.LastName,
+                    Role: (UserRoleDto)(byte)user.Role,
+                    IsActive: user.IsActive,
+                    IsEmailVerified: user.IsEmailVerified,
+                    PhoneNumber: user.PhoneNumber?.Value);
+
+                var accessTokenResult = await _jwtTokenService.GenerateAccessTokenAsync(accessTokenClaims);
                 if (!accessTokenResult.IsSuccess)
                 {
                     stopwatch.Stop();

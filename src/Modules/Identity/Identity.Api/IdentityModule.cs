@@ -4,6 +4,7 @@ using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using LankaConnect.Modules.Identity.Application.Commands;
 using LankaConnect.Modules.Identity.Application.Queries;
 using LankaConnect.Modules.Identity.Contracts;
+using LankaConnect.Modules.Identity.Contracts.Services;
 using LankaConnect.Modules.Identity.Infrastructure.Data;
 using LankaConnect.Modules.Identity.Infrastructure.Security;
 using MediatR;
@@ -98,10 +99,14 @@ public static class IdentityModule
         // from LankaConnect.Infrastructure.DependencyInjection alongside the
         // physical file move into Identity.Infrastructure.Security. Mirrors
         // the W4.4.d.2 PaymentsModule repository registration pattern.
-        // Ports stay in LankaConnect.BuildingBlocks.Application.Common.Interfaces per
-        // architect Risk #2 Option C (signatures take User type so the ports
-        // cannot promote to Contracts purity). ICurrentUserService is the
-        // exception -- it moved to Identity.Contracts at 4.6.a.
+        // Wave 8.5.a Part 1 (2026-07-17, D-12 Option b): IJwtTokenService +
+        // IEntraExternalIdService ports promoted from
+        // LankaConnect.BuildingBlocks.Application.Common.Interfaces to
+        // LankaConnect.Modules.Identity.Contracts.Services after the
+        // GenerateAccessTokenAsync(User) signature was reshaped to accept
+        // Contracts.DTOs.AccessTokenClaims instead of the Identity.Domain.User
+        // aggregate (removes the Contracts↔Domain leak that Risk #2 Option C
+        // originally deferred). ICurrentUserService moved at 4.6.a.
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IPasswordHashingService, PasswordHashingService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();

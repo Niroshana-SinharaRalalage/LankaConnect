@@ -6,12 +6,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
-using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.Modules.Identity.Domain.Entities;
-using LankaConnect.Modules.Identity.Domain.Repositories;
-using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Modules.Identity.Domain.Events;
+using LankaConnect.Modules.Identity.Contracts.DTOs;
+using LankaConnect.Modules.Identity.Contracts.Services;
 
 namespace LankaConnect.Modules.Identity.Infrastructure.Security;
 
@@ -45,24 +42,28 @@ public class JwtTokenService : IJwtTokenService
         };
     }
 
-    public Task<Result<string>> GenerateAccessTokenAsync(User user)
+    public Task<Result<string>> GenerateAccessTokenAsync(AccessTokenClaims userClaims)
     {
         try
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? 
+            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ??
                 throw new InvalidOperationException("JWT Key not configured"));
+
+            // Wave 8.5.a Part 1: FullName is derived at the impl (mirrors legacy
+            // User.FullName computed property) rather than stored in the DTO.
+            var fullName = $"{userClaims.FirstName} {userClaims.LastName}";
 
             var claims = new List<Claim>
             {
-                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new(ClaimTypes.Email, user.Email.Value),
-                new(ClaimTypes.Name, user.FullName),
-                new(ClaimTypes.Role, user.Role.ToString()), // BUGFIX: Add role claim for authorization policies
-                new("firstName", user.FirstName),
-                new("lastName", user.LastName),
-                new("isActive", user.IsActive.ToString().ToLower()),
-                new("isEmailVerified", user.IsEmailVerified.ToString().ToLower()), // FIX: Add email verification status to JWT
+                new(ClaimTypes.NameIdentifier, userClaims.UserId.ToString()),
+                new(ClaimTypes.Email, userClaims.Email),
+                new(ClaimTypes.Name, fullName),
+                new(ClaimTypes.Role, userClaims.Role.ToString()), // BUGFIX: Add role claim for authorization policies
+                new("firstName", userClaims.FirstName),
+                new("lastName", userClaims.LastName),
+                new("isActive", userClaims.IsActive.ToString().ToLower()),
+                new("isEmailVerified", userClaims.IsEmailVerified.ToString().ToLower()), // FIX: Add email verification status to JWT
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new(JwtRegisteredClaimNames.Iat,
                     new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(),
@@ -70,9 +71,9 @@ public class JwtTokenService : IJwtTokenService
             };
 
             // Add phone number if available
-            if (user.PhoneNumber != null)
+            if (!string.IsNullOrWhiteSpace(userClaims.PhoneNumber))
             {
-                claims.Add(new Claim(ClaimTypes.MobilePhone, user.PhoneNumber.Value));
+                claims.Add(new Claim(ClaimTypes.MobilePhone, userClaims.PhoneNumber));
             }
 
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -83,19 +84,19 @@ public class JwtTokenService : IJwtTokenService
                 Issuer = _configuration["Jwt:Issuer"],
                 Audience = _configuration["Jwt:Audience"],
                 SigningCredentials = new SigningCredentials(
-                    new SymmetricSecurityKey(key), 
+                    new SymmetricSecurityKey(key),
                     SecurityAlgorithms.HmacSha256Signature)
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var tokenString = tokenHandler.WriteToken(token);
 
-            _logger.LogInformation("Access token generated for user {UserId}", user.Id);
+            _logger.LogInformation("Access token generated for user {UserId}", userClaims.UserId);
             return Task.FromResult(Result<string>.Success(tokenString));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating access token for user {UserId}", user.Id);
+            _logger.LogError(ex, "Error generating access token for user {UserId}", userClaims.UserId);
             return Task.FromResult(Result<string>.Failure("Failed to generate access token"));
         }
     }

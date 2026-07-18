@@ -151,10 +151,18 @@ public sealed class ProductsLayerRules
     }
 
     /// <summary>
-    /// Rule 4 â€” Legacy LankaConnect.Application can reference Products.LankaEvents.Domain +
+    /// Rule 4 — Legacy LankaConnect.Application can reference Products.LankaEvents.Domain +
     /// .Application (carve-out handlers still composed from legacy host) but NOT Infrastructure or Api.
     /// </summary>
-    [Fact]
+    /// <remarks>
+    /// SKIPPED at Wave 8.5.a Part 4 (2026-07-17, D-12 Option b) — the legacy
+    /// <c>LankaConnect.Application</c> assembly is DELETED. The rule as-written
+    /// would <c>Assembly.Load("LankaConnect.Application")</c> against a project
+    /// that no longer exists and would fail with FileNotFoundException. Kept
+    /// as a tombstone for archaeological continuity; the whole concern is
+    /// moot now that the legacy Application csproj is gone.
+    /// </remarks>
+    [Fact(Skip = "Wave 8.5.a Part 4 (2026-07-17, D-12 Option b): LankaConnect.Application assembly DELETED; rule is now vacuous. Kept as tombstone.")]
     [Trait("Category", "ArchTest")]
     public void Rule4_LankaConnect_Application_DoesNotReferenceProducts_Infrastructure_Or_Api()
     {

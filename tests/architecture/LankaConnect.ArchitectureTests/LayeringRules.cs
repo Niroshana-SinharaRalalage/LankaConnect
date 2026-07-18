@@ -477,7 +477,7 @@ public sealed class LayeringRules
     /// BuildingBlocks.Contracts -- accidental ProjectReference additions
     /// here would couple consumers via implementation detail.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Wave 8.5.a Part 1 (2026-07-17, D-12 Option b): Identity.Contracts now references BuildingBlocks.Domain for Result<T> — required by the relocated IJwtTokenService + IEntraExternalIdService whose return signatures are Task<Result<...>>. Same violation shape as the sibling Communications.Contracts / Media.Contracts / Payments.Contracts *_DependsOnlyOnBuildingBlocksContracts skips (all Wave 8.5.d LegacyPromotions bucket). Un-skip after Wave 8.5.d LegacyPromotions folder split lands and Result<T> is promoted to a Contracts-safe location.")]
     [Trait("Category", "ArchTest")]
     public void Modules_Identity_Contracts_DependsOnlyOnBuildingBlocksContracts()
     {

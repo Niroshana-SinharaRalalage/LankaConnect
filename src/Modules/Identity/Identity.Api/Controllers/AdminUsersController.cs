@@ -13,7 +13,7 @@ using LankaConnect.Modules.Identity.Application.DTOs;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUserDetails;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUsersPaged;
 using LankaConnect.Modules.Identity.Application.Queries.Users.GetAdminUserStatistics;
-using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5
+using LankaConnect.Modules.Communications.Contracts.Commands; // 4C.h Day 5
 using LankaConnect.Modules.Identity.Domain.Enums;
 namespace LankaConnect.Modules.Identity.Api.Controllers;
 

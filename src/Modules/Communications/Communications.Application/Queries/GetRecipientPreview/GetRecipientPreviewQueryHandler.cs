@@ -1,7 +1,8 @@
 using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using System.Diagnostics;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5
+using LankaConnect.Modules.Communications.Contracts.Services;
+using LankaConnect.Modules.Communications.Contracts.DTOs; // 4C.h Day 5
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain;
 using Microsoft.Extensions.Logging;

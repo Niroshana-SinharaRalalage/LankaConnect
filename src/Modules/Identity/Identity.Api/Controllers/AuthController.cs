@@ -8,7 +8,7 @@ using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginUser;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.RefreshToken;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.LogoutUser;
 using LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
-using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5
+using LankaConnect.Modules.Communications.Contracts.Commands; // 4C.h Day 5
 // 4C.d.xiii: LankaConnect.API.Filters dead ref removed
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;

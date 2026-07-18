@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Identity.Contracts;
 using Serilog.Context;
-using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5: SendEmailVerificationCommand promoted
+using LankaConnect.Modules.Communications.Contracts.Commands; // 4C.h Day 5: SendEmailVerificationCommand promoted
 namespace LankaConnect.Modules.Communications.Application.Commands.SendEmailVerification;
 
 /// <summary>

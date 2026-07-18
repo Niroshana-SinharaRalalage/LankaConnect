@@ -1,6 +1,7 @@
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // Wave 6.5.f mirror (2026-07-09 Day 4): cycle-break
+using LankaConnect.Modules.Communications.Contracts.Services;
+using LankaConnect.Modules.Communications.Contracts.DTOs; // Wave 6.5.f mirror (2026-07-09 Day 4): cycle-break
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Domain;
 using LankaConnect.Products.LankaEvents.Domain;

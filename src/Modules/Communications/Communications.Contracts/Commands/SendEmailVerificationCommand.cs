@@ -1,6 +1,6 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
-namespace LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5 (2026-07-10): promoted from Comm.Application/Commands/ per Consult #15 PASS C — cross-module command signature belongs in Contracts. Handler stays in Comm.Application.
+namespace LankaConnect.Modules.Communications.Contracts.Commands; // Wave 8.5.d (2026-07-18): split from LegacyPromotions/ per Consult #17 Q2 Day 10 debt. Originally promoted from Communications.Application/Commands/ (4C.h Day 5, 2026-07-10) per Consult #15 PASS C.
 
 /// <summary>
 /// Command to send email verification to a user

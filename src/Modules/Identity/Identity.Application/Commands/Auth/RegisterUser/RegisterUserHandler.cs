@@ -4,7 +4,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5: SendEmailVerificationCommand promoted per Consult #15 PASS C
+using LankaConnect.Modules.Communications.Contracts.Commands; // 4C.h Day 5: SendEmailVerificationCommand promoted per Consult #15 PASS C
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain;
 using LankaConnect.Modules.Communications.Domain.Entities;

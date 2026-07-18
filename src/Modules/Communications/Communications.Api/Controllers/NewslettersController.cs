@@ -16,7 +16,7 @@ using LankaConnect.Modules.Communications.Application.Queries.GetPublishedNewsle
 using LankaConnect.Modules.Communications.Application.Queries.GetRecipientPreview;
 using LankaConnect.Modules.Communications.Application.Common;
 using LankaConnect.API.Extensions;
-using LankaConnect.Modules.Communications.Contracts.LegacyPromotions; // 4C.h Day 5
+using LankaConnect.Modules.Communications.Contracts.DTOs; // 4C.h Day 5
 namespace LankaConnect.Modules.Communications.Api.Controllers;
 
 [Authorize(Roles = "EventOrganizer,Admin,AdminManager")]

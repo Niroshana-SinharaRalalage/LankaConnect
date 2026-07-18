@@ -8,7 +8,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5: IImageService promoted from Media.Application/Contracts
+using LankaConnect.Modules.Media.Contracts.Services; // 4C.h Day 5: IImageService promoted from Media.Application/Contracts
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.DeleteProfilePhoto;
 
 /// <summary>

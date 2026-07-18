@@ -38,7 +38,7 @@ using LankaConnect.Infrastructure.Data;                     // 4C.d.xiii: AppDbC
 using LankaConnect.Infrastructure.Data.Repositories;        // 4C.d.xiii: Repository<T> base + concrete repos
 using LankaConnect.Modules.Media.Infrastructure.Storage.Configuration;
 using LankaConnect.Modules.Media.Infrastructure.Storage.Services;
-using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5
+using LankaConnect.Modules.Media.Contracts.Services; // 4C.h Day 5
 using LankaConnect.Modules.Identity.Infrastructure.Security; // Wave 8.5.b Part 5 (2026-07-16): EntraExternalIdOptions + TokenConfiguration relocated here from LC.Infra
 using LankaConnect.Modules.Communications.Infrastructure.Email.Configuration;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Services;

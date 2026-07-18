@@ -1,7 +1,7 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5: IImageService promoted
+using LankaConnect.Modules.Media.Contracts.Services; // 4C.h Day 5: IImageService promoted
 namespace LankaConnect.Host.AllInOne.Services;
 
 /// <summary>

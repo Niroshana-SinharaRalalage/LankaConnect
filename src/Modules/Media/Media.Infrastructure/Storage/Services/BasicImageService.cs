@@ -7,7 +7,7 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Media.Infrastructure.Storage.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using LankaConnect.Modules.Media.Contracts.LegacyPromotions; // 4C.h Day 5: IImageService promoted
+using LankaConnect.Modules.Media.Contracts.Services; // 4C.h Day 5: IImageService promoted
 namespace LankaConnect.Modules.Media.Infrastructure.Storage.Services;
 
 /// <summary>

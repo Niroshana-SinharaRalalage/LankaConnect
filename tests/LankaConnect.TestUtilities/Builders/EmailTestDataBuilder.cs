@@ -2,7 +2,11 @@ using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.BuildingBlocks.Application.Common.DTOs;
-using UserEmail = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
+// Wave 8.5.e (2026-07-18): UserEmail VO restored under Communications.Domain per
+// Consult #13.3 PASS A (see CommunicationsPrimitives.cs). Kept as an alias so
+// existing callers do not have to change; the .Domain.ValueObjects namespace
+// exposes both `Email` and `UserEmail` VOs after the Shared bucket wipe.
+using UserEmail = LankaConnect.Modules.Communications.Domain.ValueObjects.UserEmail;
 
 namespace LankaConnect.TestUtilities.Builders;
 

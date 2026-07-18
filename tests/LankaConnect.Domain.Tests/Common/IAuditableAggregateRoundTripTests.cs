@@ -1,6 +1,11 @@
-using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+﻿using LankaConnect.Modules.Communications.Domain.Entities;
+// Wave 8.5.e (2026-07-18): User.Create currently takes
+// LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email (see User.cs
+// imports). The Communications.Domain.ValueObjects.Email lives as its own
+// primitive for the EmailMessage aggregate. Alias the LankaEvents Email VO
+// as UserEmail here so the two remain unambiguous at call sites in this file.
+using UserEmail = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -20,7 +25,7 @@ namespace LankaConnect.Domain.Tests.Common;
 /// silently between W3D and today's first successful deploy.
 /// </summary>
 /// <remarks>
-/// Per CLAUDE.md §13.1 trigger T2 (mutator touching IAuditable). Each test
+/// Per CLAUDE.md Â§13.1 trigger T2 (mutator touching IAuditable). Each test
 /// invokes the canonical factory with minimum valid inputs, asserts the
 /// factory returned success, then asserts the audit fields.
 ///
@@ -30,7 +35,7 @@ namespace LankaConnect.Domain.Tests.Common;
 /// remaining aggregates that didn't have CreatedAt-specific tests:
 /// User, EmailGroup, Notification, PhotoAlbum, Form.
 ///
-/// Event aggregate is intentionally NOT in this file — its factory takes
+/// Event aggregate is intentionally NOT in this file â€” its factory takes
 /// 9 parameters (EventTitle, EventDescription, etc.) and dedicated coverage
 /// belongs in the Application.Tests project alongside the existing
 /// EventTests fixture. Tracked separately for G1.b completeness.
@@ -42,7 +47,7 @@ public sealed class IAuditableAggregateRoundTripTests
     [Fact]
     public void User_Create_Has_FreshAuditFields()
     {
-        var emailResult = Email.Create("test+g1b@lankaconnect.app");
+        var emailResult = UserEmail.Create("test+g1b@lankaconnect.app");
         emailResult.IsSuccess.Should().BeTrue();
         var before = DateTime.UtcNow;
 

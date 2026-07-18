@@ -1,4 +1,4 @@
-using LankaConnect.BuildingBlocks.Domain;
+using System.Diagnostics.CodeAnalysis;
 using LankaConnect.BuildingBlocks.Domain;
 
 namespace LankaConnect.Domain.Tests.Common;
@@ -19,9 +19,20 @@ namespace LankaConnect.Domain.Tests.Common;
 public sealed class LegacyBaseEntityCtorTests
 {
     /// <summary>Minimal concrete subclass so we can instantiate the abstract base.</summary>
+    /// <remarks>
+    /// Wave 8.5.e (2026-07-18): Both ctors chain to a base ctor annotated with
+    /// <see cref="SetsRequiredMembersAttribute"/> per Consult #13 Q1 amendment
+    /// (LegacyBaseEntity is one of the two aggregate roots explicitly permitted
+    /// to carry that attribute). C# 11 requires derived ctors chaining through
+    /// a [SetsRequiredMembers] base ctor to also carry the attribute — otherwise
+    /// the required-members analyzer emits CS9039/CS9035 at the derived call sites.
+    /// </remarks>
     private sealed class TestEntity : LegacyBaseEntity
     {
+        [SetsRequiredMembers]
         public TestEntity() : base() { }
+
+        [SetsRequiredMembers]
         public TestEntity(Guid id) : base(id) { }
     }
 

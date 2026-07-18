@@ -64,7 +64,9 @@ public sealed class NotificationBehaviorTests
             title: "T", message: "M", type: NotificationType.System);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Notification.UserIdRequired");
+        // Wave 8.5.e (2026-07-18): Result.Error is a string carrying "[Code] Message"
+        // (see Result.Failure(Error) → Error.ToString()). Assert the code substring.
+        result.Error.Should().Contain("Notification.UserIdRequired");
     }
 
     [Fact]
@@ -77,7 +79,7 @@ public sealed class NotificationBehaviorTests
             type: NotificationType.System);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Notification.TitleTooLong");
+        result.Error.Should().Contain("Notification.TitleTooLong");
     }
 
     [Fact]
@@ -90,7 +92,7 @@ public sealed class NotificationBehaviorTests
             type: NotificationType.System);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Notification.MessageTooLong");
+        result.Error.Should().Contain("Notification.MessageTooLong");
     }
 
     [Fact]
@@ -117,7 +119,7 @@ public sealed class NotificationBehaviorTests
         var result = n.MarkAsRead();
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Notification.AlreadyRead");
+        result.Error.Should().Contain("Notification.AlreadyRead");
     }
 
     [Fact]
@@ -142,7 +144,7 @@ public sealed class NotificationBehaviorTests
         var result = n.MarkAsUnread();
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Notification.AlreadyUnread");
+        result.Error.Should().Contain("Notification.AlreadyUnread");
     }
 
     [Fact]

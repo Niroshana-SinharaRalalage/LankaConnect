@@ -1,4 +1,7 @@
 // Global usings for TestUtilities project
+// Wave 8.5.e (2026-07-18): pruned stale namespaces after Consult #12 Option D
+// (Business aggregate deleted), Consult #15 PASS C (Shared bucket deleted),
+// and 4C.d/e/f/g (Domain.Common retired). Remaining usings track live namespaces only.
 global using System;
 global using System.Collections.Generic;
 global using System.Linq;
@@ -16,17 +19,13 @@ global using Moq;
 // AutoFixture
 global using AutoFixture;
 
-// Domain
-global using LankaConnect.Domain.Business;
-global using LankaConnect.Domain.Business.ValueObjects;
-global using LankaConnect.Domain.Business.Enums;
+// Communications module — hosts EmailMessage, EmailSubject, Email VO, EmailType.
 global using LankaConnect.Modules.Communications.Domain.Entities;
 global using LankaConnect.Modules.Communications.Domain.ValueObjects;
 global using LankaConnect.Modules.Communications.Domain.Enums;
-global using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-global using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+
+// Identity module — hosts UserRole and related VOs.
 global using LankaConnect.Modules.Identity.Domain.ValueObjects;
-global using LankaConnect.Domain.Common;
 
 // Application interfaces
 global using LankaConnect.BuildingBlocks.Application.Common.Interfaces;

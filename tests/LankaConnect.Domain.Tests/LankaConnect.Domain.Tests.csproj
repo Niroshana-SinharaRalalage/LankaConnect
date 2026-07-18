@@ -32,6 +32,15 @@
     <!-- W5.4.d.2 (2026-06-22): Communications.Domain now hosts EmailGroup, tested via IAuditableAggregateRoundTripTests. -->
     <ProjectReference Include="..\..\src\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
+
+    <!-- Wave 8.5.e (2026-07-18): Events aggregate now hosted in Products/LankaEvents/;
+         several tests target Donation, RefundRequest, TicketTier, Registration
+         behavior — all under LankaEvents.Domain. -->
+    <ProjectReference Include="..\..\src\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
+
+    <!-- Wave 8.5.e (2026-07-18): Money + Currency VOs live in SharedKernel.Money
+         per Consult #13 Q2 (formerly LankaConnect.BuildingBlocks.Domain.Shared). -->
+    <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
   </ItemGroup>
 
 </Project>

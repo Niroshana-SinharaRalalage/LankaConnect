@@ -4,6 +4,7 @@ using LankaConnect.Modules.Forms.Domain.Entities;
 using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
+using LankaConnect.Modules.Forms.Infrastructure.Data;
 using LankaConnect.Modules.Forms.Application.Commands.DeleteFormResponse;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
@@ -29,24 +30,29 @@ namespace LankaConnect.Modules.Forms.Application.Tests.Commands;
 public class DeleteFormResponseCommandHandlerTests
 {
     private readonly Mock<IFormResponseRepository> _mockRepository;
-    private readonly Mock<IMultiContextUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<FormsDbContext> _mockFormsContext;
     private readonly Mock<ILogger<DeleteFormResponseCommandHandler>> _mockLogger;
     private readonly DeleteFormResponseCommandHandler _handler;
 
     public DeleteFormResponseCommandHandlerTests()
     {
         _mockRepository = new Mock<IFormResponseRepository>();
-        // Wave 6.5.d: mock the multi-context UoW; both overloads return 0 by default
-        _mockUnitOfWork = new Mock<IMultiContextUnitOfWork>();
-        _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(0);
-        _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<DbContext[]>(), It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        // Wave 8.5.e (2026-07-18): Wave 8.5.h Batch 1 retired
+        // IMultiContextUnitOfWork.CommitAsync(DbContext[]) per Tech Lead D-01
+        // (see Consult #25 direct-SaveChangesAsync blanket-approval). Handler now
+        // takes FormsDbContext directly and calls _formsContext.SaveChangesAsync(ct).
+        // Follows the FormCommandsTests pattern (Wave 6.5.d) — mock via Moq because
+        // the FormsDbContext model uses jsonb-backed IReadOnlyList<Guid> which the
+        // InMemory EF provider cannot validate.
+        var options = new DbContextOptionsBuilder<FormsDbContext>().Options;
+        _mockFormsContext = new Mock<FormsDbContext>(options);
+        _mockFormsContext
+            .Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
         _mockLogger = new Mock<ILogger<DeleteFormResponseCommandHandler>>();
-        // Wave 6.5.d: FormsDbContext ctor arg. Passing null! because the test suite
-        // never exercises the DbContext directly — the mock UoW absorbs the CommitAsync call.
         _handler = new DeleteFormResponseCommandHandler(
             _mockRepository.Object,
-            _mockUnitOfWork.Object,
-            formsContext: null!,
+            _mockFormsContext.Object,
             _mockLogger.Object);
     }
 
@@ -76,8 +82,8 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.True(result.IsSuccess);
         _mockRepository.Verify(r => r.DeleteAsync(response, It.IsAny<CancellationToken>()), Times.Once);
-        // Wave 6.5.d: handler now calls the multi-context overload
-        _mockUnitOfWork.Verify(u => u.CommitAsync(It.IsAny<DbContext[]>(), It.IsAny<CancellationToken>()), Times.Once);
+        // Wave 8.5.e: handler now calls _formsContext.SaveChangesAsync directly (D-01 direct-SaveChanges).
+        _mockFormsContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
 
         // Verify domain event raised
         Assert.Single(response.DomainEvents);
@@ -114,9 +120,8 @@ public class DeleteFormResponseCommandHandlerTests
         Assert.False(result.IsSuccess);
         Assert.Equal("Invalid access token", result.Error);
         _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
-        // Wave 6.5.d: assert neither commit overload was called
-        _mockUnitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
-        _mockUnitOfWork.Verify(u => u.CommitAsync(It.IsAny<DbContext[]>(), It.IsAny<CancellationToken>()), Times.Never);
+        // Wave 8.5.e: assert SaveChangesAsync was not called on the auth-failure path.
+        _mockFormsContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -173,8 +178,8 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.True(result.IsSuccess);
         _mockRepository.Verify(r => r.DeleteAsync(response, It.IsAny<CancellationToken>()), Times.Once);
-        // Wave 6.5.d: handler now calls the multi-context overload
-        _mockUnitOfWork.Verify(u => u.CommitAsync(It.IsAny<DbContext[]>(), It.IsAny<CancellationToken>()), Times.Once);
+        // Wave 8.5.e: handler now calls _formsContext.SaveChangesAsync directly.
+        _mockFormsContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

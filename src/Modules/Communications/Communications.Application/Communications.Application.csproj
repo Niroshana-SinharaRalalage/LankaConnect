@@ -41,13 +41,17 @@
       edges with the matching ArchTest relaxation. Cut alongside the
       BuildingBlocks.Application elevation pass.
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         (D-12 Option b). -->
     <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): pulled forward from LC.Application (deleted
+         in this commit); EmailMappingProfile uses AutoMapper.Profile. -->
+    <PackageReference Include="AutoMapper" />
   </ItemGroup>
 
 </Project>

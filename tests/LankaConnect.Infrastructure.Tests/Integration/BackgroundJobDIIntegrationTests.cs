@@ -3,7 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using FluentAssertions;
 using LankaConnect.Infrastructure;
-using LankaConnect.Application;
+// Wave 8.5.a Part 4 (2026-07-17): `using LankaConnect.Application;` removed
+// alongside the LankaConnect.Application csproj deletion (D-12 Option b).
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 using LankaConnect.Modules.Communications.Application.BackgroundJobs;
 

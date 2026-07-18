@@ -37,13 +37,18 @@
          (Wave 6) cuts the Modules → LankaConnect.Application edges, LankaEvents handlers
          also need access to ICommand / ICommandHandler / IUnitOfWork etc. that live in
          the legacy LankaConnect.Application namespace. Mirror Identity 4.6.d.1 pattern. -->
-    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         (D-12 Option b). -->
     <!-- Day 4 slot C sub-slice 4C.d (2026-07-06): mechanical unblock adds.
          Currency in SharedKernel.Money; NewsletterSubscriber in Communications.Domain;
          INewsletterSubscriberRepository + IWhatsAppService in Communications.Application;
          IStripePaymentService in Payments.Application. Transitional edges pending
          Contracts elevation. -->
     <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): pulled forward from LC.Application (deleted
+         in this commit); MetroAreaMappingProfile + GetMetroAreasQuery consume
+         MetroAreaDto from LankaConnect.SharedKernel.Geo.MetroAreas.Common. -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
     <ProjectReference Include="..\..\..\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
     <!-- IStripePaymentService now lives in Payments.Contracts per Consult #15 PASS C
          (moved 2026-07-06); no longer need Payments.Application PR from LankaEvents. -->
@@ -53,6 +58,10 @@
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): pulled forward from LC.Application (deleted
+         in this commit); mapping profiles + query handlers use AutoMapper Profile +
+         IMapper. -->
+    <PackageReference Include="AutoMapper" />
     <!-- Wave 6.5.f Day 5 slot A (2026-07-10): CsvExportService + ExcelExportService
          relocated from LC.Infrastructure per architect Option C — pure DTO-in/byte-out
          transformers with no EF touch belong in Application. Their transitive deps

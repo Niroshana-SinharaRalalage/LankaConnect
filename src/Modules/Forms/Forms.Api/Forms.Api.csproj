@@ -28,6 +28,9 @@
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): pulled forward from LC.Application (deleted
+         in this commit); FormsModule.AddFormsModule uses AddValidatorsFromAssembly. -->
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
   </ItemGroup>
 
 </Project>

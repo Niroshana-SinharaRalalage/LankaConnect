@@ -36,7 +36,8 @@
       ICommand/IUnitOfWork primitives) + Wave 4.4.c.4 (the Refund services
       relocation into Payments.Application).
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         (D-12 Option b). -->
     <!--
       Wave 4.4.c.3 TRANSITIONAL EDGE (2026-06-23). The 17 moved Payment / Refund
       event handlers import LankaConnect.Shared.Email.{Contracts,Helpers,Services}
@@ -58,6 +59,13 @@
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): pulled forward from LC.Application (deleted
+         in this commit); Refund handlers use Serilog.Context, EF Core query APIs,
+         and IConfiguration in some event handlers. -->
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
   </ItemGroup>
 
 </Project>

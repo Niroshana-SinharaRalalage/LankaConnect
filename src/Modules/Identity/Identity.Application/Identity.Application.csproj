@@ -24,7 +24,8 @@
       command handlers at 4.6.c.1-c.2 depend on ICommand/ICommandHandler/
       IUnitOfWork. Mirrors W4.4.c.1 + W5.4.c.1 transitional edges.
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         (D-12 Option b). -->
     <ProjectReference Include="..\Identity.Domain\Identity.Domain.csproj" />
     <!-- Wave 6.5.f mirror (2026-07-09 Day 4): clean-direction PR to
          Identity.Infrastructure after the Infraâ†’App reverse edge was found
@@ -51,12 +52,20 @@
          MetroAreas (LankaEvents-owned) â€” cross-module DbContext injection for the
          transitional shadow-navigation load per Consult #16 Option C. -->
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): pulled forward from LC.Application (deleted
+         in this commit); GetUserPreferredMetroAreasQuery consumes MetroAreaDto
+         from LankaConnect.SharedKernel.Geo.MetroAreas.Common. -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): pulled forward from LC.Application (deleted
+         in this commit); UserMappingProfile + GetUserPreferredMetroAreasQueryHandler
+         use AutoMapper Profile + IMapper. -->
+    <PackageReference Include="AutoMapper" />
   </ItemGroup>
 
 </Project>

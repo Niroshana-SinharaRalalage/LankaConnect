@@ -22,13 +22,18 @@
       a follow-up (BuildingBlocks elevation pass). The corresponding ArchTest
       rule is relaxed during the transition window (see LayeringRules.cs).
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         (D-12 Option b). -->
     <ProjectReference Include="..\..\Identity\Identity.Contracts\Identity.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): pulled forward from LC.Application (deleted
+         in this commit); the moved MarkNotificationAsRead / MarkAllNotificationsAsRead
+         command handlers write structured log rows via Serilog.Context. -->
+    <PackageReference Include="Serilog" />
   </ItemGroup>
 
 </Project>

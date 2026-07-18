@@ -20,7 +20,8 @@
        d) LankaConnect.Shared (Email/WhatsApp template helpers).
       Cut alongside the BB.Application elevation + Wave 4.6.d.2 move.
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         (D-12 Option b). -->
     <ProjectReference Include="..\..\..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
     <ProjectReference Include="..\Identity.Domain\Identity.Domain.csproj" />
     <!-- 4C.d.xiv (2026-07-08): UserRepository consumes Email VO stub that

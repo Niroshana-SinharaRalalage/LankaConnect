@@ -1176,7 +1176,13 @@ public sealed class LayeringRules
     /// hardening, whichever picks up the IApplicationDbContext split first. Until then,
     /// this rule stays skipped â€” re-enable when the 2 foundational types are addressed.
     /// </summary>
-    [Fact(Skip = "Wave 8.5.a-refined (2026-07-14 sprint close): IApplicationDbContext deleted Wave 4C.h; IJwtTokenService + IEntraExternalIdService relocation attempted 2026-07-14 but reverted due to Identity.Application <-> Identity.Infrastructure Consult #17 cycle. Full fix requires User->Guid API reshape per Consult #15 PASS C (User type lives in Identity.Domain which Identity.Contracts cannot reference). Tracked as Wave 8.5.a-refined in docs/PHASE_A_5_PLAN.md.")]
+    // Wave 8.5.a Part 4 (2026-07-17, D-12 Option b): Skip REMOVED. IJwtTokenService
+    // + IEntraExternalIdService have been relocated to Identity.Contracts.Services
+    // after the User→AccessTokenClaims DTO reshape closed the Consult #17 cycle.
+    // LankaConnect.Application csproj itself is DELETED in the same commit; the
+    // assembly probe below now resolves to BuildingBlocks.Application (via
+    // ICommand), which is the correct legacy-tier Application assembly to guard.
+    [Fact]
     [Trait("Category", "ArchTest")]
     public void LegacyApplication_DoesNotDependOnIdentityDomain()
     {

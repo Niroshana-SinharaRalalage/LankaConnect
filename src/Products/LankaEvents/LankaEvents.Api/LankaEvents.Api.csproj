@@ -33,6 +33,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Wave 8.5.a Part 4 (2026-07-17): pulled forward from LC.Application (deleted
+         in this commit); LankaEventsModule.AddLankaEventsModule uses
+         services.AddAutoMapper. -->
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Day 4 slot C sub-slice 4C.d.ix (2026-07-08): global usings for the
          AspNetCore framework namespaces used across every controller. -->
     <Using Include="Microsoft.AspNetCore.Http" />

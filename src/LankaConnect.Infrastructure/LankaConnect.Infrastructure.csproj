@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         (D-12 Option b). -->
     <!-- W5.3d.3 (2026-06-13). Wave 5.3d.3 cut the legacy
          LankaConnect.Application -> Forms.Domain edge, and Infrastructure had
          been leaning on it transitively. EF Core configurations
@@ -18,6 +19,11 @@
          needs an explicit ref because Migration Designer files + EmailGroup ChangeTracker
          calls reach the type. Mirrors the W5.3d.3 Forms.Domain handling. -->
     <ProjectReference Include="..\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): pulled forward from LC.Application (deleted
+         in this commit); LC.Infrastructure migrations + NewsletterSubscriberRepository
+         reach into Communications.Contracts for the newsletter interface + email
+         template helpers formerly transitively available. -->
+    <ProjectReference Include="..\Modules\Communications\Communications.Contracts\Communications.Contracts.csproj" />
     <!-- Wave 4.4.d.2 (2026-06-23). Payments.Domain hosts IRefundRequestRepository +
          IStripeCustomerRepository + IStripeWebhookEventRepository. LankaConnect.
          Infrastructure still hosts 3 webhook handlers (AddOnPurchase / Collection /

@@ -32,7 +32,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         after User→AccessTokenClaims DTO reshape (D-12 Option b) unblocked
+         relocation of the last two occupants (IJwtTokenService +
+         IEntraExternalIdService) into Identity.Contracts/Services/. -->
     <ProjectReference Include="..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
     <!-- W2.6b — Telemetry extension wires OpenTelemetry + Azure Monitor for staging/prod traces. -->
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />

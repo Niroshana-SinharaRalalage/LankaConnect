@@ -20,7 +20,8 @@
       the same rationale). The corresponding ArchTest rule is relaxed during
       the transition window (see LayeringRules.cs).
     -->
-    <ProjectReference Include="..\..\..\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         (D-12 Option b). -->
     <!--
       Wave 6.a.1 (2026-07-01): Forms.Application previously referenced
       Products.LankaEvents.Application directly (14 query handlers imported

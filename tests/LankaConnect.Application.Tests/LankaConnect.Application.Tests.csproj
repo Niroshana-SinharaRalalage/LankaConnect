@@ -37,7 +37,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\LankaConnect.Application\LankaConnect.Application.csproj" />
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         (D-12 Option b). Test fixtures depend on module csprojs already listed. -->
     <!-- W4.3 (2026-06-06): Forms.Domain hosts EventForm + FormResponse for mock setups. -->
     <ProjectReference Include="..\..\src\Modules\Forms\Forms.Domain\Forms.Domain.csproj" />
     <!-- W5.3d.2 (2026-06-12): FormResponseWhatsAppHandler moved to Forms.Application;

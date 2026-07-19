@@ -11,7 +11,7 @@ Successor to `PHASE_A_CLOSED.md` — captures the Phase A.5 stabilization sprint
 
 ## Executive summary
 
-**10 of 12 Wave 8.5 items CLOSED. Consult #28 R1-R5 all closed or de-escalated. Wave 9 API smoke moved 291/21/88 → 331/6/50 (+40 pass, -15 fail, -38 skip; +12.75 pp).** ArchTest 49/0/9 → 51/0/10 (+2 pass — GAP-6 layer-inversion rule + Wave 8.5.a Part 4 tombstone; skip delta absorbed by CsprojDismantle-A fixups). Frontend `web` unaffected (Wave 8.5.c ApiRename deferred per Consult #27 Q4.b bounded-blast-radius ruling).
+**10 of 12 Wave 8.5 items CLOSED. Consult #28 R1-R5 all closed or de-escalated. Wave 9 API smoke moved 291/21/88 → 348/6/35 (+57 pass, -15 fail, -53 skip; +16.71 pp).** ArchTest 49/0/9 → 51/0/10 (+2 pass — GAP-6 layer-inversion rule + Wave 8.5.a Part 4 tombstone; skip delta absorbed by CsprojDismantle-A fixups). Frontend `web` unaffected (Wave 8.5.c ApiRename deferred per Consult #27 Q4.b bounded-blast-radius ruling).
 
 Remaining residuals:
 1. **8.5.c ApiRename** — deferred (Consult #27 Q4.b + Wave 5 D6 D-06 ratification pending)
@@ -59,18 +59,19 @@ Remaining residuals:
 
 ## Wave 9 API smoke — reference baseline
 
-**Most recent stable run (2026-07-17, `reports/wave-9-20260717-142948/INDEX.md`):**
-| Metric | 2026-07-17 | vs Phase-A-close (f3033074) | Δ |
-|---|---:|---:|---|
-| Total | 387 | 400 | -13 (skip retirement) |
-| Passed | 331 | 291 | **+40** |
-| Failed | 6 | 21 | **-15** |
-| Skipped | 50 | 88 | **-38** |
-| Pass rate | **85.5%** | 72.75% | **+12.75 pp** |
+**Wave 5 fresh run (2026-07-19T17:59Z UTC, `reports/wave-9-20260719-173313/INDEX.md`) against last successful staging deploy `b91e6c10`:**
 
-**Wave 5 fresh Wave 9 run (2026-07-19, in progress against last successful deploy `b91e6c10`)** — Wave 5 Agent-Verification launched `Run-Wave9.ps1` against the currently-deployed staging API. Post-deploy staging build has been RED since `bd7126ab` (2026-07-19 19:53 UTC) due to `IEventRecommendationEngine.cs` referencing types deleted by Wave 3 GAP-1 Part A (`DiasporaFriendliness`, `FestivalPeriod`, `EventNature`, `SignificantDate`, `CalendarValidationResult` per staging deploy log). Result: Wave 9 runs against the pre-GAP-1 API surface — represents the state after all Wave 8.5.a-i+j+k debt closure but before GAP-1/GAP-6 layer-inversion aftermath. Results tracked in `reports/wave-9-20260719-173313/` when run completes.
+| Metric | Wave 5 (2026-07-19) | 2026-07-17 baseline | Phase-A-close (f3033074) | Δ vs Phase A close |
+|---|---:|---:|---:|---:|
+| Total | 389 | 387 | 400 | -11 (skip retirement) |
+| Passed | **348** | 331 | 291 | **+57** |
+| Failed | **6** | 6 | 21 | **-15** |
+| Skipped | **35** | 50 | 88 | **-53** |
+| Pass rate | **89.46%** | 85.5% | 72.75% | **+16.71 pp** |
 
-**Regression gate:** 331/6/50 stays intact against `b91e6c10` deploy (all Wave 8.5.a-k debt landed). No Wave 8.5 item introduced Wave 9 regression per per-slice smoke evidence in each agent's channel log.
+Post-deploy staging build has been RED since `bd7126ab` (2026-07-19 19:53 UTC) — `deploy-staging.yml` fails on Products/LankaEvents/LankaEvents.Domain build step at `IEventRecommendationEngine.cs` referencing 5 types deleted by Wave 3 GAP-1 Part A `302af044` (`DiasporaFriendliness`, `FestivalPeriod`, `EventNature`, `SignificantDate`, `CalendarValidationResult`). Wave 5 Wave 9 run therefore hits the `b91e6c10` (2026-07-18) staging API — which includes ALL Wave 8.5.a-k debt closure but excludes GAP-6 layer-inversion aftermath + GAP-1 Part B (PoyaCalendarService). Fix path for staging restore is scoped to Wave 8.5.e workflow-restore tail: (a) delete unused `IEventRecommendationEngine.cs` interface OR (b) reduce interface surface to primitive-parameter form per D-13 Option A.
+
+**Regression gate CLEARED.** 348/6/35 exceeds 2026-07-17 baseline by +17 pass / -15 skip / 0 fail delta. Zero regression from any Wave 8.5 item. Per-cluster fail inventory (6 total): 4 Events (money-flow ADR-007 residuals per Consult #28 Q3.b) + 2 AdminUsers (admin-policy diagnostic). All match Consult #28 Q3.b Phase-A residual scope; no new fails introduced by Wave 8.5 work.
 
 ---
 

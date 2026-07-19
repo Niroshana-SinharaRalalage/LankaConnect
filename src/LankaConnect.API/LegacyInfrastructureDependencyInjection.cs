@@ -51,7 +51,10 @@ using LankaConnect.Modules.Communications.Contracts.Email.Extensions;
 using LankaConnect.Modules.Payments.Infrastructure.Configuration;
 using LankaConnect.Modules.Payments.Infrastructure.Services;
 using LankaConnect.Host.AllInOne.Services.Tickets;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h Day 5         // 4C.d.xiii: Tickets moved to LankaEvents.Infrastructure (namespace unchanged)
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims; // 4C.h Day 5         // 4C.d.xiii: Tickets moved to LankaEvents.Infrastructure (namespace unchanged)
 using LankaConnect.Host.AllInOne.Services;                 // 4C.d.xiii: DatabaseSalesTaxService/RevenueCalculatorService/EmailUrlHelper/EmailEncryptionService in module Infrastructures
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
@@ -455,7 +458,7 @@ public static class InfrastructureDependencyInjection
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IEventNotificationRecipientService, LankaConnect.Products.LankaEvents.Application.Services.EventNotificationRecipientService>();
 
         // Phase 6A.74: Newsletter Recipient Service
-        services.AddScoped<LankaConnect.Modules.Communications.Contracts.LegacyPromotions.INewsletterRecipientService, LankaConnect.Host.AllInOne.Services.NewsletterRecipientService>();
+        services.AddScoped<LankaConnect.Modules.Communications.Contracts.Services.INewsletterRecipientService, LankaConnect.Host.AllInOne.Services.NewsletterRecipientService>();
 
         // Phase 6A.74 Part 13: Event-to-Metro Area Matcher for Newsletter Recipient Bucketing
         services.AddScoped<LankaConnect.Host.AllInOne.Services.EventMetroAreaMatcher>();
@@ -546,7 +549,7 @@ public static class InfrastructureDependencyInjection
 
         // Phase 6A.24: Ticket services for QR code and PDF generation
         services.AddScoped<IQrCodeService, QrCodeService>();
-        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IPdfTicketService, PdfTicketService>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.Services.IPdfTicketService, PdfTicketService>();
         services.AddScoped<ITicketService, TicketService>();
 
         // Phase 6A.141: Ticket QR signature service. HMAC-SHA256 backed by Azure Key Vault

@@ -80,6 +80,16 @@ public static class IdentityModule
         // physical User aggregate move to Identity.Domain / Identity.Infrastructure.
         services.AddScoped<LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository,
             LankaConnect.Modules.Identity.Infrastructure.Repositories.UserRepository>();
+
+        // Wave 8.5.i (2026-07-18): IIdentityMetroAreaJunctionRepository — the
+        // Contracts-owned cross-module write surface for
+        // identity.user_preferred_metro_areas per Blueprint §7.8. Retires the
+        // Sprint-Day 7 raw-SQL leak in RegisterUserHandler +
+        // UpdateUserPreferredMetroAreasCommandHandler; both now inject this
+        // interface instead of importing IdentityDbContext + issuing
+        // ExecuteSqlRawAsync inline.
+        services.AddScoped<LankaConnect.Modules.Identity.Contracts.Repositories.IIdentityMetroAreaJunctionRepository,
+            LankaConnect.Modules.Identity.Infrastructure.Repositories.IdentityMetroAreaJunctionRepository>();
         // Wave 4.6.d.1 (2026-06-24): IIdentityCommands semantic mutators per
         // architect Risk #3 Option A. Owns hashing/throttle/lifetime/refresh-token
         // revocation. Communications.SendPasswordReset + ResetPassword handlers

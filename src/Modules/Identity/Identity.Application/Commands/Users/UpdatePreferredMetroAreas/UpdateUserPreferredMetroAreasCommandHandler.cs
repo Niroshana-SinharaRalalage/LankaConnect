@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.Modules.Identity.Contracts.Repositories; // Wave 8.5.i: IIdentityMetroAreaJunctionRepository per Blueprint §7.8
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -9,7 +10,7 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-using LankaConnect.Modules.Identity.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): IdentityDbContext
+using LankaConnect.Modules.Identity.Infrastructure.Data; // Wave 6.5.f mirror (2026-07-09 Day 4): IdentityDbContext (retained for SaveChangesAsync only)
 using LankaConnect.Products.LankaEvents.Infrastructure.Data; // 4C.h Day 5: LankaEventsDbContext for MetroAreas (cross-module)
 namespace LankaConnect.Modules.Identity.Application.Commands.Users.UpdatePreferredMetroAreas;
 
@@ -24,6 +25,7 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
     private readonly IUserRepository _userRepository;
     private readonly IdentityDbContext _dbContext;
     private readonly LankaEventsDbContext _eventsContext;
+    private readonly IIdentityMetroAreaJunctionRepository _junctionRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateUserPreferredMetroAreasCommandHandler> _logger;
 
@@ -31,12 +33,14 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
         IUserRepository userRepository,
         IdentityDbContext dbContext,
         LankaEventsDbContext eventsContext,
+        IIdentityMetroAreaJunctionRepository junctionRepository,
         IUnitOfWork unitOfWork,
         ILogger<UpdateUserPreferredMetroAreasCommandHandler> logger)
     {
         _userRepository = userRepository;
         _dbContext = dbContext;
         _eventsContext = eventsContext;
+        _junctionRepository = junctionRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -140,30 +144,23 @@ public class UpdateUserPreferredMetroAreasCommandHandler : ICommandHandler<Updat
                     "UpdatePreferredMetroAreas: Domain method succeeded - UserId={UserId}",
                     user.Id);
 
-                // Sprint-Day 7 (2026-07-14) hotfix: replaced shadow-nav ChangeTracker write path
-                // (which throws under IdentityDbContext because MetroArea is Ignored per Blueprint
-                // §7.8) with direct raw-SQL junction upsert. The junction table
-                // `identity.user_preferred_metro_areas` is owned by IdentityDbContext + declared
-                // in UserConfiguration; writing to it via ExecuteSqlRaw sidesteps the shadow-nav
-                // requirement while preserving atomicity within the User update transaction.
+                // Wave 8.5.i (2026-07-18): junction rewrite now goes through
+                // IIdentityMetroAreaJunctionRepository per Blueprint §7.8. The Sprint-Day 7
+                // (2026-07-14) inline raw-SQL block was a hotfix that leaked persistence
+                // details (schema + table + column names + SQL) into this Application-layer
+                // handler. The Contracts-owned repository encapsulates those details in
+                // Identity.Infrastructure while preserving the same wire behaviour (delete
+                // existing rows for the user, then re-insert one row per requested metro
+                // area). Junction rows are unmanaged EF-side (MetroArea is Ignored under
+                // IdentityDbContext), so no SaveChanges is required for the junction itself.
                 _logger.LogInformation(
-                    "UpdatePreferredMetroAreas: Rewriting junction rows via raw SQL - UserId={UserId}, NewCount={NewCount}",
+                    "UpdatePreferredMetroAreas: Rewriting junction rows via IIdentityMetroAreaJunctionRepository - UserId={UserId}, NewCount={NewCount}",
                     user.Id, metroAreaEntities.Count);
 
-                // Delete existing junction rows for this user.
-                await _dbContext.Database.ExecuteSqlRawAsync(
-                    "DELETE FROM identity.user_preferred_metro_areas WHERE user_id = {0}",
-                    new object[] { user.Id },
+                await _junctionRepository.ReplacePreferredMetroAreasAsync(
+                    user.Id,
+                    metroAreaEntities.Select(m => m.Id).ToList(),
                     cancellationToken);
-
-                // Insert new rows (one per requested metro area).
-                foreach (var metroArea in metroAreaEntities)
-                {
-                    await _dbContext.Database.ExecuteSqlRawAsync(
-                        "INSERT INTO identity.user_preferred_metro_areas (user_id, metro_area_id) VALUES ({0}, {1})",
-                        new object[] { user.Id, metroArea.Id },
-                        cancellationToken);
-                }
 
                 // Persist the domain-side _preferredMetroAreaIds list (already updated by
                 // user.UpdatePreferredMetroAreas above) — SaveChanges dispatches domain events.

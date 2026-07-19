@@ -8,13 +8,13 @@ using LankaConnect.Modules.Communications.Contracts.Commands; // 4C.h Day 5: Sen
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain;
 using LankaConnect.Modules.Communications.Domain.Entities;
+using LankaConnect.Modules.Identity.Contracts.Repositories; // Wave 8.5.i: IIdentityMetroAreaJunctionRepository per Blueprint §7.8
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
-using LankaConnect.Modules.Identity.Infrastructure.Data; // Sprint-Day 7 hotfix: IdentityDbContext for raw-SQL junction insert
-using Microsoft.EntityFrameworkCore; // Sprint-Day 7 hotfix: ExecuteSqlRawAsync
+using LankaConnect.Modules.Identity.Infrastructure.Data; // Sprint-Day 7 hotfix: IdentityDbContext for SaveChangesAsync (junction rewrite now via IIdentityMetroAreaJunctionRepository per Wave 8.5.i)
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.RegisterUser;
 
 public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<RegisterUserResponse>>
@@ -22,10 +22,13 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
     private readonly LankaConnect.Modules.Identity.Domain.Repositories.IUserRepository _userRepository;
     private readonly IPasswordHashingService _passwordHashingService;
     private readonly LankaConnect.BuildingBlocks.Domain.IUnitOfWork _unitOfWork;
-    // Sprint-Day 7 (2026-07-14) hotfix: needed for raw-SQL junction insert to
-    // identity.user_preferred_metro_areas since the shadow-nav is Ignored on IdentityDbContext
-    // (see UpdateUserPreferredMetroAreasCommandHandler for the write-path pattern established today).
+    // Sprint-Day 9 (2026-07-14) hotfix: retained for direct SaveChangesAsync
+    // (User is tracked by IdentityDbContext via UserRepository). Junction-row
+    // persistence to identity.user_preferred_metro_areas now routes through
+    // IIdentityMetroAreaJunctionRepository per Wave 8.5.i / Blueprint §7.8 —
+    // no more raw-SQL leaking out of this handler.
     private readonly IdentityDbContext _identityDbContext;
+    private readonly IIdentityMetroAreaJunctionRepository _junctionRepository;
     private readonly ILogger<RegisterUserHandler> _logger;
     private readonly IMediator _mediator;
     private readonly IUserWhatsAppPreferencesRepository _whatsAppPreferencesRepository;
@@ -35,6 +38,7 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
         IPasswordHashingService passwordHashingService,
         LankaConnect.BuildingBlocks.Domain.IUnitOfWork unitOfWork,
         IdentityDbContext identityDbContext,
+        IIdentityMetroAreaJunctionRepository junctionRepository,
         ILogger<RegisterUserHandler> logger,
         IMediator mediator,
         IUserWhatsAppPreferencesRepository whatsAppPreferencesRepository)
@@ -43,6 +47,7 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
         _passwordHashingService = passwordHashingService;
         _unitOfWork = unitOfWork;
         _identityDbContext = identityDbContext;
+        _junctionRepository = junctionRepository;
         _logger = logger;
         _mediator = mediator;
         _whatsAppPreferencesRepository = whatsAppPreferencesRepository;
@@ -64,7 +69,7 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
             try
             {
                 // Create email value object
-                var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(request.Email);
+                var emailResult = LankaConnect.SharedKernel.Contact.Email.Create(request.Email);
                 if (!emailResult.IsSuccess)
                 {
                     stopwatch.Stop();
@@ -233,21 +238,23 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
                     // temporarily broken; acceptable per Consult #25 blanket condition #2.
                     await _identityDbContext.SaveChangesAsync(cancellationToken);
 
-                    // Sprint-Day 7 (2026-07-14) hotfix: persist user_preferred_metro_areas junction
-                    // rows via raw SQL. IdentityDbContext Ignores<MetroArea> + Ignores the shadow
-                    // nav on User, so EF's Add(user) doesn't insert the junction automatically.
-                    // Same pattern as UpdateUserPreferredMetroAreasCommandHandler landed today.
+                    // Wave 8.5.i (2026-07-18): persist user_preferred_metro_areas
+                    // junction rows via IIdentityMetroAreaJunctionRepository per
+                    // Blueprint §7.8. Retires the Sprint-Day 7 (2026-07-14) inline
+                    // raw-SQL block — persistence details (schema + table + column
+                    // names + SQL) now live in Identity.Infrastructure instead of
+                    // leaking out into this Application-layer handler. Junction is
+                    // EF-Ignored under IdentityDbContext so writes flush immediately;
+                    // no additional SaveChanges call is required.
                     if (request.PreferredMetroAreaIds != null && request.PreferredMetroAreaIds.Count > 0)
                     {
-                        foreach (var metroAreaId in request.PreferredMetroAreaIds)
-                        {
-                            await _identityDbContext.Database.ExecuteSqlRawAsync(
-                                "INSERT INTO identity.user_preferred_metro_areas (user_id, metro_area_id) VALUES ({0}, {1}) ON CONFLICT DO NOTHING",
-                                new object[] { user.Id, metroAreaId },
-                                cancellationToken);
-                        }
+                        await _junctionRepository.ReplacePreferredMetroAreasAsync(
+                            user.Id,
+                            request.PreferredMetroAreaIds.ToList(),
+                            cancellationToken);
+
                         _logger.LogInformation(
-                            "RegisterUser: junction rows inserted - UserId={UserId}, Count={Count}",
+                            "RegisterUser: junction rows inserted via IIdentityMetroAreaJunctionRepository - UserId={UserId}, Count={Count}",
                             user.Id, request.PreferredMetroAreaIds.Count);
                     }
 

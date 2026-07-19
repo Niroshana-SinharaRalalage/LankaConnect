@@ -22,6 +22,11 @@
     <!-- Transitional: legacy LankaConnect.Infrastructure hosts AppDbContext + Repository<T> base
          + EF Configurations for the Event family. Cut alongside Wave 6 cleanup. -->
     <ProjectReference Include="..\..\..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
+    <!-- Wave 8.5.e (2026-07-19) LayerInversion aftermath: EventConfiguration.cs consumes
+         LankaConnect.SharedKernel.Geo for Address + GeoCoordinate VO EF mapping.
+         Geo VOs promoted from Products.LankaEvents.Domain.ValueObjects to
+         SharedKernel.Geo at 839fec4a (Wave 8.5-cleanup 2026-07-18 LayerInversion GAP-6). -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
   </ItemGroup>
 
 </Project>

@@ -4,6 +4,7 @@ using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.SharedKernel.Contact; // Wave 8.5-cleanup GAP-6: Email + PhoneNumber promoted here
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 
 namespace LankaConnect.Modules.Identity.Domain.Entities;

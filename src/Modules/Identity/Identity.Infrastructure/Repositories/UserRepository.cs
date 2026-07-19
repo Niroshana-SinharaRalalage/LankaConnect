@@ -6,6 +6,7 @@ using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects; // 4C.d.xiv: Email VO (User.Email type)
+using LankaConnect.SharedKernel.Contact; // Wave 8.5-cleanup GAP-6: Email + PhoneNumber promoted here
 using System.Diagnostics;
 using Serilog.Context;
 

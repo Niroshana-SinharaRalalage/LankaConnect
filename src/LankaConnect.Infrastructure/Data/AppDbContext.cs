@@ -448,8 +448,9 @@ public class AppDbContext : DbContext
         // wrappers by their owning entities' EF configs).
         modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.ValueObjects.Email>();
         modelBuilder.Ignore<LankaConnect.Modules.Communications.Domain.ValueObjects.EmailSubject>();
-        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email>();
-        modelBuilder.Ignore<LankaConnect.Products.LankaEvents.Domain.ValueObjects.PhoneNumber>();
+        // Wave 8.5-cleanup GAP-6 (2026-07-18): Email + PhoneNumber promoted to SharedKernel.Contact.
+        modelBuilder.Ignore<LankaConnect.SharedKernel.Contact.Email>();
+        modelBuilder.Ignore<LankaConnect.SharedKernel.Contact.PhoneNumber>();
     }
 
     private static void ConfigureSchemas(ModelBuilder modelBuilder)

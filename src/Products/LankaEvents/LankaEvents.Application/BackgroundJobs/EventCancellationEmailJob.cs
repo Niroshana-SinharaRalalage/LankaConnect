@@ -16,7 +16,10 @@ using OrganizerContactInfo = LankaConnect.Modules.Communications.Contracts.Email
 using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: EventExtensions.ProjectEmailLocation/GetDisplayLabel moved (2026-07-09 Day 4)
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims; // 4C.h prereq: EventExtensions.ProjectEmailLocation/GetDisplayLabel moved (2026-07-09 Day 4)
 namespace LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 
 /// <summary>
@@ -256,7 +259,7 @@ public class EventCancellationEmailJob
                     var singleEmailStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
                     // Get user info if available (for personalization)
-                    var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(email);
+                    var emailResult = LankaConnect.SharedKernel.Contact.Email.Create(email);
                     var user = emailResult.IsSuccess
                         ? await _identityQueries.GetByEmailAsync(emailResult.Value.Value, CancellationToken.None)
                         : null;

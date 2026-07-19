@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.SharedKernel.Contact; // Wave 8.5-cleanup GAP-6: Email + PhoneNumber promoted here
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 public class AttendeeInfo : ValueObject

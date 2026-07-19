@@ -253,6 +253,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LankaTemples.Infrastructure
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LankaTemples.Api", "src\Products\LankaTemples\LankaTemples.Api\LankaTemples.Api.csproj", "{C72C78CD-3B38-4446-8A88-FCBBDBFE32D3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedKernel.Contact", "src\SharedKernel\SharedKernel.Contact\SharedKernel.Contact.csproj", "{65C7BAED-DF89-4421-84A6-251BF45FBB90}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -651,6 +653,10 @@ Global
 		{C72C78CD-3B38-4446-8A88-FCBBDBFE32D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C72C78CD-3B38-4446-8A88-FCBBDBFE32D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C72C78CD-3B38-4446-8A88-FCBBDBFE32D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{65C7BAED-DF89-4421-84A6-251BF45FBB90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65C7BAED-DF89-4421-84A6-251BF45FBB90}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65C7BAED-DF89-4421-84A6-251BF45FBB90}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65C7BAED-DF89-4421-84A6-251BF45FBB90}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -779,5 +785,6 @@ Global
 		{3EA43EEA-7021-4813-9AC0-01D99F1D5E24} = {23F1FA4F-7592-474F-B98D-C7A89EA39C30}
 		{99269468-01BD-4AEE-AEB2-F21B58549D50} = {23F1FA4F-7592-474F-B98D-C7A89EA39C30}
 		{C72C78CD-3B38-4446-8A88-FCBBDBFE32D3} = {23F1FA4F-7592-474F-B98D-C7A89EA39C30}
+		{65C7BAED-DF89-4421-84A6-251BF45FBB90} = {F2224FA5-1504-45BC-9D2B-A5094E7E9224}
 	EndGlobalSection
 EndGlobal

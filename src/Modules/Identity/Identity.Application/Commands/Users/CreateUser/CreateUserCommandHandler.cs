@@ -43,7 +43,7 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Guid>
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Create Email value object
-                var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(request.Email);
+                var emailResult = LankaConnect.SharedKernel.Contact.Email.Create(request.Email);
                 if (emailResult.IsFailure)
                 {
                     stopwatch.Stop();
@@ -77,10 +77,10 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Guid>
                     emailResult.Value.Value);
 
                 // Create PhoneNumber value object if provided
-                LankaConnect.Products.LankaEvents.Domain.ValueObjects.PhoneNumber? phoneNumber = null;
+                LankaConnect.SharedKernel.Contact.PhoneNumber? phoneNumber = null;
                 if (!string.IsNullOrEmpty(request.PhoneNumber))
                 {
-                    var phoneResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.PhoneNumber.Create(request.PhoneNumber);
+                    var phoneResult = LankaConnect.SharedKernel.Contact.PhoneNumber.Create(request.PhoneNumber);
                     if (phoneResult.IsFailure)
                     {
                         stopwatch.Stop();

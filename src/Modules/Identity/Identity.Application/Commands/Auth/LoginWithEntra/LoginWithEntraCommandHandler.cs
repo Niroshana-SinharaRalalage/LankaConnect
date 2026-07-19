@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.SharedKernel.Contact; // Wave 8.5-cleanup GAP-6: Email + PhoneNumber promoted here
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -14,7 +15,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using RefreshTokenVO = LankaConnect.Modules.Identity.Domain.ValueObjects.RefreshToken;
-using Email = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email;
+using Email = LankaConnect.SharedKernel.Contact.Email; // Wave 8.5-cleanup GAP-6: Email promoted here
 namespace LankaConnect.Modules.Identity.Application.Commands.Auth.LoginWithEntra;
 
 /// <summary>

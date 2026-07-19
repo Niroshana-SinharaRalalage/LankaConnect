@@ -504,7 +504,7 @@ namespace LankaConnect.Modules.Identity.Infrastructure.Migrations
                                 .HasForeignKey("UserId");
                         });
 
-                    b.OwnsOne("LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email", "Email", b1 =>
+                    b.OwnsOne("LankaConnect.SharedKernel.Contact.Email", "Email", b1 =>
                         {
                             b1.Property<Guid>("UserId")
                                 .HasColumnType("uuid");
@@ -527,7 +527,7 @@ namespace LankaConnect.Modules.Identity.Infrastructure.Migrations
                                 .HasForeignKey("UserId");
                         });
 
-                    b.OwnsOne("LankaConnect.Products.LankaEvents.Domain.ValueObjects.PhoneNumber", "PhoneNumber", b1 =>
+                    b.OwnsOne("LankaConnect.SharedKernel.Contact.PhoneNumber", "PhoneNumber", b1 =>
                         {
                             b1.Property<Guid>("UserId")
                                 .HasColumnType("uuid");

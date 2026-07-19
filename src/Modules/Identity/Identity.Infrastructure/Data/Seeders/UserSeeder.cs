@@ -5,7 +5,7 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Email = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email;
+using Email = LankaConnect.SharedKernel.Contact.Email; // Wave 8.5-cleanup GAP-6: Email promoted here
 
 // 4C.e.3 (2026-07-08): relocated from LankaConnect.Infrastructure.Data.Seeders
 // to Identity.Infrastructure.Data.Seeders per Consult #14 PASS B + architect
@@ -64,7 +64,7 @@ public static class UserSeeder
 
             // Admin Manager (super admin)
             System.Console.WriteLine("[UserSeeder] Creating Admin Manager (admin@lankaconnect.com)...");
-            var adminManagerEmail = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create("admin@lankaconnect.com");
+            var adminManagerEmail = LankaConnect.SharedKernel.Contact.Email.Create("admin@lankaconnect.com");
             if (!adminManagerEmail.IsSuccess)
             {
                 System.Console.WriteLine($"[UserSeeder] FAILED to create Email for Admin Manager: {adminManagerEmail.Error}");
@@ -108,7 +108,7 @@ public static class UserSeeder
             }
 
             // Regular Admin
-            var adminEmail = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create("admin1@lankaconnect.com");
+            var adminEmail = LankaConnect.SharedKernel.Contact.Email.Create("admin1@lankaconnect.com");
             if (adminEmail.IsSuccess)
             {
                 var admin = User.Create(
@@ -136,7 +136,7 @@ public static class UserSeeder
             }
 
             // Event Organizer with active free trial
-            var organizerEmail = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create("organizer@lankaconnect.com");
+            var organizerEmail = LankaConnect.SharedKernel.Contact.Email.Create("organizer@lankaconnect.com");
             if (organizerEmail.IsSuccess)
             {
                 var organizer = User.Create(
@@ -164,7 +164,7 @@ public static class UserSeeder
             }
 
             // General User
-            var generalUserEmail = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create("user@lankaconnect.com");
+            var generalUserEmail = LankaConnect.SharedKernel.Contact.Email.Create("user@lankaconnect.com");
             if (generalUserEmail.IsSuccess)
             {
                 var generalUser = User.Create(

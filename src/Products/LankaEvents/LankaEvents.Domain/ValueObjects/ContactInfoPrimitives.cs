@@ -5,9 +5,10 @@ namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 // Wave 8.5-cleanup (2026-07-18) ExtractabilityAudit GAP-6 progress:
 //   - Address + GeoCoordinate promoted to LankaConnect.SharedKernel.Geo per ADR-006
 //     (see SharedKernel/SharedKernel.Geo/Address.cs + GeoCoordinate.cs).
-//   - Email + PhoneNumber still here transitionally (this file's residual scope);
-//     promotion to SharedKernel.Contact follows in a separate small commit so the
-//     history remains reversible per Consult #17 pattern.
+//   - Email + PhoneNumber promoted to LankaConnect.SharedKernel.Contact per ADR-006
+//     (see SharedKernel/SharedKernel.Contact/Email.cs + PhoneNumber.cs). Closes the
+//     GAP-6 core inversion — Identity.User.Email + Identity.User.PhoneNumber no
+//     longer type-depend on a Product namespace.
 //   - CulturalAppropriateness still here transitionally; slated to move to
 //     CulturalIntelligence.Contracts alongside ICulturalCalendar promotion.
 //
@@ -16,47 +17,9 @@ namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 // namespace; they were restored here as minimal stubs so LankaEvents.Domain compiles.
 // This file drains as the promotions land.
 
-public sealed class Email : ValueObject
-{
-    public string Value { get; }
-
-    private Email(string value)
-    {
-        Value = value;
-    }
-
-    public static Result<Email> Create(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return Result<Email>.Failure("Email is required");
-        var trimmed = value.Trim();
-        if (!trimmed.Contains('@'))
-            return Result<Email>.Failure("Email must contain '@'");
-        return Result<Email>.Success(new Email(trimmed));
-    }
-
-    public override IEnumerable<object> GetEqualityComponents() { yield return Value; }
-    public override string ToString() => Value;
-}
-
-public sealed class PhoneNumber : ValueObject
-{
-    public string Value { get; }
-
-    private PhoneNumber(string value) { Value = value; }
-
-    public static Result<PhoneNumber> Create(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return Result<PhoneNumber>.Failure("Phone number is required");
-        return Result<PhoneNumber>.Success(new PhoneNumber(value.Trim()));
-    }
-
-    public string ToDisplayFormat() => Value;
-
-    public override IEnumerable<object> GetEqualityComponents() { yield return Value; }
-    public override string ToString() => Value;
-}
+// Email + PhoneNumber promoted to LankaConnect.SharedKernel.Contact
+// (Wave 8.5-cleanup 2026-07-18, ExtractabilityAudit GAP-6).
+// See src/SharedKernel/SharedKernel.Contact/Email.cs and PhoneNumber.cs.
 
 // Address + GeoCoordinate promoted to LankaConnect.SharedKernel.Geo
 // (Wave 8.5-cleanup 2026-07-18, ExtractabilityAudit GAP-6).

@@ -5,7 +5,10 @@ using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.BuildingBlocks.Application.Common.Constants;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims; // 4C.h prereq: cycle-break
 using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
@@ -194,7 +197,7 @@ public class EventNotificationEmailJob
                         correlationId, emailIndex, recipients.Count, email);
 
                     // Phase 6A.83 Part 3: Get personalized UserName for recipient
-                    var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(email);
+                    var emailResult = LankaConnect.SharedKernel.Contact.Email.Create(email);
                     var user = emailResult.IsSuccess
                         ? await _identityQueries.GetByEmailAsync(emailResult.Value.Value, cancellationToken)
                         : null;

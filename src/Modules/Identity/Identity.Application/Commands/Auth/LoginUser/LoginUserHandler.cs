@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.SharedKernel.Contact; // Wave 8.5-cleanup GAP-6: Email + PhoneNumber promoted here
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;

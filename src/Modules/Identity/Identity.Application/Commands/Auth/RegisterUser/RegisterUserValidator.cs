@@ -64,7 +64,7 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
 
     private static bool BeValidEmail(string email)
     {
-        var emailResult = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email.Create(email);
+        var emailResult = LankaConnect.SharedKernel.Contact.Email.Create(email);
         return emailResult.IsSuccess;
     }
 }

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.SharedKernel.Contact</RootNamespace>
+    <AssemblyName>LankaConnect.SharedKernel.Contact</AssemblyName>
+    <Description>SharedKernel.Contact — contact-info primitives. Email + PhoneNumber value objects. Per ADR-006: SharedKernel layer; consumed by Identity (user email + phone), LankaEvents (attendee contact), Communications (recipient email), and any future product needing contact primitives. Promoted from Products.LankaEvents.Domain.ValueObjects in Wave 8.5-cleanup (2026-07-18) per ExtractabilityAudit GAP-6.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

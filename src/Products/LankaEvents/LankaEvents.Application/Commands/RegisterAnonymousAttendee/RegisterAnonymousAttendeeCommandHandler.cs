@@ -10,6 +10,7 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.SharedKernel.Contact; // Wave 8.5-cleanup GAP-6: Email + PhoneNumber promoted here
 using LankaConnect.Products.LankaEvents.Application.Commands.RsvpToEvent;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g

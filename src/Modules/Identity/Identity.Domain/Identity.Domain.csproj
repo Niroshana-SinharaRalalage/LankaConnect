@@ -8,6 +8,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
+    <!-- Wave 8.5-cleanup (2026-07-18) ExtractabilityAudit GAP-6: Email + PhoneNumber
+         promoted from Products.LankaEvents.Domain.ValueObjects to SharedKernel.Contact.
+         User.Email + User.PhoneNumber are the highest-value platform primitives; landing
+         them here removes the Products→SharedKernel inversion at User's most-central prop.
+         The LankaEvents.Domain PR below still exists for MetroArea reference-data typing;
+         that PR drops when MetroArea also promotes out of Products (separate follow-up). -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Contact\SharedKernel.Contact.csproj" />
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Domain\LankaEvents.Domain.csproj" />
   </ItemGroup>
 

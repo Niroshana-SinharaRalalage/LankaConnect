@@ -58,6 +58,12 @@
          Controllers return HTTP 501 until Wave 8.5.f + 8.5.h close and handler
          authoring begins per PHASE_A_5_PLAN.md Phase B Kick-Off Ruling. -->
     <ProjectReference Include="..\Products\LankaTemples\LankaTemples.Api\LankaTemples.Api.csproj" />
+    <!-- Wave 8.5.e (2026-07-19) LayerInversion aftermath: MetroAreasController.cs consumes
+         LankaConnect.SharedKernel.Geo.MetroAreas.Common (MetroAreaDto) +
+         LankaConnect.SharedKernel.Geo.MetroAreas.Queries.GetMetroAreas. Geo VOs promoted
+         from Products.LankaEvents.Domain.ValueObjects to SharedKernel.Geo at 839fec4a
+         (Wave 8.5-cleanup 2026-07-18 Address + GeoCoordinate LayerInversion). -->
+    <ProjectReference Include="..\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
   </ItemGroup>
 
   <!-- Phase 6A.34: Link Infrastructure email templates to API publish output -->

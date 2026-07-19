@@ -1,31 +1,32 @@
-using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Modules.CulturalIntelligence.Api;
-using LankaConnect.Modules.CulturalIntelligence.Infrastructure;
+using LankaConnect.Modules.CulturalIntelligence.Contracts.Services;
+using LankaConnect.Modules.CulturalIntelligence.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LankaConnect.Modules.CulturalIntelligence.Api.Tests;
 
 /// <summary>
-/// Wave4.9.1.9 (2026-06-08): DI resolution test for the
-/// CulturalIntelligence module. Per route audit
-/// (docs/audit/route-inventory-2026-06-08.md G5 entry):
-/// <c>ICulturalCalendar</c> has no direct HTTP surface, so verifying
-/// the module-extension method correctly registers the service is the
-/// testable invariant.
+/// Wave4.9.1.9 (2026-06-08): DI resolution test for the CulturalIntelligence
+/// module. Per route audit (docs/audit/route-inventory-2026-06-08.md G5 entry):
+/// <c>ICulturalCalendar</c> has no direct HTTP surface, so verifying the
+/// module-extension method correctly registers the service is the testable
+/// invariant.
+///
+/// Wave 8.5 GAP-1 (2026-07-19): updated post-D-13 Option A promotion — the
+/// service type resolves from <c>CulturalIntelligence.Contracts.Services</c>
+/// (not the old LankaEvents.Domain.Services namespace), and the impl is
+/// <see cref="PoyaCalendarService"/> (StubCulturalCalendar retired).
 /// </summary>
 /// <remarks>
-/// Per CLAUDE.md §13.1 trigger T6 (DI registration). Catches the class
-/// of bug where someone refactors the AddCulturalIntelligenceModule
-/// signature or removes the AddScoped registration and the bug ships
-/// silently because no HTTP endpoint exercises the binding.
-///
-/// CulturalIntelligence.Api.Tests project was missing entirely before
-/// this commit.
+/// Per CLAUDE.md §13.1 trigger T6 (DI registration). Catches the class of
+/// bug where someone refactors the AddCulturalIntelligenceModule signature
+/// or removes the AddSingleton registration and the bug ships silently
+/// because no HTTP endpoint exercises the binding.
 /// </remarks>
 public sealed class CulturalIntelligenceModuleTests
 {
     [Fact]
-    public void AddCulturalIntelligenceModule_Registers_ICulturalCalendar_To_StubCulturalCalendar()
+    public void AddCulturalIntelligenceModule_Registers_ICulturalCalendar_To_PoyaCalendarService()
     {
         var services = new ServiceCollection();
 
@@ -36,8 +37,8 @@ public sealed class CulturalIntelligenceModuleTests
         var resolved = scope.ServiceProvider.GetRequiredService<ICulturalCalendar>();
 
         resolved.Should().NotBeNull();
-        resolved.Should().BeOfType<StubCulturalCalendar>(
-            because: "the CulturalIntelligence module currently wires the stub implementation per W4.7; Wave 5 Products carve-out will replace it with the real engine, and this test will then need an update.");
+        resolved.Should().BeOfType<PoyaCalendarService>(
+            because: "Wave 8.5 GAP-1 Part B retired StubCulturalCalendar; the module now wires the real seed-file-backed PoyaCalendarService.");
     }
 
     [Fact]
@@ -63,7 +64,7 @@ public sealed class CulturalIntelligenceModuleTests
     }
 
     [Fact]
-    public void ICulturalCalendar_Is_Scoped_Lifetime()
+    public void ICulturalCalendar_Is_Singleton_Lifetime()
     {
         var services = new ServiceCollection();
         services.AddCulturalIntelligenceModule();
@@ -71,7 +72,7 @@ public sealed class CulturalIntelligenceModuleTests
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ICulturalCalendar));
 
         descriptor.Should().NotBeNull();
-        descriptor!.Lifetime.Should().Be(ServiceLifetime.Scoped,
-            because: "the module's docstring explicitly states AddScoped; a Singleton would change the multi-request safety model and is not approved.");
+        descriptor!.Lifetime.Should().Be(ServiceLifetime.Singleton,
+            because: "PoyaCalendarService is stateless read-only over an embedded JSON resource — Singleton is the correct lifetime, and the module docstring names it explicitly.");
     }
 }

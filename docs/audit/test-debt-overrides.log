@@ -283,3 +283,18 @@ Reason: Pre-push T-triggers/S-class gate rejected because my commit bodies had
         agent's in-flight fix on LankaEvents.Domain.Services.EventRecommendationEngine
         (3 CS0234/CS0246 errors on CulturalIntelligence namespace + ICulturalCalendar
         type) — orthogonal working set per task brief.
+
+Date: 2026-07-19
+Author: Claude, Wave-3 Agent-GapClosure-CulturalCalendar (re-spawn)
+Commits:
+  - 302af044: Wave 8.5 GAP-1 Part A — retire ICulturalCalendar/VO duplicates in LankaEvents.Domain
+Reason: T-triggers T5 (namespace change) + T6 (DI retype) fire but same-commit test
+        coverage deferred to Part B (unit tests ship with the real PoyaCalendarService
+        that supersedes StubCulturalCalendar in the same slot). Behavior-preserving
+        cleanup — StubCulturalCalendar returns identical neutral defaults on both
+        pre- and post-refactor interface shapes; EventRecommendationEngine wraps
+        each `@event` in EventCulturalContext at the call boundary with no downstream
+        semantic change. Verified via 5-project build gate (LankaEvents.Domain,
+        CulturalIntelligence.Contracts/Infrastructure/Application/Api,
+        LankaEvents.Application). Per D-03 test-debt-budget BYPASS + D-13 Option A
+        follow-through. Full smoke ships with Part B.

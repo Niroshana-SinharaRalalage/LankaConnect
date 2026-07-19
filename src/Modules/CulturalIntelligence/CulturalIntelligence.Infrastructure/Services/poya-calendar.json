@@ -1,0 +1,51 @@
+{
+  "$schema-note": "Sri Lankan poya day (Buddhist full-moon) calendar seed data used by PoyaCalendarService. Wave 8.5 GAP-1 (2026-07-19) — closes the StubCulturalCalendar hardcoded-return anti-pattern. Dates below approximate published Sri Lankan government almanac dates; PRODUCTION-QUALITY VERIFICATION against the official Buddhist Publication Society almanac (or equivalent authoritative source) is a follow-up task before LankaTemples first-slice ship. This file is the single source of truth for the impl — refresh annually.",
+  "sources-consulted": [
+    "https://en.wikipedia.org/wiki/Poya (general poya-day list + Sinhala months)",
+    "Sri Lanka Department of Government Printing annual public-holiday almanac (pattern reference, dates approximated)"
+  ],
+  "years": {
+    "2026": [
+      { "date": "2026-01-03", "englishName": "Duruthu Poya",   "type": "Duruthu",  "isMajor": false, "description": "Commemorates the Buddha's first visit to Sri Lanka." },
+      { "date": "2026-02-01", "englishName": "Navam Poya",     "type": "Navam",    "isMajor": false, "description": "Marks the first Buddhist council and the appointment of the two chief disciples." },
+      { "date": "2026-03-03", "englishName": "Medin Poya",     "type": "Medin",    "isMajor": false, "description": "Commemorates the Buddha's first visit to his family after enlightenment." },
+      { "date": "2026-04-01", "englishName": "Bak Poya",       "type": "Bak",      "isMajor": false, "description": "Marks the Buddha's second visit to Sri Lanka." },
+      { "date": "2026-05-31", "englishName": "Vesak Poya",     "type": "Vesak",    "isMajor": true,  "description": "The most sacred poya — commemorates the Buddha's birth, enlightenment, and parinibbana." },
+      { "date": "2026-06-29", "englishName": "Poson Poya",     "type": "Poson",    "isMajor": true,  "description": "Marks the introduction of Buddhism to Sri Lanka by Arahat Mahinda." },
+      { "date": "2026-07-29", "englishName": "Esala Poya",     "type": "Esala",    "isMajor": true,  "description": "Commemorates the Buddha's first sermon and the Esala Perahera in Kandy." },
+      { "date": "2026-08-28", "englishName": "Nikini Poya",    "type": "Nikini",   "isMajor": false, "description": "Marks the beginning of the Vas retreat for monks." },
+      { "date": "2026-09-26", "englishName": "Binara Poya",    "type": "Binara",   "isMajor": false, "description": "Commemorates the Buddha's establishment of the order of nuns." },
+      { "date": "2026-10-26", "englishName": "Vap Poya",       "type": "Vap",      "isMajor": false, "description": "Marks the end of the Vas retreat and beginning of the Kathina ceremony." },
+      { "date": "2026-11-24", "englishName": "Il Poya",        "type": "Il",       "isMajor": false, "description": "Commemorates the appointment of the first 60 arahants as Buddhist missionaries." },
+      { "date": "2026-12-24", "englishName": "Unduwap Poya",   "type": "Unduwap",  "isMajor": true,  "description": "Marks the arrival of Sanghamitta Theri with the sacred Bo tree sapling." }
+    ],
+    "2027": [
+      { "date": "2027-01-22", "englishName": "Duruthu Poya",   "type": "Duruthu",  "isMajor": false, "description": "Commemorates the Buddha's first visit to Sri Lanka." },
+      { "date": "2027-02-20", "englishName": "Navam Poya",     "type": "Navam",    "isMajor": false, "description": "Marks the first Buddhist council." },
+      { "date": "2027-03-22", "englishName": "Medin Poya",     "type": "Medin",    "isMajor": false, "description": "Commemorates the Buddha's first visit to his family after enlightenment." },
+      { "date": "2027-04-20", "englishName": "Bak Poya",       "type": "Bak",      "isMajor": false, "description": "Marks the Buddha's second visit to Sri Lanka." },
+      { "date": "2027-05-20", "englishName": "Vesak Poya",     "type": "Vesak",    "isMajor": true,  "description": "Buddha's birth, enlightenment, and parinibbana." },
+      { "date": "2027-06-18", "englishName": "Poson Poya",     "type": "Poson",    "isMajor": true,  "description": "Introduction of Buddhism to Sri Lanka." },
+      { "date": "2027-07-18", "englishName": "Esala Poya",     "type": "Esala",    "isMajor": true,  "description": "Buddha's first sermon and Kandy Esala Perahera." },
+      { "date": "2027-08-17", "englishName": "Nikini Poya",    "type": "Nikini",   "isMajor": false, "description": "Beginning of the Vas retreat." },
+      { "date": "2027-09-15", "englishName": "Binara Poya",    "type": "Binara",   "isMajor": false, "description": "Establishment of the order of nuns." },
+      { "date": "2027-10-15", "englishName": "Vap Poya",       "type": "Vap",      "isMajor": false, "description": "End of Vas retreat; Kathina ceremony." },
+      { "date": "2027-11-14", "englishName": "Il Poya",        "type": "Il",       "isMajor": false, "description": "Appointment of the first 60 Buddhist missionaries." },
+      { "date": "2027-12-13", "englishName": "Unduwap Poya",   "type": "Unduwap",  "isMajor": true,  "description": "Arrival of Sanghamitta Theri with the Bo tree sapling." }
+    ],
+    "2028": [
+      { "date": "2028-01-11", "englishName": "Duruthu Poya",   "type": "Duruthu",  "isMajor": false, "description": "Commemorates the Buddha's first visit to Sri Lanka." },
+      { "date": "2028-02-10", "englishName": "Navam Poya",     "type": "Navam",    "isMajor": false, "description": "First Buddhist council." },
+      { "date": "2028-03-10", "englishName": "Medin Poya",     "type": "Medin",    "isMajor": false, "description": "Buddha's first visit to his family after enlightenment." },
+      { "date": "2028-04-09", "englishName": "Bak Poya",       "type": "Bak",      "isMajor": false, "description": "Buddha's second visit to Sri Lanka." },
+      { "date": "2028-05-08", "englishName": "Vesak Poya",     "type": "Vesak",    "isMajor": true,  "description": "Buddha's birth, enlightenment, and parinibbana." },
+      { "date": "2028-06-07", "englishName": "Poson Poya",     "type": "Poson",    "isMajor": true,  "description": "Introduction of Buddhism to Sri Lanka." },
+      { "date": "2028-07-06", "englishName": "Esala Poya",     "type": "Esala",    "isMajor": true,  "description": "Buddha's first sermon and Kandy Esala Perahera." },
+      { "date": "2028-08-05", "englishName": "Nikini Poya",    "type": "Nikini",   "isMajor": false, "description": "Beginning of the Vas retreat." },
+      { "date": "2028-09-03", "englishName": "Binara Poya",    "type": "Binara",   "isMajor": false, "description": "Establishment of the order of nuns." },
+      { "date": "2028-10-03", "englishName": "Vap Poya",       "type": "Vap",      "isMajor": false, "description": "End of Vas retreat; Kathina ceremony." },
+      { "date": "2028-11-02", "englishName": "Il Poya",        "type": "Il",       "isMajor": false, "description": "Appointment of the first 60 Buddhist missionaries." },
+      { "date": "2028-12-01", "englishName": "Unduwap Poya",   "type": "Unduwap",  "isMajor": true,  "description": "Arrival of Sanghamitta Theri with the Bo tree sapling." }
+    ]
+  }
+}

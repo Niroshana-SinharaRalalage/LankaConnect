@@ -21,4 +21,10 @@
     <ProjectReference Include="..\..\Identity\Identity.Domain\Identity.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Wave 8.5 GAP-1 (2026-07-19): poya calendar seed data consumed by PoyaCalendarService.
+         Embedded as an assembly resource so no disk-relative-path assumption at runtime. -->
+    <EmbeddedResource Include="Services\poya-calendar.json" />
+  </ItemGroup>
+
 </Project>

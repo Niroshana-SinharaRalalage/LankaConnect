@@ -49,6 +49,12 @@
          in this commit); MetroAreaMappingProfile + GetMetroAreasQuery consume
          MetroAreaDto from LankaConnect.SharedKernel.Geo.MetroAreas.Common. -->
     <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
+    <!-- Wave 8.5.e (2026-07-19) LayerInversion aftermath: EventCancellationEmailJob +
+         EventNotificationEmailJob invoke LankaConnect.SharedKernel.Contact.Email.Create()
+         to construct the Email VO before dispatching. Email promoted from
+         Products.LankaEvents.Domain.ValueObjects to SharedKernel.Contact at d13e2b0b
+         (Wave 8.5-cleanup 2026-07-18 LayerInversion GAP-6). -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Contact\SharedKernel.Contact.csproj" />
     <ProjectReference Include="..\..\..\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
     <!-- IStripePaymentService now lives in Payments.Contracts per Consult #15 PASS C
          (moved 2026-07-06); no longer need Payments.Application PR from LankaEvents. -->

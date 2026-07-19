@@ -32,6 +32,10 @@
          promoted from Products.LankaEvents.Domain.ValueObjects to SharedKernel.Contact.
          AttendeeInfo.cs composes Email + PhoneNumber. -->
     <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Contact\SharedKernel.Contact.csproj" />
+    <!-- Wave 8.5 GAP-1 (2026-07-19) D-13 Option A: ICulturalCalendar + supporting VOs
+         promoted from Products.LankaEvents.Domain.Services to CulturalIntelligence.Contracts.
+         Products depend on Capability Contracts (correct direction per Consult #7 Delta). -->
+    <ProjectReference Include="..\..\..\Modules\CulturalIntelligence\CulturalIntelligence.Contracts\CulturalIntelligence.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

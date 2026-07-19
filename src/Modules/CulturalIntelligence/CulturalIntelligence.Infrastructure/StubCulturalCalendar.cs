@@ -1,39 +1,41 @@
-using LankaConnect.Products.LankaEvents.Domain;
-using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.Products.LankaEvents.Domain.Services;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
+using LankaConnect.Modules.CulturalIntelligence.Contracts.Services;
 
 namespace LankaConnect.Modules.CulturalIntelligence.Infrastructure;
 
 /// <summary>
-/// Stub implementation of ICulturalCalendar for MVP
-/// TODO: Replace with real cultural calendar integration in Phase 2
+/// Stub implementation of <see cref="ICulturalCalendar"/> retained during Wave 8.5 GAP-1
+/// interface refactor (D-13 Option A, 2026-07-19). Signatures updated to consume
+/// <see cref="EventCulturalContext"/> instead of the LankaEvents Product-layer
+/// <c>Event</c> aggregate; behavior kept at the same neutral defaults.
+///
+/// SUPERSEDED BY <see cref="PoyaCalendarService"/> — the real seed-file-backed impl
+/// that closes GAP-1. This stub file will be deleted in the follow-up commit that
+/// wires PoyaCalendarService into DI.
 /// </summary>
 public class StubCulturalCalendar : ICulturalCalendar
 {
-    public bool IsPoyaday(DateTime date) => false; // Stub: Return false for MVP
+    public bool IsPoyaDay(DateTime date) => false;
 
-    public CulturalAppropriateness GetEventAppropriateness(Event @event, DateTime date)
-        => new CulturalAppropriateness(0.7); // Stub: Default 70% appropriateness
+    public CulturalAppropriateness GetEventAppropriateness(EventCulturalContext context, DateTime date)
+        => new CulturalAppropriateness(0.7);
 
-    public string ClassifyEventType(Event @event) => "General"; // Stub: Default classification
+    public string ClassifyEventType(EventCulturalContext context) => "General";
 
-    public DiasporaFriendliness GetDiasporaFriendliness(Event @event)
-        => DiasporaFriendliness.Moderate; // Stub: Return enum value (Moderate diaspora-friendliness)
+    public DiasporaFriendliness GetDiasporaFriendliness(EventCulturalContext context)
+        => DiasporaFriendliness.Moderate;
 
-    public CulturalAppropriateness CalculateAppropriateness(Event @event, string culturalBackground)
-        => new CulturalAppropriateness(0.7); // Stub: Default 70% appropriateness
+    public CulturalAppropriateness CalculateAppropriateness(EventCulturalContext context, string culturalBackground)
+        => new CulturalAppropriateness(0.7);
 
     public FestivalPeriod GetFestivalPeriod(string festivalName, int year)
-        => new FestivalPeriod(DateTime.UtcNow, DateTime.UtcNow.AddDays(7), festivalName); // Stub: 7-day period
+        => new FestivalPeriod(DateTime.UtcNow, DateTime.UtcNow.AddDays(7), festivalName);
 
-    public bool IsOptimalFestivalTiming(Event @event, FestivalPeriod period) => false; // Stub: Return false for MVP
+    public bool IsOptimalFestivalTiming(EventCulturalContext context, FestivalPeriod period) => false;
 
-    public EventNature ClassifyEventNature(Event @event) => EventNature.Cultural; // Stub: Default to Cultural nature
+    public EventNature ClassifyEventNature(EventCulturalContext context) => EventNature.Cultural;
 
-    public SignificantDate[] GetSignificantDates(int year) => Array.Empty<SignificantDate>(); // Stub: No significant dates for MVP
+    public IReadOnlyList<SignificantDate> GetSignificantDates(int year) => Array.Empty<SignificantDate>();
 
-    public CalendarValidationResult ValidateEventAgainstCalendar(Event @event)
-        => new CalendarValidationResult(true, "Stub validation passed"); // Stub: Always valid for MVP
+    public CalendarValidationResult ValidateEventAgainstCalendar(EventCulturalContext context)
+        => new CalendarValidationResult(true, "Stub validation passed");
 }

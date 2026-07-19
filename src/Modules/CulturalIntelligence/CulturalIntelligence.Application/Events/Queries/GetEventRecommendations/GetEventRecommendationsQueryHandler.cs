@@ -2,6 +2,7 @@ using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Services;
+using LankaConnect.Modules.CulturalIntelligence.Contracts.Services;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
 using System.Diagnostics;

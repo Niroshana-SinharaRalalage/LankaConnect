@@ -1,4 +1,11 @@
 using LankaConnect.BuildingBlocks.Domain;
+// Wave 8.5 GAP-1 (2026-07-19) D-13 Option A cleanup: DiasporaFriendliness / EventNature /
+// FestivalPeriod / SignificantDate / SignificanceLevel / CalendarValidationResult removed
+// from this file — canonical home is now
+// LankaConnect.Modules.CulturalIntelligence.Contracts.Services.CulturalCalendarTypes.
+// LankaEvents-specific types (CulturalScore, CulturalAppropriatenessLevel,
+// CulturalSensitivityLevel, DiasporaAdaptationLevel, CulturalPreferences,
+// EventNaturePreferences) remain here as recommendation-engine primitives.
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
 
 /// <summary>
@@ -169,27 +176,8 @@ public enum DiasporaAdaptationLevel
     FullyIntegrated = 4
 }
 
-/// <summary>
-/// Diaspora friendliness levels
-/// </summary>
-public enum DiasporaFriendliness
-{
-    Traditional = 0,
-    Moderate = 1,
-    High = 2,
-    VeryHigh = 3
-}
-
-/// <summary>
-/// Event nature classification
-/// </summary>
-public enum EventNature
-{
-    Religious = 0,
-    Cultural = 1,
-    Secular = 2,
-    Mixed = 3
-}
+// DiasporaFriendliness + EventNature enums moved to
+// LankaConnect.Modules.CulturalIntelligence.Contracts.Services.CulturalCalendarTypes.
 
 /// <summary>
 /// User cultural preferences
@@ -215,92 +203,8 @@ public class CulturalPreferences : ValueObject
     }
 }
 
-/// <summary>
-/// Festival period for timing optimization
-/// </summary>
-public class FestivalPeriod : ValueObject
-{
-    public DateTime StartDate { get; }
-    public DateTime EndDate { get; }
-    public string Name { get; }
-    public TimeSpan Duration => EndDate - StartDate;
-
-    public FestivalPeriod(DateTime startDate, DateTime endDate, string name = "")
-    {
-        if (endDate <= startDate)
-            throw new ArgumentException("End date must be after start date");
-
-        StartDate = startDate;
-        EndDate = endDate;
-        Name = name ?? string.Empty;
-    }
-
-    public override IEnumerable<object> GetEqualityComponents()
-    {
-        yield return StartDate;
-        yield return EndDate;
-        yield return Name;
-    }
-}
-
-/// <summary>
-/// Significant cultural dates
-/// </summary>
-public class SignificantDate : ValueObject
-{
-    public string Name { get; }
-    public DateTime Date { get; }
-    public SignificanceLevel Level { get; }
-
-    public SignificantDate(string name, DateTime date, SignificanceLevel level)
-    {
-        Name = name ?? throw new ArgumentNullException(nameof(name));
-        Date = date;
-        Level = level;
-    }
-
-    public override IEnumerable<object> GetEqualityComponents()
-    {
-        yield return Name;
-        yield return Date;
-        yield return Level;
-    }
-}
-
-/// <summary>
-/// Cultural significance levels
-/// </summary>
-public enum SignificanceLevel
-{
-    Low = 0,
-    Medium = 1,
-    High = 2,
-    Critical = 3
-}
-
-/// <summary>
-/// Calendar validation result
-/// </summary>
-public class CalendarValidationResult : ValueObject
-{
-    public bool IsValid { get; }
-    public string Reason { get; }
-    public string[] Suggestions { get; }
-
-    public CalendarValidationResult(bool isValid, string reason, string[]? suggestions = null)
-    {
-        IsValid = isValid;
-        Reason = reason ?? string.Empty;
-        Suggestions = suggestions ?? Array.Empty<string>();
-    }
-
-    public override IEnumerable<object> GetEqualityComponents()
-    {
-        yield return IsValid;
-        yield return Reason;
-        yield return string.Join(",", Suggestions.OrderBy(x => x));
-    }
-}
+// FestivalPeriod / SignificantDate / SignificanceLevel / CalendarValidationResult
+// moved to LankaConnect.Modules.CulturalIntelligence.Contracts.Services.CulturalCalendarTypes.
 
 /// <summary>
 /// Event nature preferences with scoring weights

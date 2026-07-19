@@ -1,6 +1,12 @@
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
+using LankaConnect.Modules.CulturalIntelligence.Contracts.Services;
 // W2D.1d (2026-06-05): CulturalAppropriateness moved to SharedKernel.Cultural;
 // global alias resolves unqualified refs. Explicit alias removed (was duplicate).
+// Wave 8.5 GAP-1 (2026-07-19) D-13 Option A: ICulturalCalendar + supporting VOs
+// (CulturalAppropriateness / DiasporaFriendliness / EventNature / FestivalPeriod /
+// SignificantDate / SignificanceLevel / CalendarValidationResult) live in
+// CulturalIntelligence.Contracts.Services. Engine constructs EventCulturalContext
+// at each call boundary.
 using CommunityCluster = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations.CommunityCluster;
 using CulturalSensitivityLevel = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations.CulturalSensitivityLevel;
 namespace LankaConnect.Products.LankaEvents.Domain.Services;
@@ -133,7 +139,7 @@ public class EventRecommendationEngine : IEventRecommendationEngine
             // TODO Phase 8YA-2: skip TBD events from cultural recommendations entirely
             // once the recommendation pipeline is reviewed end-to-end.
             var appropriateness = _culturalCalendar.GetEventAppropriateness(
-                @event, @event.StartDate ?? DateTime.UtcNow);
+                ToCulturalContext(@event), @event.StartDate ?? DateTime.UtcNow);
             
             // Filter based on cultural sensitivity level
             var minimumAppropriatenessThreshold = culturalSensitivity switch
@@ -194,7 +200,7 @@ public class EventRecommendationEngine : IEventRecommendationEngine
 
         foreach (var @event in events)
         {
-            var isOptimalTiming = _culturalCalendar.IsOptimalFestivalTiming(@event, festivalPeriod);
+            var isOptimalTiming = _culturalCalendar.IsOptimalFestivalTiming(ToCulturalContext(@event), festivalPeriod);
             
             if (isOptimalTiming)
             {
@@ -222,7 +228,7 @@ public class EventRecommendationEngine : IEventRecommendationEngine
 
         foreach (var @event in events)
         {
-            var eventNature = _culturalCalendar.ClassifyEventNature(@event);
+            var eventNature = _culturalCalendar.ClassifyEventNature(ToCulturalContext(@event));
             
             var categoryScore = eventNature switch
             {
@@ -251,7 +257,7 @@ public class EventRecommendationEngine : IEventRecommendationEngine
 
         foreach (var @event in events)
         {
-            var validationResult = _culturalCalendar.ValidateEventAgainstCalendar(@event);
+            var validationResult = _culturalCalendar.ValidateEventAgainstCalendar(ToCulturalContext(@event));
             
             if (validationResult.IsValid)
             {
@@ -703,7 +709,7 @@ public class EventRecommendationEngine : IEventRecommendationEngine
     private async Task<CulturalScore> CalculateCulturalScoreInternal(Guid userId, Event @event)
     {
         var culturalBackground = _userPreferences.GetCulturalBackground(userId);
-        var appropriateness = _culturalCalendar.CalculateAppropriateness(@event, culturalBackground);
+        var appropriateness = _culturalCalendar.CalculateAppropriateness(ToCulturalContext(@event), culturalBackground);
         return await Task.FromResult(new CulturalScore(appropriateness.Value));
     }
 
@@ -835,7 +841,7 @@ public class EventRecommendationEngine : IEventRecommendationEngine
         return scores.Average(score => Math.Pow(score - mean, 2));
     }
 
-    private double CalculateDateRelevance(Event @event, DateTime targetDate, SignificantDate[] significantDates)
+    private double CalculateDateRelevance(Event @event, DateTime targetDate, IReadOnlyList<SignificantDate> significantDates)
     {
         // Phase 8YA.1: TBD events have no concrete start date — they cannot have
         // date relevance to a target date or significant date, so score 0.
@@ -857,8 +863,8 @@ public class EventRecommendationEngine : IEventRecommendationEngine
     private double CalculateCulturalTimingScore(Event @event, DateTime date)
     {
         // Check if event aligns with culturally appropriate timing
-        var isPoyaday = _culturalCalendar.IsPoyaday(date);
-        var eventType = _culturalCalendar.ClassifyEventType(@event);
+        var isPoyaday = _culturalCalendar.IsPoyaDay(date);
+        var eventType = _culturalCalendar.ClassifyEventType(ToCulturalContext(@event));
 
         return (isPoyaday && eventType.Contains("Religious")) ? 0.9 : 0.7;
     }
@@ -907,6 +913,16 @@ public class EventRecommendationEngine : IEventRecommendationEngine
     private async Task<string> GetUserLocation(Guid userId) => await Task.FromResult("Default User Location"); // Placeholder
     private async Task<Coordinates> GetUserCoordinates(Guid userId) => await Task.FromResult(new Coordinates(37.5485, -121.9886)); // Placeholder
     private async Task<int> GetUserAge(Guid userId) => await Task.FromResult(35); // Placeholder
+
+    // Wave 8.5 GAP-1 (2026-07-19) D-13 Option A: construct the Contracts-layer
+    // EventCulturalContext DTO from an Event at the ICulturalCalendar call boundary.
+    // Keeps CulturalIntelligence.Contracts free of any Products.LankaEvents type
+    // dependency while still letting the engine consume the cultural-calendar surface.
+    private EventCulturalContext ToCulturalContext(Event @event) => new(
+        EventId: @event.Id,
+        StartDate: @event.StartDate,
+        Category: ExtractEventCategory(@event),
+        LocationRegion: ExtractEventLocation(@event));
 
     #endregion
 }

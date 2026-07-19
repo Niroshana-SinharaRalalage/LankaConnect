@@ -20,6 +20,13 @@
     <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
     <ProjectReference Include="..\Identity.Infrastructure\Identity.Infrastructure.csproj" />
+    <!-- Wave 8.5.e (2026-07-19) LayerInversion aftermath: AuthController.cs:594 accesses
+         `user.Email.Value` (Email VO now lives in SharedKernel.Contact per Wave 8.5-cleanup
+         2026-07-18 promotion `d13e2b0b`), and UsersController.cs uses
+         `LankaConnect.SharedKernel.Geo.MetroAreas.Common`. Both direct PRs required to
+         resolve CS0012 (member invocation on transitively-referenced assembly). -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Contact\SharedKernel.Contact.csproj" />
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
   </ItemGroup>
 
   <ItemGroup>

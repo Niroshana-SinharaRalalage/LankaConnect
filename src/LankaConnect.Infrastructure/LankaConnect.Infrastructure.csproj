@@ -53,6 +53,15 @@
          LankaConnect namespace (upward reference), so the adapter sits here. -->
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <!-- Wave 8.5.e (2026-07-19) LayerInversion aftermath: AppDbContext.cs invokes
+         modelBuilder.Ignore<LankaConnect.SharedKernel.Contact.Email>() /
+         Ignore<LankaConnect.SharedKernel.Contact.PhoneNumber>() to prevent
+         auto-materialization of the promoted Contact VOs on cross-schema entities.
+         Direct PR needed to resolve CS0012 on generic method invocation with
+         SharedKernel.Contact type argument. Email + PhoneNumber promoted from
+         Products.LankaEvents.Domain to SharedKernel.Contact at d13e2b0b
+         (Wave 8.5-cleanup 2026-07-18 LayerInversion GAP-6). -->
+    <ProjectReference Include="..\SharedKernel\SharedKernel.Contact\SharedKernel.Contact.csproj" />
   </ItemGroup>
 
   <ItemGroup>

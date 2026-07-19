@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>LankaConnect.SharedKernel.Geo.Tests</RootNamespace>
+    <AssemblyName>LankaConnect.SharedKernel.Geo.Tests</AssemblyName>
+    <Description>Unit tests for SharedKernel.Geo primitives (Address, GeoCoordinate — including Haversine DistanceKmTo). Authored 2026-07-19 as part of Wave 8.5 GAP-6 (Geo capability cluster).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <!-- Wave 8.5 GAP-6 (2026-07-19) — ContactInfo VO composes SharedKernel.Geo.Address as its PhysicalAddress field. -->
+    <ProjectReference Include="..\SharedKernel.Geo\SharedKernel.Geo.csproj" />
   </ItemGroup>
 
 </Project>

@@ -255,6 +255,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LankaTemples.Api", "src\Pro
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedKernel.Contact", "src\SharedKernel\SharedKernel.Contact\SharedKernel.Contact.csproj", "{65C7BAED-DF89-4421-84A6-251BF45FBB90}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedKernel.Geo.Tests", "tests\SharedKernel\SharedKernel.Geo.Tests\SharedKernel.Geo.Tests.csproj", "{F5139FB8-2447-45A6-ACAF-42A3B7C61F88}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedKernel.Contact.Tests", "tests\SharedKernel\SharedKernel.Contact.Tests\SharedKernel.Contact.Tests.csproj", "{547A803C-5AB9-4F12-AED4-8E82FADBEAA0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -657,6 +661,14 @@ Global
 		{65C7BAED-DF89-4421-84A6-251BF45FBB90}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{65C7BAED-DF89-4421-84A6-251BF45FBB90}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{65C7BAED-DF89-4421-84A6-251BF45FBB90}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5139FB8-2447-45A6-ACAF-42A3B7C61F88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5139FB8-2447-45A6-ACAF-42A3B7C61F88}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5139FB8-2447-45A6-ACAF-42A3B7C61F88}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5139FB8-2447-45A6-ACAF-42A3B7C61F88}.Release|Any CPU.Build.0 = Release|Any CPU
+		{547A803C-5AB9-4F12-AED4-8E82FADBEAA0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{547A803C-5AB9-4F12-AED4-8E82FADBEAA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{547A803C-5AB9-4F12-AED4-8E82FADBEAA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{547A803C-5AB9-4F12-AED4-8E82FADBEAA0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -786,5 +798,7 @@ Global
 		{99269468-01BD-4AEE-AEB2-F21B58549D50} = {23F1FA4F-7592-474F-B98D-C7A89EA39C30}
 		{C72C78CD-3B38-4446-8A88-FCBBDBFE32D3} = {23F1FA4F-7592-474F-B98D-C7A89EA39C30}
 		{65C7BAED-DF89-4421-84A6-251BF45FBB90} = {F2224FA5-1504-45BC-9D2B-A5094E7E9224}
+		{F5139FB8-2447-45A6-ACAF-42A3B7C61F88} = {87539D45-B3DE-4094-8FD5-FA436223D398}
+		{547A803C-5AB9-4F12-AED4-8E82FADBEAA0} = {87539D45-B3DE-4094-8FD5-FA436223D398}
 	EndGlobalSection
 EndGlobal

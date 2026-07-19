@@ -16,6 +16,8 @@
     <ProjectReference Include="..\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
     <ProjectReference Include="..\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <!-- Wave 8.5 GAP-6 (2026-07-19) — GeoRadiusExtensions filters IEnumerable<T> by SharedKernel.Geo.GeoCoordinate distance. -->
+    <ProjectReference Include="..\..\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
   </ItemGroup>
 
   <!-- W2.4 — MediatR pipeline behaviors need MediatR, FluentValidation, ILogger -->

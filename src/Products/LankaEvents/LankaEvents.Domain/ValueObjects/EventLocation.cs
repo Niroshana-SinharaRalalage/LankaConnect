@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.SharedKernel.Geo;
 namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 
 /// <summary>

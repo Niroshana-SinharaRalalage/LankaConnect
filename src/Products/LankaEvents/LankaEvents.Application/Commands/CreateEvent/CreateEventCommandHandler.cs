@@ -8,6 +8,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Services; // Phase 6A.X: Revenue breakdown
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.SharedKernel.Geo; // Wave 8.5-cleanup: Address + GeoCoordinate promoted here
 using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using Microsoft.Extensions.Logging;

@@ -23,6 +23,11 @@
     <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Cultural\SharedKernel.Cultural.csproj" />
     <!-- Sprint Day 5 (2026-07-06): Money VO moved BB.Domain.Shared -> SharedKernel.Money per Consult #12. -->
     <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
+    <!-- Wave 8.5-cleanup (2026-07-18) ExtractabilityAudit GAP-6: Address + GeoCoordinate
+         promoted from Products.LankaEvents.Domain.ValueObjects to SharedKernel.Geo.
+         EventLocation.cs composes Address + GeoCoordinate, so LankaEvents.Domain needs
+         the SharedKernel.Geo reference. -->
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
   </ItemGroup>
 
 </Project>

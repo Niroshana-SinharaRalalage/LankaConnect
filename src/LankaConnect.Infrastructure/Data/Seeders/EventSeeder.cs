@@ -3,6 +3,7 @@ using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.SharedKernel.Geo; // Wave 8.5-cleanup: Address + GeoCoordinate promoted here
 // LankaConnect.Domain.Business.ValueObjects removed 4C.d.vii (Business aggregate
 // deleted per Consult #12 Option D). Any Address VO ref falls back to
 // LankaEvents.Domain.ValueObjects.Address (already imported above).

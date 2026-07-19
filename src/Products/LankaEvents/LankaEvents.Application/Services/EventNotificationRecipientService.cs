@@ -5,6 +5,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Communications.Contracts; // Wave 5.4.d.1: IEmailGroupQueries swap
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
+using LankaConnect.SharedKernel.Geo; // Wave 8.5-cleanup: Address + GeoCoordinate promoted here
 using Microsoft.Extensions.Logging;
 namespace LankaConnect.Products.LankaEvents.Application.Services;
 

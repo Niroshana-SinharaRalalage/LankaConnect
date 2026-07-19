@@ -1407,6 +1407,140 @@ public sealed class LayeringRules
     }
 
     /// <summary>
+    /// Wave 8.5 GAP-6 (2026-07-19) — SharedKernel.Contact hosts Email, PhoneNumber,
+    /// and ContactInfo (composite VO). ContactInfo composes SharedKernel.Geo.Address
+    /// as its PhysicalAddress field, so this rule intentionally does NOT ban
+    /// LankaConnect.SharedKernel.Geo. All Product / Capability / legacy monolith
+    /// dependencies remain forbidden per the standard SharedKernel invariant.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void SharedKernel_Contact_DependsOnlyOnBuildingBlocksAndSharedKernelGeo()
+    {
+        var assembly = typeof(SharedKernel.Contact.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared",
+                "LankaConnect.SharedKernel.Cultural",
+                "LankaConnect.SharedKernel.Money",
+                "LankaConnect.SharedKernel.Locale",
+                "LankaConnect.SharedKernel.Identity",
+                "LankaConnect.SharedKernel.Time",
+                // SharedKernel.Geo intentionally NOT banned — ContactInfo.PhysicalAddress uses Address.
+                "LankaConnect.Modules.Notifications.Domain",
+                "LankaConnect.Modules.Notifications.Contracts",
+                "LankaConnect.Modules.Notifications.Application",
+                "LankaConnect.Modules.Notifications.Infrastructure",
+                "LankaConnect.Modules.Notifications.Api",
+                "LankaConnect.Modules.Communications.Domain",
+                "LankaConnect.Modules.Communications.Contracts",
+                "LankaConnect.Modules.Communications.Application",
+                "LankaConnect.Modules.Communications.Infrastructure",
+                "LankaConnect.Modules.Communications.Api",
+                "LankaConnect.Modules.Media.Domain",
+                "LankaConnect.Modules.Media.Contracts",
+                "LankaConnect.Modules.Media.Application",
+                "LankaConnect.Modules.Media.Infrastructure",
+                "LankaConnect.Modules.Media.Api",
+                "LankaConnect.Modules.Identity.Domain",
+                "LankaConnect.Modules.Identity.Contracts",
+                "LankaConnect.Modules.Identity.Application",
+                "LankaConnect.Modules.Identity.Infrastructure",
+                "LankaConnect.Modules.Identity.Api",
+                "LankaConnect.Modules.Payments.Domain",
+                "LankaConnect.Modules.Payments.Contracts",
+                "LankaConnect.Modules.Payments.Application",
+                "LankaConnect.Modules.Payments.Infrastructure",
+                "LankaConnect.Modules.Payments.Api",
+                "LankaConnect.Products.LankaEvents.Domain",
+                "LankaConnect.Products.LankaEvents.Application",
+                "LankaConnect.Products.LankaEvents.Infrastructure",
+                "LankaConnect.Products.LankaEvents.Api")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
+    /// Wave 8.5 GAP-6 (2026-07-19) — BuildingBlocks.Application.Geo namespace hosts
+    /// the WithinRadiusKm extension family. Must not reach any Product or Module —
+    /// it is a horizontal capability primitive consumed by all Products via
+    /// Extension methods on IEnumerable&lt;T&gt;. This rule is namespace-scoped
+    /// (not assembly-scoped) because BuildingBlocks.Application as a whole hosts
+    /// many primitives; the Geo cluster in particular MUST NOT accidentally start
+    /// referencing a Product / Module type (would invert the layering).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void BuildingBlocks_Application_Geo_HasNoProductOrModuleDependencies()
+    {
+        var assembly = typeof(BuildingBlocks.Application.Geo.GeoRadiusExtensions).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .That().ResideInNamespace("LankaConnect.BuildingBlocks.Application.Geo")
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Products.LankaEvents.Domain",
+                "LankaConnect.Products.LankaEvents.Application",
+                "LankaConnect.Products.LankaEvents.Infrastructure",
+                "LankaConnect.Products.LankaEvents.Api",
+                "LankaConnect.Modules.Notifications.Domain",
+                "LankaConnect.Modules.Notifications.Contracts",
+                "LankaConnect.Modules.Notifications.Application",
+                "LankaConnect.Modules.Notifications.Infrastructure",
+                "LankaConnect.Modules.Notifications.Api",
+                "LankaConnect.Modules.Communications.Domain",
+                "LankaConnect.Modules.Communications.Contracts",
+                "LankaConnect.Modules.Communications.Application",
+                "LankaConnect.Modules.Communications.Infrastructure",
+                "LankaConnect.Modules.Communications.Api",
+                "LankaConnect.Modules.Media.Domain",
+                "LankaConnect.Modules.Media.Contracts",
+                "LankaConnect.Modules.Media.Application",
+                "LankaConnect.Modules.Media.Infrastructure",
+                "LankaConnect.Modules.Media.Api",
+                "LankaConnect.Modules.Forms.Domain",
+                "LankaConnect.Modules.Forms.Contracts",
+                "LankaConnect.Modules.Forms.Application",
+                "LankaConnect.Modules.Forms.Infrastructure",
+                "LankaConnect.Modules.Forms.Api",
+                "LankaConnect.Modules.Identity.Domain",
+                "LankaConnect.Modules.Identity.Contracts",
+                "LankaConnect.Modules.Identity.Application",
+                "LankaConnect.Modules.Identity.Infrastructure",
+                "LankaConnect.Modules.Identity.Api",
+                "LankaConnect.Modules.Payments.Domain",
+                "LankaConnect.Modules.Payments.Contracts",
+                "LankaConnect.Modules.Payments.Application",
+                "LankaConnect.Modules.Payments.Infrastructure",
+                "LankaConnect.Modules.Payments.Api",
+                "LankaConnect.Modules.Scheduling.Domain",
+                "LankaConnect.Modules.Scheduling.Contracts",
+                "LankaConnect.Modules.Scheduling.Application",
+                "LankaConnect.Modules.Scheduling.Infrastructure",
+                "LankaConnect.Modules.CulturalIntelligence.Domain",
+                "LankaConnect.Modules.CulturalIntelligence.Contracts",
+                "LankaConnect.Modules.CulturalIntelligence.Application",
+                "LankaConnect.Modules.CulturalIntelligence.Infrastructure",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, "BuildingBlocks.Application.Geo namespace");
+    }
+
+    /// <summary>
     /// SharedKernel.Contracts is the SharedKernel-level integration-event ABI.
     /// May reference only BuildingBlocks.Contracts (for IIntegrationEventV1 + base).
     /// </summary>

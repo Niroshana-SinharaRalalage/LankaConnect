@@ -83,6 +83,8 @@
     <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
     <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Time\SharedKernel.Time.csproj" />
     <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Contracts\SharedKernel.Contracts.csproj" />
+    <!-- Wave 8.5 GAP-6 (2026-07-19) — SharedKernel.Contact hosts ContactInfo VO; ArchTest verifies it depends only on BB + SharedKernel.Geo. -->
+    <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Contact\SharedKernel.Contact.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Payments\Payments.Contracts\Payments.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Payments\Payments.Application\Payments.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Payments\Payments.Domain\Payments.Domain.csproj" />

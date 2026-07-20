@@ -1,14 +1,16 @@
-using LankaConnect.Modules.Payments.Application.Services; // W4.4.c.4: service impls moved here (interfaces stay in legacy)
+﻿using LankaConnect.Modules.Payments.Application.Services; // W4.4.c.4: service impls moved here (interfaces stay in legacy)
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Application.Services;
+// Wave 8.5.e (2026-07-19): IRefundExecutionService promoted from
+// LankaEvents.Application.Services to LankaEvents.Contracts.Services in Wave 8.5.d.
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -16,12 +18,12 @@ using Xunit;
 namespace LankaConnect.Modules.Payments.Application.Tests.Services;
 
 /// <summary>
-/// Phase 7G — tests for the durable refund-reconciliation safety net.
+/// Phase 7G â€” tests for the durable refund-reconciliation safety net.
 ///
 /// The service queries the existing <c>IRegistrationRepository.GetStuckRefundsAsync</c>
 /// for rows in <c>RefundRequested</c> beyond the grace window, looks up each one
 /// against Stripe via <c>IStripePaymentService.GetRefundStatusAsync</c>, and on
-/// "succeeded" calls <c>Registration.CompleteRefund</c> — the same domain transition
+/// "succeeded" calls <c>Registration.CompleteRefund</c> â€” the same domain transition
 /// the webhook handler uses, so all downstream effects (email, WhatsApp, ticket
 /// PDF state) fire identically. Behaviour matrix below maps each Stripe status
 /// outcome to a counter on <see cref="RefundReconciliationResult"/>.
@@ -34,7 +36,7 @@ public class RefundReconciliationServiceTests
     // Phase 6A.148.W5.D6: deps required for stuck-Approved reconciliation. Existing tests
     // only exercise the stuck-RefundRequested code path, but the constructor now demands
     // these so DI catches misconfiguration at boot.
-    private readonly Mock<LankaConnect.Modules.Payments.Domain.Repositories.IRefundRequestRepository> _refundRequestRepo = new();
+    private readonly Mock<LankaConnect.Products.LankaEvents.Contracts.Repositories.IRefundRequestRepository> _refundRequestRepo = new();
     private readonly Mock<IRefundExecutionService> _refundExecutionService = new();
 
     private RefundReconciliationService Build()
@@ -61,7 +63,7 @@ public class RefundReconciliationServiceTests
         var registration = (Registration)System.Runtime.CompilerServices.RuntimeHelpers
             .GetUninitializedObject(typeof(Registration));
 
-        // Force private setters via reflection — same pattern used by other
+        // Force private setters via reflection â€” same pattern used by other
         // application tests in this suite (see GetLayoutPublishReadinessQueryHandlerTests).
         SetProp(registration, nameof(Registration.Id), id ?? Guid.NewGuid());
         SetProp(registration, nameof(Registration.EventId), Guid.NewGuid());
@@ -73,7 +75,7 @@ public class RefundReconciliationServiceTests
         SetProp(registration, nameof(Registration.RefundRequestedAt),
             refundRequestedAt ?? DateTime.UtcNow.AddHours(-1));
         SetProp(registration, nameof(Registration.TotalPrice),
-            Money.Create(100m, Currency.USD).Value);
+            new Money(100m, Currency.USD));
         // Domain events list backing field is NOT readable via property, so we
         // leave it as default (empty). This is fine because CompleteRefund
         // raises into the entity's protected backing list.
@@ -274,7 +276,7 @@ public class RefundReconciliationServiceTests
     {
         // Default threshold is 10 min; explicit 0 should let a freshly-cancelled
         // row be reconciled. The repo gets called with `requestedBefore` set to
-        // (approximately) "now" — verify the filter window expanded.
+        // (approximately) "now" â€” verify the filter window expanded.
         DateTime? captured = null;
         _registrationRepo.Setup(r => r.GetStuckRefundsAsync(
                 It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))

@@ -1,10 +1,12 @@
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
+﻿using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
+// Wave 8.5.e (2026-07-19): IRefundRequestRepository promoted from LankaEvents.Domain.Repositories
+// to LankaEvents.Contracts.Repositories in Wave 8.5.d LegacyPromotions split (Consult #17 Q2).
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Payments.Application.Queries;
 using LankaConnect.Modules.Payments.Contracts;
 using Moq;
@@ -35,7 +37,7 @@ public sealed class PaymentQueriesTests
     {
         var regId = registrationId ?? Guid.NewGuid();
         var userId = Guid.NewGuid();
-        var money = Money.Create(50m, Currency.USD).Value;
+        var money = new Money(50m, Currency.USD);
         var lineItems = addLineItem
             ? new List<RefundRequestLineItemInput>
             {

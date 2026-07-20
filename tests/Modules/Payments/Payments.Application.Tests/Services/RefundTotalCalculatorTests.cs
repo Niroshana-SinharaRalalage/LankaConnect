@@ -1,14 +1,16 @@
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
+﻿using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using LankaConnect.Modules.Payments.Application.Services; // W4.4.c.4: service impls moved here (interfaces stay in legacy)
 using FluentAssertions;
-using LankaConnect.Products.LankaEvents.Application.Services;
+// Wave 8.5.e (2026-07-19): IRefundRequestRepository + IRefundTotalCalculator promoted
+// from LankaEvents.Application/Domain to LankaEvents.Contracts in Wave 8.5.d.
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -16,7 +18,7 @@ using Xunit;
 namespace LankaConnect.Modules.Payments.Application.Tests.Services;
 
 /// <summary>
-/// Phase 6A.148.W5.6.A — pins the contract of <see cref="IRefundTotalCalculator"/>.
+/// Phase 6A.148.W5.6.A â€” pins the contract of <see cref="IRefundTotalCalculator"/>.
 ///
 /// Operator UAT context (2026-05-22): refund request 329f2505 approved $262 across
 /// 4 lines (Ticket $80 + AddOn $7 + Sponsor $100 + Sponsor $75). The
@@ -31,10 +33,10 @@ namespace LankaConnect.Modules.Payments.Application.Tests.Services;
 /// 1. Workflow refund: returns the SUM of all Refunded line items' ApprovedAmount.
 /// 2. Legacy refund (no workflow line): returns the caller's legacy total verbatim
 ///    (preserves byte-identical pre-6A.148 email behaviour).
-/// 3. Repo throws: returns the legacy total (fail-OPEN — a transient DB blip never
+/// 3. Repo throws: returns the legacy total (fail-OPEN â€” a transient DB blip never
 ///    silences the completion email).
 /// 4. Partial Refunded (one line still Processing or Failed): only Refunded lines
-///    contribute — the email never over-promises money that hasn't moved.
+///    contribute â€” the email never over-promises money that hasn't moved.
 /// </summary>
 public class RefundTotalCalculatorTests
 {
@@ -98,7 +100,7 @@ public class RefundTotalCalculatorTests
 
         var actual = await Build().ComputeAttendeeFacingTotalAsync(sri, legacyFallbackTotal: 50m);
 
-        actual.Should().Be(50m, "fail-OPEN — return legacy total when repo lookup throws");
+        actual.Should().Be(50m, "fail-OPEN â€” return legacy total when repo lookup throws");
     }
 
     [Fact]
@@ -106,7 +108,7 @@ public class RefundTotalCalculatorTests
     {
         // Architect timing guarantee says all lines should be terminal by the time
         // RefundCompletedEvent fires from the ticket webhook. This test ensures that
-        // IF a sibling line is in Processing or Failed (defensive — shouldn't happen
+        // IF a sibling line is in Processing or Failed (defensive â€” shouldn't happen
         // in practice but the calculator must not over-promise), it is EXCLUDED from
         // the total.
         const string ticketSri = "re_partial_ticket";
@@ -131,11 +133,11 @@ public class RefundTotalCalculatorTests
             ticketSri, legacyFallbackTotal: 80m);
 
         actual.Should().Be(80m,
-            "only Refunded lines contribute — the $100 Failed sponsor and $50 Processing addon are excluded");
+            "only Refunded lines contribute â€” the $100 Failed sponsor and $50 Processing addon are excluded");
     }
 
     // ========================================================================
-    // Helpers — build RefundRequestLineItem + RefundRequest via reflection
+    // Helpers â€” build RefundRequestLineItem + RefundRequest via reflection
     // ========================================================================
 
     private static RefundRequestLineItem BuildRefundedLine(

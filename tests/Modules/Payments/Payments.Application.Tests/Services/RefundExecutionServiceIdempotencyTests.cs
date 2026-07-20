@@ -1,8 +1,12 @@
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
+﻿using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using LankaConnect.Modules.Payments.Application.Services; // W4.4.c.4: service impls moved here (interfaces stay in legacy)
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Application.Services;
+// Wave 8.5.e (2026-07-19): IRefundExecutionService + siblings promoted from
+// LankaEvents.Application.Services to LankaEvents.Contracts.Services in Wave 8.5.d
+// LegacyPromotions split per Consult #17 Q2 Day 10 debt.
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -15,7 +19,7 @@ using Xunit;
 namespace LankaConnect.Modules.Payments.Application.Tests.Services;
 
 /// <summary>
-/// Phase 6A.148.W5.D1 — Stripe <see cref="CreateRefundRequest.IdempotencyKey"/> contract
+/// Phase 6A.148.W5.D1 â€” Stripe <see cref="CreateRefundRequest.IdempotencyKey"/> contract
 /// pinned at the boundary between <see cref="RefundLineDispatcher"/> and
 /// <see cref="IStripePaymentService"/>.
 ///
@@ -36,7 +40,7 @@ public class RefundExecutionServiceIdempotencyTests
     [Fact]
     public async Task RefundLineDispatcher_PassesStableIdempotencyKey_BasedOnLineId()
     {
-        // Arrange — build a tracked line item snapshot the dispatcher will resolve.
+        // Arrange â€” build a tracked line item snapshot the dispatcher will resolve.
         var lineId = Guid.NewGuid();
         var registrationId = Guid.NewGuid();
         var sponsorRefId = Guid.NewGuid();
@@ -94,17 +98,17 @@ public class RefundExecutionServiceIdempotencyTests
         capturedReq.Should().NotBeNull("dispatcher must call Stripe CreateRefundAsync exactly once");
         capturedReq!.IdempotencyKey.Should().Be(
             $"refund_line_{lineId:N}",
-            "W5.D1 contract — every workflow line gets a stable, line-scoped key so reconciler re-dispatch is safe");
+            "W5.D1 contract â€” every workflow line gets a stable, line-scoped key so reconciler re-dispatch is safe");
         capturedReq.PaymentIntentId.Should().Be(sponsorPi);
         capturedReq.Metadata.Should().ContainKey("refund_type").WhoseValue.Should().Be("sponsor");
         capturedReq.Metadata.Should().ContainKey("line_item_id").WhoseValue.Should().Be(lineId.ToString());
         uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once,
-            "W5.D2 — scoped UoW must commit exactly once per line dispatch");
+            "W5.D2 â€” scoped UoW must commit exactly once per line dispatch");
     }
 
     /// <summary>
     /// Calling the dispatcher twice for the same line.Id produces the SAME Stripe
-    /// idempotency key — the contract that makes W5.D6 reconciler re-dispatch safe.
+    /// idempotency key â€” the contract that makes W5.D6 reconciler re-dispatch safe.
     /// (Stripe deduplicates by the key for 24h; same key = at-most-one successful refund.)
     /// </summary>
     [Fact]
@@ -115,7 +119,7 @@ public class RefundExecutionServiceIdempotencyTests
         var sponsorRefId = Guid.NewGuid();
 
         var refundRepo = new Mock<IRefundRequestRepository>();
-        // Each call returns a FRESHLY-built Approved line — simulates what the reconciler
+        // Each call returns a FRESHLY-built Approved line â€” simulates what the reconciler
         // would see after the prior dispatch's transaction rolled back.
         refundRepo.Setup(r => r.GetLineItemByIdAsync(lineId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => BuildApprovedSponsorLine(lineId, sponsorRefId, amount: 50m));
@@ -158,7 +162,7 @@ public class RefundExecutionServiceIdempotencyTests
     }
 
     // ========================================================================
-    // Helpers — build entities via reflection so tests don't pin private setters
+    // Helpers â€” build entities via reflection so tests don't pin private setters
     // ========================================================================
 
     private static LankaConnect.Products.LankaEvents.Domain.Entities.RefundRequestLineItem BuildApprovedSponsorLine(
@@ -172,8 +176,8 @@ public class RefundExecutionServiceIdempotencyTests
         SetProp(line, nameof(line.Type), LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemType.Sponsor);
         SetProp(line, nameof(line.ReferenceId), sponsorRefId);
         SetProp(line, nameof(line.Status), LankaConnect.Products.LankaEvents.Domain.Enums.RefundLineItemStatus.Approved);
-        var money = new LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money(
-            amount, LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD);
+        var money = new LankaConnect.SharedKernel.Money.Money(
+            amount, LankaConnect.SharedKernel.Money.Currency.USD);
         SetProp(line, nameof(line.RequestedAmount), money);
         SetProp(line, nameof(line.ApprovedAmount), money);
         return line;
@@ -189,8 +193,8 @@ public class RefundExecutionServiceIdempotencyTests
             sponsorPhone: null,
             sponsorOrganization: null,
             sponsorNotes: null,
-            amount: LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money.Create(
-                50m, LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD).Value).Value;
+            amount: new LankaConnect.SharedKernel.Money.Money(
+                50m, LankaConnect.SharedKernel.Money.Currency.USD)).Value;
         sponsor.CompletePayment(paymentIntentId);
         SetProp(sponsor, nameof(sponsor.Id), id);
         return sponsor;

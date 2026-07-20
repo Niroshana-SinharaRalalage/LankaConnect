@@ -1,4 +1,4 @@
-using LankaConnect.Modules.Forms.Contracts;
+﻿using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.Modules.Forms.Domain;
 using LankaConnect.Modules.Forms.Domain.Entities;
@@ -10,6 +10,10 @@ using LankaConnect.Modules.Payments.Application.EventHandlers;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
+// Wave 8.5.e (2026-07-19): ITicketService promoted from LankaEvents.Application.Services
+// to LankaEvents.Contracts.Services in Wave 8.5.d LegacyPromotions split.
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
@@ -18,7 +22,10 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
+// Wave 8.5.e (2026-07-19): Email VO promoted from LankaEvents.Domain.ValueObjects
+// to SharedKernel.Contact in Wave 8.5-cleanup 2026-07-18 commit d13e2b0b (ExtractabilityAudit GAP-6).
+using LankaConnect.SharedKernel.Contact;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using FluentAssertions;

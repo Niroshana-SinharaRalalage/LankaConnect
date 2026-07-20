@@ -1,4 +1,4 @@
-// TODO: Phase 6A.X - These tests use method signatures that don't exist on current interfaces:
+﻿// TODO: Phase 6A.X - These tests use method signatures that don't exist on current interfaces:
 // - IQrCodeService.GenerateQrCodeAsync (actual: GenerateQrCode - sync method)
 // - IPdfTicketService.GenerateTicketPdfAsync (actual: GenerateTicketPdf - sync method with TicketPdfData param)
 // Tests are temporarily disabled to unblock CI/CD. Fix by updating mock setups to match actual interface signatures.
@@ -17,7 +17,7 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Infrastructure.Services.Tickets;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
@@ -252,7 +252,7 @@ public class TicketServiceTests
             eventId,
             userId,
             1,
-            LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money.Create(50.00m, "USD").Value,
+            new LankaConnect.SharedKernel.Money.Money(50.00m, Currency.USD),
             new LankaConnect.Products.LankaEvents.Domain.ValueObjects.ContactInfo(
                 "john.doe@example.com",
                 "John",
@@ -279,7 +279,7 @@ public class TicketServiceTests
             100,
             location: null,
             EventCategory.Community,
-            Money.Create(50.00m, "USD").Value);
+            new Money(50.00m, Currency.USD));
 
         return eventResult.Value;
     }

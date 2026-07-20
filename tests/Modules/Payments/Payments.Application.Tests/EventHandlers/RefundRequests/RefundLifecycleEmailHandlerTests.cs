@@ -1,21 +1,26 @@
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
+﻿using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.Modules.Payments.Application.EventHandlers.RefundRequests;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
+// Wave 8.5.e (2026-07-19): IRefundRequestRepository promoted from LankaEvents.Domain.Repositories
+// to LankaEvents.Contracts.Repositories in Wave 8.5.d LegacyPromotions split.
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
+// Wave 8.5.e (2026-07-19): Email VO promoted from LankaEvents.Domain.ValueObjects
+// to SharedKernel.Contact in Wave 8.5-cleanup 2026-07-18 commit d13e2b0b (ExtractabilityAudit GAP-6).
+using LankaConnect.SharedKernel.Contact;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Microsoft.Extensions.Logging;
@@ -25,13 +30,13 @@ namespace LankaConnect.Modules.Payments.Application.Tests.EventHandlers.RefundRe
 
 /// <summary>
 /// Phase 6A.148.D8 + D8b: Single test file covering all four refund-lifecycle email
-/// handlers — the load-bearing assertions are: (a) each handler dispatches the CORRECT
+/// handlers â€” the load-bearing assertions are: (a) each handler dispatches the CORRECT
 /// IEmailParameters subtype (template-name binding); (b) IsOrganizerInitiated flag is
 /// set on the right path (attendee=false, organizer-initiated=true); (c) handlers
 /// fail-silent on exceptions and missing dependencies; (d) organizer contacts attach
 /// when present.
 ///
-/// These tests pin the 148.c → D7 → D8 rewire — if any handler reverts to
+/// These tests pin the 148.c â†’ D7 â†’ D8 rewire â€” if any handler reverts to
 /// RefundEmailParams (template-refund-requested with "Refund In Progress" header),
 /// the wrong-type assertion fires.
 /// </summary>
@@ -193,7 +198,7 @@ public class RefundLifecycleEmailHandlerTests
     }
 
     // =========================================================================
-    // RefundRequestWithdrawnEventHandler (W4.D13 — NEW)
+    // RefundRequestWithdrawnEventHandler (W4.D13 â€” NEW)
     // =========================================================================
 
     [Fact]
@@ -253,7 +258,7 @@ public class RefundLifecycleEmailHandlerTests
     }
 
     // =========================================================================
-    // OrganizerInitiatedRefundCreatedEventHandler (D8b — NEW)
+    // OrganizerInitiatedRefundCreatedEventHandler (D8b â€” NEW)
     // =========================================================================
 
     [Fact]
@@ -381,7 +386,7 @@ public class RefundLifecycleEmailHandlerTests
 
     private static Registration CreateTestRegistration(Guid regId, Guid attendeeUserId, Guid eventId)
     {
-        // Minimal Registration suitable for the email handler — only UserId + Id are read.
+        // Minimal Registration suitable for the email handler â€” only UserId + Id are read.
         // Use EF Core's private parameterless ctor to bypass aggregate-creation invariants.
         var ctor = typeof(Registration).GetConstructor(
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,

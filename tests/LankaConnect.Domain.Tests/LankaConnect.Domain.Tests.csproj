@@ -41,6 +41,12 @@
     <!-- Wave 8.5.e (2026-07-18): Money + Currency VOs live in SharedKernel.Money
          per Consult #13 Q2 (formerly LankaConnect.BuildingBlocks.Domain.Shared). -->
     <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
+
+    <!-- Wave 8.5.e (2026-07-19): Email VO promoted from LankaEvents.Domain.ValueObjects
+         to SharedKernel.Contact per Wave 8.5-cleanup 2026-07-18 commit d13e2b0b
+         (ExtractabilityAudit GAP-6). Referenced by IAuditableAggregateRoundTripTests via
+         `using UserEmail = LankaConnect.SharedKernel.Contact.Email;` alias. -->
+    <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Contact\SharedKernel.Contact.csproj" />
   </ItemGroup>
 
 </Project>

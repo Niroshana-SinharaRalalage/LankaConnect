@@ -1,10 +1,12 @@
 ﻿using LankaConnect.Modules.Communications.Domain.Entities;
-// Wave 8.5.e (2026-07-18): User.Create currently takes
-// LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email (see User.cs
-// imports). The Communications.Domain.ValueObjects.Email lives as its own
-// primitive for the EmailMessage aggregate. Alias the LankaEvents Email VO
+// Wave 8.5.e (2026-07-19): Email VO promoted from
+// LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email to
+// LankaConnect.SharedKernel.Contact.Email in Wave 8.5-cleanup 2026-07-18
+// (commit d13e2b0b, ExtractabilityAudit GAP-6). User.Create now consumes the
+// SharedKernel VO. The Communications.Domain.ValueObjects.Email lives as its
+// own primitive for the EmailMessage aggregate — alias the pan-platform Email
 // as UserEmail here so the two remain unambiguous at call sites in this file.
-using UserEmail = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email;
+using UserEmail = LankaConnect.SharedKernel.Contact.Email;
 using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;

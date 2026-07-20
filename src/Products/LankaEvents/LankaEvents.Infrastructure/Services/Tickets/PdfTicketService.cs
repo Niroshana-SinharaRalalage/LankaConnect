@@ -1,5 +1,8 @@
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break (2026-07-09 Day 4)
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims; // 4C.h prereq: cycle-break (2026-07-09 Day 4)
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 using Microsoft.Extensions.Logging;

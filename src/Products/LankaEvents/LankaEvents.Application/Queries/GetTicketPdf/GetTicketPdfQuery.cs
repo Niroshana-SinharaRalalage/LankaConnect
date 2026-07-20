@@ -5,7 +5,10 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h Day 5: ITicketService promoted
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims; // 4C.h Day 5: ITicketService promoted
 namespace LankaConnect.Products.LankaEvents.Application.Queries.GetTicketPdf;
 
 /// <summary>

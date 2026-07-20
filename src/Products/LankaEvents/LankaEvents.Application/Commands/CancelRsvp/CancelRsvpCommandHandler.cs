@@ -13,7 +13,10 @@ using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g Day 5: refund interfaces promoted
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims; // Wave 6.5.g Day 5: refund interfaces promoted
 using LankaConnect.Products.LankaEvents.Infrastructure.Data; // Wave 8.5.g
 using Microsoft.EntityFrameworkCore; // Wave 8.5.g
 namespace LankaConnect.Products.LankaEvents.Application.Commands.CancelRsvp;

@@ -1,5 +1,8 @@
 using FluentValidation;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Wave 6.5.g + Consult #22: refund service interfaces + IRefundRequestRepository interface
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims; // Wave 6.5.g + Consult #22: refund service interfaces + IRefundRequestRepository interface
 using LankaConnect.Modules.Payments.Application.Queries;
 using LankaConnect.Modules.Payments.Application.Services;
 using LankaConnect.Modules.Payments.Contracts;

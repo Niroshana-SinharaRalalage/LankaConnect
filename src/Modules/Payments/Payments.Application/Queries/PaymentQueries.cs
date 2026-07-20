@@ -1,4 +1,7 @@
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // Consult #22: IRefundRequestRepository
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims; // Consult #22: IRefundRequestRepository
 using LankaConnect.Modules.Payments.Domain.Repositories; // IStripeCustomerRepository + IStripeWebhookEventRepository still here
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Modules.Payments.Application.Mappings;

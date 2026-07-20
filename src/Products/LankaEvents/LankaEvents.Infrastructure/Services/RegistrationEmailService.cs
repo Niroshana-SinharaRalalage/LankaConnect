@@ -6,7 +6,10 @@ using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: cycle-break (2026-07-09 Day 4)
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims; // 4C.h prereq: cycle-break (2026-07-09 Day 4)
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -269,11 +272,11 @@ public class RegistrationEmailService : IRegistrationEmailService
             // faults fall through to empty string — email still sends without the card.
             try
             {
-                var breakdown = LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions
+                var breakdown = LankaConnect.Products.LankaEvents.Contracts.Shims
                     .TicketPdfRegistrationBreakdownAssembler.Build(registration);
                 var breakdownHtml = breakdown is null
                     ? string.Empty
-                    : LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions
+                    : LankaConnect.Products.LankaEvents.Contracts.Shims
                         .RegistrationBreakdownEmailRenderer.Render(breakdown, registration.LeadAttendeeName);
                 emailParams.WithRegistrationBreakdownHtml(breakdownHtml);
             }

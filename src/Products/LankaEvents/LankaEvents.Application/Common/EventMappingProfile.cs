@@ -10,7 +10,10 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using DonationConfiguration = LankaConnect.Products.LankaEvents.Domain.ValueObjects.DonationConfiguration;
-using LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions; // 4C.h prereq: EventExtensions.ProjectEmailLocation/GetDisplayLabel moved (2026-07-09 Day 4)
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims; // 4C.h prereq: EventExtensions.ProjectEmailLocation/GetDisplayLabel moved (2026-07-09 Day 4)
 namespace LankaConnect.Products.LankaEvents.Application.Common;
 
 public class EventMappingProfile : Profile

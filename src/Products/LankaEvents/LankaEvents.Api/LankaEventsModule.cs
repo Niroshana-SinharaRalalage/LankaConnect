@@ -80,7 +80,7 @@ public static class LankaEventsModule
         services.AddScoped<IStructuralEditGuard, StructuralEditGuard>();
         services.AddScoped<ISeatAssignmentValidator, SeatAssignmentValidator>();
         services.AddScoped<ILayoutMetrics, LayoutMetrics>();
-        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.ISeatHoldMetrics, SeatHoldMetrics>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.Services.ISeatHoldMetrics, SeatHoldMetrics>();
 
         // Day 6 hotfix (2026-07-10, post-Consult #18 deploy attempt): Wave 6.a.1 shipped
         // IFormResponseExporter (Contracts) with two partial impls (CsvExportService throws
@@ -93,7 +93,7 @@ public static class LankaEventsModule
 
         // Consult #22 (2026-07-10): IRefundRequestRepository moved from Payments to LankaEvents
         // per Consult #21 Q2 (2a). Impl uses LankaEventsDbContext (was AppDbContext in Payments.Infra).
-        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IRefundRequestRepository,
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.Repositories.IRefundRequestRepository,
             LankaConnect.Products.LankaEvents.Infrastructure.Repositories.RefundRequestRepository>();
 
         // W5.3.a1 (2026-06-28): first Infrastructure repo relocated to Products.
@@ -110,8 +110,8 @@ public static class LankaEventsModule
         // EventAnalytics + EventViewRecord intentionally deferred: their interfaces
         // remain in LankaConnect.Domain.Analytics and a separate slice (W5.3.b or
         // dedicated cleanup) will move them.
-        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IEventReminderRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventReminderRepository>();
-        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.LegacyPromotions.IEventNotificationHistoryRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventNotificationHistoryRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.Repositories.IEventReminderRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventReminderRepository>();
+        services.AddScoped<LankaConnect.Products.LankaEvents.Contracts.Repositories.IEventNotificationHistoryRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.EventNotificationHistoryRepository>();
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Repositories.ITicketScanLogRepository, LankaConnect.Products.LankaEvents.Infrastructure.Repositories.TicketScanLogRepository>();
 
         // W5.3.b (2026-06-28): 8 Event-finance repositories relocated to Products.

@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using FluentAssertions;
-using LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
+using LankaConnect.Infrastructure.Data.Migrations.Resources;
 using LankaConnect.Modules.Communications.Contracts.Email.Helpers;
 using Xunit;
 

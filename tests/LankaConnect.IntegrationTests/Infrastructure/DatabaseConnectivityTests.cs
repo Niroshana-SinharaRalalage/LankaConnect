@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 using FluentAssertions;
-using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.Infrastructure.Data;
 using Testcontainers.PostgreSql;
 using System.Data.Common;
 

@@ -5,8 +5,8 @@ using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Modules.Communications.Domain.ValueObjects;
-using LankaConnect.SPLIT_PER_ENTITY;
-using LankaConnect.SPLIT_PER_ENTITY.Repositories;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Repositories;
 using LankaConnect.Tests.LankaConnect.Domain.Tests.TestHelpers;
 using System.Data.Common;
 

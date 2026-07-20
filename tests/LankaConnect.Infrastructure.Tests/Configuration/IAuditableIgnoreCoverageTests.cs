@@ -1,7 +1,7 @@
 using LankaConnect.Modules.Communications.Domain.Entities;
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Domain;
-using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.Modules.Forms.Infrastructure.Data;
 using LankaConnect.Modules.Media.Infrastructure.Data;
 using LankaConnect.Modules.Notifications.Infrastructure.Data;

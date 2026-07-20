@@ -8,8 +8,8 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.SPLIT_PER_ENTITY;
-using LankaConnect.SPLIT_PER_ENTITY.Repositories;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Repositories;
 using LankaConnect.Products.LankaEvents.Infrastructure.Data;  // Wave 6.5.f.5: LankaEventsDbContext resolution
 using LankaConnect.Products.LankaEvents.Infrastructure.Repositories;  // W5.3.c2: EventRepository relocated
 using LankaConnect.IntegrationTests.Common;

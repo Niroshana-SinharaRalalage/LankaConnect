@@ -1,13 +1,13 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
-using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.TestUtilities.Builders;
-using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email;
 
 namespace LankaConnect.IntegrationTests.Repositories;
 

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.SPLIT_PER_ENTITY;
-using LankaConnect.SPLIT_PER_ENTITY.Repositories;
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Tests.LankaConnect.Domain.Tests.TestHelpers;

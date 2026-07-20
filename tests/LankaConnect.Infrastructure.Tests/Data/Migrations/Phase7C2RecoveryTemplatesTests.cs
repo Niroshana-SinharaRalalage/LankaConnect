@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using LankaConnect.SPLIT_PER_ENTITY.Migrations.Resources;
+using LankaConnect.Infrastructure.Data.Migrations.Resources;
 using Xunit;
 
 namespace LankaConnect.Infrastructure.Tests.Data.Migrations;

@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.SPLIT_PER_ENTITY;
+using LankaConnect.Infrastructure.Data;
 using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using LankaConnect.IntegrationTests.Fakes;
 

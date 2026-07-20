@@ -1,4 +1,4 @@
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
+﻿using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using FluentAssertions;
 using Xunit;
 using LankaConnect.BuildingBlocks.Domain;
@@ -6,8 +6,9 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+// Wave 8.5.e (2026-07-19): IRefundRequestRepository promoted to LankaEvents.Contracts.Repositories in Wave 8.5.d.
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 using LankaConnect.Modules.Payments.Infrastructure.Services;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
@@ -20,15 +21,15 @@ using Moq;
 namespace LankaConnect.Infrastructure.Tests.Payments;
 
 /// <summary>
-/// Phase 6A.148.D9 (Wave 3) — pins the SponsorWebhookHandler dedupe guard.
+/// Phase 6A.148.D9 (Wave 3) â€” pins the SponsorWebhookHandler dedupe guard.
 ///
-/// Phase 6A.148.W5.6.B Phase 3 — refines the suppression predicate from "is workflow-owned"
+/// Phase 6A.148.W5.6.B Phase 3 â€” refines the suppression predicate from "is workflow-owned"
 /// to "is workflow-owned AND sponsor email == attendee email". The earlier behaviour
 /// suppressed the standalone email for ALL workflow refunds, but the consolidated D8
-/// decision email goes only to the attendee — a third-party money sponsor with a
+/// decision email goes only to the attendee â€” a third-party money sponsor with a
 /// different email would have received NO notification of their refund (operator UAT bug 1).
 ///
-/// Phase 6A.148.W5.6.B.OBS3 — the suppression branch now ALSO writes a row to
+/// Phase 6A.148.W5.6.B.OBS3 â€” the suppression branch now ALSO writes a row to
 /// communications.email_dispatch_log (via IRefundDispatchAuditService) so operators
 /// can distinguish "deliberately suppressed" from "send failed silently." The test
 /// behavioural assertions now key off which SERVICE was resolved from the scope
@@ -100,7 +101,7 @@ public class SponsorWebhookHandlerD9Tests
     [Fact]
     public async Task WorkflowOwnedRefund_DifferentSponsorEmail_StillSendsStandaloneEmail()
     {
-        // Phase 6A.148.W5.6.B Phase 3 — third-party money sponsor with email DIFFERENT
+        // Phase 6A.148.W5.6.B Phase 3 â€” third-party money sponsor with email DIFFERENT
         // from attendee's. The consolidated D8 decision email goes to attendee only;
         // suppressing the standalone here would silence the third party's only refund
         // notification. MUST fall through to send.
@@ -121,7 +122,7 @@ public class SponsorWebhookHandlerD9Tests
 
         _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
             Times.Once,
-            "third-party sponsor (different email) is the SOLE recipient of any refund notification — standalone email MUST fire");
+            "third-party sponsor (different email) is the SOLE recipient of any refund notification â€” standalone email MUST fire");
         _auditService.Verify(a => a.WriteSuppressionAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<Guid?>(),
@@ -133,7 +134,7 @@ public class SponsorWebhookHandlerD9Tests
     [Fact]
     public async Task WorkflowOwnedRefund_SameEmail_DifferentCasing_StillSuppresses()
     {
-        // Case-insensitive comparison — operator UAT defect mode where capitalisation
+        // Case-insensitive comparison â€” operator UAT defect mode where capitalisation
         // varies between sponsor signup form and attendee registration form.
         var sponsor = SponsorCompleted(sponsorEmail: "User@Example.COM");
         var refundId = "re_case_diff";
@@ -150,7 +151,7 @@ public class SponsorWebhookHandlerD9Tests
             It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<Guid?>(),
             It.IsAny<CancellationToken>()),
             Times.Once,
-            "email comparison must be case-insensitive — same logical recipient regardless of capitalisation");
+            "email comparison must be case-insensitive â€” same logical recipient regardless of capitalisation");
         _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -241,7 +242,7 @@ public class SponsorWebhookHandlerD9Tests
             sponsorPhone: "+1-555-1234",
             sponsorOrganization: "Test Corp",
             sponsorNotes: "",
-            amount: Money.Create(125m, Currency.USD).Value).Value;
+            amount: new Money(125m, Currency.USD)).Value;
         sponsor.CompletePayment(paymentIntentId);
         return sponsor;
     }

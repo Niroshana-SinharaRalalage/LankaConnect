@@ -1,4 +1,4 @@
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
+﻿using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using FluentAssertions;
 using Xunit;
 using LankaConnect.BuildingBlocks.Domain;
@@ -6,8 +6,9 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+// Wave 8.5.e (2026-07-19): IRefundRequestRepository promoted to LankaEvents.Contracts.Repositories in Wave 8.5.d.
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Payments.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -16,7 +17,7 @@ namespace LankaConnect.Infrastructure.Tests.Payments;
 
 /// <summary>
 /// Phase 6A.148.W4.D11 (G1 fix): pins the new AddOnPurchaseWebhookHandler.HandleChargeRefundedAsync
-/// behaviour — the missing piece that left AddOnPurchase rows stuck in Completed after a
+/// behaviour â€” the missing piece that left AddOnPurchase rows stuck in Completed after a
 /// workflow refund (operator UAT defect F2).
 ///
 /// Load-bearing assertions: (a) targeted AddOnPurchase transitions to Refunded; (b)
@@ -64,7 +65,7 @@ public class AddOnPurchaseWebhookHandlerD11Tests
     [Fact]
     public async Task LegacyRefund_NoWorkflowLine_RefundsAllSharingPI()
     {
-        // No workflow line found → legacy cart semantics: mark ALL purchases sharing the PI.
+        // No workflow line found â†’ legacy cart semantics: mark ALL purchases sharing the PI.
         var purchase1 = CompletedPurchase("pi_legacy");
         var purchase2 = CompletedPurchase("pi_legacy");
         _purchaseRepo.Setup(r => r.GetAllByStripePaymentIntentIdAsync("pi_legacy", It.IsAny<CancellationToken>()))
@@ -95,14 +96,14 @@ public class AddOnPurchaseWebhookHandlerD11Tests
 
         purchase.Status.Should().Be(AddOnPurchaseStatus.Refunded);
         _purchaseRepo.Verify(r => r.Update(It.IsAny<AddOnPurchase>()), Times.Never,
-            "already-Refunded purchase should be skipped idempotently — no Update call");
+            "already-Refunded purchase should be skipped idempotently â€” no Update call");
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task NoCandidatesForPaymentIntent_LogsWarning_NoCommit()
     {
-        // Orphan webhook — Stripe fires for a PI that doesn't match any AddOnPurchase row.
+        // Orphan webhook â€” Stripe fires for a PI that doesn't match any AddOnPurchase row.
         _purchaseRepo.Setup(r => r.GetAllByStripePaymentIntentIdAsync("pi_orphan", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<AddOnPurchase>());
 
@@ -146,7 +147,7 @@ public class AddOnPurchaseWebhookHandlerD11Tests
             buyerEmail: "buyer@example.com",
             buyerPhone: "+1-555-1234",
             quantity: 1,
-            unitPrice: Money.Create(15m, Currency.USD).Value).Value;
+            unitPrice: new Money(15m, Currency.USD)).Value;
         purchase.SetStripeCheckoutSession("cs_" + Guid.NewGuid().ToString("N"), DateTime.UtcNow.AddHours(1));
         purchase.CompletePayment(paymentIntentId);
         return purchase;

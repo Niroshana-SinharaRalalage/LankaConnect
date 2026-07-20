@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Infrastructure.Services.Tickets;
+using LankaConnect.Host.AllInOne.Services.Tickets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;

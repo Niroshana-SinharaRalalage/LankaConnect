@@ -1,4 +1,4 @@
-using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
+﻿using LankaConnect.Modules.Payments.Domain.Repositories; // W4.4.d.2
 using FluentAssertions;
 using Xunit;
 using LankaConnect.BuildingBlocks.Domain;
@@ -6,8 +6,9 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+// Wave 8.5.e (2026-07-19): IRefundRequestRepository promoted to LankaEvents.Contracts.Repositories in Wave 8.5.d.
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Communications.Infrastructure.Email.Services;
 using LankaConnect.Modules.Payments.Infrastructure.Services;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
@@ -21,11 +22,11 @@ namespace LankaConnect.Infrastructure.Tests.Payments;
 
 /// <summary>
 /// Phase 6A.148.W4.D12 (G4 generalised dedupe): pins the new CollectionWebhookHandler
-/// dedupe guard — workflow-owned refunds suppress the legacy per-Collection email
+/// dedupe guard â€” workflow-owned refunds suppress the legacy per-Collection email
 /// (analogous to D9 for Sponsor). Fail-OPEN on lookup exception.
 ///
 /// Load-bearing assertion mirrors D9: <see cref="IServiceScopeFactory.CreateScope"/>
-/// invocation count — the fire-and-forget email path's very first call.
+/// invocation count â€” the fire-and-forget email path's very first call.
 /// </summary>
 public class CollectionWebhookHandlerD12Tests
 {
@@ -134,7 +135,7 @@ public class CollectionWebhookHandlerD12Tests
     [Fact]
     public async Task DifferentEntity_NotSuppressed()
     {
-        // The workflow refund is for a DIFFERENT Collection — our current handler invocation
+        // The workflow refund is for a DIFFERENT Collection â€” our current handler invocation
         // is processing the legacy path for this specific collection. Predicate should not
         // match, so the legacy email fires.
         var collection = CompletedCollection();
@@ -154,7 +155,7 @@ public class CollectionWebhookHandlerD12Tests
 
         _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
             Times.Once,
-            "predicate must compare returned ReferenceId to THIS collection's id — unrelated workflow refunds shouldn't suppress");
+            "predicate must compare returned ReferenceId to THIS collection's id â€” unrelated workflow refunds shouldn't suppress");
         _auditService.Verify(a => a.WriteSuppressionAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<Guid?>(),
@@ -171,7 +172,7 @@ public class CollectionWebhookHandlerD12Tests
             contributorEmail: "contributor@example.com",
             contributorPhone: "+1-555-1234",
             contributorNotes: null,
-            amount: Money.Create(100m, Currency.USD).Value).Value;
+            amount: new Money(100m, Currency.USD)).Value;
         collection.CompletePayment("pi_test_collection");
         return collection;
     }

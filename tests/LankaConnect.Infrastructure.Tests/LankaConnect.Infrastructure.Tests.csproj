@@ -96,6 +96,27 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="....srcModulesCommunicationsCommunications.DomainCommunications.Domain.csproj" />
+    <!-- Wave 8.5.e (2026-07-19): Communications.Domain ProjectReference for
+         EmailMessageRepositoryTests / EmailTemplateRepositoryTests. Fixed mangled
+         path (`....srcModulesCommunications...` → proper relative path). -->
+    <ProjectReference Include="..\..\src\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
+    <!-- Wave 8.5.e (2026-07-19): Communications.Infrastructure ProjectReference for
+         AzureEmailServiceRenderTemplateTests + WhatsApp{Service,Strategy,TemplateSeeder,
+         PhoneVerificationService}Tests — services moved from LC.Infrastructure/{Email,WhatsApp}
+         to Communications.Infrastructure per Wave 8.5.d LayerInversion. -->
+    <ProjectReference Include="..\..\src\Modules\Communications\Communications.Infrastructure\Communications.Infrastructure.csproj" />
+    <!-- Wave 8.5.e (2026-07-19): Payments.Infrastructure ProjectReference for
+         {AddOnPurchase,Collection,PackageSponsor,Sponsor}WebhookHandler tests — handlers
+         relocated from LC.Infrastructure to Payments.Infrastructure per Wave 8.5.d. -->
+    <ProjectReference Include="..\..\src\Modules\Payments\Payments.Infrastructure\Payments.Infrastructure.csproj" />
+    <!-- Wave 8.5.e (2026-07-19): LankaEvents.Application ProjectReference for
+         CsvExportServiceTests, ExcelExportServiceTests, Phase6A161TicketTierExportTests
+         + SignUpListDto / EventAttendeesResponse — moved from LC.Infrastructure/Services/Export
+         to LankaEvents.Application per Wave 6.5.f Day 5 slot A architect Option C. -->
+    <ProjectReference Include="..\..\src\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
+    <!-- Wave 8.5.e (2026-07-19): Host.AllInOne ProjectReference for
+         TimeZoneLookupServiceTests + EmailUrlHelperTests + HmacTicketSignatureServiceTests —
+         services live in LankaConnect.Host.AllInOne.Services after Wave 6.5.f LC.Infrastructure teardown. -->
+    <ProjectReference Include="..\..\src\Hosts\Host.AllInOne\Host.AllInOne.csproj" />
   </ItemGroup>
 </Project>

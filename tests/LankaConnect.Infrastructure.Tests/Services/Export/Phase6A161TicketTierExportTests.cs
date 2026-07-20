@@ -3,7 +3,7 @@ using ClosedXML.Excel;
 using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.Infrastructure.Services.Export;
+using LankaConnect.Products.LankaEvents.Application.Common.Export;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 

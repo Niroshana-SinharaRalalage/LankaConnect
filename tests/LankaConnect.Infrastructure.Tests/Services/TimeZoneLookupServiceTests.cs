@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Infrastructure.Services;
+using LankaConnect.Host.AllInOne.Services;
 using Xunit;
 
 namespace LankaConnect.Infrastructure.Tests.Services;

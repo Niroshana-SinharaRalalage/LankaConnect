@@ -32,6 +32,14 @@
     <PackageReference Include="Serilog" />
   </ItemGroup>
 
+  <!-- Wave 8.5.e (2026-07-19): TwilioWhatsAppStrategy.BuildContentVariables
+       is `internal static` (helper method); TwilioWhatsAppStrategyTests asserts
+       its 1-indexed key contract + JSON escape behaviour. Grant test-project
+       assembly visibility instead of promoting the helper to public API surface. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="LankaConnect.Infrastructure.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />

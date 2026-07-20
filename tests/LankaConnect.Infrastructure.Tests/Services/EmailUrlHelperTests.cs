@@ -1,6 +1,6 @@
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
-using LankaConnect.Infrastructure.Services;
+using LankaConnect.Host.AllInOne.Services;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 

@@ -1,12 +1,15 @@
-using FluentAssertions;
-using LankaConnect.Products.LankaEvents.Application.Services;
+﻿using FluentAssertions;
+// Wave 8.5.e (2026-07-19): IRefundExecutionService + siblings promoted from
+// LankaEvents.Application.Services to LankaEvents.Contracts.Services in Wave 8.5.d
+// LegacyPromotions split per Consult #17 Q2 Day 10 debt.
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Payments.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -15,7 +18,7 @@ using Xunit;
 namespace LankaConnect.Infrastructure.Tests.Payments;
 
 /// <summary>
-/// Phase 6A.157 — webhook handler coverage. 8 cases per architect lock:
+/// Phase 6A.157 â€” webhook handler coverage. 8 cases per architect lock:
 /// completed happy path + completed idempotent skip + completed misrouted
 /// (not a package sponsor) + completed sponsor-not-found + expired happy
 /// path with stock restore + expired idempotent skip + expired
@@ -40,7 +43,7 @@ public class PackageSponsorWebhookHandlerTests
     {
         var sponsor = Sponsor.CreatePackageSponsor(
             Guid.NewGuid(), null, "John Doe", "john@example.com", null, null, null,
-            PackageId, "Gold", "Gold", Money.Create(500m, Currency.USD).Value,
+            PackageId, "Gold", "Gold", new Money(500m, Currency.USD),
             includedTicketCount: 3).Value;
         if (status == SponsorStatus.Completed)
         {
@@ -54,7 +57,7 @@ public class PackageSponsorWebhookHandlerTests
     {
         return Sponsor.CreateMoneySponsor(
             Guid.NewGuid(), null, "John Doe", "john@example.com", null, null, null,
-            Money.Create(500m, Currency.USD).Value).Value;
+            new Money(500m, Currency.USD)).Value;
     }
 
     [Fact]
@@ -162,7 +165,7 @@ public class PackageSponsorWebhookHandlerTests
     public async Task Expired_StockRestoreFails_StillMarksAbandonedAndCommits()
     {
         // Loss-of-slot recovery isn't critical-path enough to block the abandonment
-        // commit — a manual reconcile can re-add the slot. Architect locked this
+        // commit â€” a manual reconcile can re-add the slot. Architect locked this
         // contract for AddOn; mirrored here.
         var sponsor = MakePackageSponsor();
         sponsor.SetStripeCheckoutSession("cs_exp", DateTime.UtcNow.AddHours(1));

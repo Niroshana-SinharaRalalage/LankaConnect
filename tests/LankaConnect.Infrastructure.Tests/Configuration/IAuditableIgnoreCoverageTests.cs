@@ -115,9 +115,9 @@ public sealed class IAuditableIgnoreCoverageTests
         typeof(LankaConnect.Products.LankaEvents.Domain.Badges.Badge),
         typeof(LankaConnect.Products.LankaEvents.Domain.Entities.EventBadge),
         // Wave4.9.2.4 Phase 1.4 (2026-06-08): business.businesses + services + reviews
-        typeof(LankaConnect.Domain.Business.Business),
-        typeof(LankaConnect.Domain.Business.Service),
-        typeof(LankaConnect.Domain.Business.Review),
+        // Wave 8.5.e (2026-07-19): Business/Service/Review types + aggregate deleted per
+        // Consult #12 Option D (2026-07-06). LankaBusiness product will re-surface in Phase B.
+        // Refs retired here; test coverage regenerates when the product ships.
         // Wave4.9.2.5 Phase 1.5 (2026-06-09): community.topics + community.replies
         typeof(LankaConnect.Modules.Communications.Domain.Community.ForumTopic),
         typeof(LankaConnect.Modules.Communications.Domain.Community.Reply),

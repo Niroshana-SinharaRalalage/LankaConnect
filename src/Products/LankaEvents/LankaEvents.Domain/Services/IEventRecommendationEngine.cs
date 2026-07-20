@@ -1,8 +1,10 @@
 using LankaConnect.SharedKernel.Cultural;
+using LankaConnect.Modules.CulturalIntelligence.Contracts.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations;
-// W2D.1d (2026-06-05): CulturalAppropriateness moved to SharedKernel.Cultural;
-// global alias resolves unqualified refs. Explicit alias removed (was duplicate).
+// Wave 8.5 Tech Lead D-13 (2026-07-19): ICulturalCalendar (interface + supporting VOs)
+// promoted to LankaConnect.Modules.CulturalIntelligence.Contracts.Services per Option A.
+// EventRecommendationEngine now constructs EventCulturalContext at the call boundary.
 using CommunityCluster = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations.CommunityCluster;
 using CulturalSensitivityLevel = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Recommendations.CulturalSensitivityLevel;
 namespace LankaConnect.Products.LankaEvents.Domain.Services;
@@ -180,22 +182,9 @@ public interface IEventRecommendationEngine
 /// These define the contracts that will be tested through mocks
 /// </summary>
 
-/// <summary>
-/// Cultural Calendar service interface for Buddhist/Hindu calendar integration
-/// </summary>
-public interface ICulturalCalendar
-{
-    bool IsPoyaday(DateTime date);
-    CulturalAppropriateness GetEventAppropriateness(Event @event, DateTime date);
-    string ClassifyEventType(Event @event);
-    DiasporaFriendliness GetDiasporaFriendliness(Event @event);
-    CulturalAppropriateness CalculateAppropriateness(Event @event, string culturalBackground);
-    FestivalPeriod GetFestivalPeriod(string festivalName, int year);
-    bool IsOptimalFestivalTiming(Event @event, FestivalPeriod period);
-    EventNature ClassifyEventNature(Event @event);
-    SignificantDate[] GetSignificantDates(int year);
-    CalendarValidationResult ValidateEventAgainstCalendar(Event @event);
-}
+// Wave 8.5 Tech Lead D-13 (2026-07-19): ICulturalCalendar interface promoted to
+// LankaConnect.Modules.CulturalIntelligence.Contracts.Services.ICulturalCalendar
+// (Option A — refactor to primitives + EventCulturalContext DTO).
 
 /// <summary>
 /// User Preferences service interface for learning and adaptation

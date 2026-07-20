@@ -9,8 +9,10 @@ namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 //     (see SharedKernel/SharedKernel.Contact/Email.cs + PhoneNumber.cs). Closes the
 //     GAP-6 core inversion — Identity.User.Email + Identity.User.PhoneNumber no
 //     longer type-depend on a Product namespace.
-//   - CulturalAppropriateness still here transitionally; slated to move to
-//     CulturalIntelligence.Contracts alongside ICulturalCalendar promotion.
+//   - CulturalAppropriateness promoted to LankaConnect.Modules.CulturalIntelligence.Contracts.Services
+//     (Wave 8.5 Tech Lead D-13 Option A, 2026-07-19, GAP-1 Part 0) alongside
+//     ICulturalCalendar interface + supporting DTOs. See
+//     src/Modules/CulturalIntelligence/CulturalIntelligence.Contracts/Services/CulturalCalendarTypes.cs.
 //
 // Sprint Day 5 (2026-07-06) Consult #12 fallout note (preserved for history):
 // the five VOs previously lived in the wiped LankaConnect.BuildingBlocks.Domain.Shared
@@ -25,12 +27,6 @@ namespace LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 // (Wave 8.5-cleanup 2026-07-18, ExtractabilityAudit GAP-6).
 // See src/SharedKernel/SharedKernel.Geo/Address.cs and GeoCoordinate.cs.
 
-public sealed class CulturalAppropriateness : ValueObject
-{
-    public double Value { get; }
-
-    public CulturalAppropriateness(double value) { Value = value; }
-
-    public override IEnumerable<object> GetEqualityComponents() { yield return Value; }
-    public override string ToString() => Value.ToString("F2");
-}
+// CulturalAppropriateness promoted to LankaConnect.Modules.CulturalIntelligence.Contracts.Services
+// (Wave 8.5 Tech Lead D-13 Option A, 2026-07-19, GAP-1 Part 0).
+// See src/Modules/CulturalIntelligence/CulturalIntelligence.Contracts/Services/CulturalCalendarTypes.cs.

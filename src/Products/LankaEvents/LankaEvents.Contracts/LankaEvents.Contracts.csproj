@@ -13,19 +13,20 @@
          which the moved EventFormDto family uses. Products.Contracts referencing
          Forms.Contracts is architecturally clean (Contracts referencing Contracts). -->
     <ProjectReference Include="..\..\..\Modules\Forms\Forms.Contracts\Forms.Contracts.csproj" />
-    <!-- 4C.h prereq (2026-07-09 Day 4 — Consult #15 PASS C cycle-break):
-         LegacyPromotions/ shim files (TicketPdfRegistrationBreakdownAssembler,
-         IEventReminderRepository, ISeatHoldMetrics, EventReminderHistoryDto,
-         IPdfTicketService, IEventNotificationHistoryRepository,
-         RegistrationBreakdownEmailRenderer) reference LankaEvents.Domain types
-         (Event, Registration, etc.). Contracts referencing Domain is architecturally
-         clean. This edge existed before via LankaEvents.Application's Domain PR;
-         it moves with the file relocation. -->
+    <!-- 4C.h prereq (2026-07-09 Day 4 — Consult #15 PASS C cycle-break); Wave 8.5.d (2026-07-18): split LegacyPromotions/ into DTOs/Repositories/Services/Shims per Consult #17 Q2 Day 10 debt.
+         Shims/ files (TicketPdfRegistrationBreakdownAssembler, EventExtensions,
+         RegistrationBreakdownEmailRenderer, RegistrationBreakdownFormatter) +
+         Repositories/ (IEventReminderRepository, IEventNotificationHistoryRepository,
+         IRefundRequestRepository) + Services/ (ISeatHoldMetrics, IPdfTicketService, ...) +
+         DTOs/ (RegistrationBreakdown, EventReminderHistoryDto, EventNotificationHistoryDto)
+         reference LankaEvents.Domain types (Event, Registration, etc.). Contracts
+         referencing Domain is architecturally clean. This edge existed before via
+         LankaEvents.Application's Domain PR; it moves with the file relocation. -->
     <ProjectReference Include="..\LankaEvents.Domain\LankaEvents.Domain.csproj" />
-    <!-- 4C.h prereq: TicketPdfRegistrationBreakdownAssembler references
+    <!-- 4C.h prereq: Shims/TicketPdfRegistrationBreakdownAssembler references
          Modules.Identity.Domain.DomainEvents (via 2026-06-24 W4.6 promotion). -->
     <ProjectReference Include="..\..\..\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
-    <!-- 4C.h prereq: EventExtensions in LegacyPromotions references Communications.Contracts.Email.Helpers. -->
+    <!-- 4C.h prereq: Shims/EventExtensions references Communications.Contracts.Email.Helpers. -->
     <ProjectReference Include="..\..\..\Modules\Communications\Communications.Contracts\Communications.Contracts.csproj" />
   </ItemGroup>
 

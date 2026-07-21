@@ -1,21 +1,90 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <!-- Wave 8.5.c (2026-07-21): explicit RootNamespace + AssemblyName pin the
+         5-layer topology name after physical rename src/LankaConnect.API/ →
+         src/Hosts/Host.AllInOne/ (Consult #26 Q2 fold-in). Legacy AssemblyName
+         was 'LankaConnect.API'; new assembly identity is 'LankaConnect.Hosts.AllInOne'.
+         JWT Issuer + Serilog Application identifier in appsettings.json remain
+         unchanged ("LankaConnect.API") — those are runtime tokens, not assembly
+         identity, and rotating them mid-flight would invalidate live sessions. -->
     <RootNamespace>LankaConnect.Hosts.AllInOne</RootNamespace>
     <AssemblyName>LankaConnect.Hosts.AllInOne</AssemblyName>
-    <Description>Composition root for the All-In-One deployment topology — placeholder for Phase A W7 (Payments extraction) which wires up the real module-by-module Program.cs replacing src/LankaConnect.API/Program.cs.</Description>
+    <!-- 4C.d.xiii: CS0436 tolerated for the sprint window because the local
+         Host BaseController<T> is duplicated in Media/LankaEvents/Communications/
+         Identity/Payments .Api projects to bypass the host→module cycle. All copies
+         collapse to BuildingBlocks.Web post-sprint (Wave 6.5.f). -->
+    <NoWarn>$(NoWarn);1591;CS0436</NoWarn>
   </PropertyGroup>
 
-  <!--
-    W2.1 PLACEHOLDER (2026-05-12). Empty class-library shell.
+  <ItemGroup>
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.PostgreSql" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="AspNetCore.HealthChecks.Npgsql" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="Serilog.Sinks.Seq" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="FluentValidation.AspNetCore" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+  </ItemGroup>
 
-    W7 will: (a) convert this to Microsoft.NET.Sdk.Web, (b) move Program.cs
-    composition logic from src/LankaConnect.API here, (c) wire each module
-    (Notifications, Communications, Media, Forms, Payments, Events, Identity)
-    via their respective module-host registration extensions.
+  <ItemGroup>
+    <!-- Wave 8.5.a Part 4 (2026-07-17): LankaConnect.Application csproj DELETED
+         after User→AccessTokenClaims DTO reshape (D-12 Option b) unblocked
+         relocation of the last two occupants (IJwtTokenService +
+         IEntraExternalIdService) into Identity.Contracts/Services/.
+         Wave 8.5.c (2026-07-21): ProjectReference paths rewrapped for
+         Hosts/Host.AllInOne/ depth (..\..\ instead of ..\). -->
+    <ProjectReference Include="..\..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
+    <!-- W2.6b — Telemetry extension wires OpenTelemetry + Azure Monitor for staging/prod traces. -->
+    <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+    <!-- W3.4 (2026-06-03) — Notifications module: hosts AddNotificationsModule + NotificationsController. -->
+    <ProjectReference Include="..\..\Modules\Notifications\Notifications.Api\Notifications.Api.csproj" />
+    <!-- W4.2 (2026-06-06) — Media module: hosts AddMediaModule (PhotoAlbum + AlbumPhoto). -->
+    <ProjectReference Include="..\..\Modules\Media\Media.Api\Media.Api.csproj" />
+    <!-- W4.3 (2026-06-06) — Forms module: hosts AddFormsModule (EventForm + FormQuestion + FormResponse + FormAnswer). -->
+    <ProjectReference Include="..\..\Modules\Forms\Forms.Api\Forms.Api.csproj" />
+    <!-- W5.4.b (2026-06-13) — Communications module: hosts AddCommunicationsModule (IEmailGroupQueries cross-module Contracts surface). EmailGroup aggregate moves to Communications.Domain in W5.4.d.2. -->
+    <ProjectReference Include="..\..\Modules\Communications\Communications.Api\Communications.Api.csproj" />
+    <!-- Wave 4.4.b (2026-06-23) — Payments module: hosts AddPaymentsModule (IPaymentQueries cross-module Contracts surface). Per architect Risk #1 Option A, RefundRequest stays a Registration aggregate child in LankaConnect.Domain.Events.Entities. -->
+    <ProjectReference Include="..\..\Modules\Payments\Payments.Api\Payments.Api.csproj" />
+    <!-- W4.7 (2026-06-06) — CulturalIntelligence module: hosts AddCulturalIntelligenceModule (StubCulturalCalendar). -->
+    <ProjectReference Include="..\..\Modules\CulturalIntelligence\CulturalIntelligence.Api\CulturalIntelligence.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\Identity.Api\Identity.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
+    <ProjectReference Include="..\..\Products\LankaEvents\LankaEvents.Api\LankaEvents.Api.csproj" />
+    <!-- Phase B scaffolding (2026-07-15, Consult #27 Q5): LankaTemples product shell.
+         Controllers return HTTP 501 until Wave 8.5.f + 8.5.h close and handler
+         authoring begins per PHASE_A_5_PLAN.md Phase B Kick-Off Ruling. -->
+    <ProjectReference Include="..\..\Products\LankaTemples\LankaTemples.Api\LankaTemples.Api.csproj" />
+    <!-- Wave 8.5.e (2026-07-19) LayerInversion aftermath: MetroAreasController.cs consumes
+         LankaConnect.SharedKernel.Geo.MetroAreas.Common (MetroAreaDto) +
+         LankaConnect.SharedKernel.Geo.MetroAreas.Queries.GetMetroAreas. Geo VOs promoted
+         from Products.LankaEvents.Domain.ValueObjects to SharedKernel.Geo at 839fec4a
+         (Wave 8.5-cleanup 2026-07-18 Address + GeoCoordinate LayerInversion). -->
+    <ProjectReference Include="..\..\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
+  </ItemGroup>
 
-    For W2.1 the project just needs to BUILD; no main entry point required
-    in a class library SDK. The actual web host comes in W7.
-  -->
+  <!-- Phase 6A.34: Link Infrastructure email templates to API publish output -->
+  <!-- This ensures templates are included in both local builds and Docker deployments -->
+  <ItemGroup>
+    <Content Include="..\..\LankaConnect.Infrastructure\Templates\Email\**\*.*">
+      <Link>Templates\Email\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
 
 </Project>

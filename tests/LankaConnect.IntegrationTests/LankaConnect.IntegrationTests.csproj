@@ -27,7 +27,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\LankaConnect.API\LankaConnect.API.csproj" />
+    <!-- Wave 8.5.c (2026-07-21): renamed LankaConnect.API → Host.AllInOne (Consult #26 Q2). -->
+    <ProjectReference Include="..\..\src\Hosts\Host.AllInOne\Host.AllInOne.csproj" />
     <ProjectReference Include="..\LankaConnect.TestUtilities\LankaConnect.TestUtilities.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\Identity.Application\Identity.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\Identity.Domain\Identity.Domain.csproj" />
@@ -38,6 +39,13 @@
          already references this project transitively via LankaEventsModule, but the test assembly
          needs a direct ProjectReference so `using LankaConnect.Products.LankaEvents.Infrastructure.Repositories;` resolves. -->
     <ProjectReference Include="..\..\src\Products\LankaEvents\LankaEvents.Infrastructure\LankaEvents.Infrastructure.csproj" />
+    <!-- Wave 8.5.e (2026-07-19): AzureBlobImageServiceIntegrationTests references IImageService
+         promoted to Media.Contracts.Services (Wave 8.5.d LegacyPromotions split). -->
+    <ProjectReference Include="..\..\src\Modules\Media\Media.Contracts\Media.Contracts.csproj" />
+    <!-- Wave 8.5.e (2026-07-19): SimplifiedEmailRepositoryTests + UserRepositoryTests + related
+         reference SharedKernel.Contact.Email (promoted from LankaEvents.Domain.ValueObjects
+         2026-07-18 commit d13e2b0b per ExtractabilityAudit GAP-6). -->
+    <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Contact\SharedKernel.Contact.csproj" />
   </ItemGroup>
 
 </Project>

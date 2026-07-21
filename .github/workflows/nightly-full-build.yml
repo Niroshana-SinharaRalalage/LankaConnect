@@ -46,11 +46,15 @@ jobs:
           # Analyze each project individually
           echo "📊 Individual Project Analysis:"
           
+          # Wave 8.5.c (2026-07-21) — renamed LankaConnect.API → Hosts/Host.AllInOne (Consult #26 Q2).
+          # LankaConnect.Domain + LankaConnect.Application csprojs deleted in prior sprint days
+          # (see recent commits c016a622 + 2f0f257d); guarded with -f test rather than removed
+          # so the workflow keeps ability to run if archived tarballs are restored.
           projects=(
             "src/LankaConnect.Domain/LankaConnect.Domain.csproj"
-            "src/LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj" 
+            "src/LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj"
             "src/LankaConnect.Application/LankaConnect.Application.csproj"
-            "src/LankaConnect.API/LankaConnect.API.csproj"
+            "src/Hosts/Host.AllInOne/Host.AllInOne.csproj"
           )
           
           for project in "${projects[@]}"; do

@@ -3,6 +3,12 @@
 # ============================================================================
 # Multi-stage build optimized for .NET 8, Azure Container Apps deployment
 # Follows Clean Architecture and TDD principles
+# ----------------------------------------------------------------------------
+# Wave 8.5.c (2026-07-21) — renamed LankaConnect.API → Hosts/Host.AllInOne
+# (Consult #26 Q2). All COPY paths + WORKDIR + ENTRYPOINT updated accordingly.
+# Note: CI/CD pipeline (deploy-staging.yml + deploy-production.yml) uses
+# Dockerfile.simple; this multi-stage variant is retained for local/manual
+# container builds where the whole tree lands in the container.
 # ============================================================================
 
 # Stage 1: Build
@@ -11,31 +17,27 @@ WORKDIR /src
 
 # Copy csproj files and restore (layer caching optimization)
 # Build context is repository root, so paths start with src/
-COPY ["src/LankaConnect.API/LankaConnect.API.csproj", "LankaConnect.API/"]
-COPY ["src/LankaConnect.Application/LankaConnect.Application.csproj", "LankaConnect.Application/"]
-COPY ["src/LankaConnect.Domain/LankaConnect.Domain.csproj", "LankaConnect.Domain/"]
+COPY ["src/Hosts/Host.AllInOne/Host.AllInOne.csproj", "Hosts/Host.AllInOne/"]
 COPY ["src/LankaConnect.Infrastructure/LankaConnect.Infrastructure.csproj", "LankaConnect.Infrastructure/"]
 
 # Restore dependencies (this will restore ALL project dependencies including analyzers)
-RUN dotnet restore "LankaConnect.API/LankaConnect.API.csproj"
+RUN dotnet restore "Hosts/Host.AllInOne/Host.AllInOne.csproj"
 
 # Copy ALL source code (including all projects)
 # Phase 6A.34: API.csproj now links Infrastructure email templates via <Content Include>
 # This ensures templates are automatically included in build and publish output
-COPY ["src/LankaConnect.API/", "LankaConnect.API/"]
-COPY ["src/LankaConnect.Application/", "LankaConnect.Application/"]
-COPY ["src/LankaConnect.Domain/", "LankaConnect.Domain/"]
+COPY ["src/Hosts/Host.AllInOne/", "Hosts/Host.AllInOne/"]
 COPY ["src/LankaConnect.Infrastructure/", "LankaConnect.Infrastructure/"]
 
 # Build application
-WORKDIR "/src/LankaConnect.API"
-RUN dotnet build "LankaConnect.API.csproj" \
+WORKDIR "/src/Hosts/Host.AllInOne"
+RUN dotnet build "Host.AllInOne.csproj" \
     -c Release \
     -o /app/build
 
 # Stage 2: Publish
 FROM build AS publish
-RUN dotnet publish "LankaConnect.API.csproj" \
+RUN dotnet publish "Host.AllInOne.csproj" \
     -c Release \
     -o /app/publish \
     /p:UseAppHost=false
@@ -78,4 +80,5 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5000
 
 # Entry point
-ENTRYPOINT ["dotnet", "LankaConnect.API.dll"]
+# Wave 8.5.c (2026-07-21) — AssemblyName renamed to LankaConnect.Hosts.AllInOne.
+ENTRYPOINT ["dotnet", "LankaConnect.Hosts.AllInOne.dll"]

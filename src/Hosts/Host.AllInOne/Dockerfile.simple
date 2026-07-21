@@ -14,8 +14,9 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Copy pre-published output from CI/CD pipeline
-# The publish output should be in src/LankaConnect.API/publish/
-COPY ["src/LankaConnect.API/publish/", "."]
+# Wave 8.5.c (2026-07-21) — renamed LankaConnect.API → Hosts/Host.AllInOne (Consult #26 Q2).
+# The publish output is written to src/Hosts/Host.AllInOne/publish/ by the CI publish step.
+COPY ["src/Hosts/Host.AllInOne/publish/", "."]
 
 # Expose port (Container Apps expects HTTP on 5000)
 EXPOSE 5000
@@ -32,4 +33,6 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5000
 
 # Entry point
-ENTRYPOINT ["dotnet", "LankaConnect.API.dll"]
+# Wave 8.5.c (2026-07-21) — AssemblyName renamed to LankaConnect.Hosts.AllInOne;
+# published DLL name changed accordingly.
+ENTRYPOINT ["dotnet", "LankaConnect.Hosts.AllInOne.dll"]

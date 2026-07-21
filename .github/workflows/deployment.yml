@@ -126,11 +126,12 @@ jobs:
             type=raw,value=${{ needs.pre-deployment-validation.outputs.version }}
 
       - name: Build API Application
+        # Wave 8.5.c (2026-07-21) — renamed LankaConnect.API → Hosts/Host.AllInOne (Consult #26 Q2).
         run: |
           echo "::group::Building API Application"
-          
+
           # Build with selective strategy
-          dotnet publish src/LankaConnect.API/LankaConnect.API.csproj \
+          dotnet publish src/Hosts/Host.AllInOne/Host.AllInOne.csproj \
             -c ${{ env.BUILD_CONFIGURATION }} \
             -o ./publish \
             --self-contained false \
@@ -163,7 +164,8 @@ jobs:
             CMD curl -f http://localhost:8080/health || exit 1
           
           EXPOSE 8080
-          ENTRYPOINT ["dotnet", "LankaConnect.API.dll"]
+          # Wave 8.5.c (2026-07-21) — AssemblyName renamed to LankaConnect.Hosts.AllInOne.
+          ENTRYPOINT ["dotnet", "LankaConnect.Hosts.AllInOne.dll"]
           EOF
           
           docker build -f Dockerfile.deployment -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.pre-deployment-validation.outputs.version }} .

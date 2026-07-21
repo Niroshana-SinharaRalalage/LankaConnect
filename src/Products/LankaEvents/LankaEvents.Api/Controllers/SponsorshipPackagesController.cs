@@ -1,4 +1,4 @@
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 using LankaConnect.Products.LankaEvents.Application.Commands.ClearSponsorshipPackageImage;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreatePackageSponsor;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateSponsorshipPackage;

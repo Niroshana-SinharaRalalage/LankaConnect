@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using System.Net;
 
-namespace LankaConnect.API.Filters;
+namespace LankaConnect.Hosts.AllInOne.Filters;
 
 public class ApiExceptionFilterAttribute : ExceptionFilterAttribute
 {

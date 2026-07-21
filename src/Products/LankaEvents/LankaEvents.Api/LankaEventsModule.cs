@@ -164,7 +164,7 @@ public static class LankaEventsModule
     /// hosted <see cref="OutboxProcessor{TDbContext}"/>). The
     /// <c>IIntegrationEventOutbox&lt;LankaEventsDbContext&gt;</c> adapter is
     /// registered by the composition root
-    /// (<c>LankaConnect.API.Program.cs</c>) because it depends on the legacy
+    /// (<c>LankaConnect.Hosts.AllInOne.Program.cs</c>) because it depends on the legacy
     /// <c>LankaConnect.BuildingBlocks.Infrastructure.Outbox.IntegrationEventOutbox&lt;T&gt;</c>
     /// concrete — matching the Media + Notifications pattern.
     /// </summary>
@@ -213,7 +213,7 @@ public static class LankaEventsModule
 
         // Wave 6.5.e: per-product outbox wiring (producer scoped +
         // OutboxProcessor hosted). The IIntegrationEventOutbox<LankaEventsDbContext>
-        // adapter is registered by the composition root (LankaConnect.API) —
+        // adapter is registered by the composition root (LankaConnect.Hosts.AllInOne) —
         // see Program.cs.
         services.AddModuleOutbox<LankaEventsDbContext>();
     }

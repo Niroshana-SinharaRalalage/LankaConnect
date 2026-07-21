@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 namespace LankaConnect.Host.AllInOne.Controllers;
 
 /// <summary>

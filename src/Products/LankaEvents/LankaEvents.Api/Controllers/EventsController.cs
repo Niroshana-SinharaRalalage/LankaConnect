@@ -119,7 +119,7 @@ using LankaConnect.Products.LankaEvents.Application.Commands.SetTicketingMode;
 using LankaConnect.Products.LankaEvents.Application.Commands.SetSeatingMode;
 using LankaConnect.Products.LankaEvents.Application.Commands.ScanTicket; // Phase 6A.141
 using LankaConnect.Products.LankaEvents.Application.Queries.GetTicketTiers;
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;

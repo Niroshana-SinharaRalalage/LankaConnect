@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 using LankaConnect.Modules.Communications.Application.WhatsApp.Commands.SendTestWhatsApp;
 using LankaConnect.Modules.Communications.Application.WhatsApp.Queries.GetWhatsAppMetrics;
 using LankaConnect.Modules.Communications.Application.WhatsApp.Queries.GetWhatsAppTemplates;

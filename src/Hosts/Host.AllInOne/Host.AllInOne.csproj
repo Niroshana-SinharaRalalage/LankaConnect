@@ -11,8 +11,9 @@
          src/Hosts/Host.AllInOne/ (Consult #26 Q2 fold-in). Legacy AssemblyName
          was 'LankaConnect.API'; new assembly identity is 'LankaConnect.Hosts.AllInOne'.
          JWT Issuer + Serilog Application identifier in appsettings.json remain
-         unchanged ("LankaConnect.API") — those are runtime tokens, not assembly
-         identity, and rotating them mid-flight would invalidate live sessions. -->
+         unchanged (Jwt.Issuer = "LankaConnect.API") — those are runtime tokens,
+         not assembly identity, and rotating them mid-flight would invalidate
+         live sessions. -->
     <RootNamespace>LankaConnect.Hosts.AllInOne</RootNamespace>
     <AssemblyName>LankaConnect.Hosts.AllInOne</AssemblyName>
     <!-- 4C.d.xiii: CS0436 tolerated for the sprint window because the local

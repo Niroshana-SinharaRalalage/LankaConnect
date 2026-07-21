@@ -137,7 +137,7 @@ public static class InfrastructureDependencyInjection
 
         // W3.4 Phase A (2026-06-03) — NotificationsDbContext + NotificationRepository
         // registrations moved to NotificationsModule.AddNotificationsModule (called from
-        // Host.AllInOne / LankaConnect.API.Program.cs). Keeping them here would create a
+        // Host.AllInOne / LankaConnect.Hosts.AllInOne.Program.cs). Keeping them here would create a
         // cycle (LankaConnect.Infrastructure → Notifications.Infrastructure → LankaConnect.Infrastructure).
 
         // Add Memory Cache (required by email template service)
@@ -286,10 +286,10 @@ public static class InfrastructureDependencyInjection
 
         // Custom Form/Survey Sign-Up Feature Repositories
         // W4.3 (2026-06-06): IFormRepository + IFormResponseRepository registrations
-        // moved to FormsModule.AddFormsModule (called from LankaConnect.API/Program.cs).
+        // moved to FormsModule.AddFormsModule (called from LankaConnect.Hosts.AllInOne/Program.cs).
 
         // W4.2 (2026-06-06): IPhotoAlbumRepository registration moved to
-        // MediaModule.AddMediaModule (called from LankaConnect.API/Program.cs).
+        // MediaModule.AddMediaModule (called from LankaConnect.Hosts.AllInOne/Program.cs).
 
         // Phase 6A.95: Configure Sales Tax Settings (feature flag)
         services.Configure<SalesTaxSettings>(configuration.GetSection(SalesTaxSettings.SectionName));
@@ -445,7 +445,7 @@ public static class InfrastructureDependencyInjection
         // Add Cultural Intelligence Services (Stub implementations for MVP - Phase 2 will add real implementations)
         // W4.7 (2026-06-06): ICulturalCalendar / StubCulturalCalendar registration moved
         // to CulturalIntelligenceModule.AddCulturalIntelligenceModule (called from
-        // LankaConnect.API/Program.cs).
+        // LankaConnect.Hosts.AllInOne/Program.cs).
         services.AddScoped<LankaConnect.Products.LankaEvents.Domain.Services.IEventRecommendationEngine, LankaConnect.Products.LankaEvents.Domain.Services.EventRecommendationEngine>();
 
         // Add GeoLocation Service for distance calculations

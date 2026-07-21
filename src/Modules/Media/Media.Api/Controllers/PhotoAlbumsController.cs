@@ -3,7 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 using LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.CreatePhotoAlbum;
 using LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.UpdateAlbumDetails;
 using LankaConnect.Products.LankaEvents.Application.Commands.PhotoAlbums.PublishPhotoAlbum;

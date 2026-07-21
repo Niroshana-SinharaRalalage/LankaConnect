@@ -43,7 +43,7 @@ public static class TelemetryExtensions
     /// <param name="configuration">Configuration root.</param>
     /// <param name="serviceName">
     /// Resource attribute <c>service.name</c> attached to every span / metric.
-    /// Use the host's assembly name (e.g. <c>"LankaConnect.API"</c>) for
+    /// Use the host's assembly name (e.g. <c>"LankaConnect.Hosts.AllInOne"</c>) for
     /// correlation in App Insights.
     /// </param>
     public static IServiceCollection AddBuildingBlocksTelemetry(

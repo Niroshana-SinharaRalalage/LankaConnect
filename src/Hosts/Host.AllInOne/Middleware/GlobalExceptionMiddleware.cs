@@ -3,7 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-namespace LankaConnect.API.Middleware;
+namespace LankaConnect.Hosts.AllInOne.Middleware;
 
 /// <summary>
 /// Phase 6A.X: Global exception handling middleware with comprehensive logging

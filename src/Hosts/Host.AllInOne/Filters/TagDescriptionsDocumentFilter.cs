@@ -1,7 +1,7 @@
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace LankaConnect.API.Filters;
+namespace LankaConnect.Hosts.AllInOne.Filters;
 
 /// <summary>
 /// Document filter to add tag definitions to OpenAPI specification

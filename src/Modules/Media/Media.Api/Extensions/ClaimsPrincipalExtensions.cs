@@ -1,10 +1,10 @@
 using System.Security.Claims;
 
-namespace LankaConnect.API.Extensions;
+namespace LankaConnect.Hosts.AllInOne.Extensions;
 
 // Day 4 slot C sub-slice 4C.d.vi (2026-07-06): local copy of GetUserId
-// extension. Duplicate of LankaConnect.API.Extensions.ClaimsPrincipalExtensions;
-// Media.Api cannot ProjectReference LankaConnect.API (cycle - Host references
+// extension. Duplicate of LankaConnect.Hosts.AllInOne.Extensions.ClaimsPrincipalExtensions;
+// Media.Api cannot ProjectReference LankaConnect.Hosts.AllInOne (cycle - Host references
 // Media.Api). Post-sprint: move this extension to BuildingBlocks.Web +
 // delete both copies.
 internal static class ClaimsPrincipalExtensions

@@ -30,7 +30,7 @@ namespace LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 /// </para>
 /// <para>
 /// The type itself is preserved (not deleted) so the DI registration in
-/// <c>LankaConnect.API.LegacyInfrastructureDependencyInjection</c> and any
+/// <c>LankaConnect.Hosts.AllInOne.LegacyInfrastructureDependencyInjection</c> and any
 /// pre-existing <c>&lt;see cref&gt;</c> references in module repositories
 /// continue to resolve. See
 /// <c>docs/architecture/DBCONTEXT_OWNERSHIP_MATRIX.md</c> for the

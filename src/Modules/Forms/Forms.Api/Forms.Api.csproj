@@ -3,7 +3,7 @@
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Forms.Api</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Forms.Api</AssemblyName>
-    <Description>Forms module — Api layer. FormsModule DI extension. Controllers stay in LankaConnect.API for W4.3 (move during W4.8 cross-cutting cleanup).</Description>
+    <Description>Forms module — Api layer. FormsModule DI extension. Controllers stay in LankaConnect.Hosts.AllInOne for W4.3 (move during W4.8 cross-cutting cleanup).</Description>
   </PropertyGroup>
 
   <ItemGroup>

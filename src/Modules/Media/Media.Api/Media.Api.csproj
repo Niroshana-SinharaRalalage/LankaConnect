@@ -7,7 +7,7 @@
     <!-- Day 4 slot C sub-slice 4C.d.vi (2026-07-06): TargetFramework + enable
          ImplicitUsings so Microsoft.AspNetCore.Http (StatusCodes/IFormFile) +
          Microsoft.Extensions.Logging (ILogger) resolve without per-file using
-         directives (matches ASP.NET Core project template + LankaConnect.API
+         directives (matches ASP.NET Core project template + LankaConnect.Hosts.AllInOne
          pattern). -->
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -39,10 +39,10 @@
     <!-- Day 4 slot C sub-slice 4C.d.vi (2026-07-06): PhotoAlbumsController
          consumes PhotoAlbum command handlers hosted in LankaEvents.Application
          per Wave 6.5.b canary (relocation to Media.Application deferred to
-         Wave 6.5.e). Also needs LankaConnect.API.Extensions for controller
+         Wave 6.5.e). Also needs LankaConnect.Hosts.AllInOne.Extensions for controller
          base infrastructure. -->
     <ProjectReference Include="..\..\..\Products\LankaEvents\LankaEvents.Application\LankaEvents.Application.csproj" />
-    <!-- LankaConnect.API PR would create cycle (Host references Media.Api).
+    <!-- LankaConnect.Hosts.AllInOne PR would create cycle (Host references Media.Api).
          API.Extensions is Host territory; PhotoAlbumsController's use of it is
          a legacy dependency that should relocate to Media.Api's own Extensions
          namespace post-sprint. For now, inline the extension usage. -->

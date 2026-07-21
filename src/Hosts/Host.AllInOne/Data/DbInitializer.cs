@@ -8,7 +8,7 @@ using LankaConnect.Products.LankaEvents.Infrastructure.Data;                    
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 
 // 4C.e.3 (2026-07-08): relocated from LankaConnect.Infrastructure to the
-// LankaConnect.API host so it can PR Identity.Infrastructure without a cycle
+// LankaConnect.Hosts.AllInOne host so it can PR Identity.Infrastructure without a cycle
 // (Identity.Infrastructure -> LankaConnect.Infrastructure already exists).
 // Only callers were the host (Program.cs + AdminController) so no cross-module
 // leak.

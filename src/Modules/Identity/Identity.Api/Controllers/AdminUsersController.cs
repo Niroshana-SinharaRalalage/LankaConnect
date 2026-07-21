@@ -2,7 +2,7 @@ using LankaConnect.BuildingBlocks.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-// 4C.d.xiii: LankaConnect.API.Extensions dead ref removed
+// 4C.d.xiii: LankaConnect.Hosts.AllInOne.Extensions dead ref removed
 using LankaConnect.Modules.Identity.Application.Commands.Users.AdminActivateUser;
 using LankaConnect.Modules.Identity.Application.Commands.Users.AdminDeactivateUser;
 using LankaConnect.Modules.Identity.Application.Commands.Users.AdminDowngradeUser;

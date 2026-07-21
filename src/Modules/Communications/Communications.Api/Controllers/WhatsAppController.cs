@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 using LankaConnect.Modules.Communications.Application.WhatsApp.Commands.EnableWhatsApp;
 using LankaConnect.Modules.Communications.Application.WhatsApp.Commands.DisableWhatsApp;
 using LankaConnect.Modules.Communications.Application.WhatsApp.Commands.RequestPhoneVerification;

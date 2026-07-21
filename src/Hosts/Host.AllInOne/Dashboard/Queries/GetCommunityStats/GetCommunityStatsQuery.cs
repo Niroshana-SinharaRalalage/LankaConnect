@@ -11,7 +11,7 @@ namespace LankaConnect.Host.AllInOne.Dashboard.Queries.GetCommunityStats;
 // keeping it inside the host assembly avoids a new Dashboard.Contracts +
 // Dashboard.Application capability pair for a single query. MediatR discovery
 // still works because AddApplication() scans the executing assembly (which IS
-// LankaConnect.API for this DI extension method).
+// LankaConnect.Hosts.AllInOne for this DI extension method).
 
 /// <summary>
 /// Phase 6A.69: Query for public community statistics (hero numbers on landing page)

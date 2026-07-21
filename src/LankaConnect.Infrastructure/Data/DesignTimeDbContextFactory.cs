@@ -44,7 +44,7 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
         if (string.IsNullOrEmpty(connectionString))
         {
             var configuration = new ConfigurationBuilder()
-                .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "../LankaConnect.API"))
+                .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "../LankaConnect.Hosts.AllInOne"))
                 .AddJsonFile("appsettings.json", optional: true)
                 .AddJsonFile("appsettings.Development.json", optional: true)
                 .Build();

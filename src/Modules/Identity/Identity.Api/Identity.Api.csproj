@@ -38,7 +38,7 @@
     <Using Include="Microsoft.Extensions.Hosting" />
     <Using Include="Microsoft.Extensions.Logging" />
     <Using Include="LankaConnect.Host.AllInOne.Controllers" />
-    <Using Include="LankaConnect.API.Extensions" />
+    <Using Include="LankaConnect.Hosts.AllInOne.Extensions" />
   </ItemGroup>
 
 </Project>

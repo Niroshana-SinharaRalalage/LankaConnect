@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using System.Security.Claims;
 
-namespace LankaConnect.API.Security;
+namespace LankaConnect.Hosts.AllInOne.Security;
 
 /// <summary>
 /// Diagnostic authorization handler that logs authorization attempts for debugging

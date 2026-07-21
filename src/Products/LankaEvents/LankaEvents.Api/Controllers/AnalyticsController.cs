@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using LankaConnect.Products.LankaEvents.Application.Analytics.Queries.GetEventAnalytics;
 using LankaConnect.Products.LankaEvents.Application.Analytics.Queries.GetOrganizerDashboard;
 using LankaConnect.Products.LankaEvents.Application.Analytics.Common;
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 namespace LankaConnect.Products.LankaEvents.Api.Controllers;
 
 /// <summary>

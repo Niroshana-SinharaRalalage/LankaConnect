@@ -1,6 +1,6 @@
 using Hangfire.Dashboard;
 
-namespace LankaConnect.API.Infrastructure;
+namespace LankaConnect.Hosts.AllInOne.Infrastructure;
 
 /// <summary>
 /// Authorization filter for Hangfire Dashboard

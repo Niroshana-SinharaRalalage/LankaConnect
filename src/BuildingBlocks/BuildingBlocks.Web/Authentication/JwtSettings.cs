@@ -8,7 +8,7 @@ namespace LankaConnect.BuildingBlocks.Web.Authentication;
 /// <remarks>
 /// All three string properties are required; the extension throws
 /// <see cref="InvalidOperationException"/> at startup if any is missing.
-/// Defaults align with the existing <c>LankaConnect.API</c> JWT settings so
+/// Defaults align with the existing <c>LankaConnect.Hosts.AllInOne</c> JWT settings so
 /// modules adopting this can drop in without changing their <c>appsettings.json</c>.
 /// </remarks>
 public sealed class JwtSettings

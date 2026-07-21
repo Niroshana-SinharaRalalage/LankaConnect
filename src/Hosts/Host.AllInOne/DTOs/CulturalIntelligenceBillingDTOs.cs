@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace LankaConnect.API.DTOs;
+namespace LankaConnect.Hosts.AllInOne.DTOs;
 
 /// <summary>
 /// Request to create a Cultural Intelligence subscription

@@ -33,7 +33,7 @@ using LankaConnect.Products.LankaEvents.Application.Queries.GetSeatAvailability;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetLayoutPresets;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetLayoutPublishReadiness;
 using LankaConnect.Products.LankaEvents.Application.Common;
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 namespace LankaConnect.Products.LankaEvents.Api.Controllers;
 
 [Route("api/venue-layouts")]

@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 using LankaConnect.Products.LankaEvents.Application.Badges.DTOs;
 using LankaConnect.Products.LankaEvents.Application.Badges.Queries.GetBadges;
 using LankaConnect.Products.LankaEvents.Application.Badges.Queries.GetBadgeById;

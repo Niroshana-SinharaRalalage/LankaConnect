@@ -6,9 +6,9 @@ using Microsoft.Extensions.Logging;
 namespace LankaConnect.Host.AllInOne.Controllers;
 
 // Day 4 slot C sub-slice 4C.d.vi (2026-07-06): local copy of Host BaseController.
-// Media.Api cannot ProjectReference LankaConnect.API (cycle - Host references
+// Media.Api cannot ProjectReference LankaConnect.Hosts.AllInOne (cycle - Host references
 // Media.Api). Post-sprint: move BaseController to BuildingBlocks.Web + delete
-// both copies (Media.Api's and LankaConnect.API's). Namespace preserved so
+// both copies (Media.Api's and LankaConnect.Hosts.AllInOne's). Namespace preserved so
 // PhotoAlbumsController's `BaseController<PhotoAlbumsController>` reference
 // resolves without file rewrite.
 // Sprint-Day 7 (2026-07-11) hotfix: restore [ApiController]/[Route]/[Produces]

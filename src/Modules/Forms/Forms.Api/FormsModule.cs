@@ -70,7 +70,7 @@ public static class FormsModule
 
         // Wave 6.5.d: per-module outbox wiring (producer scoped + OutboxProcessor
         // hosted). The IIntegrationEventOutbox<FormsDbContext> adapter is
-        // registered by the composition root (LankaConnect.API) via
+        // registered by the composition root (LankaConnect.Hosts.AllInOne) via
         // LankaConnect.Infrastructure — it depends on both this project and the
         // BuildingBlocks concrete, so it lives up the graph rather than here.
         services.AddModuleOutbox<FormsDbContext>();

@@ -1,8 +1,8 @@
 using System.Reflection;
-using LankaConnect.API.Filters;
+using LankaConnect.Hosts.AllInOne.Filters;
 using Microsoft.OpenApi.Models;
 
-namespace LankaConnect.API.Extensions;
+namespace LankaConnect.Hosts.AllInOne.Extensions;
 
 public static class ServiceCollectionExtensions
 {

@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace LankaConnect.API.Extensions;
+namespace LankaConnect.Hosts.AllInOne.Extensions;
 
 /// <summary>
 /// Extension methods for ClaimsPrincipal

@@ -12,7 +12,7 @@ namespace LankaConnect.Modules.Notifications.Api;
 /// <summary>
 /// Composition-root DI extension for the Notifications module. Hosts in
 /// Phase A (single-deployable <c>Host.AllInOne</c>) call this from
-/// <c>LankaConnect.API/Program.cs</c> after AppDbContext is registered.
+/// <c>LankaConnect.Hosts.AllInOne/Program.cs</c> after AppDbContext is registered.
 /// In Phase B (per-module deployment), the module's own Host calls this
 /// during its startup. Same contract; different composition root.
 /// </summary>
@@ -88,7 +88,7 @@ public static class NotificationsModule
 
         // Wave 6.5.c: per-module outbox wiring (producer scoped + OutboxProcessor
         // hosted). The IIntegrationEventOutbox<NotificationsDbContext> adapter is
-        // registered by the composition root (LankaConnect.API) via
+        // registered by the composition root (LankaConnect.Hosts.AllInOne) via
         // LankaConnect.Infrastructure — it depends on both this project and the
         // BuildingBlocks concrete, so it lives up the graph rather than here.
         services.AddModuleOutbox<NotificationsDbContext>();

@@ -4,7 +4,7 @@
   <PropertyGroup>
     <RootNamespace>LankaConnect.Products.LankaEvents.Api</RootNamespace>
     <AssemblyName>LankaConnect.Products.LankaEvents.Api</AssemblyName>
-    <Description>LankaEvents product — Api layer. Controllers + composition-root DI extension (LankaEventsModule.AddLankaEventsModule). Wave 5.0 skeleton (2026-06-26); controllers move from LankaConnect.API/Controllers/Events*Controller.cs in W5.9.</Description>
+    <Description>LankaEvents product — Api layer. Controllers + composition-root DI extension (LankaEventsModule.AddLankaEventsModule). Wave 5.0 skeleton (2026-06-26); controllers move from LankaConnect.Hosts.AllInOne/Controllers/Events*Controller.cs in W5.9.</Description>
     <!-- Day 4 slot C sub-slice 4C.d.ix (2026-07-08): TargetFramework + ImplicitUsings
          + Nullable enable so Microsoft.AspNetCore.Http (StatusCodes/IFormFile) +
          Extensions.Logging (ILogger) resolve without per-file using directives

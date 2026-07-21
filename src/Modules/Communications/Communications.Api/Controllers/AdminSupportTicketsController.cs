@@ -2,7 +2,7 @@ using LankaConnect.BuildingBlocks.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 using LankaConnect.Modules.Communications.Application.Support.Commands.AddSupportTicketNote;
 using LankaConnect.Modules.Communications.Application.Support.Commands.AssignSupportTicket;
 using LankaConnect.Modules.Communications.Application.Support.Commands.CreateSupportTicket;

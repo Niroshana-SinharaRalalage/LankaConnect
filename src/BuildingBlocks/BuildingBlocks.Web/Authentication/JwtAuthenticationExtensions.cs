@@ -9,7 +9,7 @@ namespace LankaConnect.BuildingBlocks.Web.Authentication;
 
 /// <summary>
 /// Cross-cutting JWT bearer authentication wiring. Mirrors the pattern in the
-/// existing <c>LankaConnect.API.Extensions.AuthenticationExtensions</c> but
+/// existing <c>LankaConnect.Hosts.AllInOne.Extensions.AuthenticationExtensions</c> but
 /// (a) lives in BuildingBlocks so future modules can consume it, (b) accepts
 /// a strongly-typed <see cref="JwtSettings"/> section, (c) defaults safer
 /// (HTTPS required, zero clock skew) with explicit opt-out.

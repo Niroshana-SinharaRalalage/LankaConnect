@@ -10,7 +10,7 @@ namespace LankaConnect.Modules.Media.Api;
 /// <summary>
 /// Composition-root DI extension for the Media module. Hosts in Phase A
 /// (single-deployable Host.AllInOne) call this from
-/// <c>LankaConnect.API/Program.cs</c> after AppDbContext is registered.
+/// <c>LankaConnect.Hosts.AllInOne/Program.cs</c> after AppDbContext is registered.
 /// Mirrors the W3.4 <see cref="LankaConnect.Modules.Notifications.Api.NotificationsModule"/>
 /// composition pattern.
 /// </summary>
@@ -63,7 +63,7 @@ public static class MediaModule
 
         // Wave 6.5.b canary: wire per-module outbox (producer scoped +
         // OutboxProcessor hosted). The IIntegrationEventOutbox<MediaDbContext>
-        // adapter is registered by the composition root (LankaConnect.API) via
+        // adapter is registered by the composition root (LankaConnect.Hosts.AllInOne) via
         // LankaConnect.Infrastructure — it depends on both this project and the
         // legacy Infrastructure adapter, so it lives up the graph rather than
         // in this per-module extension.

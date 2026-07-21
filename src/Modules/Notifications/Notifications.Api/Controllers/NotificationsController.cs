@@ -16,7 +16,7 @@ namespace LankaConnect.Modules.Notifications.Api.Controllers;
 /// <summary>
 /// Notifications endpoints for the in-app notification surface. Moved into
 /// <c>Notifications.Api</c> during Phase A W3.6 (2026-06-03) without behavior
-/// change. The host (<c>LankaConnect.API</c>) discovers this controller via
+/// change. The host (<c>LankaConnect.Hosts.AllInOne</c>) discovers this controller via
 /// the implicit ApplicationPart added by the <c>Notifications.Api</c>
 /// ProjectReference + MVC's default controller discovery.
 /// </summary>
@@ -24,8 +24,8 @@ namespace LankaConnect.Modules.Notifications.Api.Controllers;
 /// <para>
 /// <b>Why not inherit BaseController</b>: <c>LankaConnect.SPLIT_PER_CONTROLLER.BaseController&lt;T&gt;</c>
 /// lives in the legacy host project. Inheriting it from this module would
-/// require a Notifications.Api → LankaConnect.API edge — that would close a
-/// hard cycle with the existing LankaConnect.API → Notifications.Api edge.
+/// require a Notifications.Api → LankaConnect.Hosts.AllInOne edge — that would close a
+/// hard cycle with the existing LankaConnect.Hosts.AllInOne → Notifications.Api edge.
 /// The handful of helpers are inlined here instead. Future work elevates a
 /// reusable <c>ModuleControllerBase</c> into <c>BuildingBlocks.Web</c>.
 /// </para>

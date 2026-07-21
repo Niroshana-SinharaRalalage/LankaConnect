@@ -24,7 +24,7 @@
     <ProjectReference Include="..\Communications.Infrastructure\Communications.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
     <!-- Day 4 slot C sub-slice 4C.d.xi: controllers reference Identity.Application
-         DTOs + LankaConnect.API.Extensions.ClaimsPrincipalExtensions (latter is
+         DTOs + LankaConnect.Hosts.AllInOne.Extensions.ClaimsPrincipalExtensions (latter is
          satisfied by a local copy in Extensions/; the former needs the PR). -->
     <ProjectReference Include="..\..\Identity\Identity.Application\Identity.Application.csproj" />
   </ItemGroup>

@@ -9,7 +9,7 @@ namespace LankaConnect.BuildingBlocks.Web.RateLimiting;
 /// <summary>
 /// Rate limiter registration helpers. Callers compose named policies on top of
 /// the defaults; existing app-specific policies (e.g. <c>sponsor-staging-upload</c>
-/// in <c>LankaConnect.API/Program.cs</c>) remain owned by the host.
+/// in <c>LankaConnect.Hosts.AllInOne/Program.cs</c>) remain owned by the host.
 /// </summary>
 /// <remarks>
 /// Default behavior:

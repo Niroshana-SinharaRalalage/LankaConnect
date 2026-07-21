@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using LankaConnect.Modules.Identity.Domain.Enums;
 
-namespace LankaConnect.API.Extensions;
+namespace LankaConnect.Hosts.AllInOne.Extensions;
 
 public static class AuthenticationExtensions
 {
@@ -68,7 +68,7 @@ public static class AuthenticationExtensions
     {
         // Phase 6A.10: Add diagnostic authorization handler for troubleshooting
         services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
-            LankaConnect.API.Security.LoggingAuthorizationHandler>();
+            LankaConnect.Hosts.AllInOne.Security.LoggingAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {

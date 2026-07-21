@@ -1,4 +1,4 @@
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateCollectionConfig;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateSponsorConfig;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateAddOnConfig;

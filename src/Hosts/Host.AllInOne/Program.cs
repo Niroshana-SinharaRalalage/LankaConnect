@@ -2,8 +2,8 @@ using LankaConnect.Products.LankaEvents.Api;
 using Hangfire;
 using LankaConnect.Modules.Communications.Domain.Repositories;
 using LankaConnect.Modules.Communications.Domain.Entities;
-using LankaConnect.API.Infrastructure;
-using LankaConnect.API.Filters;
+using LankaConnect.Hosts.AllInOne.Infrastructure;
+using LankaConnect.Hosts.AllInOne.Filters;
 // Wave 8.5.a (2026-07-17): dead `using LankaConnect.Application;` removed
 // alongside Class1.cs deletion. AddApplication/AddInfrastructure DI extension
 // methods live in namespace `LankaConnect.Host.AllInOne` (see using below).
@@ -22,7 +22,7 @@ using LankaConnect.Modules.Media.Api;
 using LankaConnect.Modules.Notifications.Api;
 using LankaConnect.Infrastructure.Data;                     // 4C.d.xiii: AppDbContext
 using LankaConnect.Host.AllInOne;                           // 4C.d.xiii: AddApplication/AddInfrastructure extension methods
-using LankaConnect.API.Extensions;
+using LankaConnect.Hosts.AllInOne.Extensions;
 using Serilog;
 using Serilog.Events;
 using Serilog.Context;
@@ -40,7 +40,7 @@ Log.Logger = new LoggerConfiguration()
         .AddEnvironmentVariables()
         .Build())
     .Enrich.FromLogContext()
-    .Enrich.WithProperty("Application", "LankaConnect.API")
+    .Enrich.WithProperty("Application", "LankaConnect.Hosts.AllInOne")
     .Enrich.WithProperty("Version", Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0")
     .CreateLogger();
 
@@ -63,7 +63,7 @@ try
     // activity sources for correlation IDs.
     builder.Services.AddBuildingBlocksTelemetry(
         builder.Configuration,
-        serviceName: "LankaConnect.API");
+        serviceName: "LankaConnect.Hosts.AllInOne");
 
     // Add services to the container
     builder.Services.AddControllers()
@@ -400,7 +400,7 @@ try
     // Configure the HTTP request pipeline
 
     // Phase 6A.X: Global exception handling middleware (FIRST to catch all exceptions)
-    app.UseMiddleware<LankaConnect.API.Middleware.GlobalExceptionMiddleware>();
+    app.UseMiddleware<LankaConnect.Hosts.AllInOne.Middleware.GlobalExceptionMiddleware>();
 
     // CRITICAL FIX Phase 6A.12: Use ONLY built-in CORS middleware (removed custom middleware that was conflicting)
     // Apply CORS BEFORE other middleware to handle preflight requests correctly

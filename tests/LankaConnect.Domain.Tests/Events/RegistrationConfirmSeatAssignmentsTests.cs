@@ -1,15 +1,14 @@
-using LankaConnect.Products.LankaEvents.Domain;
+﻿using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Domain.Tests.Events;
 
 /// <summary>
-/// Phase 8 S8.1 — tests for the new Registration.ConfirmSeatAssignments
+/// Phase 8 S8.1 â€” tests for the new Registration.ConfirmSeatAssignments
 /// aggregate method. Webhook-side seat-binding hands the registration a list
 /// of (attendeeIndex, seatId, seatLabel) tuples; the method binds them to
 /// the matching <see cref="AttendeeDetails"/> values via the new
@@ -31,7 +30,7 @@ public class RegistrationConfirmSeatAssignmentsTests
 
         var contact = RegistrationContact.Create(
             "alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
 
         var registrationResult = Registration.CreateWithAttendees(
             _eventId,
@@ -79,7 +78,7 @@ public class RegistrationConfirmSeatAssignmentsTests
         var aliceResult = AttendeeDetails.Create("Alice", AgeCategory.Adult, Gender.Female);
         var contact = RegistrationContact.Create(
             "alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
         var preliminary = Registration.CreateWithAttendees(
             _eventId, _userId, new[] { aliceResult.Value },
             contact, price, isPaidEvent: true).Value;

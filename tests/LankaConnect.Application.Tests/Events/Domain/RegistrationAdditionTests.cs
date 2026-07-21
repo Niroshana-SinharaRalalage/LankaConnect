@@ -1,10 +1,9 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
@@ -22,9 +21,9 @@ public class RegistrationAdditionTests
         return AttendeeDetails.Create(name, ageCategory).Value;
     }
 
-    private static Money CreateMoney(decimal amount, Currency currency = Currency.USD)
+    private static Money CreateMoney(decimal amount, Currency? currency = null)
     {
-        return Money.Create(amount, currency).Value;
+        return new Money(amount, currency ?? Currency.USD);
     }
 
     private static List<AttendeeDetails> CreateAttendeeList(int count = 1)

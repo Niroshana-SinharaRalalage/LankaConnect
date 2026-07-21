@@ -1,5 +1,5 @@
 using FluentAssertions;
-using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.SharedKernel.Geo;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using Xunit;
 

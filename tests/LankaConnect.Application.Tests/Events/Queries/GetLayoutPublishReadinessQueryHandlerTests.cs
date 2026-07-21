@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetLayoutPublishReadiness;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
@@ -6,8 +6,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -15,7 +14,7 @@ using Xunit;
 namespace LankaConnect.Application.Tests.Events.Queries;
 
 /// <summary>
-/// Slice S4 — handler-level tests for the publish-readiness query. Validates
+/// Slice S4 â€” handler-level tests for the publish-readiness query. Validates
 /// repository wiring, template-vs-event-attached branching, and DTO projection.
 /// Domain enumeration logic is covered separately in <see cref="LankaConnect.Domain.Tests"/>.
 /// </summary>
@@ -62,7 +61,7 @@ public class GetLayoutPublishReadinessQueryHandlerTests
         var result = await _sut.Handle(new GetLayoutPublishReadinessQuery(template.Id), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        // Template has no event tiers — no warnings/blockers about tiers.
+        // Template has no event tiers â€” no warnings/blockers about tiers.
         // Zone is unmapped + has seats, so the domain method correctly raises ZoneUnmapped.
         result.Value.Blockers.Should().Contain(b => b.Code == "ZoneUnmapped");
         result.Value.TierSummary.Should().BeEmpty();
@@ -80,7 +79,7 @@ public class GetLayoutPublishReadinessQueryHandlerTests
         var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
         layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 5); // 10 seats
 
-        var price = Money.Create(100m, Currency.USD).Value;
+        var price = new Money(100m, Currency.USD);
         var tier = TicketTier.Create(eventId, "VIP", "VIP section", price, null, null, 30, 10, 1).Value;
         tier.AssignToZone(zone.Id);
 
@@ -112,7 +111,7 @@ public class GetLayoutPublishReadinessQueryHandlerTests
         var zone = layout.AddZone("Unmapped", "#FF0000", 1).Value;
         layout.GenerateTheaterSeats(zone.Id, rows: 1, seatsPerRow: 3);
 
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
         var tier = TicketTier.Create(eventId, "Basic", "...", price, null, null, 50, 10, 1).Value;
         var @event = CreateEventWithTier(eventId, organiserId, tier);
 
@@ -141,7 +140,7 @@ public class GetLayoutPublishReadinessQueryHandlerTests
             capacity: 500).Value;
         @event.SetTicketingMode(TicketingMode.Tiered);
 
-        // Force the tier into the event via the private backing field — there's
+        // Force the tier into the event via the private backing field â€” there's
         // no public AddTicketTier on Event today.
         var tiersField = typeof(Event).GetField("_ticketTiers",
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)

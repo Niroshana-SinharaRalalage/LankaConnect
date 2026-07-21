@@ -1,15 +1,14 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateVolunteerList;
-using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.SharedKernel.Geo;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -38,7 +37,7 @@ public class CreateVolunteerListCommandHandlerTests
         var endDate = startDate.AddHours(2);
         var address = Address.Create("1 Test St", "Colombo", "WP", "00100", "Sri Lanka").Value;
         var location = EventLocation.Create(address).Value;
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
 
         return Event.Create(
             title,

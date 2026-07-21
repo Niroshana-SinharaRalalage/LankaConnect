@@ -1,8 +1,8 @@
-using System.Reflection;
+﻿using System.Reflection;
 using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Commands.DeleteLayout;
 using LankaConnect.Products.LankaEvents.Application.Services;
-using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.SharedKernel.Geo;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -10,8 +10,7 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -21,7 +20,7 @@ namespace LankaConnect.Application.Tests.Events.Commands;
 
 /// <summary>
 /// Slice 5 Chunk 9: DELETE /api/venue-layouts/{id}. Covers the four safety gates
-/// (authorize → concurrency → structural guard → event detach) plus the persistence
+/// (authorize â†’ concurrency â†’ structural guard â†’ event detach) plus the persistence
 /// concurrency path.
 /// </summary>
 public class DeleteLayoutCommandHandlerTests
@@ -57,7 +56,7 @@ public class DeleteLayoutCommandHandlerTests
         var description = EventDescription.Create("Chunk 9 Event").Value;
         var address = Address.Create("1 Main", "Houston", "TX", "77001", "USA").Value;
         var location = EventLocation.Create(address).Value;
-        var price = Money.Create(100m, Currency.USD).Value;
+        var price = new Money(100m, Currency.USD);
         return Event.Create(
             title,
             description,
@@ -269,7 +268,7 @@ public class DeleteLayoutCommandHandlerTests
     [Fact]
     public async Task Handle_Should_Proceed_When_Owning_Event_Is_Missing()
     {
-        // Layout references an event that no longer exists — log warning, continue the delete.
+        // Layout references an event that no longer exists â€” log warning, continue the delete.
         var eventId = Guid.NewGuid();
         var layout = CreateLayout(eventId);
 

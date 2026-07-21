@@ -1,20 +1,19 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events;
 
 /// <summary>
-/// Phase 8X.3.5 — domain rules for features that don't compose with ExternalPaid.
+/// Phase 8X.3.5 â€” domain rules for features that don't compose with ExternalPaid.
 /// Architect-locked compatibility matrix (master TODO 8X):
 /// - Add-ons: BLOCKED (require internal Registration row to attach to).
 /// - Waitlist: BLOCKED (requires internal promotion path off the list).
-/// - Check-in QR: BLOCKED (no internal Registration → naturally unreachable).
+/// - Check-in QR: BLOCKED (no internal Registration â†’ naturally unreachable).
 /// - Ticket tiers: ALLOWED for display, but Reserve() naturally unreachable
 ///   (RegisterWith* paths blocked per Slice 8X.3).
 /// </summary>
@@ -32,8 +31,8 @@ public class Event_ExternalPaidFeatureBlocks_Tests
 
     private static TicketPricing DualPricing(decimal adult = 25m) =>
         TicketPricing.CreateDualPrice(
-            Money.Create(adult, Currency.USD).Value,
-            Money.Create(10m, Currency.USD).Value,
+            new Money(adult, Currency.USD),
+            new Money(10m, Currency.USD),
             childAgeLimit: 12).Value;
 
     private static ExternalRegistration ExternalReg() =>
@@ -46,9 +45,9 @@ public class Event_ExternalPaidFeatureBlocks_Tests
         return ev;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Add-ons
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Event_AddOnsBlockedForExternalPaid()
@@ -70,7 +69,7 @@ public class Event_ExternalPaidFeatureBlocks_Tests
     public void Event_AddOnsDisabledIsAllowedForExternalPaid()
     {
         // Operator may have add-ons set to disabled (default). Allowing the disabled
-        // shape is fine — it's a no-op surface.
+        // shape is fine â€” it's a no-op surface.
         var ev = CreateExternalPaidEvent();
         var addOnConfig = AddOnConfiguration.Disabled();
 
@@ -96,9 +95,9 @@ public class Event_ExternalPaidFeatureBlocks_Tests
         result.Error.Should().Contain("add-ons");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Waitlist
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Event_WaitlistBlockedForExternalPaid()
@@ -111,10 +110,10 @@ public class Event_ExternalPaidFeatureBlocks_Tests
         result.Error.Should().Contain("Waitlist");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Ticket tiers — defining is allowed, but Reserve is unreachable via the
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Ticket tiers â€” defining is allowed, but Reserve is unreachable via the
     //  RegisterWith* paths (already blocked in Slice 8X.3).
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Event_TicketTiersDisplayOnly_ForExternalPaid()
@@ -124,10 +123,10 @@ public class Event_ExternalPaidFeatureBlocks_Tests
         ev.SetTicketingMode(TicketingMode.Tiered).IsSuccess.Should().BeTrue();
         var tier = ev.AddTicketTier(
             "VIP", "VIP tier",
-            Money.Create(50m, Currency.USD).Value, null, null,
+            new Money(50m, Currency.USD), null, null,
             capacity: 20, maxPerUser: 10, sortOrder: 1).Value;
 
-        // Now flip to ExternalPaid — ticket tiers persist as display data.
+        // Now flip to ExternalPaid â€” ticket tiers persist as display data.
         ev.SetExternalPayment(ExternalReg(), DualPricing()).IsSuccess.Should().BeTrue();
 
         ev.PaymentMode.Should().Be(EventPaymentMode.ExternalPaid);
@@ -136,7 +135,7 @@ public class Event_ExternalPaidFeatureBlocks_Tests
 
         // Reserve path is unreachable: RegisterWithAttendees / RegisterWithHeadCount
         // both reject ExternalPaid events at the domain boundary (Slice 8X.3).
-        // No additional Reserve guard needed at the tier level — defence-in-depth
+        // No additional Reserve guard needed at the tier level â€” defence-in-depth
         // sits at the registration entry point, not on the tier itself.
     }
 }

@@ -1,4 +1,4 @@
-using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+﻿using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Domain;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Domain.Enums;
@@ -8,7 +8,7 @@ using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.IntegrationTests.Common;
 using LankaConnect.TestUtilities.Builders;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,4 +1,4 @@
-using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
+﻿using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using AutoMapper;
 using LankaConnect.Modules.Communications.Contracts;
 using FluentAssertions;
@@ -11,8 +11,7 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -20,11 +19,11 @@ using Xunit;
 namespace LankaConnect.Application.Tests.Events.Queries;
 
 /// <summary>
-/// Phase 7E paid-B-mode gate (review iteration 1, edit #5) — handler-level integration test.
+/// Phase 7E paid-B-mode gate (review iteration 1, edit #5) â€” handler-level integration test.
 ///
 /// Architect-required: the mapper unit tests
 /// (<c>EventMappingProfilePaidBModeGateTests</c>) only exercise the mapping rule in
-/// isolation. Mapper tests pass while DI / AutoMapper-profile-registration is broken — the
+/// isolation. Mapper tests pass while DI / AutoMapper-profile-registration is broken â€” the
 /// handler builds an <see cref="EventDto"/> via <see cref="IMapper.Map{T}"/> AND then
 /// re-emits a <c>with</c>-expression that could silently overwrite the new field if a future
 /// edit isn't careful. This test wires the real <see cref="EventMappingProfile"/> through a
@@ -45,7 +44,7 @@ public class GetEventByIdRegistrationModeStatusTests
         var config = new MapperConfiguration(cfg => cfg.AddProfile<EventMappingProfile>());
         _mapper = config.CreateMapper();
 
-        // Anonymous reads — IsAuthenticated=false avoids the user-registration lookup branch.
+        // Anonymous reads â€” IsAuthenticated=false avoids the user-registration lookup branch.
         _currentUserService.SetupGet(c => c.IsAuthenticated).Returns(false);
         _currentUserService.SetupGet(c => c.UserId).Returns(Guid.Empty);
 
@@ -70,7 +69,7 @@ public class GetEventByIdRegistrationModeStatusTests
         var title = EventTitle.Create("Handler integration test").Value;
         var description = EventDescription.Create("Phase 7E paid-B-mode gate handler test").Value;
         var @event = Event.Create(title, description, DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8), Guid.NewGuid(), 100).Value;
-        @event.SetPricing(Money.Create(50m, Currency.USD).Value);
+        @event.SetPricing(new Money(50m, Currency.USD));
         return @event;
     }
 
@@ -96,14 +95,14 @@ public class GetEventByIdRegistrationModeStatusTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
         result.Value!.RegistrationModeStatus.Should().Be("active",
-            "free + HeadCountByAge passes compatibility — handler must propagate the mapper's value");
+            "free + HeadCountByAge passes compatibility â€” handler must propagate the mapper's value");
     }
 
     [Fact]
     public async Task Handler_PopulatesRegistrationModeStatus_Active_ForPaidSinglePriceBModeEvent()
     {
         // Phase 7E.3b shipped paid B-mode + Stripe checkout. Paid single-price + HeadCountByAge
-        // is now "active" through the handler — architect-required integration check that the
+        // is now "active" through the handler â€” architect-required integration check that the
         // gate-removal cascades correctly through DI + AutoMapper profile + handler with-expression.
         var @event = CreatePaidEvent();
         @event.SetRegistrationMode(RegistrationMode.HeadCountByAge);
@@ -116,14 +115,14 @@ public class GetEventByIdRegistrationModeStatusTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
         result.Value!.RegistrationModeStatus.Should().Be("active",
-            "Phase 7E.3b lifted the PaidHeadCountDeferred gate — paid + HeadCountByAge now passes " +
+            "Phase 7E.3b lifted the PaidHeadCountDeferred gate â€” paid + HeadCountByAge now passes " +
             "compatibility through the full handler pipeline");
     }
 
     [Fact]
     public async Task Handler_PopulatesRegistrationModeStatus_Active_ForLegacyDetailedAttendeesEvent()
     {
-        // Mode A is always active regardless of paid/free — the legacy default path must keep working.
+        // Mode A is always active regardless of paid/free â€” the legacy default path must keep working.
         var @event = CreatePaidEvent();
         _eventRepository
             .Setup(r => r.GetByIdAsync(@event.Id, false, It.IsAny<CancellationToken>()))

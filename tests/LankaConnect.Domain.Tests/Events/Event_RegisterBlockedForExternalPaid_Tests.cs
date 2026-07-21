@@ -1,16 +1,15 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events;
 
 /// <summary>
-/// Phase 8X.3 — internal registration paths must reject ExternalPaid events at the
+/// Phase 8X.3 â€” internal registration paths must reject ExternalPaid events at the
 /// domain boundary. Defence-in-depth: the application validator (Slice 8X.4) also
 /// rejects, but the domain is the last line and the architect-locked guard message
 /// must be exact so frontend/email rendering can branch on it.
@@ -27,8 +26,8 @@ public class Event_RegisterBlockedForExternalPaid_Tests
             Guid.NewGuid(), capacity: 100).Value;
 
         var pricing = TicketPricing.CreateDualPrice(
-            Money.Create(25m, Currency.USD).Value,
-            Money.Create(10m, Currency.USD).Value,
+            new Money(25m, Currency.USD),
+            new Money(10m, Currency.USD),
             childAgeLimit: 12).Value;
         var externalReg = ExternalRegistration.Create(
             "https://eventbrite.com/e/test-12345", "Pay at door", "Eventbrite").Value;

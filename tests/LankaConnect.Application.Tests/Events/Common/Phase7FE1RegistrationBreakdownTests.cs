@@ -1,31 +1,30 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Common;
 
 /// <summary>
-/// Phase 7F-E.1 — Shared <see cref="RegistrationBreakdownFormatter"/> projection covering
-/// every (mode × tiered/non-tiered) combination that must render uniformly across the
+/// Phase 7F-E.1 â€” Shared <see cref="RegistrationBreakdownFormatter"/> projection covering
+/// every (mode Ã— tiered/non-tiered) combination that must render uniformly across the
 /// PDF / email / event-detail / RSVP-form surfaces.
 ///
-/// Architect-mandated ≥24 cases at 90% coverage on the formatter class. The breakdown
+/// Architect-mandated â‰¥24 cases at 90% coverage on the formatter class. The breakdown
 /// here covers:
-///   - Mode B1/B2/B3/B4 × (single-tier, multi-tier, non-tiered) = 12 base cases
-///   - Mode A (DetailedAttendees) × (single-tier, multi-tier, non-tiered) = 3 cases
+///   - Mode B1/B2/B3/B4 Ã— (single-tier, multi-tier, non-tiered) = 12 base cases
+///   - Mode A (DetailedAttendees) Ã— (single-tier, multi-tier, non-tiered) = 3 cases
 ///   - Edge cases: zero attendees, single attendee, tier with zero count omitted, all
 ///     adults / all children, mismatched cross-axis (defensive), N/A placeholders for
 ///     un-captured demographics.
 ///
 /// The architect-approved shape models <see cref="BreakdownPair.Captured"/> as the
 /// "data was collected for this mode" flag; renderers consume `Captured == false` and
-/// emit "N/A" — every surface stays in sync.
+/// emit "N/A" â€” every surface stays in sync.
 /// </summary>
 public class Phase7FE1RegistrationBreakdownTests
 {
@@ -36,9 +35,9 @@ public class Phase7FE1RegistrationBreakdownTests
         Gender? gender = null, Guid? tierId = null, string? tierName = null) =>
         AttendeeDetails.Create(name, age, gender, ticketTierId: tierId, ticketTierName: tierName).Value;
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Mode B1 (HeadCountOnly) — no demographic axis
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Mode B1 (HeadCountOnly) â€” no demographic axis
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void B1_NonTiered_SingleRow_AgeAndGenderNotCaptured()
@@ -96,9 +95,9 @@ public class Phase7FE1RegistrationBreakdownTests
         result.Rows.All(r => !r.Age.Captured && !r.Gender.Captured).Should().BeTrue();
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Mode B2 (HeadCountByAge)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void B2_NonTiered_AgeCaptured_GenderNotCaptured()
@@ -180,9 +179,9 @@ public class Phase7FE1RegistrationBreakdownTests
         result.Rows[0].Age.Right.Should().Be(1);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Mode B3 (HeadCountByGender)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void B3_NonTiered_GenderCaptured_AgeNotCaptured()
@@ -217,9 +216,9 @@ public class Phase7FE1RegistrationBreakdownTests
         result.Rows[0].Gender.Right.Should().Be(1);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Mode B4 (HeadCountByAgeAndGender)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void B4_NonTiered_AgeAndGenderBothCaptured_AggregatedFrom4Leaf()
@@ -259,15 +258,15 @@ public class Phase7FE1RegistrationBreakdownTests
         // Gender is captured at the registration level for B4, but per-tier gender is
         // not stored in the per-tier-age axis. Renderer reports row-level gender from
         // the top-level demographics for the single-tier case; multi-tier shows it as
-        // captured-at-registration-level only (per architect: "tier × age yes, tier ×
-        // gender no" — Phase 7F-C §2.2 #4).
+        // captured-at-registration-level only (per architect: "tier Ã— age yes, tier Ã—
+        // gender no" â€” Phase 7F-C Â§2.2 #4).
         result.Rows[0].Gender.Captured.Should().BeFalse(
-            "multi-tier gender breakdown is not stored per-tier (architect: tier × gender axis NOT added)");
+            "multi-tier gender breakdown is not stored per-tier (architect: tier Ã— gender axis NOT added)");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Mode A (DetailedAttendees) — derived from per-attendee list
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Mode A (DetailedAttendees) â€” derived from per-attendee list
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void ModeA_NonTiered_AgeAndGenderDerivedFromAttendees()
@@ -329,7 +328,7 @@ public class Phase7FE1RegistrationBreakdownTests
     {
         // Mode A is supposed to capture gender, but if attendees were created with
         // Gender = null (legacy path), the formatter must report Captured = false
-        // rather than show 0/0 — preserves "N/A" semantics.
+        // rather than show 0/0 â€” preserves "N/A" semantics.
         var attendees = new[]
         {
             Attendee("Alice", AgeCategory.Adult, gender: null),
@@ -342,12 +341,12 @@ public class Phase7FE1RegistrationBreakdownTests
         result.Rows[0].Age.Left.Should().Be(1);
         result.Rows[0].Age.Right.Should().Be(1);
         result.Rows[0].Gender.Captured.Should().BeFalse(
-            "no attendee carried a gender — render as N/A");
+            "no attendee carried a gender â€” render as N/A");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Edge cases
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Empty_AttendeesList_ReturnsEmptyRows()
@@ -379,12 +378,12 @@ public class Phase7FE1RegistrationBreakdownTests
         var hc = HeadCountBreakdown.ForTotalOnly(2, new[]
         {
             TierCount.Create(vipId, "VIP", count: 2).Value,
-            // General with 0 should not be rendered — but the factory rejects 0 already.
+            // General with 0 should not be rendered â€” but the factory rejects 0 already.
         }).Value;
 
         var result = RegistrationBreakdownFormatter.FromHeadCount(hc, RegistrationMode.HeadCountOnly);
 
-        result.Rows.Should().HaveCount(1, "no zero-count tiers in input → no zero rows");
+        result.Rows.Should().HaveCount(1, "no zero-count tiers in input â†’ no zero rows");
         result.Rows[0].TierName.Should().Be("VIP");
     }
 
@@ -415,9 +414,9 @@ public class Phase7FE1RegistrationBreakdownTests
         result.Rows[0].Age.Right.Should().Be(4);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Captured/Left/Right invariants — the renderer's contract
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Captured/Left/Right invariants â€” the renderer's contract
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void NotCaptured_LeftAndRight_ShouldBeZero()

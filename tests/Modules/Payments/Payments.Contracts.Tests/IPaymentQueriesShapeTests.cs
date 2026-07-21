@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using LankaConnect.Modules.Payments.Contracts;
 
 namespace LankaConnect.Modules.Payments.Contracts.Tests;
@@ -81,9 +81,9 @@ public sealed class IPaymentQueriesShapeTests
     [Fact]
     public void RefundLineItemDto_Money_Is_Projected_To_Primitives()
     {
-        // Architect ruling (plan §"Contract surface"): Money projects to
+        // Architect ruling (plan Â§"Contract surface"): Money projects to
         // (decimal Amount + string Currency) instead of carrying
-        // LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Money directly - Contracts
+        // LankaConnect.SharedKernel.Money.Money directly - Contracts
         // must not pull LankaConnect.Domain.
         var props = typeof(RefundLineItemDto).GetProperties();
 

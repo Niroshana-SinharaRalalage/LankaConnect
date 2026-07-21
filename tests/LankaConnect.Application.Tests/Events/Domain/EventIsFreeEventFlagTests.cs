@@ -1,8 +1,7 @@
-using LankaConnect.Products.LankaEvents.Domain;
+﻿using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events;
@@ -95,7 +94,7 @@ public class EventIsFreeEventFlagTests
     {
         // Arrange
         var @event = CreateTestEvent();
-        var zeroPrice = Money.Create(0m, Currency.USD).Value;
+        var zeroPrice = new Money(0m, Currency.USD);
 
         // Act
         var result = @event.SetPricing(zeroPrice);
@@ -111,7 +110,7 @@ public class EventIsFreeEventFlagTests
     {
         // Arrange
         var @event = CreateTestEvent(isFreeEvent: true); // Start as free
-        var price = Money.Create(25.00m, Currency.USD).Value;
+        var price = new Money(25.00m, Currency.USD);
 
         // Act
         var result = @event.SetPricing(price);
@@ -145,7 +144,7 @@ public class EventIsFreeEventFlagTests
     {
         // Arrange
         var @event = CreateTestEvent();
-        var zeroAdultPrice = Money.Create(0m, Currency.USD).Value;
+        var zeroAdultPrice = new Money(0m, Currency.USD);
         var pricingResult = TicketPricing.CreateSinglePrice(zeroAdultPrice);
         Assert.True(pricingResult.IsSuccess);
 
@@ -163,8 +162,8 @@ public class EventIsFreeEventFlagTests
     {
         // Arrange
         var @event = CreateTestEvent(isFreeEvent: true);
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.USD);
         var pricingResult = TicketPricing.CreateDualPrice(adultPrice, childPrice, 12);
         Assert.True(pricingResult.IsSuccess);
 
@@ -197,9 +196,9 @@ public class EventIsFreeEventFlagTests
         var exception = Assert.Throws<InvalidOperationException>(() =>
             @event.CalculatePriceForAttendees(attendees));
 
-        // Pricing-Guard Fix 2026-05-04 — message sanitised, no longer leaks domain method
+        // Pricing-Guard Fix 2026-05-04 â€” message sanitised, no longer leaks domain method
         // names (SetPricing/SetDualPricing/SetGroupPricing). Spirit preserved: paid event +
-        // no pricing → throws with a clear user-facing explanation.
+        // no pricing â†’ throws with a clear user-facing explanation.
         Assert.Contains("no pricing configured", exception.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("paid", exception.Message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("SetPricing(", exception.Message);
@@ -237,7 +236,7 @@ public class EventIsFreeEventFlagTests
         @event.SetAsFreeEvent(); // Mark as free
 
         // Act - Set explicit $0 pricing (optional for display)
-        var zeroPrice = Money.Create(0m, Currency.USD).Value;
+        var zeroPrice = new Money(0m, Currency.USD);
         var result = @event.SetPricing(zeroPrice);
 
         // Assert - Should remain free
@@ -253,15 +252,15 @@ public class EventIsFreeEventFlagTests
         var @event = CreateTestEvent();
 
         // Act & Assert - Change pricing multiple times
-        var price1 = Money.Create(10m, Currency.USD).Value;
+        var price1 = new Money(10m, Currency.USD);
         @event.SetPricing(price1);
         Assert.False(@event.IsFreeEvent);
 
-        var price2 = Money.Create(0m, Currency.USD).Value;
+        var price2 = new Money(0m, Currency.USD);
         @event.SetPricing(price2);
         Assert.True(@event.IsFreeEvent);
 
-        var price3 = Money.Create(25m, Currency.USD).Value;
+        var price3 = new Money(25m, Currency.USD);
         @event.SetPricing(price3);
         Assert.False(@event.IsFreeEvent);
     }
@@ -295,8 +294,8 @@ public class EventIsFreeEventFlagTests
     {
         // Arrange
         var @event = CreateTestEvent();
-        var tier1 = GroupPricingTier.Create(1, 2, Money.Create(0m, Currency.USD).Value).Value;
-        var tier2 = GroupPricingTier.Create(3, 5, Money.Create(0m, Currency.USD).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 2, new Money(0m, Currency.USD)).Value;
+        var tier2 = GroupPricingTier.Create(3, 5, new Money(0m, Currency.USD)).Value;
         var tiers = new List<GroupPricingTier> { tier1, tier2 };
         var pricingResult = TicketPricing.CreateGroupTiered(tiers, Currency.USD);
         Assert.True(pricingResult.IsSuccess);
@@ -314,8 +313,8 @@ public class EventIsFreeEventFlagTests
     {
         // Arrange
         var @event = CreateTestEvent(isFreeEvent: true);
-        var tier1 = GroupPricingTier.Create(1, 2, Money.Create(20m, Currency.USD).Value).Value;
-        var tier2 = GroupPricingTier.Create(3, 5, Money.Create(15m, Currency.USD).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 2, new Money(20m, Currency.USD)).Value;
+        var tier2 = GroupPricingTier.Create(3, 5, new Money(15m, Currency.USD)).Value;
         var tiers = new List<GroupPricingTier> { tier1, tier2 };
         var pricingResult = TicketPricing.CreateGroupTiered(tiers, Currency.USD);
         Assert.True(pricingResult.IsSuccess);

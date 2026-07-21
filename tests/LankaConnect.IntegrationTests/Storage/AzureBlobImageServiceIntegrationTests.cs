@@ -2,6 +2,9 @@ using Azure.Storage.Blobs;
 using FluentAssertions;
 using LankaConnect.Modules.Media.Infrastructure.Storage.Configuration;
 using LankaConnect.Modules.Media.Infrastructure.Storage.Services;
+// Wave 8.5.e (2026-07-19): IImageService promoted from Media.Application/Contracts/ to
+// Media.Contracts.Services in Wave 8.5.d LegacyPromotions split per Consult #17 Q2.
+using LankaConnect.Modules.Media.Contracts.Services;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

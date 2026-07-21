@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.UpdateSponsor;
 using LankaConnect.BuildingBlocks.Domain;
@@ -6,15 +6,14 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace LankaConnect.Application.Tests.Events.Commands.UpdateSponsor;
 
 /// <summary>
-/// Phase 6A.151 — handler-layer tests for the PATCH sponsor flow. These
+/// Phase 6A.151 â€” handler-layer tests for the PATCH sponsor flow. These
 /// complement the 38 domain-layer state-matrix tests in SponsorTests.cs;
 /// concerns covered here are handler-specific:
 ///   - authz resolution (organizer vs sponsor-self vs forbidden vs anonymous-shadow)
@@ -51,7 +50,7 @@ public class UpdateSponsorCommandHandlerTests
             null,
             "AcmeCo",
             "Happy to help",
-            Money.Create(100m, Currency.USD).Value);
+            new Money(100m, Currency.USD));
         return (result.Value, sid);
     }
 
@@ -94,7 +93,7 @@ public class UpdateSponsorCommandHandlerTests
     [Fact]
     public async Task Handle_EventIdMismatch_ReturnsNotFound()
     {
-        // Arrange — sponsor belongs to a different event than the request
+        // Arrange â€” sponsor belongs to a different event than the request
         var requestEventId = Guid.NewGuid();
         var sponsorEventId = Guid.NewGuid();  // different
         var (sponsor, _) = MakeSponsor(sponsorEventId);
@@ -115,7 +114,7 @@ public class UpdateSponsorCommandHandlerTests
     [Fact]
     public async Task Handle_ParentEventNotFound_ReturnsNotFound()
     {
-        // Arrange — sponsor exists but the parent Event aggregate is missing
+        // Arrange â€” sponsor exists but the parent Event aggregate is missing
         var eventId = Guid.NewGuid();
         var (sponsor, _) = MakeSponsor(eventId);
         var command = new UpdateSponsorCommand(eventId, sponsor.Id, Guid.NewGuid(), Notes: "x");

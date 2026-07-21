@@ -311,8 +311,8 @@ public class WhatsAppBackgroundJobTests
 
         var eventId = Guid.NewGuid();
 
-        // Create a real Address via factory (LankaConnect.Domain.Business.ValueObjects.Address)
-        var realAddress = LankaConnect.Domain.Business.ValueObjects.Address
+        // Create a real Address via factory (LankaConnect.SharedKernel.Geo.Address)
+        var realAddress = LankaConnect.SharedKernel.Geo.Address
             .Create("123 Main St", "Atlanta", "GA", "30301", "US").Value;
 
         // Create a real EventLocation wrapping the address

@@ -1,14 +1,14 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using Xunit;
 
-// Note: nested under .EmailContracts (NOT .Email) — a top-level Email namespace
-// here would shadow the LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email VO used
+// Note: nested under .EmailContracts (NOT .Email) â€” a top-level Email namespace
+// here would shadow the LankaConnect.Modules.Communications.Domain.ValueObjects.Email VO used
 // across the test project (Email.Create(...) calls in other test files).
 namespace LankaConnect.Application.Tests.EmailContracts;
 
 /// <summary>
-/// Phase 6A.157 — coverage for the forked email params. 6 cases per
+/// Phase 6A.157 â€” coverage for the forked email params. 6 cases per
 /// architect lock: constructor + factory population, ToDictionary mapping,
 /// validation, conditional rendering of included-tickets and perks blocks.
 /// </summary>
@@ -105,7 +105,7 @@ public class PackageSponsorConfirmationEmailParamsTests
     [Fact]
     public void PerksHtml_HtmlEncodesPotentiallyDangerousPerkContent()
     {
-        // Defensive — perks come from organizer input; XSS prevention matters
+        // Defensive â€” perks come from organizer input; XSS prevention matters
         var p = Make(perks: new List<string> { "<script>alert(1)</script>", "Normal perk" });
 
         p.PerksHtml.Should().NotContain("<script>alert(1)</script>");

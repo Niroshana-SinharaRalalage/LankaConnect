@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateLayoutFromPreset;
 using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.BuildingBlocks.Domain;
@@ -10,9 +10,8 @@ using LankaConnect.Products.LankaEvents.Domain.Presets;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
-using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Geo;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Reflection;
@@ -49,7 +48,7 @@ public class CreateLayoutFromPresetCommandHandlerTests
         var description = EventDescription.Create("From-Preset Test").Value;
         var address = Address.Create("1 Main", "Houston", "TX", "77001", "USA").Value;
         var location = EventLocation.Create(address).Value;
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
         return Event.Create(
             title,
             description,

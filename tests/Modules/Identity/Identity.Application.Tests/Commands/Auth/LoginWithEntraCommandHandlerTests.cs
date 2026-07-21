@@ -1,4 +1,4 @@
-using Xunit;
+﻿using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -12,7 +12,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.BuildingBlocks.Domain;
-using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email;
 
 namespace LankaConnect.Modules.Identity.Application.Tests.Commands.Auth;
 

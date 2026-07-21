@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using LankaConnect.Products.LankaEvents.Application.Queries.SearchEvents;
 using LankaConnect.Products.LankaEvents.Application.Common;
@@ -7,8 +7,8 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.SharedKernel.Money;
+using LankaConnect.SharedKernel.Geo;
 using AutoMapper;
 using Microsoft.Extensions.Logging;
 
@@ -338,7 +338,7 @@ public class SearchEventsQueryHandlerTests
         // Arrange
         var query = new SearchEventsQuery("event", Page: 1, PageSize: 10);
         var events = CreateSampleEvents().Take(10).ToList();
-        var totalCount = 47;  // Should result in 5 pages (47 / 10 = 4.7 → ceil = 5)
+        var totalCount = 47;  // Should result in 5 pages (47 / 10 = 4.7 â†’ ceil = 5)
 
         _mockRepository
             .Setup(x => x.SearchAsync(
@@ -386,7 +386,7 @@ public class SearchEventsQueryHandlerTests
 
             var title = EventTitle.Create($"Test Event {i}").Value;
             var description = EventDescription.Create($"Description for event {i}").Value;
-            var ticketPrice = i % 2 == 0 ? null : Money.Create(50, LankaConnect.BuildingBlocks.Domain.Shared.Enums.Currency.USD).Value;
+            var ticketPrice = i % 2 == 0 ? null : new Money(50, LankaConnect.SharedKernel.Money.Currency.USD);
 
             var @event = Event.Create(
                 title,

@@ -1,10 +1,9 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 

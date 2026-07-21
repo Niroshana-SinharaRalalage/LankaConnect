@@ -1,15 +1,14 @@
-using LankaConnect.Products.LankaEvents.Domain;
+﻿using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Domain.Tests.Events;
 
 /// <summary>
-/// Phase 8 S8.3 — tests that <see cref="SeatReservationsReleasedEvent"/> is
+/// Phase 8 S8.3 â€” tests that <see cref="SeatReservationsReleasedEvent"/> is
 /// raised on every Registration lifecycle transition that releases the
 /// "owns the seats" claim: Cancel, ForceCancelStuckRefund, FailPayment,
 /// MarkAbandoned, CompleteRefund. The matching event handler in the
@@ -25,7 +24,7 @@ public class RegistrationSeatReservationsReleasedTests
         var alice = AttendeeDetails.Create("Alice", AgeCategory.Adult, Gender.Female).Value;
         var contact = RegistrationContact.Create(
             "alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
 
         var reg = Registration.CreateWithAttendees(
             _eventId, _userId, new[] { alice }, contact, price, isPaidEvent: true).Value;
@@ -39,7 +38,7 @@ public class RegistrationSeatReservationsReleasedTests
         var alice = AttendeeDetails.Create("Alice", AgeCategory.Adult, Gender.Female).Value;
         var contact = RegistrationContact.Create(
             "alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
         var reg = Registration.CreateWithAttendees(
             _eventId, _userId, new[] { alice }, contact, price, isPaidEvent: true).Value;
         reg.ClearDomainEvents();

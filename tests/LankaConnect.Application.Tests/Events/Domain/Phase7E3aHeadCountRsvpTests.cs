@@ -1,26 +1,25 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
 /// <summary>
-/// Phase 7E.3a — domain tests for the head-count RSVP path on free events.
+/// Phase 7E.3a â€” domain tests for the head-count RSVP path on free events.
 ///
 /// Coverage:
 /// 1. <see cref="Event.RegisterWithHeadCount"/> succeeds for free B-mode events (B1/B2/B3/B4).
 /// 2. The Mode-A path (<see cref="Event.RegisterWithAttendees"/>) defensively rejects B/C modes
 ///    so a stale client cannot create a Registration row that contradicts the event mode.
 /// 3. <see cref="Event.RegisterWithHeadCount"/> rejects DetailedAttendees + NoRegistration modes
-///    (defensive — handler already dispatches by mode but we enforce here too).
+///    (defensive â€” handler already dispatches by mode but we enforce here too).
 /// 4. Paid B-mode events fail with a clear "deferred to 7E.3b" message (scope discipline).
 /// 5. Capacity guard uses <see cref="HeadCountBreakdown.Total"/> via the
-///    <see cref="Registration.GetAttendeeCount"/> canonical aggregator (per 7E.0 §2 audit).
+///    <see cref="Registration.GetAttendeeCount"/> canonical aggregator (per 7E.0 Â§2 audit).
 /// 6. Duplicate registration check works the same way as the multi-attendee path
 ///    (architect: cross-path UserId + email guard).
 /// </summary>
@@ -121,7 +120,7 @@ public class Phase7E3aHeadCountRsvpTests
     [Fact]
     public void RegisterWithHeadCount_RejectsNoRegistrationMode()
     {
-        // Mode C produces no Registration row — RSVP attempts are rejected outright.
+        // Mode C produces no Registration row â€” RSVP attempts are rejected outright.
         var ev = CreatePublishedEvent(RegistrationMode.NoRegistration, capacity: 10);
         var hc = HeadCountBreakdown.ForTotalOnly(2).Value;
 
@@ -135,14 +134,14 @@ public class Phase7E3aHeadCountRsvpTests
     public void RegisterWithHeadCount_PaidEvent_NowSucceeds_AfterPhase7E3b()
     {
         // Phase 7E.3b shipped paid B-mode + Stripe checkout. Paid B1 RSVP now succeeds and
-        // creates a Preliminary registration with TotalPrice = Total × ticketPrice. The earlier
+        // creates a Preliminary registration with TotalPrice = Total Ã— ticketPrice. The earlier
         // 7E.3a-era failure-message assertion is obsolete after the gate was lifted.
         var ev = Event.Create(
             EventTitle.Create("Paid B Event").Value,
             EventDescription.Create("Paid B").Value,
             _start, _end, Guid.NewGuid(),
             capacity: 10,
-            ticketPrice: Money.Create(15m, Currency.USD).Value).Value;
+            ticketPrice: new Money(15m, Currency.USD)).Value;
         ev.SetRegistrationMode(RegistrationMode.HeadCountOnly).IsSuccess.Should().BeTrue();
         ev.Publish();
 
@@ -151,7 +150,7 @@ public class Phase7E3aHeadCountRsvpTests
 
         result.IsSuccess.Should().BeTrue($"errors: {string.Join("; ", result.Errors ?? Enumerable.Empty<string>())}");
         var registration = ev.Registrations.Single();
-        registration.TotalPrice!.Amount.Should().Be(30m, "2 × $15");
+        registration.TotalPrice!.Amount.Should().Be(30m, "2 Ã— $15");
         registration.Status.Should().Be(RegistrationStatus.Preliminary,
             "paid event registration awaits Stripe webhook before Confirmed");
     }
@@ -203,7 +202,7 @@ public class Phase7E3aHeadCountRsvpTests
         ev.RegisterWithHeadCount(null, "Anon", HeadCountBreakdown.ForByAge(1, 1).Value, Contact("shared@example.com"))
             .IsSuccess.Should().BeTrue();
 
-        // Authenticated user with same email — cross-path duplicate detection rejects.
+        // Authenticated user with same email â€” cross-path duplicate detection rejects.
         var second = ev.RegisterWithHeadCount(Guid.NewGuid(), "Auth",
             HeadCountBreakdown.ForByAge(1, 1).Value, Contact("shared@example.com"));
 
@@ -214,7 +213,7 @@ public class Phase7E3aHeadCountRsvpTests
     [Fact]
     public void RegisterWithAttendees_DefensivelyRejectsBMode()
     {
-        // Architect §6 hot-spot: stale clients hitting the legacy Mode-A path on a B-mode event
+        // Architect Â§6 hot-spot: stale clients hitting the legacy Mode-A path on a B-mode event
         // would create Registration rows that contradict the event's mode. This test enforces
         // that the domain method rejects the call with a clear redirect message.
         var ev = CreatePublishedEvent(RegistrationMode.HeadCountByAge, capacity: 50);

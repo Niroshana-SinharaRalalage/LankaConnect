@@ -1,13 +1,13 @@
-using LankaConnect.Modules.Identity.Contracts;
+﻿using LankaConnect.Modules.Identity.Contracts;
 using FluentAssertions;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.BuildingBlocks.Application.Common.Constants;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
-using LankaConnect.Products.LankaEvents.Application.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
-using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.SharedKernel.Geo;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -16,7 +16,7 @@ using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
@@ -330,7 +330,7 @@ public class EventNotificationEmailJobTests
 
     #endregion
 
-    #region Wave 9.h.10.5 F22 fix — null-Address regression tests
+    #region Wave 9.h.10.5 F22 fix â€” null-Address regression tests
 
     /// <summary>
     /// Wave 9.h.10.5 F22 regression test (architect-mandated).
@@ -338,7 +338,7 @@ public class EventNotificationEmailJobTests
     /// `@event.Location?.Address.City` (single-`?.` on Location only). When
     /// Location was non-null but Address was null, `.City` threw
     /// NullReferenceException, which killed the Hangfire job silently. The fix
-    /// uses double-`?.` — `@event.Location?.Address?.City`.
+    /// uses double-`?.` â€” `@event.Location?.Address?.City`.
     ///
     /// This test forces Location.Address to null via reflection (since
     /// EventLocation.Create rejects null Address at line 37) and verifies the
@@ -387,7 +387,7 @@ public class EventNotificationEmailJobTests
         // Act
         Func<Task> act = async () => await _job.ExecuteAsync(historyId, CancellationToken.None);
 
-        // Assert — pre-fix this threw NullReferenceException inside BuildTemplateData.
+        // Assert â€” pre-fix this threw NullReferenceException inside BuildTemplateData.
         // Post-fix the job runs to completion (with 0 recipients so no SendEmail calls).
         await act.Should().NotThrowAsync<NullReferenceException>(
             "double-`?.` on Location?.Address?.City must guard both Location and Address null cases");

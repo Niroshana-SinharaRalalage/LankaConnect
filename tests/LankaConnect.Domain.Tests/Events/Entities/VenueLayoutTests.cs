@@ -1,8 +1,7 @@
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+﻿using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Domain.Tests.Events.Entities;
 
@@ -587,7 +586,7 @@ public class VenueLayoutTests
         var layout = CreateValidLayout();
         layout.AddZone("VIP", "#FF0000", 1);
         var tiers = CreateTestTiers();
-        // Note: No tier.AssignToZone() call — zone is unmapped
+        // Note: No tier.AssignToZone() call â€” zone is unmapped
 
         var result = layout.ValidateForEvent(tiers);
 
@@ -624,7 +623,7 @@ public class VenueLayoutTests
         result.Error.Should().Contain("enabled seats");
     }
 
-    // ────── Slice 9.1: requireTierMapping flag ──────
+    // â”€â”€â”€â”€â”€â”€ Slice 9.1: requireTierMapping flag â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void ValidateForEvent_RequireTierMappingFalse_UnmappedZone_Should_Succeed()
@@ -661,8 +660,8 @@ public class VenueLayoutTests
     public void ValidateForEvent_BanquetLayoutWithTablesOnlyNoZones_Should_Succeed()
     {
         // Slice 9.4 follow-up fix: banquet presets (round tables, square tables, etc.)
-        // legitimately have NO zones — seats live directly on the tables. The original
-        // "≥1 zone" check rejected every banquet apply-preset request. Validation must
+        // legitimately have NO zones â€” seats live directly on the tables. The original
+        // "â‰¥1 zone" check rejected every banquet apply-preset request. Validation must
         // accept zones OR tables.
         var layout = CreateValidLayout();
         var tiers = CreateTestTiers();
@@ -677,7 +676,7 @@ public class VenueLayoutTests
     [Fact]
     public void ValidateForEvent_EmptyLayout_NoZonesAndNoTables_Should_Fail()
     {
-        // Regression guard for the truly-empty case — previously the only failure
+        // Regression guard for the truly-empty case â€” previously the only failure
         // path. Now updated message to match new contract.
         var layout = CreateValidLayout();
         var tiers = CreateTestTiers();
@@ -696,7 +695,7 @@ public class VenueLayoutTests
         layout.AddZone("VIP", "#FF0000", 1);
         var tiers = CreateTestTiers();
 
-        // No flag passed — defaults to requireTierMapping=true.
+        // No flag passed â€” defaults to requireTierMapping=true.
         var result = layout.ValidateForEvent(tiers);
 
         result.IsSuccess.Should().BeFalse();
@@ -780,7 +779,7 @@ public class VenueLayoutTests
         report.Warnings.Should().Contain(w =>
             w.Code == PublishReadinessCode.TierWithoutMapping
             && w.TierId == tiers[1].Id);
-        // Layout itself is publish-ready — no blockers, only the tier-coverage warning.
+        // Layout itself is publish-ready â€” no blockers, only the tier-coverage warning.
         report.IsPublishReady.Should().BeTrue();
     }
 
@@ -789,7 +788,7 @@ public class VenueLayoutTests
     {
         var layout = CreateValidLayout();
         var tiers = CreateTestTiers(); // tier 0 capacity = 30
-        // Two zones each at 20 seats, both mapped to tier 0 — 40 total > 30 capacity
+        // Two zones each at 20 seats, both mapped to tier 0 â€” 40 total > 30 capacity
         var zoneA = layout.AddZone("VIP A", "#FF0000", 1).Value;
         var zoneB = layout.AddZone("VIP B", "#FFAA00", 2).Value;
         tiers[0].AssignToZone(zoneA.Id);
@@ -828,7 +827,7 @@ public class VenueLayoutTests
         var table = layout.GenerateRoundTable("Banquet 1", capacity: 8, sortOrder: 2).Value;
         tiers[0].AssignToZone(zone.Id);
         tiers[1].AssignToTable(table.Id);
-        layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 10); // 20 ≤ 30
+        layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 10); // 20 â‰¤ 30
 
         var report = layout.BuildPublishReadinessReport(tiers);
 
@@ -864,7 +863,7 @@ public class VenueLayoutTests
 
         report.Blockers.Count(b => b.Code == PublishReadinessCode.ZoneUnmapped).Should().Be(2);
         report.Blockers.Should().Contain(b => b.Code == PublishReadinessCode.TableUnmapped);
-        // Both tiers have no mappings → 2 TierWithoutMapping warnings.
+        // Both tiers have no mappings â†’ 2 TierWithoutMapping warnings.
         report.Warnings.Count(w => w.Code == PublishReadinessCode.TierWithoutMapping).Should().Be(2);
     }
 
@@ -914,9 +913,9 @@ public class VenueLayoutTests
 
     private IReadOnlyList<TicketTier> CreateTestTiers()
     {
-        var adultPrice = Money.Create(150.00m, Currency.USD).Value;
+        var adultPrice = new Money(150.00m, Currency.USD);
         var tier1 = TicketTier.Create(Guid.NewGuid(), "VIP", "VIP section", adultPrice, null, null, 30, 10, 1).Value;
-        var tier2 = TicketTier.Create(Guid.NewGuid(), "Basic", "Standard", Money.Create(50.00m, Currency.USD).Value, null, null, 50, 10, 2).Value;
+        var tier2 = TicketTier.Create(Guid.NewGuid(), "Basic", "Standard", new Money(50.00m, Currency.USD), null, null, 50, 10, 2).Value;
         return new List<TicketTier> { tier1, tier2 };
     }
 

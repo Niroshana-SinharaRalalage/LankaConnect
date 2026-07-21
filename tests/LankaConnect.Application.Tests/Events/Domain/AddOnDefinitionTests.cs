@@ -1,8 +1,7 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
@@ -20,7 +19,7 @@ public class AddOnDefinitionTests
     private const string ValidDescription = "Reserved parking spot near venue";
     private const int ValidSortOrder = 1;
 
-    private static Money ValidPrice() => Money.Create(10m, Currency.USD).Value;
+    private static Money ValidPrice() => new Money(10m, Currency.USD);
 
     private static AddOnDefinition CreateValidAddOn(
         Guid? eventId = null,
@@ -44,14 +43,14 @@ public class AddOnDefinitionTests
 
     #endregion
 
-    #region Create – Success Cases
+    #region Create â€“ Success Cases
 
     [Fact]
     public void Create_WithAllValidFields_ShouldSucceed()
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var price = Money.Create(25m, Currency.USD).Value;
+        var price = new Money(25m, Currency.USD);
 
         // Act
         var result = AddOnDefinition.Create(eventId, "Meal Package", "Lunch and dinner", price, 100, 3);
@@ -137,7 +136,7 @@ public class AddOnDefinitionTests
 
     #endregion
 
-    #region Create – Failure Cases
+    #region Create â€“ Failure Cases
 
     [Fact]
     public void Create_WithEmptyEventId_ShouldFail()
@@ -241,8 +240,8 @@ public class AddOnDefinitionTests
     [Fact]
     public void Create_WithZeroPrice_ShouldSucceed()
     {
-        // Arrange — free add-ons ($0 price) are a legitimate business case
-        var zeroPrice = Money.Create(0m, Currency.USD).Value;
+        // Arrange â€” free add-ons ($0 price) are a legitimate business case
+        var zeroPrice = new Money(0m, Currency.USD);
 
         // Act
         var result = AddOnDefinition.Create(ValidEventId, ValidName, ValidDescription, zeroPrice, 10);
@@ -290,14 +289,14 @@ public class AddOnDefinitionTests
 
     #endregion
 
-    #region UpdateDetails – Success Cases
+    #region UpdateDetails â€“ Success Cases
 
     [Fact]
     public void UpdateDetails_WithValidData_ShouldUpdateAllFields()
     {
         // Arrange
         var addOn = CreateValidAddOn();
-        var newPrice = Money.Create(30m, Currency.USD).Value;
+        var newPrice = new Money(30m, Currency.USD);
 
         // Act
         var result = addOn.UpdateDetails("Updated Name", "Updated Description", newPrice, 200, 5);
@@ -342,7 +341,7 @@ public class AddOnDefinitionTests
 
     #endregion
 
-    #region UpdateDetails – Failure Cases
+    #region UpdateDetails â€“ Failure Cases
 
     [Fact]
     public void UpdateDetails_WithEmptyName_ShouldFail()
@@ -419,9 +418,9 @@ public class AddOnDefinitionTests
     [Fact]
     public void UpdateDetails_WithZeroPrice_ShouldSucceed()
     {
-        // Arrange — free add-ons ($0 price) are a legitimate business case
+        // Arrange â€” free add-ons ($0 price) are a legitimate business case
         var addOn = CreateValidAddOn();
-        var zeroPrice = Money.Create(0m, Currency.USD).Value;
+        var zeroPrice = new Money(0m, Currency.USD);
 
         // Act
         var result = addOn.UpdateDetails(ValidName, ValidDescription, zeroPrice, 10, 0);
@@ -686,7 +685,7 @@ public class AddOnDefinitionTests
         // Arrange
         var eventId = Guid.NewGuid();
         var addOn = CreateValidAddOn(eventId: eventId);
-        var newPrice = Money.Create(99m, Currency.USD).Value;
+        var newPrice = new Money(99m, Currency.USD);
 
         // Act
         addOn.UpdateDetails("New Name", "New Desc", newPrice, 100, 2);
@@ -712,7 +711,7 @@ public class AddOnDefinitionTests
 
     #endregion
 
-    #region Phase 6A.143 — Image methods (SetImage / ClearImage)
+    #region Phase 6A.143 â€” Image methods (SetImage / ClearImage)
 
     [Fact]
     public void SetImage_WithValidUrlAndBlobName_Succeeds()

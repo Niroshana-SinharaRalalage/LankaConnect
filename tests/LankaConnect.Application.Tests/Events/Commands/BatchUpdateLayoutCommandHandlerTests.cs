@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.BatchUpdateLayout;
@@ -9,8 +9,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -19,7 +18,7 @@ using Xunit;
 namespace LankaConnect.Application.Tests.Events.Commands;
 
 /// <summary>
-/// Slice 5 Chunk 10: PUT /api/venue-layouts/{id}/batch — atomic full-layout replacement.
+/// Slice 5 Chunk 10: PUT /api/venue-layouts/{id}/batch â€” atomic full-layout replacement.
 /// Covers authorization, early + late concurrency, structural guard on removals, add/update/
 /// remove diffs across zones/tables/decorations, and layout-level Name + Canvas updates.
 /// </summary>
@@ -35,7 +34,7 @@ public class BatchUpdateLayoutCommandHandlerTests
 
     public BatchUpdateLayoutCommandHandlerTests()
     {
-        // S8.8c: default tier query returns no tiers — every existing test
+        // S8.8c: default tier query returns no tiers â€” every existing test
         // that doesn't exercise tier reconciliation is unaffected because
         // `payload.TierAssignments` defaults to null and the reconciler is
         // skipped entirely.
@@ -74,7 +73,7 @@ public class BatchUpdateLayoutCommandHandlerTests
     /// </summary>
     private static TicketTier CreateTier(Guid eventId, string name = "VIP")
     {
-        var price = Money.Create(100m, Currency.USD).Value;
+        var price = new Money(100m, Currency.USD);
         return TicketTier.Create(eventId, name, $"{name} tier", price, null, null, 30, 10, 1).Value;
     }
 
@@ -166,7 +165,7 @@ public class BatchUpdateLayoutCommandHandlerTests
         _mockLayoutRepo.Setup(r => r.GetWithZonesAndSeatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                        .ReturnsAsync(layout);
 
-        // Expected = 99, actual on layout = 5 → Conflict before any mutation
+        // Expected = 99, actual on layout = 5 â†’ Conflict before any mutation
         var command = new BatchUpdateLayoutCommand(layout.Id, 99u, EmptyPayload());
 
         var result = await _sut.Handle(command, CancellationToken.None);
@@ -196,8 +195,8 @@ public class BatchUpdateLayoutCommandHandlerTests
         _mockGuard.Setup(g => g.CheckSeatsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(Result.StructuralEditRejected("4 seats are held"));
 
-        // Slice S2: payload EXPLICITLY deletes the zone via DeletedZoneIds → ambiguity
-        // guard passes → structural guard runs → rejected because seats are held.
+        // Slice S2: payload EXPLICITLY deletes the zone via DeletedZoneIds â†’ ambiguity
+        // guard passes â†’ structural guard runs â†’ rejected because seats are held.
         // (Pre-S2 the omission path would have reached the guard implicitly; S2's
         // contract requires explicit opt-in to deletion.)
         var command = new BatchUpdateLayoutCommand(
@@ -316,13 +315,13 @@ public class BatchUpdateLayoutCommandHandlerTests
     [Fact]
     public async Task Handle_Should_Remove_Items_When_Listed_In_DeletedIds()
     {
-        // Slice S2 (Architect Rev 4 §A.3) — explicit deletion contract.
+        // Slice S2 (Architect Rev 4 Â§A.3) â€” explicit deletion contract.
         // Pre-S2 this test asserted that omission alone removes items. That
-        // silent-deletion behavior is now the bug class S2 closes — see
+        // silent-deletion behavior is now the bug class S2 closes â€” see
         // Handle_Should_Return_409_When_Payload_Omits_Zone_Without_DeletedZoneIds.
         var layout = CreateLayout();
         var keptZone = AddZone(layout, "Kept");
-        var removedZone = AddZone(layout, "Removed");  // no seats → guard passes
+        var removedZone = AddZone(layout, "Removed");  // no seats â†’ guard passes
         var decoration = AddDecoration(layout, DecorationKind.Stage);
 
         _mockAuth.Setup(a => a.AuthorizeAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -380,7 +379,7 @@ public class BatchUpdateLayoutCommandHandlerTests
                     Shape: ZoneShape.Rect, Geometry: null),
             },
             Tables: null,
-            Decorations: null);  // no DeletedZoneIds → ambiguous
+            Decorations: null);  // no DeletedZoneIds â†’ ambiguous
 
         var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, payload);
 
@@ -389,7 +388,7 @@ public class BatchUpdateLayoutCommandHandlerTests
         result.IsSuccess.Should().BeFalse();
         result.ErrorKind.Should().Be(ErrorKind.Conflict);
         result.Error.Should().Contain(ambiguouslyOmitted.Id.ToString());
-        // DB state unchanged — both zones still on the aggregate.
+        // DB state unchanged â€” both zones still on the aggregate.
         layout.Zones.Should().HaveCount(2);
     }
 
@@ -413,7 +412,7 @@ public class BatchUpdateLayoutCommandHandlerTests
                     Shape: ZoneShape.Rect, Geometry: null),
             },
             Tables: new List<BatchTable>(),  // omits omittedTable
-            Decorations: null);  // no DeletedTableIds → ambiguous
+            Decorations: null);  // no DeletedTableIds â†’ ambiguous
 
         var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, payload);
 
@@ -495,7 +494,7 @@ public class BatchUpdateLayoutCommandHandlerTests
         _mockLayoutRepo.Setup(r => r.GetWithZonesAndSeatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                        .ReturnsAsync(layout);
 
-        // Zone with an ID the aggregate doesn't know → domain returns "Zone not found"
+        // Zone with an ID the aggregate doesn't know â†’ domain returns "Zone not found"
         var payload = new BatchLayoutPayload(
             Name: null, Canvas: null,
             Zones: new List<BatchZone>
@@ -574,7 +573,7 @@ public class BatchUpdateLayoutCommandHandlerTests
     }
 
     /// <summary>
-    /// Slice 8 S8.8a — `layout.canvas_editor_saved` is the 6th and final architect metric.
+    /// Slice 8 S8.8a â€” `layout.canvas_editor_saved` is the 6th and final architect metric.
     /// On a successful save the handler must emit it exactly once with a `changesCount`
     /// equal to the total number of structural mutations applied to the aggregate
     /// (zone/table/decoration removals + updates + additions, plus +1 each for layout-level
@@ -586,7 +585,7 @@ public class BatchUpdateLayoutCommandHandlerTests
     {
         var layout = CreateLayout();
         var keptZone = AddZone(layout, "Keep");        // will be updated
-        var removedZone = AddZone(layout, "Remove");   // will be removed (no seats → guard passes)
+        var removedZone = AddZone(layout, "Remove");   // will be removed (no seats â†’ guard passes)
         var updatedDecoration = AddDecoration(layout, DecorationKind.Stage, "Stage");
 
         _mockAuth.Setup(a => a.AuthorizeAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -641,7 +640,7 @@ public class BatchUpdateLayoutCommandHandlerTests
             It.IsAny<Guid>(), It.IsAny<StructuralEditRejectionReason>()), Times.Never);
     }
 
-    // ─────────── S8.8c: tier-assignment reconciliation tests ───────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ S8.8c: tier-assignment reconciliation tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public async Task Handle_Should_Skip_TierReconciliation_When_Payload_TierAssignments_Is_Null()
@@ -766,7 +765,7 @@ public class BatchUpdateLayoutCommandHandlerTests
             Tables: null, Decorations: null,
             TierAssignments: new List<BatchTierAssignment>
             {
-                // Empty TierIds list for this zone → tier T removed.
+                // Empty TierIds list for this zone â†’ tier T removed.
                 new(AssignableKind.Zone, zone.Id, new List<Guid>()),
             });
 
@@ -857,7 +856,7 @@ public class BatchUpdateLayoutCommandHandlerTests
         var eventId = Guid.NewGuid();
         var layout = CreateLayoutWithEvent(eventId);
         var zone = AddZone(layout, "Front");
-        // Tier belongs to a *different* event — repo returns no tiers for THIS event,
+        // Tier belongs to a *different* event â€” repo returns no tiers for THIS event,
         // and the handler validates desired tierIds against the event's tier list.
         var foreignTier = CreateTier(Guid.NewGuid());
 
@@ -943,7 +942,7 @@ public class BatchUpdateLayoutCommandHandlerTests
         var eventId = Guid.NewGuid();
         var layout = CreateLayoutWithEvent(eventId);
         var keptZone = AddZone(layout, "Kept");
-        var droppedZone = AddZone(layout, "Dropped");   // no seats → guard passes
+        var droppedZone = AddZone(layout, "Dropped");   // no seats â†’ guard passes
         var tier = CreateTier(eventId);
         tier.AssignToZone(keptZone.Id).IsSuccess.Should().BeTrue();
         tier.AssignToZone(droppedZone.Id).IsSuccess.Should().BeTrue();
@@ -1013,7 +1012,7 @@ public class BatchUpdateLayoutCommandHandlerTests
                     Shape: ZoneShape.Rect, Geometry: null),
             },
             Tables: null, Decorations: null,
-            // Empty list → reconcile to "no assignments" (remove all).
+            // Empty list â†’ reconcile to "no assignments" (remove all).
             TierAssignments: new List<BatchTierAssignment>());
 
         var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, payload);

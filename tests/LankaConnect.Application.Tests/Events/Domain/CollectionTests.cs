@@ -1,10 +1,9 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
@@ -16,8 +15,8 @@ public class CollectionTests
 {
     #region Test Helpers
 
-    private static Money CreateMoney(decimal amount = 50m, Currency currency = Currency.USD)
-        => Money.Create(amount, currency).Value;
+    private static Money CreateMoney(decimal amount = 50m, Currency? currency = null)
+        => new Money(amount, currency ?? Currency.USD);
 
     private static Collection CreateValidCollection(
         Guid? eventId = null,
@@ -76,7 +75,7 @@ public class CollectionTests
     [Fact]
     public void Create_WithNullContributorUserId_ShouldSucceed()
     {
-        // Act — anonymous contribution
+        // Act â€” anonymous contribution
         var result = Collection.Create(Guid.NewGuid(), null, "Anon", "anon@test.com", null, null, CreateMoney());
 
         // Assert
@@ -148,13 +147,16 @@ public class CollectionTests
     }
 
     [Fact]
-    public void Create_WithNegativeAmount_MoneyCreateShouldRejectIt()
+    public void Create_WithNegativeAmount_CollectionShouldRejectIt()
     {
-        // Money value object itself rejects negative amounts, so Collection.Create
-        // can never receive a negative Money. Verify Money guards this.
-        var moneyResult = Money.Create(-10m, Currency.USD);
-        moneyResult.IsFailure.Should().BeTrue();
-        moneyResult.Error.Should().Contain("negative");
+        // Wave 8.5.e (2026-07-18): Money constructor no longer validates non-negativity
+        // (Consult #13 Q2 slim API). Collection.Create still rejects negative amounts,
+        // so pin the guard on Collection instead.
+        var negative = new Money(-10m, Currency.USD);
+        var result = Collection.Create(Guid.NewGuid(), null, "John", "john@test.com", null, null, negative);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("greater than zero");
     }
 
     [Fact]

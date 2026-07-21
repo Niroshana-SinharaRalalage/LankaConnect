@@ -1,19 +1,18 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
 /// <summary>
-/// Phase 7F-D.1 — paid Mode-B add-attendees with delta payment (domain layer).
+/// Phase 7F-D.1 â€” paid Mode-B add-attendees with delta payment (domain layer).
 ///
-/// Architect-approved review iteration 1 (2026-04-30): targets the ≥24 case floor.
+/// Architect-approved review iteration 1 (2026-04-30): targets the â‰¥24 case floor.
 /// Tests below cover:
 ///   - <c>RegistrationAddition.CreateForHeadCountDelta</c> happy paths for B1/B2/B4
 ///   - Currency-match invariants
@@ -23,13 +22,13 @@ namespace LankaConnect.Application.Tests.Events.Domain;
 ///   - Mode-A registration + Mode-B delta rejected
 ///   - TierCounts merge by TierId
 ///   - Lead-name preserved
-///   - Status guard (not Confirmed → reject)
-///   - Capacity guard (over-cap → reject)
+///   - Status guard (not Confirmed â†’ reject)
+///   - Capacity guard (over-cap â†’ reject)
 ///   - Null-policy guards
 /// </summary>
 public class Phase7FD1MergeHeadCountAdditionTests
 {
-    private static Money USD(decimal amount) => Money.Create(amount, Currency.USD).Value;
+    private static Money USD(decimal amount) => new Money(amount, Currency.USD);
 
     private static RegistrationContact Contact(string email = "lead@example.com") =>
         RegistrationContact.Create(email, "555-0100", null).Value;
@@ -43,7 +42,7 @@ public class Phase7FD1MergeHeadCountAdditionTests
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
             organizerId: Guid.NewGuid(),
             capacity: 100).Value;
-        ev.SetPricing(Money.Create(20m, Currency.USD).Value).IsSuccess.Should().BeTrue();
+        ev.SetPricing(new Money(20m, Currency.USD)).IsSuccess.Should().BeTrue();
         ev.Publish().IsSuccess.Should().BeTrue();
         ev.SetRegistrationMode(RegistrationMode.HeadCountByAge).IsSuccess.Should().BeTrue();
 
@@ -59,9 +58,9 @@ public class Phase7FD1MergeHeadCountAdditionTests
         return (ev, reg);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  RegistrationAddition.CreateForHeadCountDelta factory
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void CreateForHeadCountDelta_B1_HappyPath()
@@ -149,7 +148,7 @@ public class Phase7FD1MergeHeadCountAdditionTests
     public void CreateForHeadCountDelta_CurrencyMismatch_IsRejected()
     {
         var delta = HeadCountBreakdown.ForTotalOnly(1).Value;
-        var lkr = Money.Create(50m, Currency.LKR).Value;
+        var lkr = new Money(50m, Currency.LKR);
         var result = RegistrationAddition.CreateForHeadCountDelta(
             Guid.NewGuid(), Guid.NewGuid(),
             RegistrationMode.HeadCountOnly, delta,
@@ -172,9 +171,9 @@ public class Phase7FD1MergeHeadCountAdditionTests
         result.IsFailure.Should().BeTrue();
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Registration.MergeHeadCountAddition — happy paths
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Registration.MergeHeadCountAddition â€” happy paths
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void MergeHeadCountAddition_B2PlusB2_AccumulatesTotalAndDemographics()
@@ -220,9 +219,9 @@ public class Phase7FD1MergeHeadCountAdditionTests
         reg.HeadCount!.Total.Should().Be(5);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Mode-match invariant (architect-required)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void MergeHeadCountAddition_CrossMode_B2PlusB4_IsRejected()
@@ -264,9 +263,9 @@ public class Phase7FD1MergeHeadCountAdditionTests
         result.IsFailure.Should().BeTrue();
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Capacity + max-attendees guards
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void MergeHeadCountAddition_OverMaxAttendees_IsRejected()
@@ -274,7 +273,7 @@ public class Phase7FD1MergeHeadCountAdditionTests
         var (_, reg) = CreatePaidB2RegistrationWith(adults: 8, children: 0, totalPaid: 160m);
         var delta = HeadCountBreakdown.ForByAge(adults: 5, children: 0).Value;
 
-        // max=10, current=8, delta=5 → 13 > 10
+        // max=10, current=8, delta=5 â†’ 13 > 10
         var result = reg.MergeHeadCountAddition(
             RegistrationMode.HeadCountByAge, delta,
             newTotalPrice: USD(260), maxAttendeesPerRegistration: 10);
@@ -283,9 +282,9 @@ public class Phase7FD1MergeHeadCountAdditionTests
         result.Error.Should().Contain("Maximum");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Status guards
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void MergeHeadCountAddition_StatusNotConfirmed_IsRejected()
@@ -300,7 +299,7 @@ public class Phase7FD1MergeHeadCountAdditionTests
         ev.RegisterWithHeadCount(Guid.NewGuid(), "Lead",
             HeadCountBreakdown.ForByAge(2, 0).Value, Contact()).IsSuccess.Should().BeTrue();
         var reg = ev.Registrations.Single();
-        // Registration is Preliminary (paid, awaiting payment) — NOT Confirmed
+        // Registration is Preliminary (paid, awaiting payment) â€” NOT Confirmed
         reg.Status.Should().Be(RegistrationStatus.Preliminary);
 
         var result = reg.MergeHeadCountAddition(
@@ -312,9 +311,9 @@ public class Phase7FD1MergeHeadCountAdditionTests
         result.Error.Should().Contain("Confirmed", because: "merge requires Confirmed status");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Lead-name preservation
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void MergeHeadCountAddition_PreservesLeadAttendeeName()
@@ -331,14 +330,14 @@ public class Phase7FD1MergeHeadCountAdditionTests
         reg.LeadAttendeeName.Should().Be("Lead");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  TierCounts merge by TierId
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void MergeHeadCountAddition_TieredEvent_MergesTierCountsByTierId()
     {
-        // Build a paid B1 + tiered registration with VIP×2 + General×1
+        // Build a paid B1 + tiered registration with VIPÃ—2 + GeneralÃ—1
         var ev = Event.Create(
             EventTitle.Create("tier").Value, EventDescription.Create("d").Value,
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
@@ -409,10 +408,10 @@ public class Phase7FD1MergeHeadCountAdditionTests
         result.IsFailure.Should().BeTrue();
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Mode-A discriminator stays correct after a Mode-B addition row exists
-    //  (architect edit #1 — IsModeBAddition based on RegistrationMode, not _newAttendees.Count)
-    // ──────────────────────────────────────────────────────────────────────
+    //  (architect edit #1 â€” IsModeBAddition based on RegistrationMode, not _newAttendees.Count)
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void RegistrationAddition_IsModeBAddition_BasedOnRegistrationModeNotAttendeeListCount()
@@ -427,6 +426,6 @@ public class Phase7FD1MergeHeadCountAdditionTests
         addition.IsModeAAddition.Should().BeFalse();
         addition.NewAttendees.Should().BeEmpty();
         // Even though _newAttendees is empty, IsModeAAddition must return false based on
-        // RegistrationMode.IsHeadCountMode() — the architect-flagged "false-positive after merge" trap.
+        // RegistrationMode.IsHeadCountMode() â€” the architect-flagged "false-positive after merge" trap.
     }
 }

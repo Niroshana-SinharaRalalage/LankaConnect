@@ -1,4 +1,4 @@
-using LankaConnect.Modules.Identity.Contracts;
+﻿using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.Modules.Forms.Contracts;
 using LankaConnect.BuildingBlocks.Application.Common;
 using LankaConnect.Modules.Forms.Domain;
@@ -16,7 +16,7 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
@@ -35,7 +35,7 @@ namespace LankaConnect.Application.Tests.Events.EventHandlers;
 /// email send records which event was resolved and what location was projected into
 /// the rendered email body. This lets us disambiguate Symptom 2 of the 2026-04-22
 /// inbox report (wrong event's address apparently appearing in a cancellation email)
-/// without needing another live inbox round-trip — the log is deterministic and
+/// without needing another live inbox round-trip â€” the log is deterministic and
 /// queryable in Azure container logs after the fact.
 /// </summary>
 public class CommitmentCancelledEmailHandlerDiagnosticLogTests
@@ -91,7 +91,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
     [Fact]
     public async Task Handle_WhenEventAndUserResolve_EmitsDiagnosticLog_WithResolvedEventAndLocationFields()
     {
-        // Arrange — a commitment cancellation for a user against a specific event.
+        // Arrange â€” a commitment cancellation for a user against a specific event.
         // The diagnostic log must record the resolved eventId, event title, the projected
         // decomposed-location fields (HasLocationName / LocationAddress / HasSecondaryLocation),
         // and the caller identity (userId / commitmentId / signUpListId) so an operator can
@@ -125,7 +125,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert — diagnostic log fires exactly once on the synchronous path (pre-fire-and-forget).
+        // Assert â€” diagnostic log fires exactly once on the synchronous path (pre-fire-and-forget).
         // Verify the structured log message mentions the diagnostic marker AND the resolved eventId
         // (which is the single most important disambiguation field for Symptom 2).
         _logger.Verify(
@@ -168,7 +168,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
         // Act
         await _handler.Handle(notification, CancellationToken.None);
 
-        // Assert — structured log message template must include every diagnostic field.
+        // Assert â€” structured log message template must include every diagnostic field.
         // We check for the LITERAL placeholder names in the message template so any future
         // refactor that drops a field (e.g. removes {HasSecondaryLocation}) breaks this test.
         _logger.Verify(
@@ -217,7 +217,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
             DateTime.UtcNow.AddDays(7).AddHours(2),
             Guid.NewGuid(),
             100,
-            null, // online event — keeps the test minimal; full location projection is tested elsewhere
+            null, // online event â€” keeps the test minimal; full location projection is tested elsewhere
             EventCategory.Cultural).Value;
 
         var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");

@@ -1,11 +1,11 @@
-using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+﻿using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Modules.Communications.Domain.Entities;
 using LankaConnect.Modules.Communications.Domain.Enums;
 using LankaConnect.Modules.Communications.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.ValueObjects;
 using LankaConnect.IntegrationTests.Common;
 using LankaConnect.TestUtilities.Builders;
-using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.SharedKernel.Contact.Email;
 
 namespace LankaConnect.IntegrationTests.Repositories;
 

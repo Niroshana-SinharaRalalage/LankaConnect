@@ -1,20 +1,19 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events.Entities;
 
 /// <summary>
-/// Phase 6A.148 — RefundRequest aggregate-internal entity tests.
+/// Phase 6A.148 â€” RefundRequest aggregate-internal entity tests.
 ///
 /// Pins down: two creation paths (CreatePending attendee / CreateOrganizerInitiated),
 /// approve / reject / withdraw transitions, sum(ApprovedAmount) > 0 invariant on Approve
-/// (architect F2), ScanGuardOverridden ⇒ OrganizerNotes required (F7), Approve only from
+/// (architect F2), ScanGuardOverridden â‡’ OrganizerNotes required (F7), Approve only from
 /// Pending, Withdraw attendee-only and Pending-only, BeginProcessing after first Stripe
 /// dispatch, MarkCompletedIfAllSettled rolls Request to Completed only when all lines
 /// are terminal.
@@ -36,7 +35,7 @@ public class RefundRequestTests
         new(RefundLineItemType.AddOn, _addOnRefId, Usd(amount));
 
     // ============================================================
-    // CreatePending — attendee path
+    // CreatePending â€” attendee path
     // ============================================================
 
     [Fact]
@@ -89,7 +88,7 @@ public class RefundRequestTests
     }
 
     // ============================================================
-    // CreateOrganizerInitiated — skips Pending, goes to Approved
+    // CreateOrganizerInitiated â€” skips Pending, goes to Approved
     // ============================================================
 
     [Fact]
@@ -120,7 +119,7 @@ public class RefundRequestTests
     [Fact]
     public void CreateOrganizerInitiated_WithScanGuardOverrideAndBlankNotes_Fails()
     {
-        // Architect F7: override ⇒ organizer notes mandatory (audit).
+        // Architect F7: override â‡’ organizer notes mandatory (audit).
         var result = RefundRequest.CreateOrganizerInitiated(
             _registrationId, _organizerUserId,
             organizerNotes: "   ",
@@ -156,7 +155,7 @@ public class RefundRequestTests
     }
 
     // ============================================================
-    // Approve (Pending → Approved)
+    // Approve (Pending â†’ Approved)
     // ============================================================
 
     [Fact]
@@ -228,7 +227,7 @@ public class RefundRequestTests
     [Fact]
     public void Approve_MissingPerLineEntry_TreatedAsRejected()
     {
-        // Organizer didn't include an entry for a line — line is rejected (treated as 0).
+        // Organizer didn't include an entry for a line â€” line is rejected (treated as 0).
         var req = RefundRequest.CreatePending(_registrationId, _attendeeUserId, null,
             new[] { TicketLine(50m), AddOnLine(10m) }).Value;
         var ticketLine = req.LineItems.First(l => l.Type == RefundLineItemType.Ticket);
@@ -430,7 +429,7 @@ public class RefundRequestTests
 
         result.IsSuccess.Should().BeTrue();
         req.Status.Should().Be(RefundRequestStatus.Completed,
-            "rejected lines don't go through Stripe — they count as settled at approval time");
+            "rejected lines don't go through Stripe â€” they count as settled at approval time");
     }
 
     [Fact]
@@ -467,11 +466,11 @@ public class RefundRequestTests
 
         result.IsSuccess.Should().BeTrue();
         req.Status.Should().Be(RefundRequestStatus.Completed,
-            "Failed lines are terminal — request reaches Completed even with partial Stripe failures");
+            "Failed lines are terminal â€” request reaches Completed even with partial Stripe failures");
     }
 
     // ============================================================
-    // Phase 6A.148.W5.6.B G3 — RefundRequestCompletedEvent emission
+    // Phase 6A.148.W5.6.B G3 â€” RefundRequestCompletedEvent emission
     //
     // Pins down the race-fix invariant: the event MUST be raised at the EXACT moment
     // the state-machine flips Status to Completed, and the payload's TotalRefundedAmount
@@ -480,8 +479,8 @@ public class RefundRequestTests
     // Background: the 4th-report regression (RR 86d0a7dc, operator UAT 2026-05-23)
     // sent a $94 refund-completion email when the actual total was $204, because the
     // legacy email-driving event fired from a webhook handler 831ms before the Sponsor
-    // line committed. Moving the trigger to MarkCompletedIfAllSettled — which is gated
-    // by _lineItems.All(...terminal) — closes the race by construction.
+    // line committed. Moving the trigger to MarkCompletedIfAllSettled â€” which is gated
+    // by _lineItems.All(...terminal) â€” closes the race by construction.
     // ============================================================
 
     [Fact]
@@ -507,10 +506,10 @@ public class RefundRequestTests
         evt.RefundRequestId.Should().Be(req.Id);
         evt.RegistrationId.Should().Be(_registrationId);
         evt.TotalRefundedAmount.Should().Be(104m,
-            "sum of both refunded lines — closes the $94-vs-$204 mid-race undercount bug");
+            "sum of both refunded lines â€” closes the $94-vs-$204 mid-race undercount bug");
         evt.Currency.Should().Be("USD");
         evt.PrimaryStripeRefundId.Should().Be("re_ticket",
-            "ticket line wins primary-refund-id selection — operator-recognisable as 'the registration refund'");
+            "ticket line wins primary-refund-id selection â€” operator-recognisable as 'the registration refund'");
     }
 
     [Fact]
@@ -531,7 +530,7 @@ public class RefundRequestTests
         var ticket = req.LineItems.First(l => l.Type == RefundLineItemType.Ticket);
         var addOn = req.LineItems.First(l => l.Type == RefundLineItemType.AddOn);
         var sponsor = req.LineItems.First(l => l.Type == RefundLineItemType.Sponsor);
-        // Sponsor & AddOn settle BEFORE the ticket — mirrors observed RCA timing
+        // Sponsor & AddOn settle BEFORE the ticket â€” mirrors observed RCA timing
         // (AddOn 21:04:25.150, Sponsor 21:04:27.371, Ticket 21:04:26.388).
         addOn.MarkProcessing("re_addon", "ch_addon");
         addOn.MarkRefunded(DateTime.UtcNow);
@@ -551,7 +550,7 @@ public class RefundRequestTests
     [Fact]
     public void MarkCompletedIfAllSettled_NoTicketLineRefunded_PrimaryRefundIdIsFirstRefunded()
     {
-        // Ticket line was rejected — picks the first refunded line's id instead.
+        // Ticket line was rejected â€” picks the first refunded line's id instead.
         var req = RefundRequest.CreatePending(_registrationId, _attendeeUserId, null,
             new[] { TicketLine(50m), AddOnLine(10m) }).Value;
         var ticket = req.LineItems.First(l => l.Type == RefundLineItemType.Ticket);
@@ -585,7 +584,7 @@ public class RefundRequestTests
             [ticket.Id] = Usd(50m),  // can't reject ALL via Approve (architect F2),
             [addOn.Id] = Usd(10m),
         });
-        // Force both lines into Rejected post-hoc by failing them — simulates the
+        // Force both lines into Rejected post-hoc by failing them â€” simulates the
         // all-rejected end state without violating Approve's "sum>0" invariant.
         req.BeginProcessing();
         ticket.MarkProcessing("re_t", "ch_t");

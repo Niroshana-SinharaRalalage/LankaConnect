@@ -1,10 +1,9 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
@@ -26,9 +25,9 @@ public class SponsorTests
     private const string ValidItemName = "  Projector  ";
     private const string ValidItemDescription = "  HD projector for presentations  ";
 
-    private static Money CreateMoney(decimal amount = 100m, Currency currency = Currency.USD)
+    private static Money CreateMoney(decimal amount = 100m, Currency? currency = null)
     {
-        return Money.Create(amount, currency).Value;
+        return new Money(amount, currency ?? Currency.USD);
     }
 
     private static Sponsor CreateValidMoneySponsor(
@@ -1067,7 +1066,7 @@ public class SponsorTests
 
     #endregion
 
-    #region Phase 6A.145 — Image methods (SetImage / ClearImage)
+    #region Phase 6A.145 â€” Image methods (SetImage / ClearImage)
 
     [Fact]
     public void NewSponsor_HasNullImageFields()
@@ -1231,14 +1230,14 @@ public class SponsorTests
 
     #endregion
 
-    #region Phase 6A.162 — Brochure methods (SetBrochure / ClearBrochure)
+    #region Phase 6A.162 â€” Brochure methods (SetBrochure / ClearBrochure)
 
     /// <summary>
-    /// Phase 6A.162 — Sponsor gains a SECOND optional image slot for a
+    /// Phase 6A.162 â€” Sponsor gains a SECOND optional image slot for a
     /// brochure/flyer alongside the existing logo. Architect Option C: keep
     /// existing SetImage/ClearImage verbatim (semantically the "logo"), add
     /// SIBLING SetBrochure/ClearBrochure methods that mirror line-for-line.
-    /// Independence invariant: each slot is orthogonal — touching one MUST
+    /// Independence invariant: each slot is orthogonal â€” touching one MUST
     /// NOT mutate the other.
     /// </summary>
 
@@ -1323,7 +1322,7 @@ public class SponsorTests
     }
 
     /// <summary>
-    /// Phase 6A.162 — independence invariant #1: SetBrochure MUST NOT touch
+    /// Phase 6A.162 â€” independence invariant #1: SetBrochure MUST NOT touch
     /// the logo slot (ImageUrl/ImageBlobName). Catches the bug class where a
     /// future refactor collapses the two slots into one method by accident.
     /// </summary>
@@ -1340,7 +1339,7 @@ public class SponsorTests
     }
 
     /// <summary>
-    /// Phase 6A.162 — independence invariant #2: ClearImage MUST NOT touch
+    /// Phase 6A.162 â€” independence invariant #2: ClearImage MUST NOT touch
     /// the brochure slot. Mirror of the SetBrochure-doesnt-touch-image
     /// invariant. Same bug class.
     /// </summary>
@@ -1360,22 +1359,22 @@ public class SponsorTests
 
     #endregion
 
-    #region Phase 6A.151 — Edit Existing Sponsorship (RED tests)
+    #region Phase 6A.151 â€” Edit Existing Sponsorship (RED tests)
 
     /// <summary>
-    /// Phase 6A.151 — granular content-edit mutators on the Sponsor aggregate.
+    /// Phase 6A.151 â€” granular content-edit mutators on the Sponsor aggregate.
     /// State-matrix enforcement lives inside each mutator. Audit field
     /// `LastEditedBy` is set on every successful mutation (distinct from
     /// `UpdatedAt` which fires on every state change including lifecycle).
     ///
     /// State matrix (final, post-architect-stress-test):
     ///                            | Notes | Org | Amount | Item* | Image | Name |
-    ///   Pending Money            |  ✅   |  ✅ |   🚫   |  n/a  |  ✅   |  ✅  |
-    ///   Completed Stripe         |  ✅   |  ✅ |   🚫   |  n/a  |  ✅   |  ✅  |
-    ///   Completed off-platform   |  ✅   |  ✅ |   👤   |  n/a  |  ✅   |  ✅  |
-    ///   RecordedItem             |  ✅   |  ✅ |  n/a   |  ✅   |  ✅   |  ✅  |
-    ///   Failed/Abandoned/Refunded|👤notes|  🚫 |   🚫   |  🚫   |  🚫   |  🚫  |
-    ///   (✅ both / 👤 organizer-only / 🚫 disallowed)
+    ///   Pending Money            |  âœ…   |  âœ… |   ðŸš«   |  n/a  |  âœ…   |  âœ…  |
+    ///   Completed Stripe         |  âœ…   |  âœ… |   ðŸš«   |  n/a  |  âœ…   |  âœ…  |
+    ///   Completed off-platform   |  âœ…   |  âœ… |   ðŸ‘¤   |  n/a  |  âœ…   |  âœ…  |
+    ///   RecordedItem             |  âœ…   |  âœ… |  n/a   |  âœ…   |  âœ…   |  âœ…  |
+    ///   Failed/Abandoned/Refunded|ðŸ‘¤notes|  ðŸš« |   ðŸš«   |  ðŸš«   |  ðŸš«   |  ðŸš«  |
+    ///   (âœ… both / ðŸ‘¤ organizer-only / ðŸš« disallowed)
     /// </summary>
 
     private static readonly Guid SponsorActorId = Guid.NewGuid();
@@ -1383,7 +1382,7 @@ public class SponsorTests
 
     private static Sponsor CreateOffPlatformCompletedSponsor()
     {
-        // Off-platform money sponsor: Pending → CompleteAsOrganizerCash → Completed
+        // Off-platform money sponsor: Pending â†’ CompleteAsOrganizerCash â†’ Completed
         // with no StripeCheckoutSessionId (the implicit discriminator).
         var sponsor = CreateValidMoneySponsor();
         var result = sponsor.CompleteAsOrganizerCash();
@@ -1899,7 +1898,7 @@ public class SponsorTests
     #endregion
 
     // =========================================================================
-    // Phase 6A.157 — Packaged sponsorship purchase flow
+    // Phase 6A.157 â€” Packaged sponsorship purchase flow
     //
     // Coverage matrix (14 cases):
     //   Factory:
@@ -1910,7 +1909,7 @@ public class SponsorTests
     //     - Validation: empty packageId / empty packageName / null price / negative price / negative ticket count
     //     - RegistrationId always null (6A.159 cancelled)
     //   CompletePackagePayment:
-    //     - Pending package sponsor → Completed + raises PackageSponsorCompletedEvent (NOT SponsorPaymentCompletedEvent)
+    //     - Pending package sponsor â†’ Completed + raises PackageSponsorCompletedEvent (NOT SponsorPaymentCompletedEvent)
     //     - Event carries 4 package snapshot fields
     //     - Cannot call on generic (non-package) sponsor
     //   Mutual guards:
@@ -1982,7 +1981,7 @@ public class SponsorTests
     [Fact]
     public void CreatePackageSponsor_UsesDistinctMoneyInstancesForAmountAndSnapshot()
     {
-        // EF Core owned-type rule — Amount and PackagePriceSnapshot must NOT
+        // EF Core owned-type rule â€” Amount and PackagePriceSnapshot must NOT
         // reference the same Money instance. The factory materializes a second
         // copy so EF tracks each independently.
         var sponsor = CreateValidPackageSponsor(price: CreateMoney(750m));
@@ -2045,7 +2044,7 @@ public class SponsorTests
     }
 
     // Note: negative price is rejected by Money VO before reaching the
-    // Sponsor factory — the defensive `packagePrice.Amount < 0` check inside
+    // Sponsor factory â€” the defensive `packagePrice.Amount < 0` check inside
     // CreatePackageSponsor is unreachable via the public API. Kept as
     // defense in depth (future Money variants or reflection-based
     // construction) but not exercisable by a test.

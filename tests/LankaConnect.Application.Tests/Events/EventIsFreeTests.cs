@@ -1,9 +1,8 @@
-using LankaConnect.Products.LankaEvents.Domain;
+﻿using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events;
@@ -24,7 +23,7 @@ public class EventIsFreeTests
     public void IsFree_WithZeroTicketPrice_ReturnsTrue()
     {
         // Arrange: Event with legacy single pricing set to $0
-        var ticketPrice = Money.Create(0, Currency.USD).Value;
+        var ticketPrice = new Money(0, Currency.USD);
         var eventResult = Event.Create(
             EventTitle.Create("Free Community Event").Value,
             EventDescription.Create("A free event for the community").Value,
@@ -48,7 +47,7 @@ public class EventIsFreeTests
     public void IsFree_WithZeroAdultPriceInPricing_ReturnsTrue()
     {
         // Arrange: Event with Pricing value object set to $0
-        var adultPrice = Money.Create(0, Currency.USD).Value;
+        var adultPrice = new Money(0, Currency.USD);
         var pricingResult = TicketPricing.CreateSinglePrice(adultPrice);
         Assert.True(pricingResult.IsSuccess);
 
@@ -76,8 +75,8 @@ public class EventIsFreeTests
     public void IsFree_WithZeroDualPricing_ReturnsTrue()
     {
         // Arrange: Event with dual pricing both set to $0
-        var adultPrice = Money.Create(0, Currency.USD).Value;
-        var childPrice = Money.Create(0, Currency.USD).Value;
+        var adultPrice = new Money(0, Currency.USD);
+        var childPrice = new Money(0, Currency.USD);
         var pricingResult = TicketPricing.CreateDualPrice(adultPrice, childPrice, childAgeLimit: 12);
         Assert.True(pricingResult.IsSuccess);
 
@@ -131,7 +130,7 @@ public class EventIsFreeTests
     public void IsFree_WithNonZeroTicketPrice_ReturnsFalse()
     {
         // Arrange: Event with $50 ticket price
-        var ticketPrice = Money.Create(50, Currency.USD).Value;
+        var ticketPrice = new Money(50, Currency.USD);
         var eventResult = Event.Create(
             EventTitle.Create("Paid Concert").Value,
             EventDescription.Create("A paid concert event").Value,
@@ -155,7 +154,7 @@ public class EventIsFreeTests
     public void IsFree_WithNonZeroAdultPriceInPricing_ReturnsFalse()
     {
         // Arrange: Event with $75 adult price
-        var adultPrice = Money.Create(75, Currency.USD).Value;
+        var adultPrice = new Money(75, Currency.USD);
         var pricingResult = TicketPricing.CreateSinglePrice(adultPrice);
         Assert.True(pricingResult.IsSuccess);
 
@@ -183,8 +182,8 @@ public class EventIsFreeTests
     public void IsFree_WithDualPricing_AdultPaidChildFree_ReturnsFalse()
     {
         // Arrange: Event with $100 adult, $0 child (adult price determines if free)
-        var adultPrice = Money.Create(100, Currency.USD).Value;
-        var childPrice = Money.Create(0, Currency.USD).Value;
+        var adultPrice = new Money(100, Currency.USD);
+        var childPrice = new Money(0, Currency.USD);
         var pricingResult = TicketPricing.CreateDualPrice(adultPrice, childPrice, childAgeLimit: 12);
         Assert.True(pricingResult.IsSuccess);
 
@@ -212,8 +211,8 @@ public class EventIsFreeTests
     public void IsFree_WithDualPricing_BothNonZero_ReturnsFalse()
     {
         // Arrange: Christmas Dinner Dance scenario - $100 adult, $50 child
-        var adultPrice = Money.Create(100, Currency.USD).Value;
-        var childPrice = Money.Create(50, Currency.USD).Value;
+        var adultPrice = new Money(100, Currency.USD);
+        var childPrice = new Money(50, Currency.USD);
         var pricingResult = TicketPricing.CreateDualPrice(adultPrice, childPrice, childAgeLimit: 12);
         Assert.True(pricingResult.IsSuccess);
 
@@ -241,8 +240,8 @@ public class EventIsFreeTests
     public void IsFree_WithGroupTiersConfigured_ReturnsFalse()
     {
         // Arrange: Event with group pricing tiers
-        var tier1Price = Money.Create(20, Currency.USD).Value;
-        var tier2Price = Money.Create(15, Currency.USD).Value;
+        var tier1Price = new Money(20, Currency.USD);
+        var tier2Price = new Money(15, Currency.USD);
         var tier1 = GroupPricingTier.Create(minAttendees: 1, maxAttendees: 9, tier1Price).Value;
         var tier2 = GroupPricingTier.Create(minAttendees: 10, maxAttendees: null, tier2Price).Value;
 
@@ -336,7 +335,7 @@ public class EventIsFreeTests
     public void IsFree_Integration_FreeEventAllowsImmediateConfirmation()
     {
         // Arrange: Truly free event with explicit $0 pricing
-        var ticketPrice = Money.Create(0, Currency.USD).Value;
+        var ticketPrice = new Money(0, Currency.USD);
         var eventResult = Event.Create(
             EventTitle.Create("Free Event").Value,
             EventDescription.Create("Confirmed free event").Value,
@@ -362,7 +361,7 @@ public class EventIsFreeTests
     public void IsFree_Integration_PaidEventRequiresPreliminThreeStateLifecycle()
     {
         // Arrange: Paid event with proper pricing configured
-        var adultPrice = Money.Create(100, Currency.USD).Value;
+        var adultPrice = new Money(100, Currency.USD);
         var pricingResult = TicketPricing.CreateSinglePrice(adultPrice);
         var eventResult = Event.Create(
             EventTitle.Create("Paid Event").Value,

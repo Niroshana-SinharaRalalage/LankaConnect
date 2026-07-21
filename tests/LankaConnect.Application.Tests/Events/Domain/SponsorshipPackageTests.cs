@@ -1,17 +1,16 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
 /// <summary>
-/// Phase 6A.156 — TDD unit tests for the SponsorshipPackage aggregate.
+/// Phase 6A.156 â€” TDD unit tests for the SponsorshipPackage aggregate.
 ///
 /// SponsorshipPackage is the catalogue half of the new packaged-sponsorship
 /// feature (mirrors AddOnDefinition's catalogue role for the add-on system).
-/// Buyers don't appear here — they appear on the Sponsor aggregate with
+/// Buyers don't appear here â€” they appear on the Sponsor aggregate with
 /// SponsorshipPackageId set. The two-aggregate split is what makes packages
 /// possible at all: the original flat Sponsor model could not express
 /// tiers/perks/stock-caps/included-tickets without it.
@@ -32,7 +31,7 @@ public class SponsorshipPackageTests
     private const int ValidSortOrder = 1;
     private const int ValidIncludedTicketCount = 5;
 
-    private static Money ValidPrice() => Money.Create(500m, Currency.USD).Value;
+    private static Money ValidPrice() => new Money(500m, Currency.USD);
 
     private static IReadOnlyList<string> ValidPerks() => new List<string>
     {
@@ -69,13 +68,13 @@ public class SponsorshipPackageTests
 
     #endregion
 
-    #region Create – Success Cases
+    #region Create â€“ Success Cases
 
     [Fact]
     public void Create_WithAllValidFields_ShouldSucceed()
     {
         var eventId = Guid.NewGuid();
-        var price = Money.Create(250m, Currency.USD).Value;
+        var price = new Money(250m, Currency.USD);
         var perks = new List<string> { "Logo on banner", "2 tickets" };
 
         var result = SponsorshipPackage.Create(
@@ -158,7 +157,7 @@ public class SponsorshipPackageTests
     [Fact]
     public void Create_WithZeroPrice_ShouldSucceed_RecognitionOnlyPackages()
     {
-        var zeroPrice = Money.Create(0m, Currency.USD).Value;
+        var zeroPrice = new Money(0m, Currency.USD);
 
         var result = SponsorshipPackage.Create(
             ValidEventId, "Community Partner", null, zeroPrice,
@@ -238,7 +237,7 @@ public class SponsorshipPackageTests
 
     #endregion
 
-    #region Create – Failure Cases
+    #region Create â€“ Failure Cases
 
     [Fact]
     public void Create_WithEmptyEventId_ShouldFail()
@@ -414,13 +413,13 @@ public class SponsorshipPackageTests
 
     #endregion
 
-    #region UpdateDetails – Success Cases
+    #region UpdateDetails â€“ Success Cases
 
     [Fact]
     public void UpdateDetails_WithValidData_ShouldUpdateAllFields()
     {
         var pkg = CreateValidPackage();
-        var newPrice = Money.Create(750m, Currency.USD).Value;
+        var newPrice = new Money(750m, Currency.USD);
         var newPerks = new List<string> { "Updated perk A", "Updated perk B" };
 
         var result = pkg.UpdateDetails(
@@ -468,7 +467,7 @@ public class SponsorshipPackageTests
 
     #endregion
 
-    #region UpdateDetails – Failure Cases
+    #region UpdateDetails â€“ Failure Cases
 
     [Fact]
     public void UpdateDetails_WithEmptyName_ShouldFail()

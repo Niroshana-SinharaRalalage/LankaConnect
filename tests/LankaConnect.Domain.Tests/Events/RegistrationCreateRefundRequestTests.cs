@@ -1,18 +1,17 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events;
 
 /// <summary>
-/// Phase 6A.148 — <c>Registration.CreateRefundRequest</c> entry-point tests.
+/// Phase 6A.148 â€” <c>Registration.CreateRefundRequest</c> entry-point tests.
 ///
 /// Aggregate is responsible for enforcing all preconditions before delegating to
 /// <see cref="RefundRequest.CreatePending"/> or <see cref="RefundRequest.CreateOrganizerInitiated"/>.
@@ -22,7 +21,7 @@ namespace LankaConnect.Domain.Tests.Events;
 /// - F7: scan-guard override requires non-empty OrganizerNotes (delegated to entity)
 /// - F9: line items must be unique per (Type, ReferenceId)
 /// - Scan guard blocks attendee path when <c>anyTicketsScanned == true</c>
-/// - No date-based guard (no-show rule #3 — post-event refunds allowed if no scans)
+/// - No date-based guard (no-show rule #3 â€” post-event refunds allowed if no scans)
 /// - Registration.Status flips to PendingRefundApproval on success
 /// </summary>
 public class RegistrationCreateRefundRequestTests
@@ -40,7 +39,7 @@ public class RegistrationCreateRefundRequestTests
         var alice = AttendeeDetails.Create("Alice", AgeCategory.Adult, Gender.Female).Value;
         var contact = RegistrationContact.Create(
             "alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
         var reg = Registration.CreateWithAttendees(
             _eventId, AttendeeUser, new[] { alice }, contact, price, isPaidEvent: true).Value;
         reg.CompletePayment("pi_test_refund").IsSuccess.Should().BeTrue();
@@ -65,7 +64,7 @@ public class RegistrationCreateRefundRequestTests
     public void CreateRefundRequest_AttendeePath_HappyPath_LeavesRegistrationConfirmed()
     {
         // Post-rework: cancel and refund are decoupled. CreateRefundRequest no longer
-        // mutates Registration.Status — the registration stays in whatever lifecycle
+        // mutates Registration.Status â€” the registration stays in whatever lifecycle
         // state it was in (Confirmed for standalone refund, Cancelled for cancel+refund).
         var reg = BuildPaidConfirmedRegistration();
 
@@ -110,7 +109,7 @@ public class RegistrationCreateRefundRequestTests
     {
         // Only the attendee path is allowed to create a refund on a Cancelled registration
         // (the cancel+refund compound). Organizer-initiated on a Cancelled registration is
-        // disallowed — organizer should only act on live (Confirmed) registrations.
+        // disallowed â€” organizer should only act on live (Confirmed) registrations.
         var reg = BuildPaidConfirmedRegistration();
         reg.Cancel();
 
@@ -161,7 +160,7 @@ public class RegistrationCreateRefundRequestTests
     {
         var alice = AttendeeDetails.Create("Alice", AgeCategory.Adult, Gender.Female).Value;
         var contact = RegistrationContact.Create("alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
         // Free event => PaymentStatus.NotRequired
         var reg = Registration.CreateWithAttendees(
             _eventId, AttendeeUser, new[] { alice }, contact, price, isPaidEvent: false).Value;
@@ -230,7 +229,7 @@ public class RegistrationCreateRefundRequestTests
     [Fact]
     public void CreateRefundRequest_OrganizerPath_TicketScanned_OverrideWithoutNotes_Fails()
     {
-        // Architect F7 — override + blank notes is rejected at the entity layer.
+        // Architect F7 â€” override + blank notes is rejected at the entity layer.
         var reg = BuildPaidConfirmedRegistration();
 
         var result = reg.CreateRefundRequest(
@@ -298,7 +297,7 @@ public class RegistrationCreateRefundRequestTests
     [Fact]
     public void CreateRefundRequest_DuplicateLineItemReference_Fails()
     {
-        // Architect F9 — one line per (Type, ReferenceId). No aggregation by type.
+        // Architect F9 â€” one line per (Type, ReferenceId). No aggregation by type.
         var reg = BuildPaidConfirmedRegistration();
         var dup = new[]
         {
@@ -316,7 +315,7 @@ public class RegistrationCreateRefundRequestTests
     [Fact]
     public void CreateRefundRequest_DifferentTypesSameRefId_IsAllowed()
     {
-        // (Ticket, refX) and (AddOn, refX) are distinct buckets — no collision.
+        // (Ticket, refX) and (AddOn, refX) are distinct buckets â€” no collision.
         var reg = BuildPaidConfirmedRegistration();
         var sharedId = Guid.NewGuid();
         var inputs = new[]
@@ -356,7 +355,7 @@ public class RegistrationCreateRefundRequestTests
     }
 
     // ============================================================
-    // Vestigial helpers — MoveToRefundRequestedFromApproval and MoveToConfirmedFromApproval
+    // Vestigial helpers â€” MoveToRefundRequestedFromApproval and MoveToConfirmedFromApproval
     // are no longer called by the new decoupled flow. The methods remain in the aggregate
     // for safety (in case any in-flight staging row needs them) but their preconditions
     // are unreachable under the current flow. They are NOT tested here intentionally.

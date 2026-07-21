@@ -1,20 +1,19 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
 /// <summary>
-/// Phase 7E.3c — paid B-mode RSVP with TierCounts axis pricing.
+/// Phase 7E.3c â€” paid B-mode RSVP with TierCounts axis pricing.
 /// Architect-required (review iteration 1): TierCounts pricing must produce identical
 /// <see cref="Money"/> totals to Mode A's <see cref="Event.CalculateTieredPriceForAttendees"/>
-/// for an equivalent basket. Per-tier capacity reservation must happen BEFORE pricing —
+/// for an equivalent basket. Per-tier capacity reservation must happen BEFORE pricing â€”
 /// applies to free + paid tiered events (architect edit #2).
 /// </summary>
 public class Phase7E3cTierCountsPricingTests
@@ -25,23 +24,23 @@ public class Phase7E3cTierCountsPricingTests
     {
         var title = EventTitle.Create("7E.3c tiered test").Value;
         var description = EventDescription.Create("TierCounts pricing").Value;
-        // Capacity must be ≥ tier capacities so AddTicketTier doesn't reject.
+        // Capacity must be â‰¥ tier capacities so AddTicketTier doesn't reject.
         var ev = Event.Create(
             title, description,
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
             Guid.NewGuid(), capacity: vipCapacity + generalCapacity + 50).Value;
-        ev.SetPricing(Money.Create(vipPrice, Currency.USD).Value).IsSuccess.Should().BeTrue();
+        ev.SetPricing(new Money(vipPrice, Currency.USD)).IsSuccess.Should().BeTrue();
         ev.SetTicketingMode(TicketingMode.Tiered).IsSuccess.Should().BeTrue();
 
         var vipResult = ev.AddTicketTier(
             "VIP", "VIP tier",
-            Money.Create(vipPrice, Currency.USD).Value, null, null,
+            new Money(vipPrice, Currency.USD), null, null,
             capacity: vipCapacity, maxPerUser: vipCapacity, sortOrder: 1);
         vipResult.IsSuccess.Should().BeTrue($"AddTicketTier VIP failed: {vipResult.Error}");
 
         var generalResult = ev.AddTicketTier(
             "General", "General tier",
-            Money.Create(generalPrice, Currency.USD).Value, null, null,
+            new Money(generalPrice, Currency.USD), null, null,
             capacity: generalCapacity, maxPerUser: generalCapacity, sortOrder: 2);
         generalResult.IsSuccess.Should().BeTrue();
 
@@ -67,7 +66,7 @@ public class Phase7E3cTierCountsPricingTests
 
         result.IsSuccess.Should().BeTrue($"errors: {string.Join("; ", result.Errors ?? Enumerable.Empty<string>())}");
         var registration = ev.Registrations.Single();
-        registration.TotalPrice!.Amount.Should().Be(190m, "VIP × 2 ($100) + General × 3 ($90) = $190");
+        registration.TotalPrice!.Amount.Should().Be(190m, "VIP Ã— 2 ($100) + General Ã— 3 ($90) = $190");
         registration.Status.Should().Be(RegistrationStatus.Preliminary,
             "tiered paid event awaits Stripe webhook before Confirmed");
     }
@@ -83,7 +82,7 @@ public class Phase7E3cTierCountsPricingTests
         var result = ev.RegisterWithHeadCount(Guid.NewGuid(), "Lead", head, Contact());
 
         result.IsSuccess.Should().BeTrue();
-        ev.Registrations.Single().TotalPrice!.Amount.Should().Be(190m, "B3 + tiers — gender ignored, tier prices used");
+        ev.Registrations.Single().TotalPrice!.Amount.Should().Be(190m, "B3 + tiers â€” gender ignored, tier prices used");
     }
 
     [Fact]
@@ -111,14 +110,14 @@ public class Phase7E3cTierCountsPricingTests
 
         var result = ev.RegisterWithHeadCount(Guid.NewGuid(), "Lead", head, Contact());
 
-        result.IsFailure.Should().BeTrue("VIP tier oversold — should reject before pricing");
+        result.IsFailure.Should().BeTrue("VIP tier oversold â€” should reject before pricing");
         ev.Registrations.Should().BeEmpty("no registration created when tier reservation fails");
     }
 
     [Fact]
     public void RsvpToEvent_ModeBPaid_TierCounts_TwoConcurrentRsvps_OnlyOneSucceeds()
     {
-        // Single VIP capacity = 1. Two RSVPs each requesting 1 VIP — second must fail.
+        // Single VIP capacity = 1. Two RSVPs each requesting 1 VIP â€” second must fail.
         var (ev, vip, _) = CreateTieredEvent(vipCapacity: 1);
         ev.SetRegistrationMode(RegistrationMode.HeadCountOnly).IsSuccess.Should().BeTrue();
 
@@ -138,7 +137,7 @@ public class Phase7E3cTierCountsPricingTests
     {
         // Architect edit #2: free + tiered events MUST reserve per-tier capacity to prevent
         // over-selling. Move tier.Reserve OUT of pricing path INTO RegisterWithHeadCount
-        // pre-pricing — applies to both free and paid.
+        // pre-pricing â€” applies to both free and paid.
         var title = EventTitle.Create("Free tiered").Value;
         var description = EventDescription.Create("Phase 7E.3c free + tiered").Value;
         var ev = Event.Create(
@@ -147,7 +146,7 @@ public class Phase7E3cTierCountsPricingTests
             Guid.NewGuid(), 100).Value;
         ev.SetAsFreeEvent().IsSuccess.Should().BeTrue();
         ev.SetTicketingMode(TicketingMode.Tiered).IsSuccess.Should().BeTrue();
-        var vipResult = ev.AddTicketTier("VIP", "VIP", Money.Create(0m, Currency.USD).Value, null, null, capacity: 2, maxPerUser: 2, sortOrder: 1);
+        var vipResult = ev.AddTicketTier("VIP", "VIP", new Money(0m, Currency.USD), null, null, capacity: 2, maxPerUser: 2, sortOrder: 1);
         vipResult.IsSuccess.Should().BeTrue();
         var vip = vipResult.Value;
         ev.Publish().IsSuccess.Should().BeTrue();
@@ -161,7 +160,7 @@ public class Phase7E3cTierCountsPricingTests
         ev.Registrations.Single().Status.Should().Be(RegistrationStatus.Confirmed,
             "free events confirm immediately");
 
-        // Second RSVP requesting another VIP seat must fail — capacity reservation works for free events too
+        // Second RSVP requesting another VIP seat must fail â€” capacity reservation works for free events too
         var secondHead = HeadCountBreakdown.ForTotalOnly(1, Tiers((vip, 1))).Value;
         var second = ev.RegisterWithHeadCount(Guid.NewGuid(), "Second", secondHead, Contact("b@e.com"));
         second.IsFailure.Should().BeTrue("VIP tier oversold even though event is free");
@@ -196,15 +195,15 @@ public class Phase7E3cTierCountsPricingTests
         var modeBPrice = modeBEvent.Registrations.Single().TotalPrice!;
 
         modeBPrice.Amount.Should().Be(modeAPriceResult.Value!.Amount,
-            "Mode A vs Mode B + TierCounts must produce identical TotalPrice — anti-fork guard");
+            "Mode A vs Mode B + TierCounts must produce identical TotalPrice â€” anti-fork guard");
         modeBPrice.Currency.Should().Be(modeAPriceResult.Value.Currency);
-        modeBPrice.Amount.Should().Be(190m, "sanity: 2 × $50 + 3 × $30 = $190");
+        modeBPrice.Amount.Should().Be(190m, "sanity: 2 Ã— $50 + 3 Ã— $30 = $190");
     }
 
     [Fact]
     public void RsvpToEvent_TieredEvent_RejectsRsvp_WithoutTierCounts()
     {
-        // Defensive — tiered events MUST receive TierCounts. The architect edit #2 guard
+        // Defensive â€” tiered events MUST receive TierCounts. The architect edit #2 guard
         // is in RegisterWithHeadCount BEFORE pricing.
         var (ev, _, _) = CreateTieredEvent();
         ev.SetRegistrationMode(RegistrationMode.HeadCountOnly).IsSuccess.Should().BeTrue();

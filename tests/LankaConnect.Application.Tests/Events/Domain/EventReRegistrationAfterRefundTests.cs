@@ -1,10 +1,9 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
@@ -26,7 +25,7 @@ public class EventReRegistrationAfterRefundTests
 
     private Event CreatePaidEvent(int capacity = 100, decimal price = 50m)
     {
-        var ticketPrice = Money.Create(price, Currency.USD).Value;
+        var ticketPrice = new Money(price, Currency.USD);
         var eventResult = Event.Create(
             EventTitle.Create("Paid Community Event").Value,
             EventDescription.Create("A paid event for the community").Value,
@@ -48,7 +47,7 @@ public class EventReRegistrationAfterRefundTests
 
     private Event CreateFreeEvent(int capacity = 100)
     {
-        var ticketPrice = Money.Create(0, Currency.USD).Value;
+        var ticketPrice = new Money(0, Currency.USD);
         var eventResult = Event.Create(
             EventTitle.Create("Free Community Event").Value,
             EventDescription.Create("A free event for the community").Value,

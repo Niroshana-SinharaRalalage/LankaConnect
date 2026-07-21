@@ -1,15 +1,14 @@
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+﻿using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Domain.Tests.Events.Entities;
 
 public class TicketTierTests
 {
     private readonly Guid _eventId = Guid.NewGuid();
-    private readonly Money _adultPrice = Money.Create(150.00m, Currency.USD).Value;
-    private readonly Money _childPrice = Money.Create(100.00m, Currency.USD).Value;
+    private readonly Money _adultPrice = new Money(150.00m, Currency.USD);
+    private readonly Money _childPrice = new Money(100.00m, Currency.USD);
 
     #region Create Tests
 
@@ -61,7 +60,7 @@ public class TicketTierTests
     public void Create_FreeTier_Should_Return_Success()
     {
         // Arrange
-        var freePrice = Money.Create(0m, Currency.USD).Value;
+        var freePrice = new Money(0m, Currency.USD);
 
         // Act
         var result = TicketTier.Create(
@@ -174,7 +173,7 @@ public class TicketTierTests
     [Fact]
     public void Create_WithChildPriceGreaterThanAdult_Should_Fail()
     {
-        var expensiveChildPrice = Money.Create(200.00m, Currency.USD).Value;
+        var expensiveChildPrice = new Money(200.00m, Currency.USD);
 
         var result = TicketTier.Create(
             _eventId, "VIP", null,
@@ -188,7 +187,7 @@ public class TicketTierTests
     [Fact]
     public void Create_WithMismatchedCurrencies_Should_Fail()
     {
-        var eurChildPrice = Money.Create(80.00m, Currency.EUR).Value;
+        var eurChildPrice = new Money(80.00m, Currency.EUR);
 
         var result = TicketTier.Create(
             _eventId, "VIP", null,
@@ -376,7 +375,7 @@ public class TicketTierTests
     [Fact]
     public void CalculatePriceForAttendee_FreeTier_ReturnsZero()
     {
-        var freePrice = Money.Create(0m, Currency.USD).Value;
+        var freePrice = new Money(0m, Currency.USD);
         var tier = TicketTier.Create(
             _eventId, "Free", null,
             freePrice, null, null,
@@ -395,7 +394,7 @@ public class TicketTierTests
     public void Update_WithValidData_Should_Succeed()
     {
         var tier = CreateValidTier(capacity: 30);
-        var newPrice = Money.Create(200.00m, Currency.USD).Value;
+        var newPrice = new Money(200.00m, Currency.USD);
 
         var result = tier.Update("Platinum", "Premium experience", newPrice, null, null, 40, 8, 0);
 
@@ -476,7 +475,7 @@ public class TicketTierTests
 
     #endregion
 
-    #region Tier Assignment Tests (Slice 4 — Polymorphic Tier Assignments)
+    #region Tier Assignment Tests (Slice 4 â€” Polymorphic Tier Assignments)
 
     [Fact]
     public void AssignToZone_Should_Add_Assignment()
@@ -534,7 +533,7 @@ public class TicketTierTests
     [Fact]
     public void AssignToZone_And_AssignToTable_Same_Id_Should_Coexist()
     {
-        // Arrange — Zone and Table are independent ID spaces; the same GUID could legitimately
+        // Arrange â€” Zone and Table are independent ID spaces; the same GUID could legitimately
         // exist as a zone AND as a table on different layouts, so they are distinct assignments.
         var tier = CreateValidTier(capacity: 30);
         var sharedGuid = Guid.NewGuid();
@@ -594,7 +593,7 @@ public class TicketTierTests
     [Fact]
     public void RemoveAssignment_Only_Removes_Matching_Kind()
     {
-        // Arrange — same ID assigned as both Zone and Table; removing one must leave the other.
+        // Arrange â€” same ID assigned as both Zone and Table; removing one must leave the other.
         var tier = CreateValidTier(capacity: 30);
         var sharedId = Guid.NewGuid();
         tier.AssignToZone(sharedId);

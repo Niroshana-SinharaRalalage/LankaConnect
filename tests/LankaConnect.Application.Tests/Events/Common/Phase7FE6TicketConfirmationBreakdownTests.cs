@@ -1,5 +1,7 @@
 using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Common;
+using LankaConnect.Products.LankaEvents.Contracts.DTOs;
+using LankaConnect.Products.LankaEvents.Contracts.Shims;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using Xunit;

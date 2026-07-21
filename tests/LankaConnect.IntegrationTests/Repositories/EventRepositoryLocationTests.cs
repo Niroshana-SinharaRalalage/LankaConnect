@@ -7,7 +7,8 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Products.LankaEvents.Domain.Services;
-using LankaConnect.Domain.Business.ValueObjects;
+// Wave 8.5.e (2026-07-19): `LankaConnect.Domain.Business` deleted per Consult #12 Option D
+// (2026-07-06). LankaBusiness product re-surfaces in Phase B. Using removed (unreferenced).
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.Infrastructure.Data.Repositories;
 using LankaConnect.Products.LankaEvents.Infrastructure.Data;  // Wave 6.5.f.5: LankaEventsDbContext resolution

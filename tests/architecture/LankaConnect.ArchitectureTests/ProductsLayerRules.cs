@@ -247,7 +247,7 @@ public sealed class ProductsLayerRules
         var legacyTransitionalNamespaces = new[]
         {
             "LankaConnect.Infrastructure.Data",
-            "LankaConnect.SPLIT_PER_ENTITY.Repositories"
+            "LankaConnect.Infrastructure.Data.Repositories"
         };
 
         var violators = Types.InAssembly(InfrastructureAssembly)
@@ -489,7 +489,7 @@ public sealed class ProductsLayerRules
     /// <summary>
     /// Rule 13 (Wave 6.b) â€” <c>Products.LankaEvents.Infrastructure</c> types that
     /// are NOT decorated with <see cref="Wave6_5TransitionalExceptionAttribute"/>
-    /// MUST NOT reference <c>LankaConnect.SPLIT_PER_ENTITY.AppDbContext</c>
+    /// MUST NOT reference <c>LankaConnect.Infrastructure.Data.AppDbContext</c>
     /// nor the legacy <c>Repository&lt;T&gt;</c> base class. Both dependencies
     /// exist ONLY under the transitional escape hatch (Rule 12's baseline).
     /// </summary>
@@ -515,8 +515,8 @@ public sealed class ProductsLayerRules
             .And().DoNotHaveName("LankaEventsModule")
             .Should()
             .NotHaveDependencyOnAny(
-                "LankaConnect.SPLIT_PER_ENTITY.AppDbContext",
-                "LankaConnect.SPLIT_PER_ENTITY.Repositories.Repository`1")
+                "LankaConnect.Infrastructure.Data.AppDbContext",
+                "LankaConnect.Infrastructure.Data.Repositories.Repository`1")
             .GetResult();
 
         AssertCompliant(result, "Products.LankaEvents.Infrastructure (non-baseline classes)");

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
@@ -6,34 +6,33 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
 /// <summary>
-/// Phase 7F-B.1 — A↔B mode conversion with attendee backfill (domain layer).
+/// Phase 7F-B.1 â€” Aâ†”B mode conversion with attendee backfill (domain layer).
 ///
-/// Architect-approved review iteration 1 (2026-04-30): ≥36 case floor (architect-revised
-/// from ≥30). Tests below cover:
-///   - Happy paths: A→B1/B2/B3/B4 (4); B1/B2/B3/B4→A (4)
-///   - Demographic derivation correctness on A→B (per-attendee AgeCategory/Gender → buckets)
-///   - Per-tier-age axis populated on A→B for tiered events (depends on 7F-C live)
+/// Architect-approved review iteration 1 (2026-04-30): â‰¥36 case floor (architect-revised
+/// from â‰¥30). Tests below cover:
+///   - Happy paths: Aâ†’B1/B2/B3/B4 (4); B1/B2/B3/B4â†’A (4)
+///   - Demographic derivation correctness on Aâ†’B (per-attendee AgeCategory/Gender â†’ buckets)
+///   - Per-tier-age axis populated on Aâ†’B for tiered events (depends on 7F-C live)
 ///   - Lead-name precedence: Contact.FullName ?? FirstAttendee.Name
-///   - Placeholder name scheme on B→A: row 1 = unmodified LeadName, rows 2..N = "{LeadName} (n)"
-///   - Deterministic ordering on B→A: Adults before Children; Males before Females; (Adult,Male)→
-///     (Adult,Female)→(Child,Male)→(Child,Female) for B4
+///   - Placeholder name scheme on Bâ†’A: row 1 = unmodified LeadName, rows 2..N = "{LeadName} (n)"
+///   - Deterministic ordering on Bâ†’A: Adults before Children; Males before Females; (Adult,Male)â†’
+///     (Adult,Female)â†’(Child,Male)â†’(Child,Female) for B4
 ///   - Stable sort on TicketTierId allocation (by SortOrder, fall back to TierName)
 ///   - Cancelled / Refunded / Abandoned registrations untouched
 ///   - Skipped registrations: Other gender into B3/B4; pending RegistrationAddition; named seats
-///   - Same-mode → idempotent no-op
+///   - Same-mode â†’ idempotent no-op
 ///   - Total=0 corner case after Other-gender filtering rejects globally
 ///   - DryRun: report computed without mutation
 ///   - Per-tier reservation accounting unchanged
 ///   - Batch cap > 500 rejected
 ///   - RegistrationMode snapshot flips on each migrated row
-///   - ActualHeadCountAttended preserved in audit, dropped from live (B→A drops; A→B no field)
+///   - ActualHeadCountAttended preserved in audit, dropped from live (Bâ†’A drops; Aâ†’B no field)
 ///   - Audit shape: BeforeShape + AfterShape jsonb-compatible
 ///   - Concurrency: not in domain (handled at handler layer per architect)
 ///   - Compatibility re-check: event-shape via 7E.2 validator (handler layer); per-registration
@@ -43,9 +42,9 @@ namespace LankaConnect.Application.Tests.Events.Domain;
 /// </summary>
 public class Phase7FB1ModeConversionTests
 {
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Helpers
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private static Event CreateEvent(
         RegistrationMode mode = RegistrationMode.DetailedAttendees,
@@ -59,17 +58,17 @@ public class Phase7FB1ModeConversionTests
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
             organizerId: Guid.NewGuid(),
             capacity: 100).Value;
-        ev.SetPricing(Money.Create(vipAdult, Currency.USD).Value).IsSuccess.Should().BeTrue();
+        ev.SetPricing(new Money(vipAdult, Currency.USD)).IsSuccess.Should().BeTrue();
         if (tiered)
         {
             ev.SetTicketingMode(TicketingMode.Tiered).IsSuccess.Should().BeTrue();
             ev.AddTicketTier("VIP", "VIP",
-                Money.Create(vipAdult, Currency.USD).Value,
-                Money.Create(vipChild, Currency.USD).Value, 12,
+                new Money(vipAdult, Currency.USD),
+                new Money(vipChild, Currency.USD), 12,
                 capacity: 20, maxPerUser: 20, sortOrder: 1).IsSuccess.Should().BeTrue();
             ev.AddTicketTier("General", "General",
-                Money.Create(genAdult, Currency.USD).Value,
-                Money.Create(genChild, Currency.USD).Value, 12,
+                new Money(genAdult, Currency.USD),
+                new Money(genChild, Currency.USD), 12,
                 capacity: 50, maxPerUser: 50, sortOrder: 2).IsSuccess.Should().BeTrue();
         }
         ev.Publish().IsSuccess.Should().BeTrue();
@@ -89,9 +88,9 @@ public class Phase7FB1ModeConversionTests
         OrganiserId = Guid.NewGuid(),
     };
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  A → B happy paths
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  A â†’ B happy paths
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_AtoB1_CollapsesAttendeesIntoTotalOnly()
@@ -111,7 +110,7 @@ public class Phase7FB1ModeConversionTests
         reg.RegistrationMode.Should().Be(RegistrationMode.HeadCountOnly);
         reg.HeadCount!.Total.Should().Be(3);
         reg.HeadCount.Demographics.Should().BeNull("B1 has no demographic axis");
-        reg.LeadAttendeeName.Should().Be("Alice", "Contact has no FullName field — lead = first attendee");
+        reg.LeadAttendeeName.Should().Be("Alice", "Contact has no FullName field â€” lead = first attendee");
         reg.Attendees.Should().BeEmpty("attendee rows dropped from live aggregate");
     }
 
@@ -182,9 +181,9 @@ public class Phase7FB1ModeConversionTests
         demo.ChildFemales.Should().Be(1);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  A → B with Other gender — architect Q1 reject per registration
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  A â†’ B with Other gender â€” architect Q1 reject per registration
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_AtoB3_OtherGender_SkipsRegistration()
@@ -226,9 +225,9 @@ public class Phase7FB1ModeConversionTests
         report.Value.Skipped.Should().HaveCount(1);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  B → A explode happy paths + name fabrication + ordering
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  B â†’ A explode happy paths + name fabrication + ordering
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_B1toA_ExplodesIntoPlaceholderRows_LeadNamePreserved()
@@ -248,7 +247,7 @@ public class Phase7FB1ModeConversionTests
         reg.Attendees[1].Name.Should().Be("Niroshana (2)");
         reg.Attendees[2].Name.Should().Be("Niroshana (3)");
         reg.HeadCount.Should().BeNull("B-mode head-count cleared");
-        reg.LeadAttendeeName.Should().BeNull("LeadAttendeeName cleared on B→A");
+        reg.LeadAttendeeName.Should().BeNull("LeadAttendeeName cleared on Bâ†’A");
     }
 
     [Fact]
@@ -297,7 +296,7 @@ public class Phase7FB1ModeConversionTests
 
         report.IsSuccess.Should().BeTrue();
         var attendees = ev.Registrations.Single().Attendees;
-        // Architect §2.2 deterministic order: (Adult,Male), (Adult,Female), (Child,Male), (Child,Female)
+        // Architect Â§2.2 deterministic order: (Adult,Male), (Adult,Female), (Child,Male), (Child,Female)
         attendees[0].AgeCategory.Should().Be(AgeCategory.Adult);
         attendees[0].Gender.Should().Be(Gender.Male);
         attendees[1].AgeCategory.Should().Be(AgeCategory.Adult);
@@ -308,9 +307,9 @@ public class Phase7FB1ModeConversionTests
         attendees[3].Gender.Should().Be(Gender.Female);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Cancelled / Refunded registrations untouched (active-only filter)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_IgnoresCancelledRegistrations_OnlyConvertsActiveOnes()
@@ -333,9 +332,9 @@ public class Phase7FB1ModeConversionTests
             "cancelled rows preserve their original mode for historical email re-renders");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Same-mode idempotency
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_SameMode_IsIdempotentNoOp()
@@ -350,9 +349,9 @@ public class Phase7FB1ModeConversionTests
         report.Value.Skipped.Should().BeEmpty();
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  DryRun: report computed without mutation
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_DryRun_ReportsButDoesNotMutate()
@@ -372,9 +371,9 @@ public class Phase7FB1ModeConversionTests
         ev.Registrations.Single().Attendees.Should().HaveCount(2);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Pending RegistrationAddition skip (architect Q8)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_RegistrationWithPendingAddition_IsSkipped()
@@ -396,9 +395,9 @@ public class Phase7FB1ModeConversionTests
         report.Value.Skipped[0].ReasonCode.Should().Be("PendingAdditionMustResolveFirst");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Batch cap (architect Q7) — 500 default, configurable
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Batch cap (architect Q7) â€” 500 default, configurable
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_BatchOverCap_ReturnsFailure()
@@ -416,15 +415,15 @@ public class Phase7FB1ModeConversionTests
         string.Join("; ", report.Errors!).Should().Contain("batch", because: "active set exceeds cap");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Lead-name precedence (architect Q6): Contact.FullName ?? FirstAttendee.Name
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_AtoB_LeadName_UsesFirstAttendeeName()
     {
         // RegistrationContact has no FullName field today (only Email / Phone / Address),
-        // so the lead-name source on A→B is simply Attendees[0].Name. Architect Q6's
+        // so the lead-name source on Aâ†’B is simply Attendees[0].Name. Architect Q6's
         // hypothetical Contact.FullName fallback degenerates to this single rule.
         var ev = CreateEvent();
         ev.RegisterWithAttendees(Guid.NewGuid(),
@@ -437,9 +436,9 @@ public class Phase7FB1ModeConversionTests
         ev.Registrations.Single().LeadAttendeeName.Should().Be("First Attendee");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Audit shape — BeforeShape + AfterShape captured per migrated row
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Audit shape â€” BeforeShape + AfterShape captured per migrated row
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_AtoB_AuditCapturesBeforeAndAfterShape()
@@ -456,10 +455,10 @@ public class Phase7FB1ModeConversionTests
         migrated.RegistrationId.Should().Be(ev.Registrations.Single().Id);
         migrated.BeforeAttendees.Should().NotBeNull();
         migrated.BeforeAttendees!.Should().HaveCount(2);
-        migrated.BeforeHeadCount.Should().BeNull("source was Mode A — no head-count");
+        migrated.BeforeHeadCount.Should().BeNull("source was Mode A â€” no head-count");
         migrated.AfterHeadCount.Should().NotBeNull();
         migrated.AfterHeadCount!.Total.Should().Be(2);
-        migrated.AfterAttendees.Should().BeNull("target is Mode B — no attendee rows");
+        migrated.AfterAttendees.Should().BeNull("target is Mode B â€” no attendee rows");
     }
 
     [Fact]
@@ -481,9 +480,9 @@ public class Phase7FB1ModeConversionTests
         migrated.AfterHeadCount.Should().BeNull();
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Tiered events — A→B populates per-tier-age axis (depends on 7F-C live)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Tiered events â€” Aâ†’B populates per-tier-age axis (depends on 7F-C live)
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_AtoB2_Tiered_PopulatesPerTierAgeAxisFromAttendees()
@@ -522,9 +521,9 @@ public class Phase7FB1ModeConversionTests
         generalTc.ChildCount.Should().Be(0);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  B→A on tiered: TierCount → per-tier placeholder allocation
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Bâ†’A on tiered: TierCount â†’ per-tier placeholder allocation
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_B2toA_Tiered_AllocatesPlaceholdersByTierAndAge()
@@ -552,9 +551,9 @@ public class Phase7FB1ModeConversionTests
         attendees.Count(a => a.AgeCategory == AgeCategory.Child).Should().Be(1);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Stable sort on TicketTierId allocation by SortOrder
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_B1toA_StableSort_ByTierSortOrderAscending()
@@ -584,13 +583,13 @@ public class Phase7FB1ModeConversionTests
         attendees[2].TicketTierId.Should().Be(general.Id);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Compatibility: per-registration named-seat assignment skips B conversion
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  C-mode conversions deferred to SetRegistrationMode (zero-reg gate)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_AtoC_IsRejected_DeferredToSetRegistrationMode()
@@ -619,15 +618,15 @@ public class Phase7FB1ModeConversionTests
         report.IsFailure.Should().BeTrue();
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Empty event (zero active registrations) — flips event mode anyway
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Empty event (zero active registrations) â€” flips event mode anyway
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_NoActiveRegistrations_FlipsEventModeAnyway()
     {
         var ev = CreateEvent();
-        // No registrations — event has Mode A but is empty.
+        // No registrations â€” event has Mode A but is empty.
 
         var report = ev.ConvertRegistrationMode(RegistrationMode.HeadCountByAge, DefaultPolicy());
 
@@ -638,9 +637,9 @@ public class Phase7FB1ModeConversionTests
             "no registrations to migrate but the event mode flips so future RSVPs use the new mode");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  DryRun alongside skipped rows — still reports both
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  DryRun alongside skipped rows â€” still reports both
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_DryRun_WithMixedMigratedAndSkipped_ReportsBoth()
@@ -662,9 +661,9 @@ public class Phase7FB1ModeConversionTests
         ev.RegistrationMode.Should().Be(RegistrationMode.DetailedAttendees, "dry-run leaves event unchanged");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  All-adult / all-child B2 collapses
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_AtoB2_AllAdult_DerivesAdultsOnly_ChildrenZero()
@@ -698,11 +697,11 @@ public class Phase7FB1ModeConversionTests
         demo.Children.Should().Be(2);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Tier rename drift: live tier was renamed since the registration —
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Tier rename drift: live tier was renamed since the registration â€”
     //  the snapshotted name in TierCount drives placeholder allocation,
     //  but the live name is preferred when both exist (architect plan).
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_BtoA_LiveTierName_PreferredOverSnapshot()
@@ -720,12 +719,12 @@ public class Phase7FB1ModeConversionTests
         var attendees = ev.Registrations.Single().Attendees;
         attendees.Should().HaveCount(2);
         attendees[0].TicketTierName.Should().Be("VIP",
-            "live tier name preferred when present — snapshot is the fallback for orphaned tiers");
+            "live tier name preferred when present â€” snapshot is the fallback for orphaned tiers");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  ConversionPolicy null guard
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Convert_NullPolicy_IsRejected()

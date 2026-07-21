@@ -1,18 +1,18 @@
-using LankaConnect.Modules.Identity.Contracts;
+﻿using LankaConnect.Modules.Identity.Contracts;
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Constants;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
 using LankaConnect.Products.LankaEvents.Application.Services;
-using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.Products.LankaEvents.Contracts.Services;
+using LankaConnect.SharedKernel.Geo;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
@@ -114,7 +114,7 @@ public class EventCancellationEmailJobAutoRefundTests
         {
             AttendeeDetails.Create("John Doe", AgeCategory.Adult).Value
         };
-        var totalPrice = Money.Create(amount, Currency.USD).Value;
+        var totalPrice = new Money(amount, Currency.USD);
 
         var registration = Registration.CreateWithAttendees(
             eventId,
@@ -439,7 +439,7 @@ public class EventCancellationEmailJobAutoRefundTests
         // Create a registration without PaymentIntentId (legacy data)
         var contact = RegistrationContact.Create("test@test.com", "1234567890", null).Value;
         var attendees = new List<AttendeeDetails> { AttendeeDetails.Create("John Doe", AgeCategory.Adult).Value };
-        var totalPrice = Money.Create(25.00m, Currency.USD).Value;
+        var totalPrice = new Money(25.00m, Currency.USD);
         var registration = Registration.CreateWithAttendees(eventId, userId, attendees, contact, totalPrice, isPaidEvent: true).Value;
         SetEntityId(registration, registrationId);
         SetPrivateProperty(registration, "Status", RegistrationStatus.Confirmed);

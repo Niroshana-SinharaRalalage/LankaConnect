@@ -1,8 +1,7 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.UnitTests.Events.ValueObjects;
@@ -19,7 +18,7 @@ public class TicketPricingGroupTiersTests
     public void CreateSinglePrice_WithValidPrice_ShouldSucceed()
     {
         // Arrange
-        var price = Money.Create(25.00m, Currency.USD).Value;
+        var price = new Money(25.00m, Currency.USD);
 
         // Act
         var result = TicketPricing.CreateSinglePrice(price);
@@ -54,8 +53,8 @@ public class TicketPricingGroupTiersTests
     public void CreateDualPrice_WithValidPrices_ShouldSucceed()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.USD);
         var childAgeLimit = 12;
 
         // Act
@@ -81,9 +80,9 @@ public class TicketPricingGroupTiersTests
     {
         // Arrange
         var currency = Currency.USD;
-        var tier1 = GroupPricingTier.Create(1, 2, Money.Create(15.00m, currency).Value).Value;
-        var tier2 = GroupPricingTier.Create(3, 5, Money.Create(12.00m, currency).Value).Value;
-        var tier3 = GroupPricingTier.Create(6, null, Money.Create(10.00m, currency).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 2, new Money(15.00m, currency)).Value;
+        var tier2 = GroupPricingTier.Create(3, 5, new Money(12.00m, currency)).Value;
+        var tier3 = GroupPricingTier.Create(6, null, new Money(10.00m, currency)).Value;
         var tiers = new List<GroupPricingTier> { tier1, tier2, tier3 };
 
         // Act
@@ -129,8 +128,8 @@ public class TicketPricingGroupTiersTests
     {
         // Arrange - Tiers 1-3 and 2-5 overlap
         var currency = Currency.USD;
-        var tier1 = GroupPricingTier.Create(1, 3, Money.Create(15.00m, currency).Value).Value;
-        var tier2 = GroupPricingTier.Create(2, 5, Money.Create(12.00m, currency).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 3, new Money(15.00m, currency)).Value;
+        var tier2 = GroupPricingTier.Create(2, 5, new Money(12.00m, currency)).Value;
         var tiers = new List<GroupPricingTier> { tier1, tier2 };
 
         // Act
@@ -146,8 +145,8 @@ public class TicketPricingGroupTiersTests
     {
         // Arrange - Gap between tier1 (1-2) and tier2 (4-5), missing 3
         var currency = Currency.USD;
-        var tier1 = GroupPricingTier.Create(1, 2, Money.Create(15.00m, currency).Value).Value;
-        var tier2 = GroupPricingTier.Create(4, 5, Money.Create(12.00m, currency).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 2, new Money(15.00m, currency)).Value;
+        var tier2 = GroupPricingTier.Create(4, 5, new Money(12.00m, currency)).Value;
         var tiers = new List<GroupPricingTier> { tier1, tier2 };
 
         // Act
@@ -163,7 +162,7 @@ public class TicketPricingGroupTiersTests
     {
         // Arrange - Starts at 2 instead of 1
         var currency = Currency.USD;
-        var tier1 = GroupPricingTier.Create(2, 5, Money.Create(15.00m, currency).Value).Value;
+        var tier1 = GroupPricingTier.Create(2, 5, new Money(15.00m, currency)).Value;
         var tiers = new List<GroupPricingTier> { tier1 };
 
         // Act
@@ -178,8 +177,8 @@ public class TicketPricingGroupTiersTests
     public void CreateGroupTiered_WithMixedCurrencies_ShouldFail()
     {
         // Arrange - Tiers have different currencies
-        var tier1 = GroupPricingTier.Create(1, 2, Money.Create(15.00m, Currency.USD).Value).Value;
-        var tier2 = GroupPricingTier.Create(3, 5, Money.Create(12.00m, Currency.LKR).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 2, new Money(15.00m, Currency.USD)).Value;
+        var tier2 = GroupPricingTier.Create(3, 5, new Money(12.00m, Currency.LKR)).Value;
         var tiers = new List<GroupPricingTier> { tier1, tier2 };
 
         // Act
@@ -205,9 +204,9 @@ public class TicketPricingGroupTiersTests
     {
         // Arrange
         var currency = Currency.USD;
-        var tier1 = GroupPricingTier.Create(1, 2, Money.Create(15.00m, currency).Value).Value;
-        var tier2 = GroupPricingTier.Create(3, 5, Money.Create(12.00m, currency).Value).Value;
-        var tier3 = GroupPricingTier.Create(6, null, Money.Create(10.00m, currency).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 2, new Money(15.00m, currency)).Value;
+        var tier2 = GroupPricingTier.Create(3, 5, new Money(12.00m, currency)).Value;
+        var tier3 = GroupPricingTier.Create(6, null, new Money(10.00m, currency)).Value;
         var tiers = new List<GroupPricingTier> { tier1, tier2, tier3 };
         var pricing = TicketPricing.CreateGroupTiered(tiers, currency).Value;
 
@@ -226,7 +225,7 @@ public class TicketPricingGroupTiersTests
     {
         // Arrange
         var currency = Currency.USD;
-        var tier1 = GroupPricingTier.Create(1, 2, Money.Create(15.00m, currency).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 2, new Money(15.00m, currency)).Value;
         var tiers = new List<GroupPricingTier> { tier1 };
         var pricing = TicketPricing.CreateGroupTiered(tiers, currency).Value;
 
@@ -242,7 +241,7 @@ public class TicketPricingGroupTiersTests
     public void FindTierForAttendeeCount_OnNonGroupTieredPricing_ShouldFail()
     {
         // Arrange - Single pricing
-        var price = Money.Create(25.00m, Currency.USD).Value;
+        var price = new Money(25.00m, Currency.USD);
         var pricing = TicketPricing.CreateSinglePrice(price).Value;
 
         // Act
@@ -258,19 +257,19 @@ public class TicketPricingGroupTiersTests
     #region Calculate Group Price Tests
 
     [Theory]
-    [InlineData(1, 15.00)] // 1 attendee: 1 × $15 = $15
-    [InlineData(2, 30.00)] // 2 attendees: 2 × $15 = $30
-    [InlineData(3, 36.00)] // 3 attendees: 3 × $12 = $36
-    [InlineData(5, 60.00)] // 5 attendees: 5 × $12 = $60
-    [InlineData(6, 60.00)] // 6 attendees: 6 × $10 = $60
-    [InlineData(10, 100.00)] // 10 attendees: 10 × $10 = $100
+    [InlineData(1, 15.00)] // 1 attendee: 1 Ã— $15 = $15
+    [InlineData(2, 30.00)] // 2 attendees: 2 Ã— $15 = $30
+    [InlineData(3, 36.00)] // 3 attendees: 3 Ã— $12 = $36
+    [InlineData(5, 60.00)] // 5 attendees: 5 Ã— $12 = $60
+    [InlineData(6, 60.00)] // 6 attendees: 6 Ã— $10 = $60
+    [InlineData(10, 100.00)] // 10 attendees: 10 Ã— $10 = $100
     public void CalculateGroupPrice_WithValidCount_ShouldReturnCorrectPrice(int attendeeCount, decimal expectedAmount)
     {
         // Arrange
         var currency = Currency.USD;
-        var tier1 = GroupPricingTier.Create(1, 2, Money.Create(15.00m, currency).Value).Value;
-        var tier2 = GroupPricingTier.Create(3, 5, Money.Create(12.00m, currency).Value).Value;
-        var tier3 = GroupPricingTier.Create(6, null, Money.Create(10.00m, currency).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 2, new Money(15.00m, currency)).Value;
+        var tier2 = GroupPricingTier.Create(3, 5, new Money(12.00m, currency)).Value;
+        var tier3 = GroupPricingTier.Create(6, null, new Money(10.00m, currency)).Value;
         var tiers = new List<GroupPricingTier> { tier1, tier2, tier3 };
         var pricing = TicketPricing.CreateGroupTiered(tiers, currency).Value;
 
@@ -287,8 +286,8 @@ public class TicketPricingGroupTiersTests
     public void CalculateGroupPrice_OnNonGroupTieredPricing_ShouldFail()
     {
         // Arrange - Dual pricing
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.USD);
         var pricing = TicketPricing.CreateDualPrice(adultPrice, childPrice, 12).Value;
 
         // Act
@@ -308,8 +307,8 @@ public class TicketPricingGroupTiersTests
     {
         // Arrange
         var currency = Currency.USD;
-        var tier1 = GroupPricingTier.Create(1, 2, Money.Create(15.00m, currency).Value).Value;
-        var tier2 = GroupPricingTier.Create(3, null, Money.Create(12.00m, currency).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 2, new Money(15.00m, currency)).Value;
+        var tier2 = GroupPricingTier.Create(3, null, new Money(12.00m, currency)).Value;
         var tiers = new List<GroupPricingTier> { tier1, tier2 };
         var pricing = TicketPricing.CreateGroupTiered(tiers, currency).Value;
 
@@ -333,8 +332,8 @@ public class TicketPricingGroupTiersTests
     {
         // Arrange
         var currency = Currency.USD;
-        var tier1 = GroupPricingTier.Create(1, 2, Money.Create(15.00m, currency).Value).Value;
-        var tier2 = GroupPricingTier.Create(3, null, Money.Create(12.00m, currency).Value).Value;
+        var tier1 = GroupPricingTier.Create(1, 2, new Money(15.00m, currency)).Value;
+        var tier2 = GroupPricingTier.Create(3, null, new Money(12.00m, currency)).Value;
         var tiers1 = new List<GroupPricingTier> { tier1, tier2 };
         var tiers2 = new List<GroupPricingTier> { tier1, tier2 };
         var pricing1 = TicketPricing.CreateGroupTiered(tiers1, currency).Value;
@@ -350,8 +349,8 @@ public class TicketPricingGroupTiersTests
     {
         // Arrange
         var currency = Currency.USD;
-        var tier1a = GroupPricingTier.Create(1, 2, Money.Create(15.00m, currency).Value).Value;
-        var tier1b = GroupPricingTier.Create(1, 2, Money.Create(20.00m, currency).Value).Value; // Different price
+        var tier1a = GroupPricingTier.Create(1, 2, new Money(15.00m, currency)).Value;
+        var tier1b = GroupPricingTier.Create(1, 2, new Money(20.00m, currency)).Value; // Different price
         var tiers1 = new List<GroupPricingTier> { tier1a };
         var tiers2 = new List<GroupPricingTier> { tier1b };
         var pricing1 = TicketPricing.CreateGroupTiered(tiers1, currency).Value;

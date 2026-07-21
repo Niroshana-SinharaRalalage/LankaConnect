@@ -1,7 +1,6 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.UnitTests.Events.ValueObjects;
@@ -20,7 +19,7 @@ public class GroupPricingTierTests
         // Arrange
         var minAttendees = 1;
         var maxAttendees = 2;
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
 
         // Act
         var result = GroupPricingTier.Create(minAttendees, maxAttendees, pricePerPerson);
@@ -38,7 +37,7 @@ public class GroupPricingTierTests
         // Arrange - Represents "3+ attendees" tier
         var minAttendees = 3;
         int? maxAttendees = null;
-        var pricePerPerson = Money.Create(10.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(10.00m, Currency.USD);
 
         // Act
         var result = GroupPricingTier.Create(minAttendees, maxAttendees, pricePerPerson);
@@ -57,7 +56,7 @@ public class GroupPricingTierTests
         // Arrange - Represents "exactly 5 attendees" tier
         var minAttendees = 5;
         var maxAttendees = 5;
-        var pricePerPerson = Money.Create(12.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(12.00m, Currency.USD);
 
         // Act
         var result = GroupPricingTier.Create(minAttendees, maxAttendees, pricePerPerson);
@@ -79,7 +78,7 @@ public class GroupPricingTierTests
     public void Create_WithInvalidMinAttendees_ShouldFail(int invalidMin)
     {
         // Arrange
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
 
         // Act
         var result = GroupPricingTier.Create(invalidMin, 5, pricePerPerson);
@@ -95,7 +94,7 @@ public class GroupPricingTierTests
         // Arrange
         var minAttendees = 5;
         var maxAttendees = 3; // Less than min
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
 
         // Act
         var result = GroupPricingTier.Create(minAttendees, maxAttendees, pricePerPerson);
@@ -119,12 +118,14 @@ public class GroupPricingTierTests
     [Fact]
     public void Create_WithNegativePricePerPerson_ShouldFail()
     {
-        // Arrange - Money.Create should already prevent negative amounts,
-        // but test the tier creation logic
-        var negativePrice = Money.Create(-10.00m, Currency.USD);
+        // Wave 8.5.e (2026-07-18): Money constructor no longer wraps in Result
+        // (Consult #13 Q2). Negative amount is legal at the Money level; the
+        // rejection now lives in GroupPricingTier.Create. Assert that path.
+        var negativePrice = new Money(-10.00m, Currency.USD);
 
-        // Assert
-        negativePrice.IsFailure.Should().BeTrue();
+        var result = GroupPricingTier.Create(1, 2, negativePrice);
+
+        result.IsFailure.Should().BeTrue();
     }
 
     #endregion
@@ -138,7 +139,7 @@ public class GroupPricingTierTests
     public void CoversAttendeeCount_WithDefinedMaxAttendees_ShouldReturnCorrectResult(int attendeeCount, bool expected)
     {
         // Arrange - Tier covers 1-2 attendees
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
         var tier = GroupPricingTier.Create(1, 2, pricePerPerson).Value;
 
         // Act
@@ -156,7 +157,7 @@ public class GroupPricingTierTests
     public void CoversAttendeeCount_WithUnlimitedTier_ShouldReturnCorrectResult(int attendeeCount, bool expected)
     {
         // Arrange - Tier covers 3+ attendees (unlimited)
-        var pricePerPerson = Money.Create(10.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(10.00m, Currency.USD);
         var tier = GroupPricingTier.Create(3, null, pricePerPerson).Value;
 
         // Act
@@ -172,7 +173,7 @@ public class GroupPricingTierTests
     public void CoversAttendeeCount_WithInvalidAttendeeCount_ShouldReturnFalse(int invalidCount)
     {
         // Arrange
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
         var tier = GroupPricingTier.Create(1, 2, pricePerPerson).Value;
 
         // Act
@@ -190,7 +191,7 @@ public class GroupPricingTierTests
     public void OverlapsWith_WithOverlappingRanges_ShouldReturnTrue()
     {
         // Arrange
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
         var tier1 = GroupPricingTier.Create(1, 3, pricePerPerson).Value; // 1-3
         var tier2 = GroupPricingTier.Create(2, 5, pricePerPerson).Value; // 2-5 (overlaps)
 
@@ -205,7 +206,7 @@ public class GroupPricingTierTests
     public void OverlapsWith_WithAdjacentRanges_ShouldReturnFalse()
     {
         // Arrange
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
         var tier1 = GroupPricingTier.Create(1, 2, pricePerPerson).Value; // 1-2
         var tier2 = GroupPricingTier.Create(3, 5, pricePerPerson).Value; // 3-5 (adjacent, no overlap)
 
@@ -220,7 +221,7 @@ public class GroupPricingTierTests
     public void OverlapsWith_WithUnlimitedTierAndDefinedTier_ShouldDetectOverlap()
     {
         // Arrange
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
         var tier1 = GroupPricingTier.Create(3, null, pricePerPerson).Value; // 3+
         var tier2 = GroupPricingTier.Create(5, 10, pricePerPerson).Value; // 5-10 (overlaps with 3+)
 
@@ -235,7 +236,7 @@ public class GroupPricingTierTests
     public void OverlapsWith_WithTwoUnlimitedTiers_ShouldReturnTrue()
     {
         // Arrange
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
         var tier1 = GroupPricingTier.Create(3, null, pricePerPerson).Value; // 3+
         var tier2 = GroupPricingTier.Create(5, null, pricePerPerson).Value; // 5+ (overlaps)
 
@@ -254,7 +255,7 @@ public class GroupPricingTierTests
     public void ToString_WithDefinedMaxAttendees_ShouldFormatCorrectly()
     {
         // Arrange
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
         var tier = GroupPricingTier.Create(1, 2, pricePerPerson).Value;
 
         // Act
@@ -270,7 +271,7 @@ public class GroupPricingTierTests
     public void ToString_WithUnlimitedTier_ShouldFormatCorrectly()
     {
         // Arrange
-        var pricePerPerson = Money.Create(10.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(10.00m, Currency.USD);
         var tier = GroupPricingTier.Create(3, null, pricePerPerson).Value;
 
         // Act
@@ -290,7 +291,7 @@ public class GroupPricingTierTests
     public void ValueObjectEquality_WithSameValues_ShouldBeEqual()
     {
         // Arrange
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
         var tier1 = GroupPricingTier.Create(1, 2, pricePerPerson).Value;
         var tier2 = GroupPricingTier.Create(1, 2, pricePerPerson).Value;
 
@@ -303,7 +304,7 @@ public class GroupPricingTierTests
     public void ValueObjectEquality_WithDifferentMinAttendees_ShouldNotBeEqual()
     {
         // Arrange
-        var pricePerPerson = Money.Create(15.00m, Currency.USD).Value;
+        var pricePerPerson = new Money(15.00m, Currency.USD);
         var tier1 = GroupPricingTier.Create(1, 2, pricePerPerson).Value;
         var tier2 = GroupPricingTier.Create(2, 2, pricePerPerson).Value;
 
@@ -316,8 +317,8 @@ public class GroupPricingTierTests
     public void ValueObjectEquality_WithDifferentPrices_ShouldNotBeEqual()
     {
         // Arrange
-        var price1 = Money.Create(15.00m, Currency.USD).Value;
-        var price2 = Money.Create(20.00m, Currency.USD).Value;
+        var price1 = new Money(15.00m, Currency.USD);
+        var price2 = new Money(20.00m, Currency.USD);
         var tier1 = GroupPricingTier.Create(1, 2, price1).Value;
         var tier2 = GroupPricingTier.Create(1, 2, price2).Value;
 

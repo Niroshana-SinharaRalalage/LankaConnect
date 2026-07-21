@@ -1,30 +1,29 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Common;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Common;
 
 /// <summary>
 /// Phase 7F-E.4a (architect-approved 2026-05-01): the PDF ticket renderer must show
-/// the same per-tier × demographic breakdown that the email and event-detail card now
+/// the same per-tier Ã— demographic breakdown that the email and event-detail card now
 /// show. This test pins the dispatch logic in
-/// <see cref="TicketPdfRegistrationBreakdownAssembler"/> — pure data-assembly so it's
+/// <see cref="TicketPdfRegistrationBreakdownAssembler"/> â€” pure data-assembly so it's
 /// testable in isolation; the rendered PDF is verified by staging API smoke.
 ///
 /// Coverage:
-///   - Mode A (DetailedAttendees) → FromAttendees, single row, no tier
-///   - Mode A tiered → FromAttendees, one row per tier
-///   - Mode B1 (HeadCountOnly) → FromHeadCount, single row, both axes NotCaptured
-///   - Mode B2 (HeadCountByAge) → FromHeadCount, age captured, gender NotCaptured
-///   - Mode B3 (HeadCountByGender) → FromHeadCount, gender captured, age NotCaptured
-///   - Mode B4 (HeadCountByAgeAndGender) → FromHeadCount, both captured
-///   - Defensive: null registration → null
+///   - Mode A (DetailedAttendees) â†’ FromAttendees, single row, no tier
+///   - Mode A tiered â†’ FromAttendees, one row per tier
+///   - Mode B1 (HeadCountOnly) â†’ FromHeadCount, single row, both axes NotCaptured
+///   - Mode B2 (HeadCountByAge) â†’ FromHeadCount, age captured, gender NotCaptured
+///   - Mode B3 (HeadCountByGender) â†’ FromHeadCount, gender captured, age NotCaptured
+///   - Mode B4 (HeadCountByAgeAndGender) â†’ FromHeadCount, both captured
+///   - Defensive: null registration â†’ null
 /// </summary>
 public class Phase7FE4aTicketPdfBreakdownAssemblerTests
 {
@@ -37,9 +36,9 @@ public class Phase7FE4aTicketPdfBreakdownAssemblerTests
 
     private static Money Zero() => new(0, Currency.USD);
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Mode A — DetailedAttendees
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Mode A â€” DetailedAttendees
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void NullRegistration_ReturnsNull()
@@ -99,9 +98,9 @@ public class Phase7FE4aTicketPdfBreakdownAssemblerTests
         bd.Rows.First(r => r.TierName == "General").Count.Should().Be(1);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Mode B1 — HeadCountOnly (no demographic data)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Mode B1 â€” HeadCountOnly (no demographic data)
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void ModeB1_HeadCountOnly_ReturnsBreakdownWithBothAxesNotCaptured()
@@ -126,9 +125,9 @@ public class Phase7FE4aTicketPdfBreakdownAssemblerTests
         bd.Rows[0].Gender.Captured.Should().BeFalse();
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Mode B2 — HeadCountByAge
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Mode B2 â€” HeadCountByAge
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void ModeB2_HeadCountByAge_AgeCaptured_GenderNotCaptured()
@@ -153,9 +152,9 @@ public class Phase7FE4aTicketPdfBreakdownAssemblerTests
         bd.Rows[0].Gender.Captured.Should().BeFalse();
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Mode B3 — HeadCountByGender
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Mode B3 â€” HeadCountByGender
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void ModeB3_HeadCountByGender_GenderCaptured_AgeNotCaptured()
@@ -180,9 +179,9 @@ public class Phase7FE4aTicketPdfBreakdownAssemblerTests
         bd.Rows[0].Gender.Right.Should().Be(3);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Mode B4 — HeadCountByAgeAndGender
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Mode B4 â€” HeadCountByAgeAndGender
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void ModeB4_HeadCountByAgeAndGender_BothAxesCaptured()
@@ -210,9 +209,9 @@ public class Phase7FE4aTicketPdfBreakdownAssemblerTests
         bd.Rows[0].Gender.Right.Should().Be(2);  // 1 AF + 1 CF = 2 females
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Tiered head-count
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void ModeB2_Tiered_ReturnsOneRowPerTier()

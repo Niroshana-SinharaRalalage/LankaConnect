@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.BuildingBlocks.Domain;
@@ -7,8 +7,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -16,7 +15,7 @@ using Xunit;
 namespace LankaConnect.Application.Tests.Events.Services;
 
 /// <summary>
-/// Phase 7E.3b — unit tests for <see cref="RegistrationCheckoutService"/>. The architect required
+/// Phase 7E.3b â€” unit tests for <see cref="RegistrationCheckoutService"/>. The architect required
 /// a single test surface for the money path so the auth + anonymous handlers don't fork. These
 /// tests assert:
 /// <list type="bullet">
@@ -46,7 +45,7 @@ public class RegistrationCheckoutServiceTests
 
     private static Result<RevenueBreakdown> BuildBreakdown(decimal grossAmount)
     {
-        var gross = Money.Create(grossAmount, Currency.USD).Value;
+        var gross = new Money(grossAmount, Currency.USD);
         return RevenueBreakdown.Create(grossAmount: gross, salesTaxRate: 0m);
     }
 
@@ -58,7 +57,7 @@ public class RegistrationCheckoutServiceTests
             title, description,
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
             Guid.NewGuid(), 100).Value;
-        ev.SetPricing(Money.Create(price, Currency.USD).Value).IsSuccess.Should().BeTrue();
+        ev.SetPricing(new Money(price, Currency.USD)).IsSuccess.Should().BeTrue();
         ev.Publish().IsSuccess.Should().BeTrue();
         return ev;
     }
@@ -70,7 +69,7 @@ public class RegistrationCheckoutServiceTests
         var contact = RegistrationContact.Create("test@example.com", "555-0100", null).Value;
 
         // Build the registration via the public domain method so its state is realistic.
-        var price = Money.Create(totalPriceAmount, Currency.USD).Value;
+        var price = new Money(totalPriceAmount, Currency.USD);
         var reg = Registration.CreateWithHeadCount(
             ev.Id, Guid.NewGuid(), mode, "Lead", head, contact,
             price, isPaidEvent: true).Value;
@@ -153,7 +152,7 @@ public class RegistrationCheckoutServiceTests
     [Fact]
     public async Task CreateSession_StillSucceeds_WhenRevenueBreakdownFails()
     {
-        // Revenue breakdown is non-blocking — if the calculator throws, registration must
+        // Revenue breakdown is non-blocking â€” if the calculator throws, registration must
         // still be able to redirect to Stripe.
         var ev = CreatePaidPublishedEvent(10m);
         var reg = CreatePaidPreliminaryHeadCountRegistration(ev, totalPriceAmount: 30m);
@@ -180,7 +179,7 @@ public class RegistrationCheckoutServiceTests
     {
         var ev = CreatePaidPublishedEvent(10m);
         var reg = CreatePaidPreliminaryHeadCountRegistration(ev, totalPriceAmount: 0m);
-        // Force TotalPrice = 0 (free) — service must reject explicit-zero too.
+        // Force TotalPrice = 0 (free) â€” service must reject explicit-zero too.
 
         var result = await BuildSut().CreateSessionForRegistrationAsync(
             ev, reg, "https://staging/success", "https://staging/cancel");

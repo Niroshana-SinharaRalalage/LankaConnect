@@ -1,33 +1,32 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events;
 
 /// <summary>
-/// Phase 6A.148.W5.D4 — <see cref="Registration.CompleteRefundFromCancelled"/> domain transition.
+/// Phase 6A.148.W5.D4 â€” <see cref="Registration.CompleteRefundFromCancelled"/> domain transition.
 ///
 /// Architect-mandated new transition (W5 plan Issue #6). In the decoupled cancellation/
 /// refund model, an attendee may Cancel WITHOUT triggering a refund (no money moves);
 /// the refund flows separately through the 6A.148 approval workflow. When the workflow's
 /// final Stripe webhook (charge.refunded for the ticket portion) lands and routes through
 /// the W5.D5 RegistrationWebhookHandler workflow-aware branch, the registration may
-/// already be in <c>Cancelled</c> state — the existing <see cref="Registration.CompleteRefund"/>
+/// already be in <c>Cancelled</c> state â€” the existing <see cref="Registration.CompleteRefund"/>
 /// method refuses this (requires RefundRequested). This method bridges the gap.
 ///
 /// Pinned invariants:
 /// - Allowed from {RefundRequested, Cancelled}
 /// - Refused from {Pending, Confirmed, Abandoned, PendingRefundApproval, Refunded-with-different-srid}
-/// - Idempotent — second call with same stripeRefundId on an already-Refunded row is a no-op Success
-/// - Phase 6A.148.W5.6.B G1 — RefundCompletedEvent is raised ONLY when fromState is
+/// - Idempotent â€” second call with same stripeRefundId on an already-Refunded row is a no-op Success
+/// - Phase 6A.148.W5.6.B G1 â€” RefundCompletedEvent is raised ONLY when fromState is
 ///   RefundRequested (legacy direct-Stripe CancelRsvp path with no RefundRequest). The
-///   Cancelled-from path (new workflow) MUST NOT raise it — the workflow's
+///   Cancelled-from path (new workflow) MUST NOT raise it â€” the workflow's
 ///   RefundRequest.MarkCompletedIfAllSettled raises RefundRequestCompletedEvent instead,
 ///   at the EXACT moment Status flips to Completed. Raising both would produce the
 ///   $94-vs-$204 duplicate-email regression we are closing.
@@ -41,7 +40,7 @@ public class RegistrationCompleteRefundFromCancelledTests
     {
         var alice = AttendeeDetails.Create("Alice", AgeCategory.Adult, Gender.Female).Value;
         var contact = RegistrationContact.Create("alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
         var reg = Registration.CreateWithAttendees(
             Guid.NewGuid(), Guid.NewGuid(), new[] { alice }, contact, price, isPaidEvent: true).Value;
         reg.CompletePayment("pi_w5d4_cancelled").IsSuccess.Should().BeTrue();
@@ -54,7 +53,7 @@ public class RegistrationCompleteRefundFromCancelledTests
     {
         var alice = AttendeeDetails.Create("Alice", AgeCategory.Adult, Gender.Female).Value;
         var contact = RegistrationContact.Create("alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
         var reg = Registration.CreateWithAttendees(
             Guid.NewGuid(), Guid.NewGuid(), new[] { alice }, contact, price, isPaidEvent: true).Value;
         reg.CompletePayment("pi_w5d4_refundrequested").IsSuccess.Should().BeTrue();
@@ -80,7 +79,7 @@ public class RegistrationCompleteRefundFromCancelledTests
     [Fact]
     public void CompleteRefundFromCancelled_FromCancelled_DoesNotRaiseLegacyRefundCompletedEvent()
     {
-        // Phase 6A.148.W5.6.B G1 — the workflow path MUST NOT raise the legacy event.
+        // Phase 6A.148.W5.6.B G1 â€” the workflow path MUST NOT raise the legacy event.
         // RefundRequest.MarkCompletedIfAllSettled is the sole email driver for workflow
         // refunds; raising the legacy event from here too would re-introduce the mid-race
         // $94 email-undercount regression.
@@ -97,11 +96,11 @@ public class RegistrationCompleteRefundFromCancelledTests
     [Fact]
     public void CompleteRefundFromCancelled_FromRefundRequested_StillRaisesLegacyRefundCompletedEvent()
     {
-        // Defensive — the same domain method also works for the legacy RefundRequested
+        // Defensive â€” the same domain method also works for the legacy RefundRequested
         // path (no RefundRequest aggregate exists for pre-148 direct-Stripe refunds, so
         // RefundRequestCompletedEvent will never fire there). The legacy
         // RefundCompletedEvent is the only thing that drives the completion email for
-        // that path — it MUST still raise here.
+        // that path â€” it MUST still raise here.
         var reg = BuildRefundRequestedRegistration();
 
         var result = reg.CompleteRefundFromCancelled(Sri);
@@ -110,13 +109,13 @@ public class RegistrationCompleteRefundFromCancelledTests
         reg.Status.Should().Be(RegistrationStatus.Refunded);
         reg.DomainEvents.OfType<RefundCompletedEvent>().Should().ContainSingle(
             "legacy direct-Stripe path has no RefundRequest aggregate, so the legacy " +
-            "event is the only completion-email driver — must not be suppressed");
+            "event is the only completion-email driver â€” must not be suppressed");
     }
 
     [Fact]
     public void CompleteRefundFromCancelled_AlreadyRefundedWithSameSri_IsNoOpSuccess()
     {
-        // Idempotency guard — Stripe webhooks can fire multiple times.
+        // Idempotency guard â€” Stripe webhooks can fire multiple times.
         var reg = BuildCancelledRegistration();
         reg.CompleteRefundFromCancelled(Sri).IsSuccess.Should().BeTrue();
         reg.ClearDomainEvents();

@@ -1,11 +1,10 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
@@ -37,7 +36,7 @@ public class RegistrationCompletePaymentIdempotencyTests
     {
         var attendees = new List<AttendeeDetails> { CreateAttendee("John Doe", AgeCategory.Adult) };
         var contact = CreateContact();
-        var price = Money.Create(100m, Currency.USD).Value;
+        var price = new Money(100m, Currency.USD);
 
         var registration = Registration.CreateWithAttendees(
             Guid.NewGuid(),

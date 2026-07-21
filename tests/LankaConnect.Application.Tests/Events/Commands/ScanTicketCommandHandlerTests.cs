@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.ScanTicket;
@@ -9,8 +9,7 @@ using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -18,7 +17,7 @@ using Xunit;
 namespace LankaConnect.Application.Tests.Events.Commands;
 
 /// <summary>
-/// Phase 6A.141 — ScanTicketCommandHandler unit tests.
+/// Phase 6A.141 â€” ScanTicketCommandHandler unit tests.
 ///
 /// Covers the 5 most-distinct paths via mocks; the remaining reason codes + the
 /// race-condition path are exercised end-to-end in <c>LankaConnect.IntegrationTests</c>
@@ -91,21 +90,21 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // UAT R3 helpers — build Event-with-VIP-tier and Registration-with-attendees
+    // UAT R3 helpers â€” build Event-with-VIP-tier and Registration-with-attendees
     // so the new per-attendee projection can be exercised end-to-end through the
     // handler. The domain factories require a fully-formed value-object graph, so
     // we set up a real (not Mocked) Event + Registration here.
     // ============================================================
 
     /// <summary>Returns an Event with a single VIP TicketTier injected via reflection
-    /// (AddTicketTier requires TicketingMode=Tiered which adds setup noise — direct
+    /// (AddTicketTier requires TicketingMode=Tiered which adds setup noise â€” direct
     /// list push is cleaner for the projection test).</summary>
     private (Event ev, TicketTier vipTier) BuildEventWithVipTier(
         Guid eventId, decimal adultPrice = 100m, decimal childPrice = 50m)
     {
         var ev = BuildEvent(eventId);
-        var adult = Money.Create(adultPrice, Currency.USD).Value;
-        var child = Money.Create(childPrice, Currency.USD).Value;
+        var adult = new Money(adultPrice, Currency.USD);
+        var child = new Money(childPrice, Currency.USD);
         var tier = TicketTier.Create(eventId, "VIP", "VIP access",
             adultPrice: adult, childPrice: child, childAgeLimit: 12,
             capacity: 100, maxPerUser: 10, sortOrder: 1).Value;
@@ -126,7 +125,7 @@ public class ScanTicketCommandHandlerTests
         var att2 = AttendeeDetails.Create("Navya Sinharage", AgeCategory.Child,
             gender: Gender.Female, ticketTierId: vipTier.Id, ticketTierName: "VIP").Value;
         var contact = RegistrationContact.Create("test@example.com", "+15551234567", null).Value;
-        var total = Money.Create(150m, Currency.USD).Value;
+        var total = new Money(150m, Currency.USD);
         var reg = Registration.CreateWithAttendees(eventId, _scannerUserId,
             new[] { att1, att2 }, contact, total, isPaidEvent: true).Value;
         typeof(LegacyBaseEntity).GetProperty("Id")!.SetValue(reg, _registrationId);
@@ -134,7 +133,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 1) Happy path — valid v1 signed QR → accepted, audit row written
+    // 1) Happy path â€” valid v1 signed QR â†’ accepted, audit row written
     // ============================================================
     [Fact]
     public async Task Handle_ValidV1Qr_MarksScanned_ReturnsAccepted()
@@ -166,10 +165,10 @@ public class ScanTicketCommandHandlerTests
         // explicit transaction. The atomic UPDATE provides the race-safety guarantee
         // standalone; the audit insert runs in a separate CommitAsync. Trade-off: a
         // forensic gap on partial DB failure (UPDATE succeeded but audit insert failed)
-        // — acceptable per architect review since the door correctly opens regardless.
+        // â€” acceptable per architect review since the door correctly opens regardless.
         _uow.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never,
             "transaction wrapper dropped to avoid the AppDbContext.CommitAsync (Phase 6A.74) " +
-            "× EF Core 8 ExecuteUpdateAsync InvalidOperationException at runtime");
+            "Ã— EF Core 8 ExecuteUpdateAsync InvalidOperationException at runtime");
         _uow.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once,
             "audit row is written via a single CommitAsync after the atomic UPDATE succeeded");
@@ -179,7 +178,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 2) Invalid signature → rejected
+    // 2) Invalid signature â†’ rejected
     // ============================================================
     [Fact]
     public async Task Handle_InvalidSignature_Rejects()
@@ -212,7 +211,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 3) Ticket not found → rejected
+    // 3) Ticket not found â†’ rejected
     // ============================================================
     [Fact]
     public async Task Handle_TicketNotFound_Rejects()
@@ -235,7 +234,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 4) Wrong event → rejected, response includes the actual event title
+    // 4) Wrong event â†’ rejected, response includes the actual event title
     // ============================================================
     [Fact]
     public async Task Handle_WrongEvent_Rejects_WithWrongEventTitle()
@@ -264,7 +263,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 5a) UAT R2 Issue A — already_scanned (synchronous path) returns enriched
+    // 5a) UAT R2 Issue A â€” already_scanned (synchronous path) returns enriched
     //     attendee details + scan history (PreviousScanCount, PreviousScannedBy)
     // ============================================================
     [Fact]
@@ -272,7 +271,7 @@ public class ScanTicketCommandHandlerTests
     {
         var qrPayload = BuildSignedQrPayload(_eventId, _registrationId, _ticketCode);
         var ticket = BuildTicket(_eventId, _ticketCode, qrPayload);
-        ticket.Validate(); // sets ValidatedAt — handler hits the synchronous already-scanned branch
+        ticket.Validate(); // sets ValidatedAt â€” handler hits the synchronous already-scanned branch
 
         var originalScanAt = ticket.ValidatedAt;
 
@@ -297,7 +296,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 6) Race-lost (TryMarkScannedAsync returns 0) → rejected as already_scanned
+    // 6) Race-lost (TryMarkScannedAsync returns 0) â†’ rejected as already_scanned
     // ============================================================
     [Fact]
     public async Task Handle_RaceLost_Rejects_AsAlreadyScanned()
@@ -310,7 +309,7 @@ public class ScanTicketCommandHandlerTests
         _ticketRepo.Setup(r => r.GetByTicketCodeAsync(_ticketCode, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ticket);
         _ticketRepo.Setup(r => r.TryMarkScannedAsync(ticket.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(0); // race-loser — someone else scanned between our read and our UPDATE
+            .ReturnsAsync(0); // race-loser â€” someone else scanned between our read and our UPDATE
 
         var handler = BuildHandler();
         var result = await handler.Handle(new ScanTicketCommand(
@@ -319,7 +318,7 @@ public class ScanTicketCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Result.Should().Be("rejected");
         result.Value.Reason.Should().Be(ReasonCode.AlreadyScanned);
-        // Issue 1 UAT hotfix: no transaction wrapper anymore — nothing to roll back.
+        // Issue 1 UAT hotfix: no transaction wrapper anymore â€” nothing to roll back.
         // The race-loser path is detected by ExecuteUpdateAsync returning RowsAffected==0;
         // no UPDATE happened, so no audit binding to the no-op update is needed.
         _uow.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -331,7 +330,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 7) UAT R3 — Accepted with multi-attendee registration projects the
+    // 7) UAT R3 â€” Accepted with multi-attendee registration projects the
     //    full per-attendee list with names, age, gender, tier, and prices
     // ============================================================
     [Fact]
@@ -382,7 +381,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 8) UAT R3 — Already-scanned rejection projects the SAME per-attendee
+    // 8) UAT R3 â€” Already-scanned rejection projects the SAME per-attendee
     //    list (proves accepted + rejected paths share BuildAttendeeDetails)
     // ============================================================
     [Fact]
@@ -390,7 +389,7 @@ public class ScanTicketCommandHandlerTests
     {
         var qrPayload = BuildSignedQrPayload(_eventId, _registrationId, _ticketCode);
         var ticket = BuildTicket(_eventId, _ticketCode, qrPayload);
-        ticket.Validate(); // sets ValidatedAt — sync already-scanned branch fires
+        ticket.Validate(); // sets ValidatedAt â€” sync already-scanned branch fires
         var (ev, vipTier) = BuildEventWithVipTier(_eventId);
         var registration = BuildRegistrationWith2Attendees(_eventId, vipTier);
 
@@ -420,7 +419,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 9) UAT R3 — Head-count-mode registration (no Attendees rows) leaves
+    // 9) UAT R3 â€” Head-count-mode registration (no Attendees rows) leaves
     //    the Attendees DTO field null so UI falls back to aggregates
     // ============================================================
     [Fact]
@@ -435,7 +434,7 @@ public class ScanTicketCommandHandlerTests
             .ReturnsAsync(ticket);
         _ticketRepo.Setup(r => r.TryMarkScannedAsync(ticket.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
-        // Registration intentionally null — simulates pre-MultiAttendee data or a
+        // Registration intentionally null â€” simulates pre-MultiAttendee data or a
         // head-count-mode registration that has no Attendees collection populated.
         _registrationRepo.Setup(r => r.GetByIdAsync(_registrationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Registration?)null);
@@ -451,7 +450,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 10) UAT R3 — Attendee whose TicketTierId doesn't match any tier on
+    // 10) UAT R3 â€” Attendee whose TicketTierId doesn't match any tier on
     //     the event (data drift after tier deletion). Name still surfaces;
     //     price degrades to null without throwing.
     // ============================================================
@@ -467,7 +466,7 @@ public class ScanTicketCommandHandlerTests
         var att = AttendeeDetails.Create("Orphan Tier Attendee", AgeCategory.Adult,
             gender: Gender.Other, ticketTierId: orphanedTierId, ticketTierName: "OldDeletedTier").Value;
         var contact = RegistrationContact.Create("orphan@example.com", "+15551234567", null).Value;
-        var total = Money.Create(0m, Currency.USD).Value;
+        var total = new Money(0m, Currency.USD);
         var reg = Registration.CreateWithAttendees(_eventId, _scannerUserId,
             new[] { att }, contact, total, isPaidEvent: true).Value;
         typeof(LegacyBaseEntity).GetProperty("Id")!.SetValue(reg, _registrationId);
@@ -491,14 +490,14 @@ public class ScanTicketCommandHandlerTests
         result.Value.Attendees!.Single().Name.Should().Be("Orphan Tier Attendee",
             "name must still render even when the tier was deleted post-registration");
         result.Value.Attendees!.Single().PriceAmount.Should().BeNull(
-            "missing tier → price degrades to null without throwing");
+            "missing tier â†’ price degrades to null without throwing");
         result.Value.Attendees!.Single().PriceCurrency.Should().BeNull();
         result.Value.Attendees!.Single().TicketTierName.Should().Be("OldDeletedTier",
             "denormalized tier name on AttendeeDetails survives even when the live tier row is gone");
     }
 
     // ============================================================
-    // 11) UAT R4 — Accepted scan surfaces bundled add-ons (Completed status,
+    // 11) UAT R4 â€” Accepted scan surfaces bundled add-ons (Completed status,
     //     RegistrationId matches THIS registration). AddOnDefinition name resolved.
     // ============================================================
     [Fact]
@@ -510,7 +509,7 @@ public class ScanTicketCommandHandlerTests
         var registration = BuildRegistrationWith2Attendees(_eventId, vipTier);
         var addOnDefinitionId = Guid.NewGuid();
         // Build a Completed bundled add-on purchase tied to this registration.
-        var unitPrice = Money.Create(5m, Currency.USD).Value;
+        var unitPrice = new Money(5m, Currency.USD);
         var purchase = AddOnPurchase.CreateBundledWithRegistration(
             eventId: _eventId,
             addOnDefinitionId: addOnDefinitionId,
@@ -558,7 +557,7 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 12) UAT R4 — No add-ons → AddOns is null (UI omits the section).
+    // 12) UAT R4 â€” No add-ons â†’ AddOns is null (UI omits the section).
     //     Also pins that non-bundled add-ons (different RegistrationId or
     //     Pending status) are filtered out.
     // ============================================================
@@ -576,7 +575,7 @@ public class ScanTicketCommandHandlerTests
             .ReturnsAsync(1);
         _registrationRepo.Setup(r => r.GetByIdAsync(_registrationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Registration?)null); // simulate no registration data
-        // _addOnPurchaseRepo intentionally unmocked → default empty result
+        // _addOnPurchaseRepo intentionally unmocked â†’ default empty result
 
         var handler = BuildHandler();
         var result = await handler.Handle(new ScanTicketCommand(
@@ -584,6 +583,6 @@ public class ScanTicketCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Result.Should().Be("accepted");
-        result.Value.AddOns.Should().BeNull("registration is null → no add-ons to enrich");
+        result.Value.AddOns.Should().BeNull("registration is null â†’ no add-ons to enrich");
     }
 }

@@ -1,11 +1,10 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
@@ -30,7 +29,7 @@ public class RegistrationRefundWorkflowTests
 
     private static Money CreateMoney(decimal amount = 100m)
     {
-        return Money.Create(amount, Currency.USD).Value;
+        return new Money(amount, Currency.USD);
     }
 
     /// <summary>
@@ -40,7 +39,7 @@ public class RegistrationRefundWorkflowTests
     {
         var attendees = new List<AttendeeDetails> { CreateAttendee("John Doe", AgeCategory.Adult) };
         var contact = CreateContact();
-        var price = Money.Create(amount, Currency.USD).Value;
+        var price = new Money(amount, Currency.USD);
 
         var registration = Registration.CreateWithAttendees(
             Guid.NewGuid(),
@@ -67,7 +66,7 @@ public class RegistrationRefundWorkflowTests
     {
         var attendees = new List<AttendeeDetails> { CreateAttendee("John Doe", AgeCategory.Adult) };
         var contact = CreateContact();
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
 
         var registration = Registration.CreateWithAttendees(
             Guid.NewGuid(),
@@ -101,7 +100,7 @@ public class RegistrationRefundWorkflowTests
     {
         var attendees = new List<AttendeeDetails> { CreateAttendee("John Doe", AgeCategory.Adult) };
         var contact = CreateContact();
-        var price = Money.Create(100m, Currency.USD).Value;
+        var price = new Money(100m, Currency.USD);
 
         var registration = Registration.CreateWithAttendees(
             Guid.NewGuid(),

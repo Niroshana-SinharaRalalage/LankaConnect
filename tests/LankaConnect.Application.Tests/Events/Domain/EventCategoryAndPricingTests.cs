@@ -1,10 +1,9 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
@@ -126,7 +125,7 @@ public class EventCategoryAndPricingTests
     public void Create_WithValidTicketPrice_ShouldSetTicketPrice()
     {
         // Arrange
-        var ticketPrice = Money.Create(25.00m, Currency.USD).Value;
+        var ticketPrice = new Money(25.00m, Currency.USD);
 
         // Act
         var @event = CreateValidEvent(ticketPrice: ticketPrice);
@@ -152,16 +151,19 @@ public class EventCategoryAndPricingTests
     }
 
     [Theory]
-    [InlineData(10.00, Currency.USD)]
-    [InlineData(1500.00, Currency.LKR)]
-    [InlineData(15.00, Currency.GBP)]
-    [InlineData(20.00, Currency.EUR)]
-    [InlineData(25.00, Currency.CAD)]
-    [InlineData(30.00, Currency.AUD)]
-    public void Create_WithDifferentCurrencies_ShouldSucceed(decimal amount, Currency currency)
+    [InlineData(10.00, "USD")]
+    [InlineData(1500.00, "LKR")]
+    [InlineData(15.00, "GBP")]
+    [InlineData(20.00, "EUR")]
+    [InlineData(25.00, "CAD")]
+    [InlineData(30.00, "AUD")]
+    // Wave 8.5.e (2026-07-21): Currency promoted to sealed class (SharedKernel.Money);
+    // no longer a compile-time constant so InlineData uses string codes + FromCode() at runtime.
+    public void Create_WithDifferentCurrencies_ShouldSucceed(decimal amount, string currencyCode)
     {
         // Arrange
-        var ticketPrice = Money.Create(amount, currency).Value;
+        var currency = Currency.FromCode(currencyCode);
+        var ticketPrice = new Money(amount, currency);
         var title = EventTitle.Create("Test Event").Value;
         var description = EventDescription.Create("Test Description").Value;
         var startDate = DateTime.UtcNow.AddDays(7);
@@ -217,7 +219,7 @@ public class EventCategoryAndPricingTests
     public void IsFree_WithNonZeroTicketPrice_ShouldReturnFalse()
     {
         // Arrange
-        var ticketPrice = Money.Create(25.00m, Currency.USD).Value;
+        var ticketPrice = new Money(25.00m, Currency.USD);
         var @event = CreateValidEvent(ticketPrice: ticketPrice);
 
         // Act
@@ -236,7 +238,7 @@ public class EventCategoryAndPricingTests
     {
         // Arrange
         var category = EventCategory.Business;
-        var ticketPrice = Money.Create(50.00m, Currency.USD).Value;
+        var ticketPrice = new Money(50.00m, Currency.USD);
         var title = EventTitle.Create("Business Conference").Value;
         var description = EventDescription.Create("Annual business conference").Value;
         var startDate = DateTime.UtcNow.AddDays(30);
@@ -297,7 +299,7 @@ public class EventCategoryAndPricingTests
     {
         // Arrange
         var category = EventCategory.Entertainment;
-        var ticketPrice = Money.Create(75.00m, Currency.USD).Value;
+        var ticketPrice = new Money(75.00m, Currency.USD);
         var title = EventTitle.Create("Music Concert").Value;
         var description = EventDescription.Create("Live music performance").Value;
         var startDate = DateTime.UtcNow.AddDays(14);

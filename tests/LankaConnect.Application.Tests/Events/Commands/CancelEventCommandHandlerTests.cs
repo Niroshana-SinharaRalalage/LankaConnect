@@ -1,13 +1,12 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.CancelEvent;
-using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.SharedKernel.Geo;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -48,8 +47,8 @@ public class CancelEventCommandHandlerTests
 
         // Create event with pricing that determines if free or paid
         var ticketPrice = isFree
-            ? Money.Create(0m, Currency.USD).Value
-            : Money.Create(25.00m, Currency.USD).Value;
+            ? new Money(0m, Currency.USD)
+            : new Money(25.00m, Currency.USD);
 
         var @event = Event.Create(
             title,

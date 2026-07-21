@@ -1,17 +1,16 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events.Entities;
 
 /// <summary>
-/// Phase 6A.148 — RefundRequestLineItem entity unit tests.
+/// Phase 6A.148 â€” RefundRequestLineItem entity unit tests.
 ///
-/// Pins down: factory validation, per-line state machine (Requested → Approved/Rejected →
-/// Processing → Refunded/Failed), currency-match invariant, ApprovedAmount ≤ RequestedAmount,
+/// Pins down: factory validation, per-line state machine (Requested â†’ Approved/Rejected â†’
+/// Processing â†’ Refunded/Failed), currency-match invariant, ApprovedAmount â‰¤ RequestedAmount,
 /// and webhook idempotency (MarkRefunded/MarkFailed is a no-op when already terminal).
 /// </summary>
 public class RefundRequestLineItemTests
@@ -138,7 +137,7 @@ public class RefundRequestLineItemTests
     [Fact]
     public void Approve_CurrencyMismatch_Fails()
     {
-        // Architect must-fix F8 — invariant must hold.
+        // Architect must-fix F8 â€” invariant must hold.
         var item = RefundRequestLineItem.Create(
             _refundRequestId, RefundLineItemType.Ticket, _referenceId, Usd(50m)).Value;
 
@@ -207,7 +206,7 @@ public class RefundRequestLineItemTests
     }
 
     // ============================================================
-    // MarkRefunded — terminal, idempotent
+    // MarkRefunded â€” terminal, idempotent
     // ============================================================
 
     [Fact]
@@ -226,14 +225,14 @@ public class RefundRequestLineItemTests
     [Fact]
     public void MarkRefunded_AlreadyRefunded_IsNoopAndStaysSuccess()
     {
-        // Architect must-fix F4 — webhook idempotency. Stripe retries charge.refunded.
+        // Architect must-fix F4 â€” webhook idempotency. Stripe retries charge.refunded.
         var item = NewProcessingItem();
         var firstTime = DateTime.UtcNow.AddMinutes(-5);
         item.MarkRefunded(firstTime);
 
         var secondTry = item.MarkRefunded(DateTime.UtcNow);
 
-        secondTry.IsSuccess.Should().BeTrue("idempotent — must not throw or fail");
+        secondTry.IsSuccess.Should().BeTrue("idempotent â€” must not throw or fail");
         item.ProcessedAt.Should().Be(firstTime, "first refund timestamp must be preserved");
         item.Status.Should().Be(RefundLineItemStatus.Refunded);
     }
@@ -263,7 +262,7 @@ public class RefundRequestLineItemTests
     }
 
     // ============================================================
-    // MarkFailed — terminal, idempotent
+    // MarkFailed â€” terminal, idempotent
     // ============================================================
 
     [Fact]

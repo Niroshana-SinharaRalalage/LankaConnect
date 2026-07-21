@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetActiveSponsorshipPackages;
 using LankaConnect.BuildingBlocks.Domain;
@@ -7,8 +7,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -16,7 +15,7 @@ using Xunit;
 namespace LankaConnect.Application.Tests.Events.Queries;
 
 /// <summary>
-/// Phase 6A.157 — public query coverage. Architect-locked: any gate failure
+/// Phase 6A.157 â€” public query coverage. Architect-locked: any gate failure
 /// returns empty list (never errors) so the FE silently hides the section.
 /// </summary>
 public class GetActiveSponsorshipPackagesQueryHandlerTests
@@ -35,7 +34,7 @@ public class GetActiveSponsorshipPackagesQueryHandlerTests
 
     private static Event MakeEvent(EventStatus status, bool sponsorsEnabled, bool packagesEnabled)
     {
-        // Bypass the heavy Event constructor — we only need a few properties read
+        // Bypass the heavy Event constructor â€” we only need a few properties read
         // by the query handler (Status, SponsorConfig). RuntimeHelpers is the
         // non-obsolete replacement for FormatterServices.GetUninitializedObject.
         var @event = (Event)RuntimeHelpers.GetUninitializedObject(typeof(Event));
@@ -102,7 +101,7 @@ public class GetActiveSponsorshipPackagesQueryHandlerTests
         _eventRepo.Setup(r => r.GetByIdAsync(EventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(MakeEvent(EventStatus.Published, true, true));
         var pkg = SponsorshipPackage.Create(
-            EventId, "Gold", "desc", Money.Create(500m, Currency.USD).Value,
+            EventId, "Gold", "desc", new Money(500m, Currency.USD),
             quantityLimit: 10, sortOrder: 1, tier: "Gold",
             perks: new List<string> { "Perk A" }, includedTicketCount: 3).Value;
         _packageRepo.Setup(r => r.GetActiveByEventIdAsync(EventId, It.IsAny<CancellationToken>()))

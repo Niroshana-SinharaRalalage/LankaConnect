@@ -53,7 +53,7 @@ public class GetNearbyEventsQueryHandlerTests
         ).Value;
 
         // Add location with coordinates (Colombo, Sri Lanka by default)
-        var address = LankaConnect.Domain.Business.ValueObjects.Address.Create(
+        var address = LankaConnect.SharedKernel.Geo.Address.Create(
             "123 Galle Road",
             "Colombo",
             "Western Province",
@@ -61,7 +61,7 @@ public class GetNearbyEventsQueryHandlerTests
             "Sri Lanka"
         ).Value;
 
-        var coordinates = LankaConnect.Domain.Business.ValueObjects.GeoCoordinate.Create(lat, lon).Value;
+        var coordinates = LankaConnect.SharedKernel.Geo.GeoCoordinate.Create(lat, lon).Value;
         var location = EventLocation.Create(address, coordinates).Value;
 
         @event.SetLocation(location);

@@ -1,64 +1,63 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
 /// <summary>
-/// Phase 7F-C — Tier × age matrix pricing on Mode B.
+/// Phase 7F-C â€” Tier Ã— age matrix pricing on Mode B.
 ///
 /// Lifts the deliberate <c>AdultPrice-only</c> collapse shipped in 7E.3c
 /// (see breadcrumb at <c>Event.RegistrationMode.cs:436-440</c>) so a
 /// <see cref="RegistrationMode.HeadCountByAge"/> or
 /// <see cref="RegistrationMode.HeadCountByAgeAndGender"/> registration can express
 /// per-tier-by-age counts and pay <c>tier.AdultPrice</c> for adults +
-/// <c>tier.ChildPrice</c> for children — same routing Mode A uses today via
+/// <c>tier.ChildPrice</c> for children â€” same routing Mode A uses today via
 /// <see cref="TicketTier.CalculatePriceForAttendee"/>.
 ///
-/// Architect review iteration 1 (2026-04-30): ≥18 case floor; tests below
+/// Architect review iteration 1 (2026-04-30): â‰¥18 case floor; tests below
 /// cover TierCount factory invariants (8), HeadCountBreakdown cross-axis
 /// invariants (5), pricing including legacy null-axis (5), Mode A parity (1),
 /// child-price tier guard (3), and JSON round-trip (1) = 23 cases.
 /// </summary>
 public class Phase7FCTierAgeMatrixPricingTests
 {
-    // ──────────────────────────────────────────────────────────────────────
-    //  Helpers — mirror Phase7E3cTierCountsPricingTests' shape so the parity
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Helpers â€” mirror Phase7E3cTierCountsPricingTests' shape so the parity
     //  test can compare bills directly.
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private static (Event @event, TicketTier vip, TicketTier general) CreateTieredEventWithChildPricing(
         decimal vipAdult = 50m, decimal vipChild = 25m, int vipCapacity = 10,
         decimal generalAdult = 30m, decimal generalChild = 15m, int generalCapacity = 40)
     {
         var title = EventTitle.Create("7F-C tier-age test").Value;
-        var description = EventDescription.Create("Tier × age matrix pricing").Value;
+        var description = EventDescription.Create("Tier Ã— age matrix pricing").Value;
         var ev = Event.Create(
             title, description,
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
             Guid.NewGuid(), capacity: vipCapacity + generalCapacity + 50).Value;
-        ev.SetPricing(Money.Create(vipAdult, Currency.USD).Value).IsSuccess.Should().BeTrue();
+        ev.SetPricing(new Money(vipAdult, Currency.USD)).IsSuccess.Should().BeTrue();
         ev.SetTicketingMode(TicketingMode.Tiered).IsSuccess.Should().BeTrue();
 
         // ChildAgeLimit triggers HasChildPricing=true on the tier when ChildPrice is also non-null.
         var vipResult = ev.AddTicketTier(
             "VIP", "VIP tier",
-            Money.Create(vipAdult, Currency.USD).Value,
-            Money.Create(vipChild, Currency.USD).Value,
+            new Money(vipAdult, Currency.USD),
+            new Money(vipChild, Currency.USD),
             childAgeLimit: 12,
             capacity: vipCapacity, maxPerUser: vipCapacity, sortOrder: 1);
         vipResult.IsSuccess.Should().BeTrue($"AddTicketTier VIP failed: {vipResult.Error}");
 
         var generalResult = ev.AddTicketTier(
             "General", "General tier",
-            Money.Create(generalAdult, Currency.USD).Value,
-            Money.Create(generalChild, Currency.USD).Value,
+            new Money(generalAdult, Currency.USD),
+            new Money(generalChild, Currency.USD),
             childAgeLimit: 12,
             capacity: generalCapacity, maxPerUser: generalCapacity, sortOrder: 2);
         generalResult.IsSuccess.Should().BeTrue();
@@ -76,12 +75,12 @@ public class Phase7FCTierAgeMatrixPricingTests
             title, description,
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
             Guid.NewGuid(), capacity: capacity + 50).Value;
-        ev.SetPricing(Money.Create(adultPrice, Currency.USD).Value).IsSuccess.Should().BeTrue();
+        ev.SetPricing(new Money(adultPrice, Currency.USD)).IsSuccess.Should().BeTrue();
         ev.SetTicketingMode(TicketingMode.Tiered).IsSuccess.Should().BeTrue();
 
         var tierResult = ev.AddTicketTier(
             "Standard", "Standard tier (adult-price only)",
-            Money.Create(adultPrice, Currency.USD).Value,
+            new Money(adultPrice, Currency.USD),
             childPrice: null, childAgeLimit: null,
             capacity: capacity, maxPerUser: capacity, sortOrder: 1);
         tierResult.IsSuccess.Should().BeTrue();
@@ -92,9 +91,9 @@ public class Phase7FCTierAgeMatrixPricingTests
     private static RegistrationContact Contact(string email = "tac@example.com") =>
         RegistrationContact.Create(email, "555-0100", null).Value;
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  TierCount factory invariants — architect edits #1, #2
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  TierCount factory invariants â€” architect edits #1, #2
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void TierCount_Create_BothAgeCountsSet_Succeeds_AndExposesHasAgeSplit()
@@ -121,7 +120,7 @@ public class Phase7FCTierAgeMatrixPricingTests
     [Fact]
     public void TierCount_Create_HalfSetAdultOnly_IsRejected()
     {
-        // AdultCount set, ChildCount null — half-set ambiguity.
+        // AdultCount set, ChildCount null â€” half-set ambiguity.
         var result = TierCount.Create(Guid.NewGuid(), "VIP", count: 3, adultCount: 3, childCount: null);
 
         result.IsFailure.Should().BeTrue();
@@ -176,9 +175,9 @@ public class Phase7FCTierAgeMatrixPricingTests
         result.Value.AdultCount.Should().Be(0);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  HeadCountBreakdown cross-axis invariants — architect edit #3
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  HeadCountBreakdown cross-axis invariants â€” architect edit #3
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void HeadCountBreakdown_B2_TierAgeMatchesDemographics_Succeeds()
@@ -208,7 +207,7 @@ public class Phase7FCTierAgeMatrixPricingTests
     public void HeadCountBreakdown_B4_TierAgeMatchesDemographics_Succeeds()
     {
         // B4: 2 AdultMales + 1 AdultFemale + 1 ChildMale + 1 ChildFemale = 5
-        // Tier sums: AdultCount=3, ChildCount=2 → matches
+        // Tier sums: AdultCount=3, ChildCount=2 â†’ matches
         var vip = TierCount.Create(Guid.NewGuid(), "VIP", count: 5, adultCount: 3, childCount: 2).Value;
 
         var result = HeadCountBreakdown.ForByAgeAndGender(
@@ -228,7 +227,7 @@ public class Phase7FCTierAgeMatrixPricingTests
 
         result.IsFailure.Should().BeTrue();
         string.Join("; ", result.Errors!).Should().Match("*age axis*",
-            because: "B1 doesn't capture age — tier age split is invalid in this mode");
+            because: "B1 doesn't capture age â€” tier age split is invalid in this mode");
     }
 
     [Fact]
@@ -243,10 +242,10 @@ public class Phase7FCTierAgeMatrixPricingTests
         string.Join("; ", result.Errors!).Should().Match("*age axis*");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Pricing — single-shape refactor (architect edit #5).
-    //  Legacy null-axis must keep producing AdultPrice × Count for back-compat.
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Pricing â€” single-shape refactor (architect edit #5).
+    //  Legacy null-axis must keep producing AdultPrice Ã— Count for back-compat.
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Pricing_B2Tiered_AgeSplit_AdultsPayAdult_ChildrenPayChild()
@@ -261,14 +260,14 @@ public class Phase7FCTierAgeMatrixPricingTests
 
         result.IsSuccess.Should().BeTrue($"errors: {string.Join("; ", result.Errors ?? Enumerable.Empty<string>())}");
         ev.Registrations.Single().TotalPrice!.Amount.Should().Be(125m,
-            "VIP × (2 adults × $50 + 1 child × $25) = $125");
+            "VIP Ã— (2 adults Ã— $50 + 1 child Ã— $25) = $125");
     }
 
     [Fact]
     public void Pricing_B2Tiered_AgeSplit_MixedTiers()
     {
-        // VIP × (2A,1C) + General × (3A, 0C)
-        // Math: VIP = 2×50 + 1×25 = 125; General = 3×30 + 0×15 = 90; sum = 215
+        // VIP Ã— (2A,1C) + General Ã— (3A, 0C)
+        // Math: VIP = 2Ã—50 + 1Ã—25 = 125; General = 3Ã—30 + 0Ã—15 = 90; sum = 215
         var (ev, vip, general) = CreateTieredEventWithChildPricing(
             vipAdult: 50m, vipChild: 25m,
             generalAdult: 30m, generalChild: 15m);
@@ -289,7 +288,7 @@ public class Phase7FCTierAgeMatrixPricingTests
     public void Pricing_B4Tiered_AgeSplit()
     {
         // B4: 2 AM, 1 AF, 0 CM, 1 CF (total 4) on a single VIP tier
-        // Adults = 3, Children = 1 → 3×$50 + 1×$25 = $175
+        // Adults = 3, Children = 1 â†’ 3Ã—$50 + 1Ã—$25 = $175
         var (ev, vip, _) = CreateTieredEventWithChildPricing(vipAdult: 50m, vipChild: 25m);
         ev.SetRegistrationMode(RegistrationMode.HeadCountByAgeAndGender).IsSuccess.Should().BeTrue();
 
@@ -307,7 +306,7 @@ public class Phase7FCTierAgeMatrixPricingTests
     [Fact]
     public void Pricing_LegacyB1Tiered_NullAxis_StillUsesAdultPriceTimesCount()
     {
-        // Phase 7E.3c shipping behaviour: B1 + tiered → AdultPrice × Count.
+        // Phase 7E.3c shipping behaviour: B1 + tiered â†’ AdultPrice Ã— Count.
         // Architect Q7: this path stays green indefinitely.
         var (ev, vip, _) = CreateTieredEventWithChildPricing(vipAdult: 50m, vipChild: 25m);
         ev.SetRegistrationMode(RegistrationMode.HeadCountOnly).IsSuccess.Should().BeTrue();
@@ -320,7 +319,7 @@ public class Phase7FCTierAgeMatrixPricingTests
 
         result.IsSuccess.Should().BeTrue();
         ev.Registrations.Single().TotalPrice!.Amount.Should().Be(150m,
-            "legacy null-axis path: AdultPrice $50 × 3 = $150 (no child discount applied even though tier has ChildPrice)");
+            "legacy null-axis path: AdultPrice $50 Ã— 3 = $150 (no child discount applied even though tier has ChildPrice)");
     }
 
     [Fact]
@@ -336,17 +335,17 @@ public class Phase7FCTierAgeMatrixPricingTests
 
         result.IsSuccess.Should().BeTrue();
         ev.Registrations.Single().TotalPrice!.Amount.Should().Be(200m,
-            "legacy: $50 × 4 = $200");
+            "legacy: $50 Ã— 4 = $200");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Mode A vs Mode B parity with tier-age axis (architect anti-fork test)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void Parity_ModeA_vs_ModeB_WithTierAge_BillsIdentically()
     {
-        // Same basket: VIP × (2 adults, 1 child) at $50/$25.
+        // Same basket: VIP Ã— (2 adults, 1 child) at $50/$25.
         // Mode A path
         var (modeAEvent, modeAVip, _) = CreateTieredEventWithChildPricing();
         var attendees = new List<AttendeeDetails>
@@ -368,13 +367,13 @@ public class Phase7FCTierAgeMatrixPricingTests
         var modeBPrice = modeBEvent.Registrations.Single().TotalPrice!;
 
         modeBPrice.Amount.Should().Be(modeATotal.Value!.Amount,
-            "Mode A and Mode B with the same basket must produce identical Money — anti-fork");
-        modeBPrice.Amount.Should().Be(125m, "sanity check: 2×$50 + 1×$25 = $125");
+            "Mode A and Mode B with the same basket must produce identical Money â€” anti-fork");
+        modeBPrice.Amount.Should().Be(125m, "sanity check: 2Ã—$50 + 1Ã—$25 = $125");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  Tier-with-no-ChildPrice guard — architect edit #8 (silent under-charge fix)
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Tier-with-no-ChildPrice guard â€” architect edit #8 (silent under-charge fix)
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void TierWithNoChildPrice_AllAdult_StillPrices()
@@ -389,13 +388,13 @@ public class Phase7FCTierAgeMatrixPricingTests
         var result = ev.RegisterWithHeadCount(Guid.NewGuid(), "Lead", head, Contact("nocchild@e.com"));
 
         result.IsSuccess.Should().BeTrue();
-        ev.Registrations.Single().TotalPrice!.Amount.Should().Be(120m, "$40 × 3 = $120");
+        ev.Registrations.Single().TotalPrice!.Amount.Should().Be(120m, "$40 Ã— 3 = $120");
     }
 
     [Fact]
     public void TierWithNoChildPrice_ChildCountGreaterThanZero_IsRejected()
     {
-        // Tier has no ChildPrice → AdultPrice would silently apply to children. Rejected.
+        // Tier has no ChildPrice â†’ AdultPrice would silently apply to children. Rejected.
         var (ev, tier) = CreateTieredEventNoChildPricing(adultPrice: 40m);
         ev.SetRegistrationMode(RegistrationMode.HeadCountByAge).IsSuccess.Should().BeTrue();
 
@@ -404,14 +403,14 @@ public class Phase7FCTierAgeMatrixPricingTests
 
         var result = ev.RegisterWithHeadCount(Guid.NewGuid(), "Lead", head, Contact("nochild2@e.com"));
 
-        result.IsFailure.Should().BeTrue("tier has no ChildPrice — silent fallback would under-charge");
+        result.IsFailure.Should().BeTrue("tier has no ChildPrice â€” silent fallback would under-charge");
         string.Join("; ", result.Errors!).Should().Match("*child pricing*");
     }
 
     [Fact]
     public void TierWithNoChildPrice_ChildCountZero_IsAllowed()
     {
-        // ChildCount=0 with an all-adult split — no child purchase, no rejection.
+        // ChildCount=0 with an all-adult split â€” no child purchase, no rejection.
         var (ev, tier) = CreateTieredEventNoChildPricing(adultPrice: 40m);
         ev.SetRegistrationMode(RegistrationMode.HeadCountByAge).IsSuccess.Should().BeTrue();
 
@@ -421,13 +420,13 @@ public class Phase7FCTierAgeMatrixPricingTests
         var result = ev.RegisterWithHeadCount(Guid.NewGuid(), "Lead", head, Contact("nochild3@e.com"));
 
         result.IsSuccess.Should().BeTrue();
-        ev.Registrations.Single().TotalPrice!.Amount.Should().Be(120m, "$40 × 3 adults = $120");
+        ev.Registrations.Single().TotalPrice!.Amount.Should().Be(120m, "$40 Ã— 3 adults = $120");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    //  JSON deserialisation — legacy payload (no AdultCount/ChildCount fields)
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  JSON deserialisation â€” legacy payload (no AdultCount/ChildCount fields)
     //  must still rehydrate cleanly with both null.
-    // ──────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void TierCount_JsonDeserialise_LegacyPayload_BothAgeCountsNull()
@@ -447,11 +446,11 @@ public class Phase7FCTierAgeMatrixPricingTests
     }
 
     /// <summary>
-    /// Phase 7F-C.1b — round-trip persistence test using the SAME JsonSerializerOptions
+    /// Phase 7F-C.1b â€” round-trip persistence test using the SAME JsonSerializerOptions
     /// the EF Core <c>RegistrationConfiguration</c>'s ValueComparer uses for jsonb storage.
     /// Asserts the new <see cref="TierCount.AdultCount"/> / <see cref="TierCount.ChildCount"/>
-    /// fields survive serialise → deserialise (so EF's deep-copy snapshot picks them up
-    /// and the comparer detects per-tier-age changes — Phase 6A.129 mutate-in-place trap defence).
+    /// fields survive serialise â†’ deserialise (so EF's deep-copy snapshot picks them up
+    /// and the comparer detects per-tier-age changes â€” Phase 6A.129 mutate-in-place trap defence).
     ///
     /// Production config (<c>RegistrationConfiguration.HeadCountJsonOptions</c>):
     /// camelCase + ignore-null-on-write. Mirrored exactly here.
@@ -499,17 +498,17 @@ public class Phase7FCTierAgeMatrixPricingTests
         general.AdultCount.Should().Be(1);
         general.ChildCount.Should().Be(1);
 
-        // Structural equality — proves ValueObject.Equals + GetEqualityComponents picks
+        // Structural equality â€” proves ValueObject.Equals + GetEqualityComponents picks
         // up the new fields. Without that the EF ValueComparer's `Equals` lambda would
         // miss per-tier-age changes and never write the column.
         rehydrated.Should().Be(original, because: "round-trip preserves equality including new age axis");
     }
 
     /// <summary>
-    /// Phase 7F-C.1b — equality detection test. Two HeadCountBreakdowns with identical Count
+    /// Phase 7F-C.1b â€” equality detection test. Two HeadCountBreakdowns with identical Count
     /// but different (AdultCount, ChildCount) splits MUST be considered different. Without
-    /// this, the EF ValueComparer's Equals lambda would treat them as equal → no UPDATE
-    /// emitted → silent data drift on writes.
+    /// this, the EF ValueComparer's Equals lambda would treat them as equal â†’ no UPDATE
+    /// emitted â†’ silent data drift on writes.
     /// </summary>
     [Fact]
     public void HeadCountBreakdown_DifferentAgeSplits_AreNotEqual()
@@ -525,6 +524,6 @@ public class Phase7FCTierAgeMatrixPricingTests
             new[] { TierCount.Create(vipId, "VIP", count: 3, adultCount: 2, childCount: 1).Value }).Value;
 
         splitA.Should().NotBe(splitB,
-            because: "tier age splits are part of equality — without this EF would never detect a change");
+            because: "tier age splits are part of equality â€” without this EF would never detect a change");
     }
 }

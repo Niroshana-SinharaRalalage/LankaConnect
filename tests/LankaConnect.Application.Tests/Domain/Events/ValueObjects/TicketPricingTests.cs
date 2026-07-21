@@ -1,8 +1,7 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.UnitTests.Events.ValueObjects;
@@ -13,8 +12,8 @@ public class TicketPricingTests
     public void Create_WithValidAdultAndChildPrices_ShouldSucceed()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.USD);
         var childAgeLimit = 12;
 
         // Act
@@ -32,7 +31,7 @@ public class TicketPricingTests
     public void Create_WithAdultPriceOnly_ShouldSucceed()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
 
         // Act
         var result = TicketPricing.Create(adultPrice, null, null);
@@ -60,8 +59,8 @@ public class TicketPricingTests
     public void Create_WithChildPriceButNoAgeLimit_ShouldFail()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.USD);
 
         // Act
         var result = TicketPricing.Create(adultPrice, childPrice, null);
@@ -75,7 +74,7 @@ public class TicketPricingTests
     public void Create_WithAgeLimitButNoChildPrice_ShouldFail()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
 
         // Act
         var result = TicketPricing.Create(adultPrice, null, 12);
@@ -93,8 +92,8 @@ public class TicketPricingTests
     public void Create_WithInvalidChildAgeLimit_ShouldFail(int invalidAge)
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.USD);
 
         // Act
         var result = TicketPricing.Create(adultPrice, childPrice, invalidAge);
@@ -108,8 +107,8 @@ public class TicketPricingTests
     public void Create_WithChildPriceGreaterThanAdultPrice_ShouldFail()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(75.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(75.00m, Currency.USD);
 
         // Act
         var result = TicketPricing.Create(adultPrice, childPrice, 12);
@@ -123,8 +122,8 @@ public class TicketPricingTests
     public void Create_WithDifferentCurrencies_ShouldFail()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.LKR).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.LKR);
 
         // Act
         var result = TicketPricing.Create(adultPrice, childPrice, 12);
@@ -142,8 +141,8 @@ public class TicketPricingTests
     public void IsChildAge_WithVariousAges_ShouldReturnCorrectResult(int age, bool expected)
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.USD);
         var pricing = TicketPricing.Create(adultPrice, childPrice, 12).Value;
 
         // Act
@@ -157,7 +156,7 @@ public class TicketPricingTests
     public void IsChildAge_WhenNoChildPricing_ShouldAlwaysReturnFalse()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
         var pricing = TicketPricing.Create(adultPrice, null, null).Value;
 
         // Act & Assert
@@ -170,8 +169,8 @@ public class TicketPricingTests
     public void CalculateForCategory_ForChild_ShouldReturnChildPrice()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.USD);
         var pricing = TicketPricing.Create(adultPrice, childPrice, 12).Value;
 
         // Act
@@ -185,8 +184,8 @@ public class TicketPricingTests
     public void CalculateForCategory_ForAdult_ShouldReturnAdultPrice()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.USD);
         var pricing = TicketPricing.Create(adultPrice, childPrice, 12).Value;
 
         // Act
@@ -200,7 +199,7 @@ public class TicketPricingTests
     public void CalculateForCategory_WithNoChildPricing_ShouldReturnAdultPrice()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
         var pricing = TicketPricing.Create(adultPrice, null, null).Value;
 
         // Act
@@ -214,8 +213,8 @@ public class TicketPricingTests
     public void ValueObjectEquality_WithSameValues_ShouldBeEqual()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice = Money.Create(25.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice = new Money(25.00m, Currency.USD);
         var pricing1 = TicketPricing.Create(adultPrice, childPrice, 12).Value;
         var pricing2 = TicketPricing.Create(adultPrice, childPrice, 12).Value;
 
@@ -228,9 +227,9 @@ public class TicketPricingTests
     public void ValueObjectEquality_WithDifferentValues_ShouldNotBeEqual()
     {
         // Arrange
-        var adultPrice = Money.Create(50.00m, Currency.USD).Value;
-        var childPrice1 = Money.Create(25.00m, Currency.USD).Value;
-        var childPrice2 = Money.Create(30.00m, Currency.USD).Value;
+        var adultPrice = new Money(50.00m, Currency.USD);
+        var childPrice1 = new Money(25.00m, Currency.USD);
+        var childPrice2 = new Money(30.00m, Currency.USD);
         var pricing1 = TicketPricing.Create(adultPrice, childPrice1, 12).Value;
         var pricing2 = TicketPricing.Create(adultPrice, childPrice2, 12).Value;
 

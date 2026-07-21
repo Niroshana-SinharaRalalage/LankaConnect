@@ -1,5 +1,6 @@
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
+using LankaConnect.Modules.Media.Contracts.Services;
 using LankaConnect.Products.LankaEvents.Application.Commands.ReplaceEventImage;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;

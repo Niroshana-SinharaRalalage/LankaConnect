@@ -1,14 +1,13 @@
-using LankaConnect.Products.LankaEvents.Domain;
+﻿using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Domain.Tests.Events;
 
 /// <summary>
-/// Phase 8 S8.2.A — tests for <see cref="Registration.SetPendingSeatAssignments"/>
+/// Phase 8 S8.2.A â€” tests for <see cref="Registration.SetPendingSeatAssignments"/>
 /// and <see cref="Registration.ClearPendingSeatAssignments"/>.
 ///
 /// The pending stash is set during the RSVP handler (before Stripe Checkout)
@@ -29,7 +28,7 @@ public class RegistrationPendingSeatAssignmentsTests
         var bobResult = AttendeeDetails.Create("Bob", AgeCategory.Adult, Gender.Male);
         var contact = RegistrationContact.Create(
             "alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
 
         return Registration.CreateWithAttendees(
             _eventId, _userId,
@@ -64,10 +63,10 @@ public class RegistrationPendingSeatAssignmentsTests
     [Fact]
     public void SetPendingSeatAssignments_RejectsWhenStatusNotPreliminary()
     {
-        // Build a Confirmed (free) registration — not paid, so status is Confirmed
+        // Build a Confirmed (free) registration â€” not paid, so status is Confirmed
         var contact = RegistrationContact.Create(
             "alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
         var aliceResult = AttendeeDetails.Create("Alice", AgeCategory.Adult, Gender.Female);
         var confirmed = Registration.CreateWithAttendees(
             _eventId, _userId, new[] { aliceResult.Value },

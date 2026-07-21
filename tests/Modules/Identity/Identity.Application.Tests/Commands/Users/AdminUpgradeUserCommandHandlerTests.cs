@@ -1,4 +1,4 @@
-using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
+﻿using LankaConnect.Modules.Identity.Contracts; // W4.6.a: ICurrentUserService moved here
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.Modules.Notifications.Infrastructure.Data;
@@ -18,7 +18,7 @@ using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Services;
 using Microsoft.Extensions.Logging.Abstractions;
-using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.Products.LankaEvents.Domain.ValueObjects.Email;
 
 namespace LankaConnect.Modules.Identity.Application.Tests.Commands.Users;
 
@@ -58,7 +58,7 @@ public class AdminUpgradeUserCommandHandlerTests
             .ReturnsAsync(TypedEmailSendResult.Ok("corr-1", 10));
 
         // Wave 6.5.c: NotificationsDbContext ctor arg. Passing null! into an unused mock ref
-        // because the test suite never exercises the DbContext directly — mock UoW absorbs
+        // because the test suite never exercises the DbContext directly â€” mock UoW absorbs
         // the CommitAsync call.
         _handler = new AdminUpgradeUserCommandHandler(
             _userRepository.Object,

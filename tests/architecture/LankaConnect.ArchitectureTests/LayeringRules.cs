@@ -319,7 +319,7 @@ public sealed class LayeringRules
     {
         // W3.4 transitional (2026-06-03): LankaConnect.Infrastructure is INTENTIONALLY
         // allowed here because the moved NotificationRepository still extends
-        // LankaConnect.SPLIT_PER_ENTITY.Repositories.Repository<T> and injects
+        // LankaConnect.Infrastructure.Data.Repositories.Repository<T> and injects
         // AppDbContext. The legacy LankaConnect.Domain / LankaConnect.Application
         // edges persist from W3.2 / W3.4 (BaseEntity + IRepository<T> elevation pending).
         // Re-tighten this rule once the BuildingBlocks elevation lands.
@@ -742,7 +742,7 @@ public sealed class LayeringRules
 
     /// <summary>
     /// W5.4.d.2 (2026-06-22). Relaxed `LankaConnect.Infrastructure` from the ban
-    /// list. EmailGroupRepository extends LankaConnect.SPLIT_PER_ENTITY.
+    /// list. EmailGroupRepository extends LankaConnect.Infrastructure.Data.
     /// Repositories.Repository&lt;T&gt; base and injects AppDbContext directly during
     /// the transitional window (no separate CommunicationsDbContext in W5.4).
     /// Mirrors the W3.4 Notifications.Infrastructure relaxation. Same with

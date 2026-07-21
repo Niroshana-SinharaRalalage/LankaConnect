@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Commands.AssignTier;
 using LankaConnect.Products.LankaEvents.Application.Services;
 using LankaConnect.BuildingBlocks.Domain;
@@ -7,8 +7,7 @@ using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Repositories;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -56,7 +55,7 @@ public class AssignTierCommandHandlerTests
 
     private static TicketTier CreateTier(Guid eventId)
     {
-        var adultPrice = Money.Create(100m, Currency.USD).Value;
+        var adultPrice = new Money(100m, Currency.USD);
         return TicketTier.Create(eventId, "VIP", "VIP tier", adultPrice, null, null, 30, 10, 1).Value;
     }
 
@@ -106,7 +105,7 @@ public class AssignTierCommandHandlerTests
         _mockLayoutRepo.Setup(r => r.GetWithZonesAndSeatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                        .ReturnsAsync(layout);
 
-        // layout.RowVersion default is 0 — stale client sends 99
+        // layout.RowVersion default is 0 â€” stale client sends 99
         var command = new AssignTierCommand(
             layout.Id, 99u, Guid.NewGuid(), AssignableKind.Zone, Guid.NewGuid());
 
@@ -235,7 +234,7 @@ public class AssignTierCommandHandlerTests
             .Which.AssignableId.Should().Be(zone.Id);
         tier.Assignments.Single().AssignableKind.Should().Be(AssignableKind.Zone);
         _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-        // Critical: we do NOT bump the layout's xmin — tier assignments don't mutate the layout row.
+        // Critical: we do NOT bump the layout's xmin â€” tier assignments don't mutate the layout row.
         _mockLayoutRepo.Verify(r => r.SetOriginalRowVersion(It.IsAny<VenueLayout>(), It.IsAny<uint>()), Times.Never);
     }
 

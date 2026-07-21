@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
@@ -10,7 +10,7 @@ using LankaConnect.Modules.Identity.Domain.Enums;
 using LankaConnect.IntegrationTests.Common;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
-using Email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email;
+using Email = LankaConnect.SharedKernel.Contact.Email;
 
 namespace LankaConnect.IntegrationTests.Controllers;
 

@@ -1,18 +1,17 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events;
 
 /// <summary>
-/// Phase 8X.3 — domain contract for <c>Event.SetExternalPayment</c>.
+/// Phase 8X.3 â€” domain contract for <c>Event.SetExternalPayment</c>.
 /// Architect-locked rules:
-/// - Free / OnPlatformPaid → ExternalPaid: requires no active regs, no AssignedSeating,
+/// - Free / OnPlatformPaid â†’ ExternalPaid: requires no active regs, no AssignedSeating,
 ///   non-null pricing, non-null ExternalRegistration VO.
 /// - Sets PaymentMode = ExternalPaid, RegistrationMode = NoRegistration, IsFreeEvent = false,
 ///   ExternalRegistration set.
@@ -20,9 +19,9 @@ namespace LankaConnect.Domain.Tests.Events;
 /// </summary>
 public class Event_SetExternalPayment_Tests
 {
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Builders
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private static Event CreateFreshEvent()
     {
@@ -42,13 +41,13 @@ public class Event_SetExternalPayment_Tests
 
     private static TicketPricing DualPricing(decimal adult = 25m, decimal child = 10m) =>
         TicketPricing.CreateDualPrice(
-            Money.Create(adult, Currency.USD).Value,
-            Money.Create(child, Currency.USD).Value,
+            new Money(adult, Currency.USD),
+            new Money(child, Currency.USD),
             childAgeLimit: 12).Value;
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Happy path
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void SetExternalPayment_WithValidVoAndPricing_SetsPaymentModeAndRegMode()
@@ -59,7 +58,7 @@ public class Event_SetExternalPayment_Tests
 
         result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
         ev.PaymentMode.Should().Be(EventPaymentMode.ExternalPaid);
-        // Phase 8X.11 — registration mode flips to External (was: NoRegistration).
+        // Phase 8X.11 â€” registration mode flips to External (was: NoRegistration).
         ev.RegistrationMode.Should().Be(RegistrationMode.External);
         ev.IsFreeEvent.Should().BeFalse();
         ev.ExternalRegistration.Should().NotBeNull();
@@ -94,14 +93,14 @@ public class Event_SetExternalPayment_Tests
         ev.PaymentMode.Should().Be(EventPaymentMode.ExternalPaid);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Failure paths
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void SetExternalPayment_WithNullExternalRegistration_Succeeds_StoresNullVo()
     {
-        // Phase 8X.11 — externalReg may be null when the organiser supplied no URL +
+        // Phase 8X.11 â€” externalReg may be null when the organiser supplied no URL +
         // no instructions + no vendor. Domain stores it as null; public detail page
         // renders the friendly "Contact organiser for registration details" card.
         var ev = CreateFreshEvent();
@@ -116,7 +115,7 @@ public class Event_SetExternalPayment_Tests
     [Fact]
     public void SetExternalPayment_WithNullPricing_Succeeds_NoOnPlatformPricing()
     {
-        // Phase 8X.12 — pricing is now optional. Organiser may publish an ExternalPaid
+        // Phase 8X.12 â€” pricing is now optional. Organiser may publish an ExternalPaid
         // event with no on-platform price (the price lives at the external provider).
         // Public detail page renders "See external site or reach out organizer for pricing".
         var ev = CreateFreshEvent();
@@ -132,7 +131,7 @@ public class Event_SetExternalPayment_Tests
     [Fact]
     public void SetExternalPayment_WithNullPricing_AndExistingLegacyPricing_ClearsLegacyPricing()
     {
-        // Phase 8X.12 — explicit null pricing on a transition INTO ExternalPaid clears
+        // Phase 8X.12 â€” explicit null pricing on a transition INTO ExternalPaid clears
         // any stale legacy pricing (organiser intent: "no on-platform price").
         var ev = CreateFreshEvent();
         ev.SetDualPricing(DualPricing()).IsSuccess.Should().BeTrue();
@@ -148,7 +147,7 @@ public class Event_SetExternalPayment_Tests
     [Fact]
     public void SetExternalPayment_WithBothNull_Succeeds_FriendlyEmptyState()
     {
-        // Phase 8X.12 — null externalReg + null pricing is the most permissive ExternalPaid
+        // Phase 8X.12 â€” null externalReg + null pricing is the most permissive ExternalPaid
         // state. Public detail page nudges the user to contact the organiser.
         var ev = CreateFreshEvent();
         var result = ev.SetExternalPayment(externalReg: null, pricing: null);
@@ -169,7 +168,7 @@ public class Event_SetExternalPayment_Tests
         var ev = CreateFreshEvent();
         ev.SetTicketingMode(TicketingMode.Tiered).IsSuccess.Should().BeTrue();
         ev.AddTicketTier("VIP", "VIP tier",
-            Money.Create(50m, Currency.USD).Value, null, null,
+            new Money(50m, Currency.USD), null, null,
             capacity: 20, maxPerUser: 10, sortOrder: 1).IsSuccess.Should().BeTrue();
         ev.EnableAssignedSeating(Guid.NewGuid()).IsSuccess.Should().BeTrue();
 

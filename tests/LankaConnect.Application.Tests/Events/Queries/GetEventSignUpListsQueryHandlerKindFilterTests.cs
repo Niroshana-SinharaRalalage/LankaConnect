@@ -1,14 +1,13 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Queries.GetEventSignUpLists;
-using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.SharedKernel.Geo;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -36,7 +35,7 @@ public class GetEventSignUpListsQueryHandlerKindFilterTests
         var endDate = startDate.AddHours(2);
         var address = Address.Create("1 Test St", "Colombo", "WP", "00100", "Sri Lanka").Value;
         var location = EventLocation.Create(address).Value;
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
         var @event = Event.Create(title, description, startDate, endDate, Guid.NewGuid(), 100, location, ticketPrice: price).Value;
 
         var itemsList = SignUpList.Create("Potluck", "Bring a dish", SignUpType.Predefined).Value;

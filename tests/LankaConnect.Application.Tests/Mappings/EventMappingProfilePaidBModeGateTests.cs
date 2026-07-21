@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Mappings;
 using LankaConnect.Products.LankaEvents.Application.Common;
@@ -6,14 +6,13 @@ using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Mappings;
 
 /// <summary>
-/// Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28) — verifies that
+/// Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28) â€” verifies that
 /// <see cref="EventMappingProfile"/> populates <see cref="EventDto.RegistrationModeStatus"/>
 /// correctly:
 /// <list type="bullet">
@@ -55,7 +54,7 @@ public class EventMappingProfilePaidBModeGateTests
         var start = DateTime.UtcNow.AddDays(7);
         var end = DateTime.UtcNow.AddDays(8);
         var @event = Event.Create(title, description, start, end, Guid.NewGuid(), capacity).Value;
-        @event.SetPricing(Money.Create(amount, Currency.USD).Value).IsSuccess.Should().BeTrue();
+        @event.SetPricing(new Money(amount, Currency.USD)).IsSuccess.Should().BeTrue();
         return @event;
     }
 
@@ -69,7 +68,7 @@ public class EventMappingProfilePaidBModeGateTests
         var dto = _mapper.Map<EventDto>(@event);
 
         dto.RegistrationModeStatus.Should().Be("active",
-            "Phase 7E.3b shipped paid B-mode — paid + HeadCountByAge (single-price) passes compatibility");
+            "Phase 7E.3b shipped paid B-mode â€” paid + HeadCountByAge (single-price) passes compatibility");
     }
 
     [Theory]
@@ -107,7 +106,7 @@ public class EventMappingProfilePaidBModeGateTests
     public void Mapper_Returns_Active_ForLegacy_DetailedAttendees_Event()
     {
         var @event = CreatePaidEvent(30m);
-        // Paid + Mode A is the most common pre-7E shape — must remain "active" so the
+        // Paid + Mode A is the most common pre-7E shape â€” must remain "active" so the
         // existing per-attendee form keeps rendering.
         @event.RegistrationMode.Should().Be(RegistrationMode.DetailedAttendees,
             "default mode is DetailedAttendees; sanity check");
@@ -127,6 +126,6 @@ public class EventMappingProfilePaidBModeGateTests
         var dto = _mapper.Map<EventDto>(@event);
 
         dto.RegistrationModeStatus.Should().Be("active",
-            "free + NoRegistration is a valid Mode C event — no compatibility gate applies");
+            "free + NoRegistration is a valid Mode C event â€” no compatibility gate applies");
     }
 }

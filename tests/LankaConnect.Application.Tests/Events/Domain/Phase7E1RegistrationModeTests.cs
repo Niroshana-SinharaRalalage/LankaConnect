@@ -1,29 +1,28 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
 /// <summary>
-/// Phase 7E.1 — Domain tests for RegistrationMode + composite HeadCountBreakdown VO.
+/// Phase 7E.1 â€” Domain tests for RegistrationMode + composite HeadCountBreakdown VO.
 ///
 /// Coverage:
 /// 1. RegistrationMode enum default behaviour on Event.
 /// 2. Event.SetRegistrationMode rules (idempotent, blocked once registrations exist).
 /// 3. TierCount factory validation.
-/// 4. HeadCountBreakdown factories (ForTotalOnly / ForByAge / ForByGender / ForByAgeAndGender) —
+/// 4. HeadCountBreakdown factories (ForTotalOnly / ForByAge / ForByGender / ForByAgeAndGender) â€”
 ///    Total auto-derivation from leaves; tier-count sum invariant.
 /// 5. Registration mode snapshot at construction.
 /// 6. Mutual exclusion of Attendees vs HeadCount.
-/// 7. GetAttendeeCount() — the single canonical mutation point that makes capacity aggregators
+/// 7. GetAttendeeCount() â€” the single canonical mutation point that makes capacity aggregators
 ///    automatically Mode-B aware.
-/// 8. JSON round-trip (architect-required defensive test) — exercises the custom ValueConverter
+/// 8. JSON round-trip (architect-required defensive test) â€” exercises the custom ValueConverter
 ///    pipeline that backs the head_count JSONB column.
 /// </summary>
 public class Phase7E1RegistrationModeTests
@@ -60,7 +59,7 @@ public class Phase7E1RegistrationModeTests
     public void Registration_RegistrationMode_DefaultsTo_DetailedAttendees_ForAttendeeBasedRegistration()
     {
         var attendees = new[] { CreateAttendee() };
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
 
         var result = Registration.CreateWithAttendees(
             Guid.NewGuid(), Guid.NewGuid(), attendees, CreateContact(), price);
@@ -116,8 +115,8 @@ public class Phase7E1RegistrationModeTests
 
     /// <summary>
     /// Phase 7E follow-up bug fix: SetRegistrationMode should ignore Cancelled / Refunded /
-    /// Abandoned registrations because they are historical-only — they don't consume capacity
-    /// and don't need attendee backfill on A↔B conversion. The dashboard's CurrentRegistrations
+    /// Abandoned registrations because they are historical-only â€” they don't consume capacity
+    /// and don't need attendee backfill on Aâ†”B conversion. The dashboard's CurrentRegistrations
     /// already excludes them; the mode-change guard must use the same definition or organisers
     /// see "Cannot change mode (30 existing)" while the UI shows "0 registered".
     /// </summary>
@@ -134,7 +133,7 @@ public class Phase7E1RegistrationModeTests
         registration.Cancel();
 
         @event.CurrentRegistrations.Should().Be(0,
-            "sanity check — once cancelled, the registration should not count toward active");
+            "sanity check â€” once cancelled, the registration should not count toward active");
 
         var result = @event.SetRegistrationMode(RegistrationMode.HeadCountByAge);
 
@@ -285,7 +284,7 @@ public class Phase7E1RegistrationModeTests
     public void Registration_CreateWithHeadCount_SnapshotsRegistrationMode()
     {
         var headCount = HeadCountBreakdown.ForByAge(2, 1).Value;
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
 
         var result = Registration.CreateWithHeadCount(
             Guid.NewGuid(),
@@ -307,7 +306,7 @@ public class Phase7E1RegistrationModeTests
     public void Registration_CreateWithHeadCount_Rejects_DetailedAttendeesMode()
     {
         var headCount = HeadCountBreakdown.ForTotalOnly(2).Value;
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
 
         var result = Registration.CreateWithHeadCount(
             Guid.NewGuid(),
@@ -325,7 +324,7 @@ public class Phase7E1RegistrationModeTests
     public void Registration_CreateWithHeadCount_Rejects_NoRegistrationMode()
     {
         var headCount = HeadCountBreakdown.ForTotalOnly(2).Value;
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
 
         var result = Registration.CreateWithHeadCount(
             Guid.NewGuid(),
@@ -344,7 +343,7 @@ public class Phase7E1RegistrationModeTests
     {
         // CreateWithHeadCount produces NO attendees.
         var hc = HeadCountBreakdown.ForByAge(2, 1).Value;
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
         var bMode = Registration.CreateWithHeadCount(
             Guid.NewGuid(), null, RegistrationMode.HeadCountByAge,
             "Lead", hc, CreateContact(), price).Value;
@@ -370,7 +369,7 @@ public class Phase7E1RegistrationModeTests
     public void GetAttendeeCount_HonorsHeadCountTotal_ForBMode()
     {
         var hc = HeadCountBreakdown.ForByAge(adults: 3, children: 2).Value;
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
 
         var registration = Registration.CreateWithHeadCount(
             Guid.NewGuid(), null, RegistrationMode.HeadCountByAge,
@@ -383,7 +382,7 @@ public class Phase7E1RegistrationModeTests
     public void GetAttendeeCount_FallsBackToAttendees_ForAMode()
     {
         var attendees = new[] { CreateAttendee("A"), CreateAttendee("B"), CreateAttendee("C") };
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
 
         var registration = Registration.CreateWithAttendees(
             Guid.NewGuid(), Guid.NewGuid(), attendees, CreateContact(), price).Value;
@@ -398,7 +397,7 @@ public class Phase7E1RegistrationModeTests
     /// <summary>
     /// Architect-required: validates that the JSON serialisation pipeline used by the head_count
     /// JSONB column correctly round-trips a HeadCountBreakdown with all three axes populated.
-    /// This is the in-memory equivalent of the staging round-trip test — failures here mean
+    /// This is the in-memory equivalent of the staging round-trip test â€” failures here mean
     /// the JSONB column would silently drop or corrupt data.
     /// </summary>
     [Fact]

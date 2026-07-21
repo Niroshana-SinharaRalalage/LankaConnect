@@ -1,17 +1,16 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.Services;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Application.Tests.Events.Domain;
 
 /// <summary>
-/// Phase 7E.3b — paid B-mode pricing tests. Architect-required (review iteration 1):
+/// Phase 7E.3b â€” paid B-mode pricing tests. Architect-required (review iteration 1):
 /// the pricing helper must produce the SAME <see cref="Money"/> total as Mode A's
 /// <see cref="Event.CalculatePriceForAttendees"/> for an equivalent basket.
 ///
@@ -29,7 +28,7 @@ public class Phase7E3bPaidHeadCountPricingTests
             title, description,
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
             Guid.NewGuid(), capacity).Value;
-        @event.SetPricing(Money.Create(singleAdultPrice, Currency.USD).Value).IsSuccess.Should().BeTrue();
+        @event.SetPricing(new Money(singleAdultPrice, Currency.USD)).IsSuccess.Should().BeTrue();
         @event.Publish().IsSuccess.Should().BeTrue();
         return @event;
     }
@@ -43,8 +42,8 @@ public class Phase7E3bPaidHeadCountPricingTests
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
             Guid.NewGuid(), capacity).Value;
         var pricing = TicketPricing.CreateDualPrice(
-            Money.Create(adultPrice, Currency.USD).Value,
-            Money.Create(childPrice, Currency.USD).Value,
+            new Money(adultPrice, Currency.USD),
+            new Money(childPrice, Currency.USD),
             childAgeLimit).Value;
         @event.SetDualPricing(pricing).IsSuccess.Should().BeTrue();
         @event.Publish().IsSuccess.Should().BeTrue();
@@ -65,7 +64,7 @@ public class Phase7E3bPaidHeadCountPricingTests
 
         result.IsSuccess.Should().BeTrue($"errors: {string.Join("; ", result.Errors ?? Enumerable.Empty<string>())}");
         var registration = @event.Registrations.Single();
-        registration.TotalPrice!.Amount.Should().Be(100m, "4 × $25 = $100");
+        registration.TotalPrice!.Amount.Should().Be(100m, "4 Ã— $25 = $100");
         registration.TotalPrice.Currency.Should().Be(Currency.USD);
         registration.Status.Should().Be(RegistrationStatus.Preliminary,
             "paid event must land in Preliminary until Stripe webhook confirms payment");
@@ -82,7 +81,7 @@ public class Phase7E3bPaidHeadCountPricingTests
 
         result.IsSuccess.Should().BeTrue($"errors: {string.Join("; ", result.Errors ?? Enumerable.Empty<string>())}");
         var registration = @event.Registrations.Single();
-        registration.TotalPrice!.Amount.Should().Be(37m, "2 × $15 + 1 × $7 = $37");
+        registration.TotalPrice!.Amount.Should().Be(37m, "2 Ã— $15 + 1 Ã— $7 = $37");
         registration.Status.Should().Be(RegistrationStatus.Preliminary);
     }
 
@@ -91,20 +90,20 @@ public class Phase7E3bPaidHeadCountPricingTests
     {
         var @event = CreatePublishedDualPriceEvent(adultPrice: 20m, childPrice: 10m);
         @event.SetRegistrationMode(RegistrationMode.HeadCountByAgeAndGender).IsSuccess.Should().BeTrue();
-        // 1 AM + 2 AF = 3 adults; 1 CM + 1 CF = 2 children → 3×20 + 2×10 = $80
+        // 1 AM + 2 AF = 3 adults; 1 CM + 1 CF = 2 children â†’ 3Ã—20 + 2Ã—10 = $80
         var head = HeadCountBreakdown.ForByAgeAndGender(adultMales: 1, adultFemales: 2, childMales: 1, childFemales: 1).Value;
 
         var result = @event.RegisterWithHeadCount(Guid.NewGuid(), "B4 Lead", head, CreateContact());
 
         result.IsSuccess.Should().BeTrue($"errors: {string.Join("; ", result.Errors ?? Enumerable.Empty<string>())}");
         var registration = @event.Registrations.Single();
-        registration.TotalPrice!.Amount.Should().Be(80m, "3 adults × $20 + 2 children × $10 = $80");
+        registration.TotalPrice!.Amount.Should().Be(80m, "3 adults Ã— $20 + 2 children Ã— $10 = $80");
     }
 
     [Fact]
     public void RsvpToEvent_ModeB3Paid_SinglePrice_TotalPriceEquals_TotalTimesPrice()
     {
-        // B3 single-price parity with B1 — gender doesn't affect price.
+        // B3 single-price parity with B1 â€” gender doesn't affect price.
         var @event = CreatePublishedPaidEvent(singleAdultPrice: 30m);
         @event.SetRegistrationMode(RegistrationMode.HeadCountByGender).IsSuccess.Should().BeTrue();
         var head = HeadCountBreakdown.ForByGender(males: 2, females: 3).Value; // total = 5
@@ -113,13 +112,13 @@ public class Phase7E3bPaidHeadCountPricingTests
 
         result.IsSuccess.Should().BeTrue($"errors: {string.Join("; ", result.Errors ?? Enumerable.Empty<string>())}");
         var registration = @event.Registrations.Single();
-        registration.TotalPrice!.Amount.Should().Be(150m, "5 × $30 = $150");
+        registration.TotalPrice!.Amount.Should().Be(150m, "5 Ã— $30 = $150");
     }
 
     [Fact]
     public void RsvpToEvent_ModeB1Paid_DualPricing_Rejected()
     {
-        // Defensive — validator excludes this combo, but domain enforces too.
+        // Defensive â€” validator excludes this combo, but domain enforces too.
         var @event = CreatePublishedDualPriceEvent();
         @event.SetRegistrationMode(RegistrationMode.HeadCountOnly).IsSuccess.Should().BeTrue();
         var head = HeadCountBreakdown.ForTotalOnly(3).Value;
@@ -192,15 +191,15 @@ public class Phase7E3bPaidHeadCountPricingTests
 
         // Architect-required: identical Money. Down-to-the-cent equality.
         modeBPrice.Amount.Should().Be(modeAPrice.Value.Amount,
-            "Mode A and Mode B2 must produce the same TotalPrice for the same adult/child basket — anti-fork guard");
+            "Mode A and Mode B2 must produce the same TotalPrice for the same adult/child basket â€” anti-fork guard");
         modeBPrice.Currency.Should().Be(modeAPrice.Value.Currency);
-        modeBPrice.Amount.Should().Be(37m, "sanity: 2 × $15 + 1 × $7 = $37");
+        modeBPrice.Amount.Should().Be(37m, "sanity: 2 Ã— $15 + 1 Ã— $7 = $37");
     }
 
     [Fact]
     public void RsvpToEvent_FreeBMode_StillProducesZeroTotalPrice_AndConfirmedStatus()
     {
-        // Regression — free path must remain unchanged after gate removal.
+        // Regression â€” free path must remain unchanged after gate removal.
         var title = EventTitle.Create("Free B-mode regression").Value;
         var description = EventDescription.Create("Phase 7E.3b regression").Value;
         var @event = Event.Create(title, description, DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8), Guid.NewGuid(), 100).Value;

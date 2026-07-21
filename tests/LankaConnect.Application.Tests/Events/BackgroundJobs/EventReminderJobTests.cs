@@ -1,7 +1,7 @@
-using LankaConnect.Modules.Identity.Contracts;
+﻿using LankaConnect.Modules.Identity.Contracts;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.BackgroundJobs;
-using LankaConnect.Products.LankaEvents.Application.Repositories;
+using LankaConnect.Products.LankaEvents.Contracts.Repositories;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 using LankaConnect.Modules.Communications.Contracts.Email.Contracts;
 using LankaConnect.Modules.Communications.Contracts.Email.Services;
@@ -14,8 +14,7 @@ using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
 using LankaConnect.Modules.Identity.Domain.Entities;
 using LankaConnect.Modules.Identity.Domain.Repositories;
 using LankaConnect.Modules.Identity.Domain.Events;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -234,7 +233,7 @@ public class EventReminderJobTests
         // Act
         await _job.ExecuteAsync();
 
-        // Assert - Both registrations should be attempted (3 windows × 2 registrations = 6 calls)
+        // Assert - Both registrations should be attempted (3 windows Ã— 2 registrations = 6 calls)
         _typedEmailService.Verify(x => x.SendEmailAsync(
             It.IsAny<IEmailParameters>(),
             It.IsAny<CancellationToken>()), Times.Exactly(6));

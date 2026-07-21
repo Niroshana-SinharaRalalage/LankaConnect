@@ -1,11 +1,10 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events;
@@ -24,7 +23,7 @@ namespace LankaConnect.Domain.Tests.Events;
 /// event creation on staging exposed the bug.
 ///
 /// Fix: extract a private <c>HasPaidPricingConfigured()</c> helper on Event that
-/// recognises three valid pricing shapes — legacy Pricing, legacy TicketPrice, OR
+/// recognises three valid pricing shapes â€” legacy Pricing, legacy TicketPrice, OR
 /// (TicketingMode == Tiered AND at least one active tier).
 ///
 /// 5 tests below pin both the success path (regression-proof against future bugs that
@@ -33,12 +32,12 @@ namespace LankaConnect.Domain.Tests.Events;
 /// </summary>
 public class EventPaidPricingGuardTests
 {
-    // ─────────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Builders
-    // ─────────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /// <summary>Creates a paid + Tiered event with active VIP + General tiers but
-    /// deliberately does NOT call SetDualPricing — hits the previously-buggy guard.</summary>
+    /// deliberately does NOT call SetDualPricing â€” hits the previously-buggy guard.</summary>
     private static (Event @event, TicketTier vip, TicketTier general) CreateTieredEventWithoutLegacyPricing(
         decimal vipPrice = 50m, decimal generalPrice = 30m)
     {
@@ -49,18 +48,18 @@ public class EventPaidPricingGuardTests
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
             Guid.NewGuid(), capacity: 100).Value;
 
-        // Pricing INTENTIONALLY NOT SET — that's the bug repro.
+        // Pricing INTENTIONALLY NOT SET â€” that's the bug repro.
         ev.SetTicketingMode(TicketingMode.Tiered).IsSuccess.Should().BeTrue();
 
         var vipResult = ev.AddTicketTier(
             "VIP", "VIP tier",
-            Money.Create(vipPrice, Currency.USD).Value, null, null,
+            new Money(vipPrice, Currency.USD), null, null,
             capacity: 20, maxPerUser: 10, sortOrder: 1);
         vipResult.IsSuccess.Should().BeTrue($"AddTicketTier VIP failed: {vipResult.Error}");
 
         var generalResult = ev.AddTicketTier(
             "General", "General tier",
-            Money.Create(generalPrice, Currency.USD).Value, null, null,
+            new Money(generalPrice, Currency.USD), null, null,
             capacity: 30, maxPerUser: 10, sortOrder: 2);
         generalResult.IsSuccess.Should().BeTrue();
 
@@ -68,7 +67,7 @@ public class EventPaidPricingGuardTests
         return (ev, vipResult.Value, generalResult.Value);
     }
 
-    /// <summary>Creates a paid + Tiered event but adds NO tiers — domain should still
+    /// <summary>Creates a paid + Tiered event but adds NO tiers â€” domain should still
     /// reject with a sanitized message because no pricing of any kind is wired up.</summary>
     private static Event CreateTieredEventWithoutAnyPricingOrTiers()
     {
@@ -83,17 +82,17 @@ public class EventPaidPricingGuardTests
         return ev;
     }
 
-    /// <summary>Creates a paid event in Standard ticketing mode with NO pricing —
+    /// <summary>Creates a paid event in Standard ticketing mode with NO pricing â€”
     /// the legacy guard should still fire (regression coverage).</summary>
     private static Event CreateStandardEventWithoutPricing()
     {
         var title = EventTitle.Create("Pricing-guard legacy regression").Value;
-        var description = EventDescription.Create("Standard mode + no pricing — must still fail").Value;
+        var description = EventDescription.Create("Standard mode + no pricing â€” must still fail").Value;
         var ev = Event.Create(
             title, description,
             DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(8),
             Guid.NewGuid(), capacity: 100).Value;
-        // No SetTicketingMode → defaults to Standard. No SetDualPricing.
+        // No SetTicketingMode â†’ defaults to Standard. No SetDualPricing.
         return ev;
     }
 
@@ -106,12 +105,12 @@ public class EventPaidPricingGuardTests
     private static AttendeeDetails Attendee(string name, AgeCategory age, Guid? tierId, string? tierName) =>
         AttendeeDetails.Create(name, age, gender: null, ticketTierId: tierId, ticketTierName: tierName).Value;
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Test cases
-    // ─────────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    /// <summary>Architect plan, test #1 — the staging repro.
-    /// Paid + Tiered + B4 + active tiers + NO legacy Pricing → must succeed.</summary>
+    /// <summary>Architect plan, test #1 â€” the staging repro.
+    /// Paid + Tiered + B4 + active tiers + NO legacy Pricing â†’ must succeed.</summary>
     [Fact]
     public void CalculatePriceForHeadCount_PaidTieredB4_NoLegacyPricing_Succeeds()
     {
@@ -125,12 +124,12 @@ public class EventPaidPricingGuardTests
         var result = ev.CalculatePriceForHeadCount(head);
 
         result.IsSuccess.Should().BeTrue($"errors: {result.Error}");
-        // VIP × 2 = $100, General × 1 = $30, total = $130
+        // VIP Ã— 2 = $100, General Ã— 1 = $30, total = $130
         result.Value.Amount.Should().Be(130m);
         result.Value.Currency.Should().Be(Currency.USD);
     }
 
-    /// <summary>Architect plan, test #2 — paid + Tiered + NO tiers should still fail
+    /// <summary>Architect plan, test #2 â€” paid + Tiered + NO tiers should still fail
     /// because no pricing of any kind is configured. Sanitised user-facing message
     /// (no SetPricing()/SetDualPricing()/SetGroupPricing() leak).</summary>
     [Fact]
@@ -143,14 +142,14 @@ public class EventPaidPricingGuardTests
         var result = ev.CalculatePriceForHeadCount(head);
 
         result.IsFailure.Should().BeTrue();
-        // Sanitised user-facing message — no domain method names.
+        // Sanitised user-facing message â€” no domain method names.
         result.Error.Should().NotContain("SetPricing(", "user-facing error must not leak domain method names");
         result.Error.Should().NotContain("SetDualPricing(");
         result.Error.Should().NotContain("SetGroupPricing(");
         result.Error.Should().Contain("paid", "message should explain the cause clearly");
     }
 
-    /// <summary>Architect plan, test #3 — Mode A path, paid + Tiered + active tiers +
+    /// <summary>Architect plan, test #3 â€” Mode A path, paid + Tiered + active tiers +
     /// NO legacy Pricing. <c>CalculatePriceForAttendees</c> on the registration happy
     /// path is short-circuited to <c>CalculateTieredPriceForAttendees</c> at line 430,
     /// so the throw is dead code there. But the public method must not throw if called
@@ -167,7 +166,7 @@ public class EventPaidPricingGuardTests
 
         // CalculatePriceForAttendees is the public method holding the throw guard at line 1130.
         // After the fix, calling it directly on a tiered event with active tiers (no legacy
-        // Pricing) must not throw "Paid event pricing is not configured" — the new
+        // Pricing) must not throw "Paid event pricing is not configured" â€” the new
         // HasPaidPricingConfigured() helper recognises Tiered+active tiers as a valid
         // pricing shape.
         var act = () => ev.CalculatePriceForAttendees(attendees);
@@ -176,7 +175,7 @@ public class EventPaidPricingGuardTests
             "tiered events with active tiers ARE pricing-configured");
     }
 
-    /// <summary>Architect plan, test #4 — Standard mode + no pricing must still throw.
+    /// <summary>Architect plan, test #4 â€” Standard mode + no pricing must still throw.
     /// Regression guard for the legacy invariant. Domain method calls (not user input)
     /// can rely on the throw to signal "caller is buggy".</summary>
     [Fact]
@@ -194,7 +193,7 @@ public class EventPaidPricingGuardTests
             .WithMessage("*paid*", "the legacy guard must still fire when no pricing of any shape is configured");
     }
 
-    /// <summary>Architect plan, test #5 — B-mode + Standard + no pricing fails with
+    /// <summary>Architect plan, test #5 â€” B-mode + Standard + no pricing fails with
     /// sanitised message. Regression guard for the legacy invariant on the head-count path.</summary>
     [Fact]
     public void CalculatePriceForHeadCount_StandardMode_NoPricing_FailsWithSanitisedMessage()

@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-using LankaConnect.SPLIT_PER_CONTROLLER;
+using LankaConnect.Products.LankaEvents.Api.Controllers;
 using LankaConnect.API.Extensions;
 using LankaConnect.Products.LankaEvents.Application.Commands.AddToWaitingList;
 using LankaConnect.Products.LankaEvents.Application.Commands.RemoveFromWaitingList;

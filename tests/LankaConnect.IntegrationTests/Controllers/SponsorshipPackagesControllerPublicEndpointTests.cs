@@ -2,7 +2,7 @@ using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
-using LankaConnect.SPLIT_PER_CONTROLLER;
+using LankaConnect.Products.LankaEvents.Api.Controllers;
 using Xunit;
 
 namespace LankaConnect.IntegrationTests.Controllers;
@@ -118,7 +118,7 @@ public class SponsorshipPackagesControllerPublicEndpointTests
         // session needs (buyer identity for the Sponsor row + redirect URLs for
         // success/cancel after Stripe). Pinned by name so a rename doesn't
         // silently break the FE request shape.
-        var t = Type.GetType("LankaConnect.SPLIT_PER_CONTROLLER.CreatePackageSponsorRequest, LankaConnect.API");
+        var t = Type.GetType("LankaConnect.Products.LankaEvents.Api.Controllers.CreatePackageSponsorRequest, LankaConnect.API");
         Assert.NotNull(t);
 
         // Required fields the buyer MUST send

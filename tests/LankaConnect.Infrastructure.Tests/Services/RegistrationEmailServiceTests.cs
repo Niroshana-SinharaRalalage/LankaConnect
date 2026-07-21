@@ -1,4 +1,4 @@
-using Xunit;
+﻿using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -15,9 +15,9 @@ using LankaConnect.Modules.Identity.Domain.Events;
 using LankaConnect.Infrastructure.Services;
 using LankaConnect.BuildingBlocks.Application.Common.DTOs;
 using LankaConnect.Domain.Business.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
+using LankaConnect.SharedKernel.Money;
 using LankaConnect.BuildingBlocks.Application.Interfaces;
 
 namespace LankaConnect.Infrastructure.Tests.Services;
@@ -504,7 +504,7 @@ public class RegistrationEmailServiceTests
 
         // Use CreateWithAttendees which properly sets Contact
         // Signature: (eventId, userId?, attendees, contact, totalPrice, isPaidEvent, maxAttendeesPerRegistration)
-        var totalPrice = isFree ? Money.Zero(Currency.USD) : Money.Create(50.00m, Currency.USD).Value;
+        var totalPrice = isFree ? Money.Zero(Currency.USD) : new Money(50.00m, Currency.USD);
         var registration = Registration.CreateWithAttendees(
             eventId,
             null, // anonymous - no userId
@@ -564,7 +564,7 @@ public class RegistrationEmailServiceTests
             EventLocation.Create(
                 Address.Create("123 Test St", "Colombo", "Western", "10100", "LK").Value).Value,
             EventCategory.Community,
-            isFree ? null : Money.Create(50.00m, Currency.USD).Value);
+            isFree ? null : new Money(50.00m, Currency.USD));
 
         return eventResult.Value;
     }
@@ -582,7 +582,7 @@ public class RegistrationEmailServiceTests
 
     private User CreateTestUser()
     {
-        var email = LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects.Email.Create("test@example.com").Value;
+        var email = LankaConnect.Modules.Communications.Domain.ValueObjects.Email.Create("test@example.com").Value;
         var userResult = User.Create(email, "John", "Doe");
 
         return userResult.Value;

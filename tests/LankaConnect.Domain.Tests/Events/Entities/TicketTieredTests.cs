@@ -1,12 +1,11 @@
-using LankaConnect.Products.LankaEvents.Domain.Entities;
+﻿using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Domain.Tests.Events.Entities;
 
 /// <summary>
-/// Tests for Ticket.CreateTiered() — master and individual tiered tickets
+/// Tests for Ticket.CreateTiered() â€” master and individual tiered tickets
 /// </summary>
 public class TicketTieredTests
 {
@@ -15,7 +14,7 @@ public class TicketTieredTests
     private readonly Guid _userId = Guid.NewGuid();
     private readonly DateTime _eventEndDate = DateTime.UtcNow.AddDays(7);
 
-    #region CreateTiered — Master Ticket Tests
+    #region CreateTiered â€” Master Ticket Tests
 
     [Fact]
     public void CreateTiered_Master_WithValidData_Should_Succeed()
@@ -50,7 +49,7 @@ public class TicketTieredTests
 
     #endregion
 
-    #region CreateTiered — Individual Ticket Tests
+    #region CreateTiered â€” Individual Ticket Tests
 
     [Fact]
     public void CreateTiered_Individual_WithValidData_Should_Succeed()

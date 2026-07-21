@@ -1,14 +1,13 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.BuildingBlocks.Application.Common.Interfaces;
 using LankaConnect.Products.LankaEvents.Application.Commands.CreateSignUpListWithItems;
-using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.SharedKernel.Geo;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -18,7 +17,7 @@ namespace LankaConnect.Application.Tests.Events.Commands;
 /// <summary>
 /// Phase 7D.1: Tests for the Kind-branch introduced into
 /// CreateSignUpListWithItemsCommandHandler. The legacy Items path is already
-/// exercised through integration paths elsewhere — these tests focus on the
+/// exercised through integration paths elsewhere â€” these tests focus on the
 /// Kind=Volunteers branch and back-compat default.
 /// </summary>
 public class CreateSignUpListWithItemsCommandHandlerKindTests
@@ -38,7 +37,7 @@ public class CreateSignUpListWithItemsCommandHandlerKindTests
         var endDate = startDate.AddHours(2);
         var address = Address.Create("1 Test St", "Colombo", "WP", "00100", "Sri Lanka").Value;
         var location = EventLocation.Create(address).Value;
-        var price = Money.Create(0m, Currency.USD).Value;
+        var price = new Money(0m, Currency.USD);
         return Event.Create(title, description, startDate, endDate, Guid.NewGuid(), 100, location, ticketPrice: price).Value;
     }
 
@@ -81,7 +80,7 @@ public class CreateSignUpListWithItemsCommandHandlerKindTests
         var command = new CreateSignUpListWithItemsCommand(
             EventId: @event.Id,
             Category: "Mixed Up",
-            Description: "Should fail — quantity item in volunteer list",
+            Description: "Should fail â€” quantity item in volunteer list",
             HasMandatoryItems: true,
             HasPreferredItems: false,
             HasSuggestedItems: false,

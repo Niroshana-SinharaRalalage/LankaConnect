@@ -1,26 +1,25 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Entities;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events;
 
 /// <summary>
-/// Phase 6A.148.W4.D13.5 — Aggregate-level Approve / Reject / Withdraw methods on
+/// Phase 6A.148.W4.D13.5 â€” Aggregate-level Approve / Reject / Withdraw methods on
 /// <see cref="Registration"/>. These methods proxy to the child <see cref="RefundRequest"/>
 /// entity AND re-raise the corresponding domain event from the Registration root with
 /// EventId populated.
 ///
 /// Root cause they fix (F1 / G3): the child entity raises its events with
 /// <c>EventId=Guid.Empty</c> because it doesn't know its parent's EventId. Downstream
-/// email handlers call <c>_eventRepository.GetByIdAsync(EventId)</c> — which returns
-/// null for Guid.Empty — and exit silently with a WARN log. Empirically proven during
+/// email handlers call <c>_eventRepository.GetByIdAsync(EventId)</c> â€” which returns
+/// null for Guid.Empty â€” and exit silently with a WARN log. Empirically proven during
 /// W4 API smoke test T7 Withdraw: the handler ran but emitted
 /// <c>"event not found EventId=00000000-0000-0000-0000-000000000000"</c>.
 ///
@@ -48,7 +47,7 @@ public class RegistrationApproveRejectWithdrawRefundRequestTests
         var alice = AttendeeDetails.Create("Alice", AgeCategory.Adult, Gender.Female).Value;
         var contact = RegistrationContact.Create(
             "alice@example.com", "8609780124", null, null, false).Value;
-        var price = Money.Create(50m, Currency.USD).Value;
+        var price = new Money(50m, Currency.USD);
         var reg = Registration.CreateWithAttendees(
             _eventId, AttendeeUser, new[] { alice }, contact, price, isPaidEvent: true).Value;
         reg.CompletePayment("pi_test_d13_5").IsSuccess.Should().BeTrue();
@@ -92,7 +91,7 @@ public class RegistrationApproveRejectWithdrawRefundRequestTests
         var approvedEvent = reg.DomainEvents
             .OfType<RefundRequestApprovedEvent>()
             .Single();
-        approvedEvent.EventId.Should().Be(_eventId, "the F1/G3 fix — event MUST carry the populated EventId so the email handler can resolve the Event entity");
+        approvedEvent.EventId.Should().Be(_eventId, "the F1/G3 fix â€” event MUST carry the populated EventId so the email handler can resolve the Event entity");
         approvedEvent.EventId.Should().NotBe(Guid.Empty);
         approvedEvent.RegistrationId.Should().Be(reg.Id);
         approvedEvent.RefundRequestId.Should().Be(rrId);
@@ -115,7 +114,7 @@ public class RegistrationApproveRejectWithdrawRefundRequestTests
     [Fact]
     public void ApproveRefundRequest_WhenChildValidationFails_ReturnsFailure_NoRootEventRaised()
     {
-        // All-zero approval is invalid per architect F2 — child returns failure.
+        // All-zero approval is invalid per architect F2 â€” child returns failure.
         var reg = BuildRegistrationWithPendingRefund(out var rrId);
         var perLine = new Dictionary<Guid, Money>(); // empty = all zeroes per child contract
 
@@ -169,7 +168,7 @@ public class RegistrationApproveRejectWithdrawRefundRequestTests
 
         result.IsSuccess.Should().BeTrue();
         var withdrawnEvent = reg.DomainEvents.OfType<RefundRequestWithdrawnEvent>().Single();
-        withdrawnEvent.EventId.Should().Be(_eventId, "the F1/G3 fix — empirically broken before D13.5 (T7 smoke showed event not found WARN)");
+        withdrawnEvent.EventId.Should().Be(_eventId, "the F1/G3 fix â€” empirically broken before D13.5 (T7 smoke showed event not found WARN)");
         withdrawnEvent.EventId.Should().NotBe(Guid.Empty);
         withdrawnEvent.RegistrationId.Should().Be(reg.Id);
         withdrawnEvent.RefundRequestId.Should().Be(rrId);

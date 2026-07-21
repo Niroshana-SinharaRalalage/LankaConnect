@@ -1,9 +1,8 @@
-using LankaConnect.Products.LankaEvents.Domain;
+﻿using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.Domain.Tests.Events.Entities;
 
@@ -11,7 +10,7 @@ public class DonationTests
 {
     private readonly Guid _eventId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
-    private readonly Money _validAmount = Money.Create(25.00m, Currency.USD).Value;
+    private readonly Money _validAmount = new Money(25.00m, Currency.USD);
 
     #region Create (Standalone) Tests
 
@@ -121,7 +120,7 @@ public class DonationTests
     public void Create_WithZeroAmount_Should_Fail()
     {
         // Arrange
-        var zeroAmount = Money.Create(0m, Currency.USD).Value;
+        var zeroAmount = new Money(0m, Currency.USD);
 
         // Act
         var result = Donation.Create(
@@ -433,9 +432,9 @@ public class DonationTests
     {
         // Arrange
         var donation = CreateValidDonation();
-        var stripeFee = Money.Create(1.03m, Currency.USD).Value;
-        var platformCommission = Money.Create(0.50m, Currency.USD).Value;
-        var payout = Money.Create(23.47m, Currency.USD).Value;
+        var stripeFee = new Money(1.03m, Currency.USD);
+        var platformCommission = new Money(0.50m, Currency.USD);
+        var payout = new Money(23.47m, Currency.USD);
 
         // Act
         var result = donation.SetRevenueBreakdown(stripeFee, platformCommission, payout);

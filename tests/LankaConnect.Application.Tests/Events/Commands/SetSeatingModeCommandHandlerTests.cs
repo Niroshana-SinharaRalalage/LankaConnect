@@ -1,13 +1,12 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Application.Commands.SetSeatingMode;
-using LankaConnect.Domain.Business.ValueObjects;
+using LankaConnect.SharedKernel.Geo;
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -45,7 +44,7 @@ public class SetSeatingModeCommandHandlerTests
         var endDate = startDate.AddHours(2);
         var address = Address.Create("1 Test St", "Colombo", "WP", "00100", "Sri Lanka").Value;
         var location = EventLocation.Create(address).Value;
-        var ticketPrice = Money.Create(0m, Currency.USD).Value;
+        var ticketPrice = new Money(0m, Currency.USD);
 
         var @event = Event.Create(
             title,
@@ -93,7 +92,7 @@ public class SetSeatingModeCommandHandlerTests
     [Fact]
     public async Task Handle_NonTieredEvent_SwitchingToAssignedSeating_ShouldFailDomainValidation()
     {
-        // Arrange — Tiered ticketing is a prerequisite for AssignedSeating.
+        // Arrange â€” Tiered ticketing is a prerequisite for AssignedSeating.
         var @event = CreateTestEvent(withTieredTicketing: false);
         var command = new SetSeatingModeCommand(@event.Id, SeatingMode.AssignedSeating);
 
@@ -142,7 +141,7 @@ public class SetSeatingModeCommandHandlerTests
     [Fact]
     public async Task Handle_IdempotentSetToSameMode_ShouldSucceedWithoutSideEffects()
     {
-        // Arrange — event already in GeneralAdmission; command is a no-op.
+        // Arrange â€” event already in GeneralAdmission; command is a no-op.
         var @event = CreateTestEvent(withTieredTicketing: true);
         var command = new SetSeatingModeCommand(@event.Id, SeatingMode.GeneralAdmission);
 
@@ -184,7 +183,7 @@ public class SetSeatingModeCommandHandlerTests
     [Fact]
     public async Task Handle_RepositoryThrows_ShouldPropagateException()
     {
-        // Arrange — verify try/catch logs but does NOT swallow exceptions.
+        // Arrange â€” verify try/catch logs but does NOT swallow exceptions.
         var command = new SetSeatingModeCommand(Guid.NewGuid(), SeatingMode.AssignedSeating);
 
         _mockEventRepository

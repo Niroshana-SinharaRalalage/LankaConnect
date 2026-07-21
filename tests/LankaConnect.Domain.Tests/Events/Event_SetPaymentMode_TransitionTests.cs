@@ -1,31 +1,30 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using LankaConnect.Products.LankaEvents.Domain;
 using LankaConnect.Modules.Identity.Domain.DomainEvents;
 using LankaConnect.Products.LankaEvents.Domain.Enums;
 using LankaConnect.Products.LankaEvents.Domain.ValueObjects;
-using LankaConnect.BuildingBlocks.Domain.Shared.Enums;
-using LankaConnect.BuildingBlocks.Domain.Shared.ValueObjects;
+using LankaConnect.SharedKernel.Money;
 using Xunit;
 
 namespace LankaConnect.Domain.Tests.Events;
 
 /// <summary>
-/// Phase 8X.3 — payment-mode transition contract for <c>Event.SetPaymentMode</c>.
+/// Phase 8X.3 â€” payment-mode transition contract for <c>Event.SetPaymentMode</c>.
 /// Architect-locked transition table from MASTER_TODO_PHASE_8X_EXTERNAL_PAYMENT.md:
-/// - Free → OnPlatformPaid: requires pricing.
-/// - OnPlatformPaid → Free: requires no active regs; pricing cleared.
-/// - ExternalPaid → OnPlatformPaid: requires no active regs; ExternalRegistration cleared;
+/// - Free â†’ OnPlatformPaid: requires pricing.
+/// - OnPlatformPaid â†’ Free: requires no active regs; pricing cleared.
+/// - ExternalPaid â†’ OnPlatformPaid: requires no active regs; ExternalRegistration cleared;
 ///   RegistrationMode auto-resets to DetailedAttendees.
-/// - ExternalPaid → Free: requires no active regs; ExternalRegistration cleared; pricing cleared;
+/// - ExternalPaid â†’ Free: requires no active regs; ExternalRegistration cleared; pricing cleared;
 ///   RegistrationMode auto-resets to DetailedAttendees.
-/// - * → ExternalPaid: NOT supported via this method (use SetExternalPayment).
+/// - * â†’ ExternalPaid: NOT supported via this method (use SetExternalPayment).
 /// - Idempotent on same-mode set.
 /// </summary>
 public class Event_SetPaymentMode_TransitionTests
 {
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Builders
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private static Event CreateFreshEvent()
     {
@@ -39,16 +38,16 @@ public class Event_SetPaymentMode_TransitionTests
 
     private static TicketPricing DualPricing(decimal adult = 25m) =>
         TicketPricing.CreateDualPrice(
-            Money.Create(adult, Currency.USD).Value,
-            Money.Create(10m, Currency.USD).Value,
+            new Money(adult, Currency.USD),
+            new Money(10m, Currency.USD),
             childAgeLimit: 12).Value;
 
     private static ExternalRegistration ExternalReg() =>
         ExternalRegistration.Create("https://eventbrite.com/e/test-12345", "Pay at door", "Eventbrite").Value;
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Idempotency
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void SetPaymentMode_SameModeTwice_IsIdempotent()
@@ -62,9 +61,9 @@ public class Event_SetPaymentMode_TransitionTests
         ev.PaymentMode.Should().Be(EventPaymentMode.Free);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Free → OnPlatformPaid
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Free â†’ OnPlatformPaid
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void SetPaymentMode_FreeToOnPlatformPaid_WithPricing_Succeeds()
@@ -91,9 +90,9 @@ public class Event_SetPaymentMode_TransitionTests
         result.Error.Should().Contain("pricing");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  → ExternalPaid is NOT supported via SetPaymentMode
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  â†’ ExternalPaid is NOT supported via SetPaymentMode
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void SetPaymentMode_ToExternalPaid_RejectedDirectsToSetExternalPayment()
@@ -106,9 +105,9 @@ public class Event_SetPaymentMode_TransitionTests
         result.Error.Should().Contain("SetExternalPayment");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  ExternalPaid → OnPlatformPaid
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  ExternalPaid â†’ OnPlatformPaid
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void SetPaymentMode_ExternalPaidToOnPlatformPaid_NoRegs_Succeeds_RegistrationModeResetsToDetailedAttendees_ExternalRegistrationCleared()
@@ -116,7 +115,7 @@ public class Event_SetPaymentMode_TransitionTests
         var ev = CreateFreshEvent();
         ev.SetExternalPayment(ExternalReg(), DualPricing()).IsSuccess.Should().BeTrue();
         ev.PaymentMode.Should().Be(EventPaymentMode.ExternalPaid);
-        // Phase 8X.11 — SetExternalPayment now sets RegistrationMode = External (was NoRegistration).
+        // Phase 8X.11 â€” SetExternalPayment now sets RegistrationMode = External (was NoRegistration).
         ev.RegistrationMode.Should().Be(RegistrationMode.External);
         ev.ExternalRegistration.Should().NotBeNull();
 
@@ -129,9 +128,9 @@ public class Event_SetPaymentMode_TransitionTests
         ev.IsFreeEvent.Should().BeFalse();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  ExternalPaid → Free
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  ExternalPaid â†’ Free
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void SetPaymentMode_ExternalPaidToFree_NoRegs_Succeeds_RegistrationModeResetsToDetailedAttendees_PricingCleared()
@@ -149,9 +148,9 @@ public class Event_SetPaymentMode_TransitionTests
         ev.Pricing.Should().BeNull();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  OnPlatformPaid → Free
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  OnPlatformPaid â†’ Free
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [Fact]
     public void SetPaymentMode_OnPlatformPaidToFree_NoRegs_Succeeds_PricingCleared()

@@ -3,7 +3,21 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules. **Phase-number availability requires a FOUR-source check**: master index + git log --grep + branch names + `find docs -name "MASTER_TODO_PHASE_*"`. Memory `feedback_phase_number_check.md` enforces this after a 2026-05-16 incident where I declared 6A.148 "free" without the fourth check, missed the sibling agent's `MASTER_TODO_PHASE_6A_148_REFUND_APPROVAL_WORKFLOW_2026_05_16.md` reservation doc, and had to back out and renumber to 6A.149.
 
-## 🚀 CURRENT SESSION STATUS — Phase 6A.157 Sponsorship Packages public purchase flow (buyer-facing surface)
+## 🚀 CURRENT SESSION STATUS — Landing page: LankaSeyla sub-brand entry card (NO phase number)
+**Date**: 2026-08-04
+**Session**: Adds a second sub-brand entry point to the umbrella landing page beside LankaEvents, linking out to the external LankaSeyla storefront (`https://lankaseyla.lankaconnect.app/`) in a new tab.
+**Phase numbering**: **No number claimed, deliberately.** This is UI-only landing-page work outside the Phase 6A events series — nothing reserved in [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md), no `MASTER_TODO_PHASE_*` doc created, and the four-source check was not needed because no number was consumed. Recorded here so a later session does not mistake the absence of an index row for an oversight.
+**Progress**: ✅ **2 COMMITS PUSHED + DEPLOYED TO STAGING; operator UAT pending**.
+- Branch: `feat/landing-lankaseyla-entry` off `origin/Production_05_09_2026`, merged to `Production_05_09_2026` (`a879bb649`), fix-1 committed directly to that branch (`36fd7e6a8`)
+- Feature `d7199a819`: `EntryCard` extraction + LankaSeyla card + `scripts/generate-lanka-seyla-logo.js` + `web/public/lanka-seyla.png` + `landing-entry-cards.test.tsx`
+- fix-1 `36fd7e6a8`: wordmark used as supplied (443×110, natural aspect) after operator rejected the square-cropped lockup; `EntryCard` gained `logoWidth`/`logoHeight`/`showName`
+- **Scope**: `web/` only — no backend, API, EF, migration or DB change anywhere in this item
+- **Deploy protocol note**: `deploy-ui-staging.yml` triggers on push to `develop` ONLY. `Production_05_09_2026` does **not** auto-deploy — staging requires `gh workflow run deploy-ui-staging.yml --ref Production_05_09_2026`. Runs [30935441618](https://github.com/Niroshana-SinharaRalalage/LankaConnect/actions/runs/30935441618) and [30937880129](https://github.com/Niroshana-SinharaRalalage/LankaConnect/actions/runs/30937880129), both `success`.
+- **Spec**: [docs/superpowers/specs/2026-08-04-lankaseyla-landing-entry-design.md](./superpowers/specs/2026-08-04-lankaseyla-landing-entry-design.md)
+
+---
+
+## 🚀 EARLIER SESSION — Phase 6A.157 Sponsorship Packages public purchase flow (buyer-facing surface)
 **Date**: 2026-05-31
 **Session**: Closes the buyer-side gap left open at 6A.156 design time. Architect-paired RCA across 4 passes; classified as **feature-missing for buyer side** (backend/API/EF schema from 6A.156 stays untouched; only the [3/6] email-template seed adds a row).
 **Progress**: ✅ **6 COMMITS PUSHED, deploy pending**.

@@ -33,8 +33,12 @@ Because the wordmark spells the brand out, the card omits the separate name text
 printing "LankaSeyla" beside a logo that already reads "LankaSeyla" says it twice.
 The name still reaches assistive technology through the image's `alt`.
 
-The black background is kept deliberately: LankaSeyla's own site header sets the
-wordmark in a black box, so it reads as brand treatment rather than an artifact.
+**Background is transparent.** A transparent-background master is stored alongside
+the supplied artwork as
+`C:\Niroshan\LankaConnect Marketplace\Logo Files\LankaSeyla-transparent.png`
+(1600×887 — same pixel dimensions as the JPEG; the only change is the alpha
+channel), and the web asset is derived from it. The card's gold gradient now shows
+through behind the letterforms instead of a black rectangle sitting on it.
 
 Brand gold sampled from the artwork: **`#D7A959`** dominant, `#E3B565` on highlights.
 
@@ -125,11 +129,27 @@ the existing `landing-page-metro-filtering.test.tsx`.
 
 ## Asset generation
 
-`web/public/lanka-seyla.png` (443×110) is generated from
+`scripts/generate-lanka-seyla-logo.js` produces two artifacts from
 `C:\Niroshan\LankaConnect Marketplace\Logo Files\LankaSeyla.jpeg` via `sharp`:
-trim the flat black padding → scale to 110px height, natural width follows. No
-cropping, splitting or reflowing of the wordmark. The generation script is
-committed to `scripts/` so the asset is reproducible rather than a mystery binary.
+
+1. **`LankaSeyla-transparent.png`** (1600×887), written back beside the source in
+   the brand Logo Files folder. Same dimensions as the JPEG; the only change is
+   that the black field becomes transparent.
+2. **`web/public/lanka-seyla.png`** (443×110) — that master trimmed of its now
+   transparent padding and scaled to 110px height, natural width following.
+
+No cropping, splitting, recolouring or reflowing of the wordmark at either step.
+
+**How the alpha is derived:** the artwork is light text on a flat black field, so
+a pixel's max channel measures ink coverage directly. Measured on the source, the
+background occupies 0–15 and the solid letterforms plateau at ≥200, with only
+antialiased edges between; alpha ramps across that gap, leaving glyphs fully
+opaque and the field fully clear. RGB is copied through untouched rather than
+un-premultiplied, so the brand gold stays exactly `#D7A959` instead of being
+brightened toward `#FFC869`. Verified by compositing over magenta: no dark fringe.
+
+The script is committed so the assets are reproducible rather than mystery
+binaries.
 
 ## Deployment
 

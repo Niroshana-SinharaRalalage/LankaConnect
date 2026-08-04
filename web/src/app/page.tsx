@@ -4,7 +4,8 @@
  * LankaConnect Umbrella Landing Page
  *
  * Cinematic full-page animated world map background with the brand
- * identity centred and a single prominent LankaEvents entry point.
+ * identity centred and the sub-brand entry points (LankaEvents, LankaSeyla)
+ * side by side beneath it.
  *
  * Intentionally no top-left logo/branding — the hero IS the identity.
  * No "My Dashboard" in nav — that belongs in /lanka-events.
@@ -14,15 +15,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowUpRight, User, ChevronDown, LogOut, UserCircle } from 'lucide-react';
+import { User, ChevronDown, LogOut, UserCircle } from 'lucide-react';
 import { WorldMapAnimation, THEMES } from '@/presentation/components/features/landing/WorldMapAnimation';
+import { EntryCard } from '@/presentation/components/features/landing/EntryCard';
 import { useAuthStore, useHasHydrated } from '@/presentation/store/useAuthStore';
 import Footer from '@/presentation/components/layout/Footer';
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const DEFAULT_THEME_KEY = 'satellite-navy';
 
-// ─── LankaEvents brand ────────────────────────────────────────────────────────
+// ─── Sub-brand identities ─────────────────────────────────────────────────────
 const LANKA_EVENTS_COLOR = '#FF7900';
+
+// Sampled from the LankaSeyla wordmark artwork (dominant gold; #E3B565 highlights).
+const LANKA_SEYLA_COLOR = '#D7A959';
+const LANKA_SEYLA_URL = 'https://lankaseyla.lankaconnect.app/';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LankaConnectHome() {
@@ -198,108 +204,30 @@ export default function LankaConnectHome() {
             </div>
           </div>
 
-          {/* ── MIDDLE: LankaEvents entry card ─────────────────────────── */}
-          <div className="w-full flex justify-center px-4">
-            <Link href="/lanka-events" className="block w-full" style={{ maxWidth: '520px' }}>
-              <div
-                className="relative flex items-start gap-5 px-6 py-5 rounded-2xl cursor-pointer select-none"
-                style={{
-                  background: `linear-gradient(175deg, ${LANKA_EVENTS_COLOR}30 0%, ${LANKA_EVENTS_COLOR}14 60%, ${LANKA_EVENTS_COLOR}06 100%)`,
-                  border: `1px solid ${LANKA_EVENTS_COLOR}55`,
-                  boxShadow: [
-                    `inset 0 1px 0 rgba(255,255,255,0.18)`,
-                    `inset 0 -1px 0 ${LANKA_EVENTS_COLOR}60`,
-                    `0 6px 0 ${LANKA_EVENTS_COLOR}55`,
-                    `0 10px 32px ${LANKA_EVENTS_COLOR}22`,
-                    `0 2px 4px rgba(0,0,0,0.45)`,
-                  ].join(', '),
-                  minHeight: '50px',
-                  transition: 'transform 0.10s ease, box-shadow 0.10s ease',
-                }}
-                onMouseEnter={e => {
-                  const el = e.currentTarget as HTMLDivElement;
-                  el.style.transform = 'translateY(-3px)';
-                  el.style.boxShadow = [
-                    `inset 0 1px 0 rgba(255,255,255,0.22)`,
-                    `inset 0 -1px 0 ${LANKA_EVENTS_COLOR}70`,
-                    `0 9px 0 ${LANKA_EVENTS_COLOR}60`,
-                    `0 16px 48px ${LANKA_EVENTS_COLOR}35`,
-                    `0 4px 8px rgba(0,0,0,0.5)`,
-                  ].join(', ');
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget as HTMLDivElement;
-                  el.style.transform = '';
-                  el.style.boxShadow = [
-                    `inset 0 1px 0 rgba(255,255,255,0.18)`,
-                    `inset 0 -1px 0 ${LANKA_EVENTS_COLOR}60`,
-                    `0 6px 0 ${LANKA_EVENTS_COLOR}55`,
-                    `0 10px 32px ${LANKA_EVENTS_COLOR}22`,
-                    `0 2px 4px rgba(0,0,0,0.45)`,
-                  ].join(', ');
-                }}
-                onMouseDown={e => {
-                  const el = e.currentTarget as HTMLDivElement;
-                  el.style.transform = 'translateY(5px)';
-                  el.style.boxShadow = [
-                    `inset 0 1px 0 rgba(255,255,255,0.10)`,
-                    `inset 0 -1px 0 ${LANKA_EVENTS_COLOR}40`,
-                    `0 1px 0 ${LANKA_EVENTS_COLOR}55`,
-                    `0 3px 12px ${LANKA_EVENTS_COLOR}18`,
-                    `0 1px 2px rgba(0,0,0,0.5)`,
-                  ].join(', ');
-                }}
-                onMouseUp={e => {
-                  const el = e.currentTarget as HTMLDivElement;
-                  el.style.transform = 'translateY(-3px)';
-                  el.style.boxShadow = [
-                    `inset 0 1px 0 rgba(255,255,255,0.22)`,
-                    `inset 0 -1px 0 ${LANKA_EVENTS_COLOR}70`,
-                    `0 9px 0 ${LANKA_EVENTS_COLOR}60`,
-                    `0 16px 48px ${LANKA_EVENTS_COLOR}35`,
-                    `0 4px 8px rgba(0,0,0,0.5)`,
-                  ].join(', ');
-                }}
-              >
-                {/* Logo — no container box, just the image */}
-                <Image
-                  src="/lanka-events.png"
-                  alt="LankaEvents"
-                  width={55}
-                  height={55}
-                  className="object-contain flex-shrink-0"
-                />
-
-                {/* Text */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="font-bold text-2xl text-white leading-tight">LankaEvents</span>
-                    <span
-                      className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full leading-none"
-                      style={{
-                        background: `${LANKA_EVENTS_COLOR}25`,
-                        color: LANKA_EVENTS_COLOR,
-                        border: `1px solid ${LANKA_EVENTS_COLOR}40`,
-                      }}
-                    >
-                      Event Planner
-                    </span>
-                  </div>
-                  <div className="card-tagline text-white/65 uppercase leading-tight text-left">
-                    Plan Your Event with Ease
-                  </div>
-                </div>
-
-                {/* Right side */}
-                <div className="flex flex-col items-end gap-2 flex-shrink-0 pt-1">
-                  <div className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                    <span className="text-green-400 text-[10px] font-bold uppercase tracking-wide">Live</span>
-                  </div>
-                  <ArrowUpRight className="h-5 w-5" style={{ color: LANKA_EVENTS_COLOR }} />
-                </div>
-              </div>
-            </Link>
+          {/* ── MIDDLE: sub-brand entry cards ───────────────────────────
+              Stacked below md, side-by-side above it. `items-stretch` keeps the
+              two cards the same height when one tagline wraps.             */}
+          <div className="w-full flex flex-col md:flex-row items-stretch justify-center gap-4 md:gap-5 px-4">
+            <EntryCard
+              brandColor={LANKA_EVENTS_COLOR}
+              logoSrc="/lanka-events.png"
+              logoAlt="LankaEvents"
+              name="LankaEvents"
+              badge="Event Planner"
+              tagline="Plan Your Event with Ease"
+              href="/lanka-events"
+              live
+            />
+            <EntryCard
+              brandColor={LANKA_SEYLA_COLOR}
+              logoSrc="/lanka-seyla.png"
+              logoAlt="LankaSeyla"
+              name="LankaSeyla"
+              badge="Clothing Store"
+              tagline="Tradition Woven with Elegance"
+              href={LANKA_SEYLA_URL}
+              external
+            />
           </div>
 
           {/* ── BOTTOM: One Country tagline ─────────────────────────────── */}

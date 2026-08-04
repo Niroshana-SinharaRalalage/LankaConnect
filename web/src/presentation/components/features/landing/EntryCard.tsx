@@ -19,10 +19,19 @@ import { ArrowUpRight } from 'lucide-react';
 export interface EntryCardProps {
   /** Drives the gradient, border and every shadow state. */
   brandColor: string;
-  /** 110×110 square asset, rendered at 55×55. */
+  /** Logo asset, authored at 2× and rendered at logoWidth × logoHeight. */
   logoSrc: string;
   logoAlt: string;
+  /** Defaults suit a square icon; wordmarks pass their own natural aspect. */
+  logoWidth?: number;
+  logoHeight?: number;
   name: string;
+  /**
+   * Set false when the logo is a wordmark that already spells the brand out —
+   * rendering the name beside it would just say the same thing twice.
+   * The name still reaches assistive tech through the logo's alt text.
+   */
+  showName?: boolean;
   /** The pill beside the name, e.g. "Event Planner". */
   badge: string;
   tagline: string;
@@ -88,7 +97,10 @@ export function EntryCard({
   brandColor,
   logoSrc,
   logoAlt,
+  logoWidth = 55,
+  logoHeight = 55,
   name,
+  showName = true,
   badge,
   tagline,
   href,
@@ -126,15 +138,17 @@ export function EntryCard({
         <Image
           src={logoSrc}
           alt={logoAlt}
-          width={55}
-          height={55}
+          width={logoWidth}
+          height={logoHeight}
           className="object-contain flex-shrink-0"
         />
 
         {/* Text */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="font-bold text-2xl text-white leading-tight">{name}</span>
+            {showName && (
+              <span className="font-bold text-2xl text-white leading-tight">{name}</span>
+            )}
             <span
               className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full leading-none"
               style={{

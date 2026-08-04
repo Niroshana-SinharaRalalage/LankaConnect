@@ -103,10 +103,20 @@ describe('Landing page sub-brand entry cards', () => {
       expect(screen.getByText('Tradition Woven with Elegance')).toBeInTheDocument();
     });
 
-    it('renders the square lockup logo with a non-empty alt', () => {
+    it('renders the wordmark at its natural aspect, not squeezed into a square', () => {
       render(<LankaConnectHome />);
       const logo = screen.getByAltText('LankaSeyla');
       expect(logo).toHaveAttribute('src', '/lanka-seyla.png');
+      // 443x110 asset rendered at half height — width must not equal height.
+      expect(logo).toHaveAttribute('width', '221');
+      expect(logo).toHaveAttribute('height', '55');
+    });
+
+    it('does not print the brand name beside a wordmark that already says it', () => {
+      render(<LankaConnectHome />);
+      // Reaches assistive tech via the logo's alt text instead.
+      expect(screen.queryByText('LankaSeyla')).not.toBeInTheDocument();
+      expect(screen.getByAltText('LankaSeyla')).toBeInTheDocument();
     });
   });
 

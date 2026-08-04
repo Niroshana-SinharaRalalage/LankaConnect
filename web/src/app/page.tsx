@@ -222,7 +222,11 @@ export default function LankaConnectHome() {
               brandColor={LANKA_SEYLA_COLOR}
               logoSrc="/lanka-seyla.png"
               logoAlt="LankaSeyla"
+              /* The wordmark is 443×110; render at half height, natural width. */
+              logoWidth={221}
+              logoHeight={55}
               name="LankaSeyla"
+              showName={false}
               badge="Clothing Store"
               tagline="Tradition Woven with Elegance"
               href={LANKA_SEYLA_URL}

@@ -14,17 +14,27 @@ point at all.
 
 Add a second, peer-level entry card for LankaSeyla.
 
-## Key constraint discovered during design
+## Logo treatment
 
 LankaSeyla's supplied logo (`LankaSeyla.jpeg`, 1600×887) is a **4.03:1 wordmark**
-once its black padding is trimmed (1268×315). Letterboxing that whole shape into
-the 110×110 square the card format expects yields a text band 27px tall inside the
-square, which renders **14px tall** at the card's actual 55×55 display size — with
-the "by LankaConnect" sub-line illegible and ~70% of the square empty.
+once its black padding is trimmed (1268×315).
 
-**Resolution:** build the square asset as a stacked lockup — "Lanka" (white) over
-"Seyla" (gold) — cut from the real letterforms. This fills the square and raises
-per-word text height to ~17px at display size while preserving brand typography.
+**The wordmark is used as supplied** — trimmed and scaled to a fixed 110px height,
+its natural width riding along (443×110), rendered in the card at half that
+(221×55). The card does not force it into the square-icon slot the LankaEvents
+button uses.
+
+An earlier revision cropped the wordmark into a stacked 110×110 "Lanka"/"Seyla"
+lockup to keep the two cards structurally identical. That was rejected on operator
+review: matching LankaEvents is not a requirement, and altering a brand's wordmark
+to satisfy a layout is the wrong trade. The two cards may differ.
+
+Because the wordmark spells the brand out, the card omits the separate name text —
+printing "LankaSeyla" beside a logo that already reads "LankaSeyla" says it twice.
+The name still reaches assistive technology through the image's `alt`.
+
+The black background is kept deliberately: LankaSeyla's own site header sets the
+wordmark in a black box, so it reads as brand treatment rather than an artifact.
 
 Brand gold sampled from the artwork: **`#D7A959`** dominant, `#E3B565` on highlights.
 
@@ -44,9 +54,12 @@ New component: `web/src/presentation/components/features/landing/EntryCard.tsx`
 ```
 Props:
   brandColor   string    drives gradient + border + all four shadow states
-  logoSrc      string    110×110 asset, rendered at 55×55
+  logoSrc      string    logo asset, authored at 2x
   logoAlt      string
+  logoWidth?   number    default 55; wordmarks pass their natural aspect
+  logoHeight?  number    default 55
   name         string
+  showName?    boolean   false when the logo is a wordmark that already says it
   badge        string    the pill ("Event Planner")
   tagline      string
   href         string
@@ -67,6 +80,8 @@ mitigation is the test ordering below.
 |---|---|---|
 | `brandColor` | `#FF7900` | `#D7A959` |
 | `logoSrc` | `/lanka-events.png` | `/lanka-seyla.png` |
+| logo size | 55×55 (square icon) | 221×55 (wordmark, natural aspect) |
+| `showName` | true | false — wordmark already reads "LankaSeyla" |
 | `name` | LankaEvents | LankaSeyla |
 | `badge` | Event Planner | Clothing Store |
 | `tagline` | Plan Your Event with Ease | Tradition Woven with Elegance |
@@ -110,11 +125,11 @@ the existing `landing-page-metro-filtering.test.tsx`.
 
 ## Asset generation
 
-`web/public/lanka-seyla.png` (110×110) is generated from
+`web/public/lanka-seyla.png` (443×110) is generated from
 `C:\Niroshan\LankaConnect Marketplace\Logo Files\LankaSeyla.jpeg` via `sharp`:
-trim padding → split the wordmark into "Lanka" / "Seyla" → stack, pad, square,
-downscale. The generation script is committed to `scripts/` so the asset is
-reproducible rather than a mystery binary.
+trim the flat black padding → scale to 110px height, natural width follows. No
+cropping, splitting or reflowing of the wordmark. The generation script is
+committed to `scripts/` so the asset is reproducible rather than a mystery binary.
 
 ## Deployment
 

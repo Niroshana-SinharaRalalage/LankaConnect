@@ -6,7 +6,11 @@
 
 ---
 
-## 🎯 2026-08-04 (Landing page — LankaSeyla sub-brand entry card + fix-1 logo treatment) — ✅ CODE COMPLETE + TESTS GREEN + DEPLOYED TO STAGING (`36fd7e6a8`); OPERATOR UAT PENDING
+## 🎯 2026-08-04 (Landing page — LankaSeyla sub-brand entry card) — ✅ SHIPPED TO PRODUCTION + VERIFIED (`abc3989d5`; prod revision `lankaconnect-ui-prod--0000044`)
+
+**Production deploy protocol (learned the hard way here):** merging to `main` auto-fires ALL THREE production workflows — `deploy-production.yml` (which runs **EF Core migrations against the production DB**), `deploy-ui-production.yml` and `deploy-production-with-approval.yml` — because each triggers on `push: branches: [main]`. Merging PR #137 to `main` set them off; operator caught it and both live runs were cancelled within ~40s, before Azure Login / Docker push / Update Container App / migrations (all `skipped`), so production was untouched. **The production push is dispatched from the `Production_<date>` release branch; merging to `main` is a code sync only.** Recorded in memory as `feedback_main_merge_autotriggers_prod.md`.
+
+**This item shipped UI-only** — all 9 changed files are `web/` + one build script + four docs, zero `src/LankaConnect.*` — so `deploy-ui-production.yml` was dispatched against `Production_05_09_2026` and the backend was deliberately left alone. Verified in prod: home page HTTP 200 with the LankaSeyla card markup, logo served as webp 443×110 with alpha (74.1% transparent), LankaEvents card intact.
 
 **No phase number claimed** — UI-only landing-page work outside the Phase 6A events series, so nothing was reserved in `PHASE_6A_MASTER_INDEX.md` and the four-source check did not apply.
 
